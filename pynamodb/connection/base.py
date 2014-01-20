@@ -1,10 +1,10 @@
 """
 Lowest level connection
 """
-import pprint
 from botocore.session import get_session
 from .util import pythonic
 from .exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError
+from ..types import HASH, RANGE
 from .constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -12,11 +12,12 @@ from .constants import (
     BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, DEFAULT_REGION, KEY_CONDITIONS,
     BATCH_GET_ITEM, DELETE_REQUEST, SELECT_VALUES, RETURN_VALUES, REQUEST_ITEMS, ATTR_UPDATES,
     ATTRS_TO_GET, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
-    INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM,
-    PUT_ITEM, HTTP_OK, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, RANGE, SCAN, HASH, ITEM,
+    INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
+    PUT_ITEM, HTTP_OK, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, PROJECTION, PROJECTION_TYPE,
-    STRING, NUMBER, BINARY)
+    EXCLUSIVE_START_TABLE_NAME, STRING, NUMBER, BINARY, DELETE_TABLE, UPDATE_TABLE, LIST_TABLES,
+    GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST)
 
 
 class MetaTable(object):
@@ -63,10 +64,10 @@ class MetaTable(object):
         Builds up a dynamodb compatible AttributeValue map
         """
         attr_map = {
-            item_key: {}
+            pythonic(item_key): {}
         }
         for key, value in attributes.items():
-            attr_map[item_key][key] = {
+            attr_map[pythonic(item_key)][key] = {
                 self.get_attribute_type(key): value
             }
         return attr_map
@@ -179,8 +180,11 @@ class Connection(object):
                 pythonic(TABLE_NAME): table_name
             }
             response, data = self.service.get_operation(DESCRIBE_TABLE).call(self.endpoint, **operation_kwargs)
-            if response.status_code != HTTP_OK:
-                raise TableError("Unable to describe table: {0}".format(response.content))
+            if not response.ok:
+                if response.status_code == HTTP_BAD_REQUEST:
+                    return None
+                else:
+                    raise TableError("Unable to describe table: {0}".format(response.content))
             self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
         return self._tables[table_name]
 
@@ -243,17 +247,84 @@ class Connection(object):
                     KEY_SCHEMA: index.get(pythonic(KEY_SCHEMA)),
                     PROJECTION: index.get(pythonic(PROJECTION)),
                 })
-        pprint.pprint(operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if response.status_code != HTTP_OK:
             raise PutError("Failed to create table: {0}".format(response.content))
         return data
 
-    def get_table(self, table_name):
+    def delete_table(self, table_name):
+        """
+        Performs the DeleteTable operation
+        """
+        operation = self.service.get_operation(DELETE_TABLE)
+        operation_kwargs = {
+            pythonic(TABLE_NAME): table_name
+        }
+        response, data = operation.call(self.endpoint, **operation_kwargs)
+        if response.status_code != HTTP_OK:
+            raise DeleteError("Failed to delete table: {0}".format(response.content))
+
+    def update_table(self,
+                     table_name,
+                     read_capacity_units=None,
+                     write_capacity_units=None,
+                     global_secondary_index_updates=None):
+        """
+        Performs the UpdateTable operation
+        """
+        operation = self.service.get_operation(UPDATE_TABLE)
+        operation_kwargs = {
+            pythonic(TABLE_NAME): table_name
+        }
+        if read_capacity_units:
+            operation_kwargs[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
+        if write_capacity_units:
+            operation_kwargs[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+        if global_secondary_index_updates:
+            global_secondary_indexes_list = []
+            for index in global_secondary_index_updates:
+                global_secondary_indexes_list.append({
+                    UPDATE: {
+                        INDEX_NAME: index.get(pythonic(INDEX_NAME)),
+                        PROVISIONED_THROUGHPUT: {
+                            READ_CAPACITY_UNITS: index.get(pythonic(READ_CAPACITY_UNITS)),
+                            WRITE_CAPACITY_UNITS: index.get(pythonic(WRITE_CAPACITY_UNITS))
+                        }
+                    }
+                })
+            operation_kwargs[pythonic(GLOBAL_SECONDARY_INDEX_UPDATES)] = global_secondary_indexes_list
+        response, data = operation.call(self.endpoint, **operation_kwargs)
+        if not response.ok:
+            raise UpdateError("Failed to update table: {0}".format(response.content))
+
+    def list_tables(self, exclusive_start_table_name=None, limit=None):
+        """
+        Performs the ListTables operation
+        """
+        operation = self.service.get_operation(LIST_TABLES)
+        operation_kwargs = {}
+        if exclusive_start_table_name:
+            operation_kwargs.update({
+                pythonic(EXCLUSIVE_START_TABLE_NAME): exclusive_start_table_name
+            })
+        if limit:
+            operation_kwargs.update({
+                pythonic(LIMIT): limit
+            })
+        response, data = operation.call(self.endpoint, **operation_kwargs)
+        if not response.ok:
+            raise QueryError("Unable to list tables: {0}".format(response.content))
+
+
+    def describe_table(self, table_name):
         """
         Performs the DescribeTable operation
         """
-        return self.get_meta_table(table_name).data
+        tbl = self.get_meta_table(table_name)
+        if tbl:
+            return tbl.data
+        else:
+            return None
 
     def get_item_attribute_map(self, table_name, attributes, item_key=ITEM):
         """
@@ -340,7 +411,7 @@ class Connection(object):
             operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
         response, data = operation.call(self.endpoint, **operation_kwargs)
 
-        if response.status_code != HTTP_OK:
+        if not response.ok:
             raise DeleteError("Failed to delete item: {0}".format(response.content))
         return data
 
@@ -386,7 +457,7 @@ class Connection(object):
             }
         response, data = operation.call(self.endpoint, **operation_kwargs)
 
-        if response.status_code != HTTP_OK:
+        if not response.ok:
             raise UpdateError("Failed to update item: {0}".format(response.content))
         return data
 
@@ -403,7 +474,7 @@ class Connection(object):
         Performs the PutItem operation and returns the result
         """
         operation = self.service.get_operation(PUT_ITEM)
-        operation_kwargs = {pythonic(TABLE_NAME): self.get_table(table_name).get(TABLE_NAME)}
+        operation_kwargs = {pythonic(TABLE_NAME): table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=ITEM))
         if attributes:
             operation_kwargs.update(self.get_item_attribute_map(table_name, attributes))
@@ -417,7 +488,7 @@ class Connection(object):
             operation_kwargs.update(self.get_expected_map(table_name, expected))
 
         response, data = operation.call(self.endpoint, **operation_kwargs)
-        if response.status_code != HTTP_OK:
+        if not response.ok:
             raise PutError("Failed to put item: {0}".format(response.content))
         return data
 
@@ -433,7 +504,6 @@ class Connection(object):
         if put_items is None and delete_items is None:
             raise ValueError("Either put_items or delete_items must be specified")
         operation = self.service.get_operation(BATCH_WRITE_ITEM)
-        table_name = self.get_table(table_name).get(TABLE_NAME)
         operation_kwargs = {
             pythonic(REQUEST_ITEMS): {
                 table_name: []
@@ -456,9 +526,8 @@ class Connection(object):
                     DELETE_REQUEST: self.get_item_attribute_map(table_name, item, item_key=KEY)
                 })
         operation_kwargs[pythonic(REQUEST_ITEMS)][table_name] = delete_items_list + put_items_list
-        pprint.pprint(operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
-        if response.status_code != HTTP_OK:
+        if not response.ok:
             raise PutError("Failed to batch write items: {0}".format(response.content))
         return data
 
@@ -472,7 +541,6 @@ class Connection(object):
         Performs the batch get item operation
         """
         operation = self.service.get_operation(BATCH_GET_ITEM)
-        table_name = self.get_table(table_name).get(TABLE_NAME)
         operation_kwargs = {
             pythonic(REQUEST_ITEMS): {
                 table_name: {}
@@ -513,7 +581,7 @@ class Connection(object):
             keys_map[KEYS].append(val_map)
         operation_kwargs[pythonic(REQUEST_ITEMS)][table_name].update(keys_map)
         response, data = operation.call(self.endpoint, **operation_kwargs)
-        if response.status_code != HTTP_OK:
+        if not response.ok:
             raise GetError("Failed to batch get items: {0}".format(response.content))
         return data
 
@@ -534,7 +602,7 @@ class Connection(object):
         operation_kwargs[pythonic(TABLE_NAME)] = table_name
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
         response, data = operation.call(self.endpoint, **operation_kwargs)
-        if response.status_code != HTTP_OK:
+        if not response.ok:
             raise GetError("Failed to get item: {0}".format(response.content))
         return data
 
@@ -576,7 +644,7 @@ class Connection(object):
                     COMPARISON_OPERATOR: operator
                 }
         response, data = operation.call(self.endpoint, **operation_kwargs)
-        if response.status_code != HTTP_OK:
+        if not response.ok:
             raise QueryError("Failed to scan table: {0}".format(response.content))
         return data
 
@@ -638,6 +706,6 @@ class Connection(object):
                 }
 
         response, data = operation.call(self.endpoint, **operation_kwargs)
-        if response.status_code != HTTP_OK:
+        if not response.ok:
             raise QueryError("Failed to query items: {0}".format(response.content))
         return data

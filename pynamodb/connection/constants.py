@@ -18,7 +18,9 @@ QUERY = 'Query'
 SCAN = 'Scan'
 
 # Request Parameters
+GLOBAL_SECONDARY_INDEX_UPDATES = 'GlobalSecondaryIndexUpdates'
 RETURN_ITEM_COLL_METRICS = 'ReturnItemCollectionMetrics'
+EXCLUSIVE_START_TABLE_NAME = 'ExclusiveStartTableName'
 RETURN_CONSUMED_CAPACITY = 'ReturnConsumedCapacity'
 EXCLUSIVE_START_KEY = 'ExclusiveStartKey'
 COMPARISON_OPERATOR = 'ComparisonOperator'
@@ -41,11 +43,10 @@ INDEX_NAME = 'IndexName'
 TABLE_KEY = 'Table'
 KEY_TYPE = 'KeyType'
 ACTION = 'Action'
+UPDATE = 'Update'
 EXISTS = 'Exists'
 SELECT = 'Select'
 LIMIT = 'Limit'
-RANGE = 'RANGE'
-HASH = 'HASH'
 ITEM = 'Item'
 KEYS = 'Keys'
 UTC = 'UTC'
@@ -56,6 +57,7 @@ DEFAULT_REGION = 'us-east-1'
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 SERVICE_NAME = 'dynamodb'
 HTTP_OK = 200
+HTTP_BAD_REQUEST = 400
 
 # Create Table arguments
 PROVISIONED_THROUGHPUT = 'ProvisionedThroughput'
