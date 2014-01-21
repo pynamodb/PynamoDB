@@ -13,7 +13,7 @@ class TableConnection(object):
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
-        self.connection = Connection(region=region, host=None)
+        self.connection = Connection(region=region, host=host)
 
     def delete_item(self, hash_key,
                     range_key=None,
@@ -170,7 +170,6 @@ class TableConnection(object):
         return self.connection.delete_table(self.table_name)
 
     def update_table(self,
-                     table_name,
                      read_capacity_units=None,
                      write_capacity_units=None,
                      global_secondary_index_updates=None):

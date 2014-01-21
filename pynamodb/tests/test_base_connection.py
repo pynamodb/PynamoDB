@@ -11,7 +11,7 @@ try:
 except ImportError:
     from mock import patch
 
-from .response import Response
+from .response import MockResponse as Response
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
 
@@ -201,11 +201,10 @@ class ConnectionTestCase(TestCase):
             req.return_value = Response(HTTP_OK, None), None
             conn = Connection(self.region)
             params = {
-                'provisioned_throughput':
-                    {
-                        'WriteCapacityUnits': 2,
-                        'ReadCapacityUnits': 2
-                    },
+                'provisioned_throughput': {
+                    'WriteCapacityUnits': 2,
+                    'ReadCapacityUnits': 2
+                },
                 'table_name': 'ci-table'
             }
             conn.update_table(

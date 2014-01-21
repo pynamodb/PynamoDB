@@ -4,7 +4,7 @@ Mock response
 from requests.models import Response
 
 
-class Response(Response):
+class MockResponse(Response):
     """
     A class for mocked responses
     """
