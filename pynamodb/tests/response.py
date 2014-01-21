@@ -3,6 +3,7 @@ Mock response
 """
 from requests.models import Response
 
+
 class Response(Response):
     """
     A class for mocked responses

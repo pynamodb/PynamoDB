@@ -9,11 +9,11 @@ class TableConnection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, table_name, region=None):
+    def __init__(self, table_name, region=None, host=None):
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
-        self.connection = Connection(region=region)
+        self.connection = Connection(region=region, host=None)
 
     def delete_item(self, hash_key,
                     range_key=None,
@@ -156,3 +156,49 @@ class TableConnection(object):
             return_consumed_capacity=return_consumed_capacity,
             scan_index_forward=scan_index_forward,
             select=select)
+
+    def describe_table(self):
+        """
+        Performs the DescribeTable operation and returns the result
+        """
+        return self.connection.describe_table(self.table_name)
+
+    def delete_table(self):
+        """
+        Performs the DeleteTable operation and returns the result
+        """
+        return self.connection.delete_table(self.table_name)
+
+    def update_table(self,
+                     table_name,
+                     read_capacity_units=None,
+                     write_capacity_units=None,
+                     global_secondary_index_updates=None):
+        """
+        Performs the UpdateTable operation and returns the result
+        """
+        return self.update_table(
+            self.table_name,
+            read_capacity_units=read_capacity_units,
+            write_capacity_units=write_capacity_units,
+            global_secondary_index_updates=global_secondary_index_updates)
+
+    def create_table(self,
+                     attribute_definitions=None,
+                     key_schema=None,
+                     read_capacity_units=None,
+                     write_capacity_units=None,
+                     global_secondary_indexes=None,
+                     local_secondary_indexes=None):
+        """
+        Performs the CreateTable operation and returns the result
+        """
+        return self.connection.create_table(
+            self.table_name,
+            attribute_definitions=attribute_definitions,
+            key_schema=key_schema,
+            read_capacity_units=read_capacity_units,
+            write_capacity_units=write_capacity_units,
+            global_secondary_indexes=global_secondary_indexes,
+            local_secondary_indexes=local_secondary_indexes
+        )

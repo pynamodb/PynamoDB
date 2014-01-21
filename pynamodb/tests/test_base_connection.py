@@ -195,9 +195,12 @@ class ConnectionTestCase(TestCase):
             req.return_value = Response(HTTP_OK, None), None
             conn = Connection(self.region)
             params = {
-                'table_name': 'ci-table',
-                'read_capacity_units': 2,
-                'write_capacity_units': 2
+                'provisioned_throughput':
+                    {
+                        'WriteCapacityUnits': 2,
+                        'ReadCapacityUnits': 2
+                    },
+                'table_name': 'ci-table'
             }
             conn.update_table(
                 self.test_table_name,
@@ -218,8 +221,10 @@ class ConnectionTestCase(TestCase):
             ]
             params = {
                 'table_name': 'ci-table',
-                'read_capacity_units': 2,
-                'write_capacity_units': 2,
+                'provisioned_throughput': {
+                    'ReadCapacityUnits': 2,
+                    'WriteCapacityUnits': 2,
+                },
                 'global_secondary_index_updates': [
                     {
                         'Update': {
@@ -306,7 +311,8 @@ class ConnectionTestCase(TestCase):
                 range_key='foo-range-key',
                 attributes={'ForumName': 'foo-value'}
             )
-            params = {'item': {'ForumName': {'S': 'foo-value'}}, 'table_name': 'Thread'}
+            params = {'table_name': 'Thread',
+                      'item': {'ForumName': {'S': 'foo-value'}, 'Subject': {'S': 'foo-range-key'}}}
             self.assertEqual(req.call_args[1], params)
 
         with patch(PATCH_METHOD) as req:
@@ -317,5 +323,6 @@ class ConnectionTestCase(TestCase):
                 range_key='foo-range-key',
                 attributes={'ForumName': 'foo-value'}
             )
-            params = {'item': {'ForumName': {'S': 'foo-value'}}, 'table_name': 'Thread'}
+            params = {'item': {'ForumName': {'S': 'foo-value'}, 'Subject': {'S': 'foo-range-key'}},
+                      'table_name': 'Thread'}
             self.assertEqual(req.call_args[1], params)

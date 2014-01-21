@@ -15,9 +15,8 @@ from .constants import (
     INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
     PUT_ITEM, HTTP_OK, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
-    WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, PROJECTION, PROJECTION_TYPE,
-    EXCLUSIVE_START_TABLE_NAME, STRING, NUMBER, BINARY, DELETE_TABLE, UPDATE_TABLE, LIST_TABLES,
-    GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST)
+    WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME,
+    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST)
 
 
 class MetaTable(object):
@@ -59,17 +58,24 @@ class MetaTable(object):
                     break
         return self._hash_keyname
 
-    def get_item_attribute_map(self, attributes, item_key=ITEM):
+    def get_item_attribute_map(self, attributes, item_key=ITEM, pythonic_key=True):
         """
         Builds up a dynamodb compatible AttributeValue map
         """
+        if pythonic_key:
+            item_key = pythonic(item_key)
         attr_map = {
-            pythonic(item_key): {}
+            item_key: {}
         }
         for key, value in attributes.items():
-            attr_map[pythonic(item_key)][key] = {
-                self.get_attribute_type(key): value
-            }
+            # In this case, the user provided a mapping
+            # {'key': {'S': 'value'}}
+            if isinstance(value, dict):
+                attr_map[item_key][key] = value
+            else:
+                attr_map[item_key][key] = {
+                    self.get_attribute_type(key): value
+                }
         return attr_map
 
     def get_attribute_type(self, attribute_name):
@@ -134,11 +140,12 @@ class Connection(object):
     """
     A higher level abstraction over botocore
     """
-    def __init__(self, region=None):
+    def __init__(self, region=None, host=None):
         self._endpoint = None
         self._session = None
         self._service = None
         self._tables = {}
+        self.host = host
         if region:
             self.region = region
         else:
@@ -168,7 +175,10 @@ class Connection(object):
         Returns an endpoint connection to `self.region`
         """
         if self._endpoint is None:
-            self._endpoint = self.service.get_endpoint(self.region)
+            if self.host:
+                self._endpoint = self.service.get_endpoint(self.region, endpoint_url=self.host)
+            else:
+                self._endpoint = self.service.get_endpoint(self.region)
         return self._endpoint
 
     def get_meta_table(self, table_name):
@@ -249,7 +259,7 @@ class Connection(object):
                 })
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if response.status_code != HTTP_OK:
-            raise PutError("Failed to create table: {0}".format(response.content))
+            raise TableError("Failed to create table: {0}".format(response.content))
         return data
 
     def delete_table(self, table_name):
@@ -276,10 +286,13 @@ class Connection(object):
         operation_kwargs = {
             pythonic(TABLE_NAME): table_name
         }
-        if read_capacity_units:
-            operation_kwargs[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
-        if write_capacity_units:
-            operation_kwargs[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+        if read_capacity_units and not write_capacity_units or write_capacity_units and not read_capacity_units:
+            raise ValueError("read_capacity_units and write_capacity_units are required together")
+        if read_capacity_units and write_capacity_units:
+            operation_kwargs[pythonic(PROVISIONED_THROUGHPUT)] = {
+                READ_CAPACITY_UNITS: read_capacity_units,
+                WRITE_CAPACITY_UNITS: write_capacity_units
+            }
         if global_secondary_index_updates:
             global_secondary_indexes_list = []
             for index in global_secondary_index_updates:
@@ -314,7 +327,7 @@ class Connection(object):
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
             raise QueryError("Unable to list tables: {0}".format(response.content))
-
+        return data
 
     def describe_table(self, table_name):
         """
@@ -326,11 +339,14 @@ class Connection(object):
         else:
             return None
 
-    def get_item_attribute_map(self, table_name, attributes, item_key=ITEM):
+    def get_item_attribute_map(self, table_name, attributes, item_key=ITEM, pythonic_key=True):
         """
         Builds up a dynamodb compatible AttributeValue map
         """
-        return self.get_meta_table(table_name).get_item_attribute_map(attributes, item_key=item_key)
+        return self.get_meta_table(table_name).get_item_attribute_map(
+            attributes,
+            item_key=item_key,
+            pythonic_key=pythonic_key)
 
     def get_attribute_type(self, table_name, attribute_name):
         """
@@ -477,7 +493,8 @@ class Connection(object):
         operation_kwargs = {pythonic(TABLE_NAME): table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=ITEM))
         if attributes:
-            operation_kwargs.update(self.get_item_attribute_map(table_name, attributes))
+            attrs = self.get_item_attribute_map(table_name, attributes)
+            operation_kwargs[pythonic(ITEM)].update(attrs[pythonic(ITEM)])
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics:
@@ -517,13 +534,13 @@ class Connection(object):
         if put_items:
             for item in put_items:
                 put_items_list.append({
-                    PUT_REQUEST: self.get_item_attribute_map(table_name, item)
+                    PUT_REQUEST: self.get_item_attribute_map(table_name, item, pythonic_key=False)
                 })
         delete_items_list = []
         if delete_items:
             for item in delete_items:
                 delete_items_list.append({
-                    DELETE_REQUEST: self.get_item_attribute_map(table_name, item, item_key=KEY)
+                    DELETE_REQUEST: self.get_item_attribute_map(table_name, item, item_key=KEY, pythonic_key=False)
                 })
         operation_kwargs[pythonic(REQUEST_ITEMS)][table_name] = delete_items_list + put_items_list
         response, data = operation.call(self.endpoint, **operation_kwargs)
@@ -556,29 +573,11 @@ class Connection(object):
             args_map[pythonic(ATTRS_TO_GET)] = attributes_to_get
         operation_kwargs[pythonic(REQUEST_ITEMS)][table_name].update(args_map)
 
-        range_key_type = None
-        range_keyname = self.get_meta_table(table_name).range_keyname
-        hash_keyname = self.get_meta_table(table_name).hash_keyname
-        has_range_key = range_keyname is not None
-        if has_range_key:
-            range_key_type = self.get_attribute_type(table_name, range_keyname)
-        hash_key_type = self.get_attribute_type(table_name, hash_keyname)
         keys_map = {KEYS: []}
-        for hash_val, range_val in keys:
-            val_map = {
-                hash_keyname: {
-                    hash_key_type: hash_val
-                }
-            }
-            if has_range_key:
-                val_map.update(
-                    {
-                        range_keyname: {
-                            range_key_type: range_val
-                        }
-                    }
-                )
-            keys_map[KEYS].append(val_map)
+        for key in keys:
+            keys_map[KEYS].append(
+                self.get_item_attribute_map(table_name, key)[pythonic(ITEM)]
+            )
         operation_kwargs[pythonic(REQUEST_ITEMS)][table_name].update(keys_map)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
