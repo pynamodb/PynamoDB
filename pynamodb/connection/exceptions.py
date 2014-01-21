@@ -18,8 +18,6 @@ class ConnectionError(PynamoDBException):
     msg = "Connection Error"
 
     def __init__(self, msg=None):
-        if not msg:
-            msg = self.__class__.msg
         super(ConnectionError, self).__init__(msg)
 
 
@@ -35,6 +33,13 @@ class QueryError(ConnectionError):
     Raised when queries fail
     """
     msg = "Error performing query"
+
+
+class ScanError(ConnectionError):
+    """
+    Raised when a scan operation fails
+    """
+    msg = "Error performing scan"
 
 
 class PutError(ConnectionError):

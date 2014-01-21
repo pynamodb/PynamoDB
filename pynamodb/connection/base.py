@@ -3,7 +3,7 @@ Lowest level connection
 """
 from botocore.session import get_session
 from .util import pythonic
-from .exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError
+from .exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError
 from ..types import HASH, RANGE
 from .constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
@@ -13,7 +13,7 @@ from .constants import (
     BATCH_GET_ITEM, DELETE_REQUEST, SELECT_VALUES, RETURN_VALUES, REQUEST_ITEMS, ATTR_UPDATES,
     ATTRS_TO_GET, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
     INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
-    PUT_ITEM, HTTP_OK, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM,
+    PUT_ITEM, HTTP_OK, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST)
@@ -27,13 +27,6 @@ class MetaTable(object):
         self.data = data
         self._range_keyname = None
         self._hash_keyname = None
-
-    @property
-    def table_name(self):
-        """
-        Returns the name of this table
-        """
-        return self.data.get(TABLE_NAME)
 
     @property
     def range_keyname(self):
@@ -257,6 +250,7 @@ class Connection(object):
                     KEY_SCHEMA: index.get(pythonic(KEY_SCHEMA)),
                     PROJECTION: index.get(pythonic(PROJECTION)),
                 })
+            operation_kwargs[pythonic(LOCAL_SECONDARY_INDEXES)] = local_secondary_indexes_list
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if response.status_code != HTTP_OK:
             raise TableError("Failed to create table: {0}".format(response.content))
@@ -272,7 +266,7 @@ class Connection(object):
         }
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if response.status_code != HTTP_OK:
-            raise DeleteError("Failed to delete table: {0}".format(response.content))
+            raise TableError("Failed to delete table: {0}".format(response.content))
 
     def update_table(self,
                      table_name,
@@ -308,7 +302,7 @@ class Connection(object):
             operation_kwargs[pythonic(GLOBAL_SECONDARY_INDEX_UPDATES)] = global_secondary_indexes_list
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
-            raise UpdateError("Failed to update table: {0}".format(response.content))
+            raise TableError("Failed to update table: {0}".format(response.content))
 
     def list_tables(self, exclusive_start_table_name=None, limit=None):
         """
@@ -326,7 +320,7 @@ class Connection(object):
             })
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
-            raise QueryError("Unable to list tables: {0}".format(response.content))
+            raise TableError("Unable to list tables: {0}".format(response.content))
         return data
 
     def describe_table(self, table_name):
@@ -568,7 +562,7 @@ class Connection(object):
         if consistent_read:
             args_map[pythonic(CONSISTENT_READ)] = consistent_read
         if return_consumed_capacity:
-            args_map.update(self.get_consumed_capacity_map(return_consumed_capacity))
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if attributes_to_get is not None:
             args_map[pythonic(ATTRS_TO_GET)] = attributes_to_get
         operation_kwargs[pythonic(REQUEST_ITEMS)][table_name].update(args_map)
@@ -644,13 +638,13 @@ class Connection(object):
                 }
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
-            raise QueryError("Failed to scan table: {0}".format(response.content))
+            raise ScanError("Failed to scan table: {0}".format(response.content))
         return data
 
     def query(self,
               table_name,
               hash_key,
-              attributes=None,
+              attributes_to_get=None,
               consistent_read=False,
               exclusive_start_key=None,
               index_name=None,
@@ -665,8 +659,8 @@ class Connection(object):
         """
         operation = self.service.get_operation(QUERY)
         operation_kwargs = {pythonic(TABLE_NAME): table_name}
-        if attributes:
-            operation_kwargs[pythonic(ATTRS_TO_GET)] = attributes
+        if attributes_to_get:
+            operation_kwargs[pythonic(ATTRS_TO_GET)] = attributes_to_get
         if consistent_read:
             operation_kwargs[pythonic(CONSISTENT_READ)] = True
         if exclusive_start_key:

@@ -8,6 +8,32 @@ class MockResponse(Response):
     """
     A class for mocked responses
     """
-    def __init__(self, status_code, content):
+    def __init__(self, status_code=None):
+        super(MockResponse, self).__init__()
         self.status_code = status_code
-        self._content = content
+        self._content = 'Empty'
+        self.reason = 'Test Response'
+
+
+class HttpBadRequest(MockResponse):
+    """
+    A response class that returns status 400
+    """
+    def __init__(self):
+        super(HttpBadRequest, self).__init__(status_code=400)
+
+
+class HttpUnavailable(MockResponse):
+    """
+    A response that returns status code 502
+    """
+    def __init__(self):
+        super(HttpUnavailable, self).__init__(status_code=502)
+
+
+class HttpOK(MockResponse):
+    """
+    A response that returns status code 200
+    """
+    def __init__(self):
+        super(HttpOK, self).__init__(status_code=200)

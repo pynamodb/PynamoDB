@@ -131,7 +131,7 @@ class TableConnection(object):
 
     def query(self,
               hash_key,
-              attributes=None,
+              attributes_to_get=None,
               consistent_read=False,
               exclusive_start_key=None,
               index_name=None,
@@ -147,7 +147,7 @@ class TableConnection(object):
         return self.connection.query(
             self.table_name,
             hash_key,
-            attributes=attributes,
+            attributes_to_get=attributes_to_get,
             consistent_read=consistent_read,
             exclusive_start_key=exclusive_start_key,
             index_name=index_name,
@@ -176,7 +176,7 @@ class TableConnection(object):
         """
         Performs the UpdateTable operation and returns the result
         """
-        return self.update_table(
+        return self.connection.update_table(
             self.table_name,
             read_capacity_units=read_capacity_units,
             write_capacity_units=write_capacity_units,
