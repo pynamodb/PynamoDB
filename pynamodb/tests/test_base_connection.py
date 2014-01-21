@@ -4,7 +4,13 @@ Tests for the base connection class
 from pynamodb.connection.base import Connection
 from pynamodb.connection.constants import DEFAULT_REGION, HTTP_OK
 from unittest import TestCase
-from unittest.mock import patch
+
+# Py2/3
+try:
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
+
 from .response import Response
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
