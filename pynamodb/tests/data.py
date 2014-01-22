@@ -6,6 +6,36 @@ LIST_TABLE_DATA = {
     "LastEvaluatedTableName": "Thread",
     "TableNames": ["Forum", "Reply", "Thread"]
 }
+SIMPLE_MODEL_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "user_name",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "email",
+                "AttributeType": "S"
+            },
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 0,
+        "KeySchema": [
+            {
+                "AttributeName": "user_name",
+                "KeyType": "HASH"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "SimpleModel",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}
 
 MODEL_TABLE_DATA = {
     "Table": {
@@ -113,7 +143,22 @@ DESCRIBE_TABLE_DATA = {
     }
 }
 
-GET_MODEL_ITEM_DATA = {'forum': {'S': 'foo'}, 'thread': {'S': 'bar'}, 'epoch': {'S': '2014-01-21T22:02:36.265046+0000'}}
+GET_MODEL_ITEM_DATA = {
+    'Item': {
+        'user_name': {
+            'S': 'foo'
+        },
+        'user_id': {
+            'S': 'bar'
+        },
+        'zip_code': {
+            'N': 88030
+        },
+        'epoch': {
+            'S': '2014-01-21T22:02:36.265046+0000'
+        }
+    }
+}
 
 GET_ITEM_DATA = {
     "ConsumedCapacity": {

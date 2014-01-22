@@ -2,7 +2,7 @@
 DynamoDB Models for PynamoDB
 """
 import six
-
+import copy
 from .attributes import Attribute
 from .connection.base import MetaTable
 from .connection.table import TableConnection
@@ -74,8 +74,6 @@ class Model(object):
             else:
                 msg = "{0}<{1}>".format(self.table_name, hash_key)
             return six.u(msg)
-        else:
-            return six.u("Model")
 
     @classmethod
     def meta(cls):
@@ -180,17 +178,18 @@ class Model(object):
         Returns an instance of this class
         from the raw data
         """
-        if data is None:
-            raise ValueError("Received no data to construct object")
+        mutable_data = copy.copy(data)
+        if mutable_data is None:
+            raise ValueError("Received no mutable_data to construct object")
         hash_keyname = cls.meta().hash_keyname
         range_keyname = cls.meta().range_keyname
         hash_key_type = cls.meta().get_attribute_type(hash_keyname)
-        args = (data.pop(hash_keyname).get(hash_key_type),)
+        args = (mutable_data.pop(hash_keyname).get(hash_key_type),)
         kwargs = {}
         if range_keyname:
             range_key_type = cls.meta().get_attribute_type(range_keyname)
-            kwargs['range_key'] = data.pop(range_keyname).get(range_key_type)
-        for name, value in data.items():
+            kwargs['range_key'] = mutable_data.pop(range_keyname).get(range_key_type)
+        for name, value in mutable_data.items():
             attr = cls.get_attributes().get(name, None)
             if attr:
                 kwargs[name] = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
