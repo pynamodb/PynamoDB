@@ -63,10 +63,18 @@ HTTP_BAD_REQUEST = 400
 PROVISIONED_THROUGHPUT = 'ProvisionedThroughput'
 READ_CAPACITY_UNITS = 'ReadCapacityUnits'
 WRITE_CAPACITY_UNITS = 'WriteCapacityUnits'
+
+STRING_SHORT = 'S'
+NUMBER_SHORT = 'N'
+BINARY_SHORT = 'B'
 STRING = 'String'
 NUMBER = 'Number'
 BINARY = 'Binary'
-
+ATTR_TYPE_MAP = {
+    STRING: STRING_SHORT,
+    NUMBER: NUMBER_SHORT,
+    BINARY: BINARY_SHORT
+}
 # Constants needed for creating indexes
 LOCAL_SECONDARY_INDEXES = 'LocalSecondaryIndexes'
 GLOBAL_SECONDARY_INDEXES = 'GlobalSecondaryIndexes'
