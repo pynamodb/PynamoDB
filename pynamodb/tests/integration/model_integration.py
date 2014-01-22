@@ -46,6 +46,10 @@ with TestModel.batch_write() as batch:
 for item in TestModel.scan():
     print(item)
 
+item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]
+
+print(TestModel.batch_get(item_keys))
+
 with TestModel.batch_write() as batch:
     items = [TestModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]
     for item in items:
