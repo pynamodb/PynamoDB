@@ -21,6 +21,7 @@ except ImportError:
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
 
+
 class SimpleUserModel(Model):
     """
     A hash key only model
@@ -50,6 +51,7 @@ class ModelTestCase(TestCase):
     """
     Tests for the models API
     """
+
     def assertDictListsEqual(self, list1, list2):
         """
         Compares two lists of dictionariess
@@ -188,11 +190,14 @@ class ModelTestCase(TestCase):
         """
         Model.get
         """
+
         def fake_dynamodb(*args, **kwargs):
             if kwargs == {'table_name': UserModel.table_name}:
                 return HttpOK(MODEL_TABLE_DATA), MODEL_TABLE_DATA
-            elif kwargs == {'table_name': 'UserModel', 'key': {'user_name': {'S': 'foo'},
-                                                              'user_id': {'S': 'bar'}}, 'consistent_read': False}:
+            elif kwargs == {
+                'table_name': 'UserModel',
+                'key': {'user_name': {'S': 'foo'},
+                        'user_id': {'S': 'bar'}}, 'consistent_read': False}:
                 return HttpOK(GET_MODEL_ITEM_DATA), GET_MODEL_ITEM_DATA
             return HttpOK(), MODEL_TABLE_DATA
 
