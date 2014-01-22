@@ -2,113 +2,16 @@
 DynamoDB Models for PynamoDB
 """
 import six
-from delorean import Delorean, parse
+
+from .attributes import Attribute
 from .connection.base import MetaTable
 from .connection.table import TableConnection
 from .connection.util import pythonic
 from .types import HASH, RANGE
-from .connection.constants import (
-    STRING, NUMBER, BINARY, ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE,
-    KEY_SCHEMA, KEY_TYPE, ITEM, ITEMS, UTC, DATETIME_FORMAT)
-
-
-class Attribute(object):
-    """
-    An attribute of a model
-    """
-    def __init__(self,
-                 attr_type=str,
-                 hash_key=False,
-                 range_key=False,
-                 null=False,
-                 default=None
-                 ):
-        self.default = default
-        self.null = null
-        self.attr_type = attr_type
-        self.is_hash_key = hash_key
-        self.is_range_key = range_key
-
-    def serialize(self, value):
-        """
-        This method should return a dynamodb compatible value
-        """
-        return value
-
-    def deserialize(self, value):
-        """
-        Performs any needed deserialization on the value
-        """
-        return value
-
-
-class BinaryAttribute(Attribute):
-    """
-    A binary attribute
-    """
-    def __init__(self, **kwargs):
-        super(BinaryAttribute, self).__init__(
-            attr_type=BINARY,
-            **kwargs
-        )
-
-    def serialize(self, value):
-        """
-        Returns a utf-8 encoded binary string
-        """
-        return six.b(value)
-
-
-class UnicodeAttribute(Attribute):
-    """
-    A unicode attribute
-    """
-    def __init__(self, **kwargs):
-        super(UnicodeAttribute, self).__init__(
-            attr_type=STRING,
-            **kwargs
-        )
-
-    def serialize(self, value):
-        """
-        Returns a unicode string
-        """
-        return six.u(value)
-
-
-class NumberAttribute(Attribute):
-    """
-    A number attribute
-    """
-    def __init__(self, **kwargs):
-        super(NumberAttribute, self).__init__(
-            attr_type=NUMBER,
-            **kwargs
-        )
-
-
-class UTCDateTimeAttribute(Attribute):
-    """
-    An attribute for storing a UTC Datetime
-    """
-    def __init__(self, **kwargs):
-        super(UTCDateTimeAttribute, self).__init__(
-            attr_type=STRING,
-            **kwargs
-        )
-
-    def serialize(self, value):
-        """
-        Takes a datetime object and returns a string
-        """
-        fmt = Delorean(value, timezone=UTC).datetime.strftime(DATETIME_FORMAT)
-        return fmt
-
-    def deserialize(self, value):
-        """
-        Takes a UTC datetime string and returns a datetime object
-        """
-        return parse(value).datetime
+from pynamodb.constants import (
+    ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
+    KEY_TYPE, ITEM, ITEMS
+)
 
 
 class Model(object):
@@ -124,12 +27,22 @@ class Model(object):
 
     def __init__(self, hash_key=None, range_key=None, **attrs):
         self.attribute_values = {}
+        self.set_defaults()
         if hash_key:
             self.attribute_values[self.meta().hash_keyname] = hash_key
         if range_key:
             self.attribute_values[self.meta().range_keyname] = range_key
         self.set_attributes(**attrs)
-        self.set_defaults()
+
+    def __getattribute__(self, item):
+        """
+        Smarter than the average attribute
+        """
+        values = object.__getattribute__(self, 'attribute_values')
+        if item in values:
+            return values[item]
+        else:
+            return object.__getattribute__(self, item)
 
     def set_defaults(self):
         """
@@ -266,6 +179,8 @@ class Model(object):
         Returns an instance of this class
         from the raw data
         """
+        if data is None:
+            raise ValueError("Received no data to construct object")
         hash_keyname = cls.meta().hash_keyname
         range_keyname = cls.meta().range_keyname
         hash_key_type = cls.meta().get_attribute_type(hash_keyname)
@@ -277,7 +192,7 @@ class Model(object):
         for name, value in data.items():
             attr = cls.get_attributes().get(name, None)
             if attr:
-                kwargs[name] = value.get(ATTR_TYPE_MAP[attr.attr_type])
+                kwargs[name] = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
         return cls(*args, **kwargs)
 
     @classmethod

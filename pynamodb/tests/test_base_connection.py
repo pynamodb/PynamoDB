@@ -1,12 +1,15 @@
 """
 Tests for the base connection class
 """
+from unittest import TestCase
+
+import six
+
 from pynamodb.connection import Connection
 from pynamodb.connection.exceptions import TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError
-from pynamodb.connection.constants import DEFAULT_REGION
-from unittest import TestCase
+from pynamodb.constants import DEFAULT_REGION
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
-import six
+
 
 if six.PY3:
     from unittest.mock import patch

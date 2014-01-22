@@ -1,10 +1,12 @@
 """
 Test model API
 """
-from pynamodb.models import Model, UnicodeAttribute, NumberAttribute, BinaryAttribute
+from pynamodb.models import Model
+from pynamodb.connection import Connection
+from pynamodb.attributes import UnicodeAttribute, NumberAttribute, BinaryAttribute
 from unittest import TestCase
-from .response import HttpOK, HttpBadRequest
-from .data import MODEL_TABLE_DATA
+from .response import HttpOK
+from .data import MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA
 
 # Py2/3
 try:
@@ -84,8 +86,13 @@ class ModelTestCase(TestCase):
         """
         Model.get
         """
+        conn = Connection()
         with patch(PATCH_METHOD) as req:
+            conn.describe_table('Thread')
             req.return_value = HttpOK(), MODEL_TABLE_DATA
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), GET_MODEL_ITEM_DATA
             UserModel.get(
                 'foo',
                 'bar'

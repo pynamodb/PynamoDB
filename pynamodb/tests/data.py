@@ -113,6 +113,8 @@ DESCRIBE_TABLE_DATA = {
     }
 }
 
+GET_MODEL_ITEM_DATA = {'forum': {'S': 'foo'}, 'thread': {'S': 'bar'}, 'epoch': {'S': '2014-01-21T22:02:36.265046+0000'}}
+
 GET_ITEM_DATA = {
     "ConsumedCapacity": {
         "CapacityUnits": 1,

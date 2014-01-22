@@ -3,10 +3,11 @@ Lowest level connection
 """
 import six
 from botocore.session import get_session
+
 from .util import pythonic
 from .exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError
 from ..types import HASH, RANGE
-from .constants import (
+from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
     COMPARISON_OPERATOR, EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, SCAN_FILTER_VALUES, ATTR_DEFINITIONS,

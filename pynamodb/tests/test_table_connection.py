@@ -2,11 +2,14 @@
 Test suite for the table class
 """
 
-from pynamodb.connection import TableConnection
-from pynamodb.connection.constants import DEFAULT_REGION, HTTP_OK
 from unittest import TestCase
-from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
+
 import six
+
+from pynamodb.connection import TableConnection
+from pynamodb.constants import DEFAULT_REGION
+from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
+
 
 if six.PY3:
     from unittest.mock import patch
