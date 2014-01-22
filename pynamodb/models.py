@@ -112,7 +112,7 @@ class Model(object):
         range_key = serialized.get(RANGE, None)
         args = (hash_key, )
         if range_key:
-            kwargs['range_key'] = range_key
+            kwargs[pythonic(RANGE_KEY)] = range_key
         if attributes:
             kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return args, kwargs
