@@ -10,7 +10,8 @@ from .connection.util import pythonic
 from .types import HASH, RANGE
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
-    KEY_TYPE, ITEM, ITEMS
+    KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
+    RANGE_KEY, ATTRIBUTES
 )
 
 
@@ -111,9 +112,9 @@ class Model(object):
         range_key = serialized.get(RANGE, None)
         args = (hash_key, )
         if range_key:
-            kwargs['range_key'] = range_key
+            kwargs[pythonic(range_key)] = range_key
         if attributes:
-            kwargs['attributes'] = serialized['attributes']
+            kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return args, kwargs
 
     def update(self):
@@ -140,7 +141,7 @@ class Model(object):
         """
         Serializes a value for use with DynamoDB
         """
-        attributes = 'attributes'
+        attributes = pythonic(ATTRIBUTES)
         attrs = {attributes: {}}
         for name, attr in self.get_attributes().items():
             value = self.attribute_values.get(name)
@@ -250,8 +251,8 @@ class Model(object):
         Create the table for this model
         """
         schema = cls.schema()
-        schema['read_capacity_units'] = read_capacity_units
-        schema['write_capacity_units'] = write_capacity_units
+        schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
+        schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
         return cls.get_connection().create_table(
             **schema
         )
