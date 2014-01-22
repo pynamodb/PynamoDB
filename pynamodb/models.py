@@ -2,13 +2,14 @@
 DynamoDB Models for PynamoDB
 """
 import six
+from delorean import Delorean, parse
 from .connection.base import MetaTable
 from .connection.table import TableConnection
 from .connection.util import pythonic
 from .types import HASH, RANGE
 from .connection.constants import (
     STRING, NUMBER, BINARY, ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE,
-    KEY_SCHEMA, KEY_TYPE)
+    KEY_SCHEMA, KEY_TYPE, ITEM, ITEMS, UTC, DATETIME_FORMAT)
 
 
 class Attribute(object):
@@ -19,8 +20,10 @@ class Attribute(object):
                  attr_type=str,
                  hash_key=False,
                  range_key=False,
-                 null=False
+                 null=False,
+                 default=None
                  ):
+        self.default = default
         self.null = null
         self.attr_type = attr_type
         self.is_hash_key = hash_key
@@ -31,6 +34,13 @@ class Attribute(object):
         This method should return a dynamodb compatible value
         """
         return value
+
+    def deserialize(self, value):
+        """
+        Performs any needed deserialization on the value
+        """
+        return value
+
 
 class BinaryAttribute(Attribute):
     """
@@ -47,6 +57,7 @@ class BinaryAttribute(Attribute):
         Returns a utf-8 encoded binary string
         """
         return six.b(value)
+
 
 class UnicodeAttribute(Attribute):
     """
@@ -69,12 +80,35 @@ class NumberAttribute(Attribute):
     """
     A number attribute
     """
-    name = None
     def __init__(self, **kwargs):
         super(NumberAttribute, self).__init__(
             attr_type=NUMBER,
             **kwargs
         )
+
+
+class UTCDateTimeAttribute(Attribute):
+    """
+    An attribute for storing a UTC Datetime
+    """
+    def __init__(self, **kwargs):
+        super(UTCDateTimeAttribute, self).__init__(
+            attr_type=STRING,
+            **kwargs
+        )
+
+    def serialize(self, value):
+        """
+        Takes a datetime object and returns a string
+        """
+        fmt = Delorean(value, timezone=UTC).datetime.strftime(DATETIME_FORMAT)
+        return fmt
+
+    def deserialize(self, value):
+        """
+        Takes a UTC datetime string and returns a datetime object
+        """
+        return parse(value).datetime
 
 
 class Model(object):
@@ -94,6 +128,26 @@ class Model(object):
             self.attribute_values[self.meta().hash_keyname] = hash_key
         if range_key:
             self.attribute_values[self.meta().range_keyname] = range_key
+        self.set_attributes(**attrs)
+        self.set_defaults()
+
+    def set_defaults(self):
+        """
+        Sets and fields that provide a default value
+        """
+        for name, attr in self.get_attributes().items():
+            default = attr.default
+            if callable(default):
+                value = default()
+            else:
+                value = default
+            if value:
+                self.attribute_values[name] = value
+
+    def set_attributes(self, **attrs):
+        """
+        Sets the attributes for this object
+        """
         for key, value in attrs.items():
             self.attribute_values[key] = value
 
@@ -131,6 +185,13 @@ class Model(object):
         """
         Save this object to dynamodb
         """
+        args, kwargs = self._get_save_args()
+        return self.get_connection().put_item(*args, **kwargs)
+
+    def _get_save_args(self, attributes=True):
+        """
+        Gets the proper *args, **kwargs for saving and retrieving this object
+        """
         kwargs = {}
         serialized = self.serialize()
         hash_key = serialized.get(HASH)
@@ -138,8 +199,29 @@ class Model(object):
         args = (hash_key, )
         if range_key:
             kwargs['range_key'] = range_key
-        kwargs['attributes'] = serialized['attributes']
-        return self.get_connection().put_item(*args, **kwargs)
+        if attributes:
+            kwargs['attributes'] = serialized['attributes']
+        return args, kwargs
+
+    def update(self):
+        """
+        Retrieves this object's data from dynamodb and syncs this local object
+        """
+        args, kwargs = self._get_save_args(attributes=False)
+        attrs = self.get_connection().get_item(*args, **kwargs)
+        self.deserialize(attrs.get(ITEM, {}))
+
+    def deserialize(self, attrs):
+        """
+        Sets attributes sent back from dynamodb on this object
+        """
+        for name, attr in attrs.items():
+            attr_instance = self.get_attributes().get(name, None)
+            if attr_instance:
+                attr_type = ATTR_TYPE_MAP[attr_instance.attr_type]
+                value = attr.get(attr_type, None)
+                if value:
+                    self.attribute_values[name] = attr_instance.deserialize(value)
 
     def serialize(self):
         """
@@ -159,7 +241,9 @@ class Model(object):
             elif attr.is_range_key:
                 attrs[RANGE] = value
             else:
-                attrs[attributes][name] = attr.serialize(value)
+                attrs[attributes][name] = {
+                    ATTR_TYPE_MAP[attr.attr_type]: attr.serialize(value)
+                }
         return attrs
 
     @classmethod
@@ -170,10 +254,31 @@ class Model(object):
         """
         Returns a single object using the provided keys
         """
-        return cls.get_connection().get_item(
+        data = cls.get_connection().get_item(
             hash_key,
             range_key=range_key,
-            consistent_read=consistent_read)
+            consistent_read=consistent_read).get(ITEM)
+        return cls.from_raw_data(data)
+
+    @classmethod
+    def from_raw_data(cls, data):
+        """
+        Returns an instance of this class
+        from the raw data
+        """
+        hash_keyname = cls.meta().hash_keyname
+        range_keyname = cls.meta().range_keyname
+        hash_key_type = cls.meta().get_attribute_type(hash_keyname)
+        args = (data.pop(hash_keyname).get(hash_key_type),)
+        kwargs = {}
+        if range_keyname:
+            range_key_type = cls.meta().get_attribute_type(range_keyname)
+            kwargs['range_key'] = data.pop(range_keyname).get(range_key_type)
+        for name, value in data.items():
+            attr = cls.get_attributes().get(name, None)
+            if attr:
+                kwargs[name] = value.get(ATTR_TYPE_MAP[attr.attr_type])
+        return cls(*args, **kwargs)
 
     @classmethod
     def get_attributes(cls):
@@ -214,6 +319,15 @@ class Model(object):
                     pythonic(ATTR_NAME): attr_name
                 })
         return schema
+
+    @classmethod
+    def scan(cls):
+        """
+        Iterates through all items in the table
+        """
+        data = cls.get_connection().scan()
+        for item in data.get(ITEMS):
+            yield cls.from_raw_data(item)
 
     @classmethod
     def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None):

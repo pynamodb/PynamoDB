@@ -47,6 +47,7 @@ UPDATE = 'Update'
 EXISTS = 'Exists'
 SELECT = 'Select'
 LIMIT = 'Limit'
+ITEMS = 'Items'
 ITEM = 'Item'
 KEYS = 'Keys'
 UTC = 'UTC'
@@ -73,7 +74,10 @@ BINARY = 'Binary'
 ATTR_TYPE_MAP = {
     STRING: STRING_SHORT,
     NUMBER: NUMBER_SHORT,
-    BINARY: BINARY_SHORT
+    BINARY: BINARY_SHORT,
+    STRING_SHORT: STRING,
+    NUMBER_SHORT: NUMBER,
+    BINARY_SHORT: BINARY
 }
 # Constants needed for creating indexes
 LOCAL_SECONDARY_INDEXES = 'LocalSecondaryIndexes'
