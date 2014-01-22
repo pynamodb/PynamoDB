@@ -39,6 +39,7 @@ class ConnectionTestCase(TestCase):
         conn = Connection(host='foo-host')
         self.assertIsNotNone(conn.endpoint)
         self.assertIsNotNone(conn)
+        self.assertEqual(repr(conn), "Connection<{0}>".format(conn.endpoint.host))
 
     def test_create_table(self):
         """

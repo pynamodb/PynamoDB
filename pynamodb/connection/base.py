@@ -33,8 +33,6 @@ class MetaTable(object):
     def __repr__(self):
         if self.data:
             return six.u("MetaTable<{0}>".format(self.data.get(TABLE_NAME)))
-        else:
-            return six.u("MetaTable")
 
     @property
     def range_keyname(self):
