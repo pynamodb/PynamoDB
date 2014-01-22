@@ -112,7 +112,7 @@ class Model(object):
         range_key = serialized.get(RANGE, None)
         args = (hash_key, )
         if range_key:
-            kwargs[pythonic(range_key)] = range_key
+            kwargs['range_key'] = range_key
         if attributes:
             kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return args, kwargs
@@ -151,9 +151,9 @@ class Model(object):
                 else:
                     raise ValueError("Attribute '{0}' cannot be None".format(name))
             if attr.is_hash_key:
-                attrs[HASH] = value
+                attrs[HASH] = attr.serialize(value)
             elif attr.is_range_key:
-                attrs[RANGE] = value
+                attrs[RANGE] = attr.serialize(value)
             else:
                 attrs[attributes][name] = {
                     ATTR_TYPE_MAP[attr.attr_type]: attr.serialize(value)
