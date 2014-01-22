@@ -17,7 +17,7 @@ class UTCDateTimeAttributeTestCase(TestCase):
     """
     Tests UTCDateTime attributes
     """
-    def test_UTCDateTime_attribute(self):
+    def test_utc_datetime_attribute(self):
         """
         UTCDateTimeAttribute.default
         """
@@ -28,7 +28,7 @@ class UTCDateTimeAttributeTestCase(TestCase):
         attr = UTCDateTimeAttribute(default=tstamp)
         self.assertEqual(attr.default, tstamp)
 
-    def test_UTCDateTime_deserialize(self):
+    def test_utc_date_time_deserialize(self):
         """
         UTCDateTimeAttribute.deserialize
         """
@@ -39,7 +39,7 @@ class UTCDateTimeAttributeTestCase(TestCase):
             attr.deserialize(Delorean(tstamp, timezone=UTC).datetime.strftime(DATETIME_FORMAT)),
         )
 
-    def test_UTCDateTime_serialize(self):
+    def test_utc_date_time_serialize(self):
         """
         UTCDateTimeAttribute.serialize
         """
@@ -92,7 +92,9 @@ class BinaryAttributeTestCase(TestCase):
         BinarySetAttribute.serialize
         """
         attr = BinarySetAttribute()
-        self.assertEqual(attr.serialize({b'foo', b'bar'}), [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted({b'foo', b'bar'})])
+        self.assertEqual(
+            attr.serialize({b'foo', b'bar'}),
+            [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted({b'foo', b'bar'})])
         self.assertEqual(attr.serialize(None), None)
 
     def test_binary_set_round_trip(self):

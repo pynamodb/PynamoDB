@@ -6,7 +6,8 @@ from unittest import TestCase
 import six
 
 from pynamodb.connection import Connection
-from pynamodb.connection.exceptions import TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError
+from pynamodb.connection.exceptions import (
+    TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError)
 from pynamodb.constants import DEFAULT_REGION
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 
@@ -225,7 +226,12 @@ class ConnectionTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpBadRequest(), None
             conn = Connection(self.region)
-            self.assertRaises(TableError, conn.update_table, self.test_table_name, read_capacity_units=2, write_capacity_units=2)
+            self.assertRaises(
+                TableError,
+                conn.update_table,
+                self.test_table_name,
+                read_capacity_units=2,
+                write_capacity_units=2)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), None
@@ -434,7 +440,13 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[1], params)
 
-        self.assertRaises(ValueError, conn.delete_item, self.test_table_name, "Foo", "Bar", expected={'Bad': {'Value': False}})
+        self.assertRaises(
+            ValueError,
+            conn.delete_item,
+            self.test_table_name,
+            "Foo", "Bar",
+            expected={'Bad': {'Value': False}}
+        )
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), {}
@@ -491,7 +503,7 @@ class ConnectionTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), GET_ITEM_DATA
-            item = conn.get_item(
+            conn.get_item(
                 table_name,
                 "Amazon DynamoDB",
                 "How do I update multiple items?",

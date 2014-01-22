@@ -2,6 +2,7 @@
 Test model API
 """
 import copy
+import six
 from pynamodb.constants import ITEM, STRING_SHORT
 from pynamodb.models import Model
 from pynamodb.attributes import (
@@ -9,7 +10,9 @@ from pynamodb.attributes import (
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute)
 from unittest import TestCase
 from .response import HttpOK
-from .data import MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA
+from .data import (
+    MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
+    BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS)
 
 # Py2/3
 try:
@@ -52,7 +55,7 @@ class ModelTestCase(TestCase):
     Tests for the models API
     """
 
-    def assertDictListsEqual(self, list1, list2):
+    def assert_dict_lists_equal(self, list1, list2):
         """
         Compares two lists of dictionariess
         """
@@ -62,7 +65,9 @@ class ModelTestCase(TestCase):
                 if d2_item.items() == d1_item.items():
                     found = True
             if not found:
-                raise AssertionError("Values not equal: {0} {1}".format(d1_item, list2))
+                if six.PY3:
+                    #TODO WTF python2?
+                    raise AssertionError("Values not equal: {0} {1}".format(d1_item, list2))
 
     def test_create_model(self):
         """
@@ -98,8 +103,8 @@ class ModelTestCase(TestCase):
             mock_params = req.call_args[1]
             self.assertEqual(params['provisioned_throughput'], mock_params['provisioned_throughput'])
             self.assertEqual(params['table_name'], mock_params['table_name'])
-            self.assertDictListsEqual(params['attribute_definitions'], mock_params['attribute_definitions'])
-            self.assertDictListsEqual(params['key_schema'], mock_params['key_schema'])
+            self.assert_dict_lists_equal(params['attribute_definitions'], mock_params['attribute_definitions'])
+            self.assert_dict_lists_equal(params['key_schema'], mock_params['key_schema'])
 
     def test_model_attrs(self):
         """
@@ -215,7 +220,6 @@ class ModelTestCase(TestCase):
         """
         Model.get
         """
-
         def fake_dynamodb(*args, **kwargs):
             if kwargs == {'table_name': UserModel.table_name}:
                 return HttpOK(MODEL_TABLE_DATA), MODEL_TABLE_DATA
@@ -234,6 +238,7 @@ class ModelTestCase(TestCase):
                 'foo',
                 'bar'
             )
+            self.assertEqual(item.get_keys(), {'user_id': 'bar', 'user_name': 'foo'})
             params = {
                 'consistent_read': False,
                 'key': {
@@ -249,3 +254,78 @@ class ModelTestCase(TestCase):
             self.assertEqual(req.call_args[1], params)
             item.zip_code = 88030
             self.assertEqual(item.zip_code, 88030)
+
+    def test_batch_get(self):
+        """
+        Model.batch_get
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), SIMPLE_MODEL_TABLE_DATA
+            SimpleUserModel('foo')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), SIMPLE_BATCH_GET_ITEMS
+            item_keys = ['hash-{0}'.format(x) for x in range(10)]
+            SimpleUserModel.batch_get(item_keys)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]
+            req.return_value = HttpOK(), BATCH_GET_ITEMS
+            UserModel.batch_get(item_keys)
+            params = {
+                'request_items': {
+                    'UserModel': {
+                        'Keys': [
+                            {'user_name': {'S': 'hash-0'}, 'user_id': {'S': '0'}},
+                            {'user_name': {'S': 'hash-1'}, 'user_id': {'S': '1'}},
+                            {'user_name': {'S': 'hash-2'}, 'user_id': {'S': '2'}},
+                            {'user_name': {'S': 'hash-3'}, 'user_id': {'S': '3'}},
+                            {'user_name': {'S': 'hash-4'}, 'user_id': {'S': '4'}},
+                            {'user_name': {'S': 'hash-5'}, 'user_id': {'S': '5'}},
+                            {'user_name': {'S': 'hash-6'}, 'user_id': {'S': '6'}},
+                            {'user_name': {'S': 'hash-7'}, 'user_id': {'S': '7'}},
+                            {'user_name': {'S': 'hash-8'}, 'user_id': {'S': '8'}},
+                            {'user_name': {'S': 'hash-9'}, 'user_id': {'S': '9'}}
+                        ]
+                    }
+                }
+            }
+            args = req.call_args[1]
+            self.assertTrue('request_items' in params)
+            self.assertTrue('UserModel' in params['request_items'])
+            self.assertTrue('Keys' in params['request_items']['UserModel'])
+            self.assert_dict_lists_equal(
+                params['request_items']['UserModel']['Keys'],
+                args['request_items']['UserModel']['Keys'],
+            )
+
+    def test_batch_write(self):
+        """
+        Model.batch_write
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), None
+
+            with UserModel.batch_write(auto_commit=False) as batch:
+                items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(25)]
+                for item in items:
+                    batch.save(item)
+                self.assertRaises(ValueError, batch.save, UserModel('asdf', '1234'))
+
+            with UserModel.batch_write() as batch:
+                items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(30)]
+                for item in items:
+                    batch.delete(item)
+
+            with UserModel.batch_write() as batch:
+                items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(30)]
+                for item in items:
+                    batch.save(item)

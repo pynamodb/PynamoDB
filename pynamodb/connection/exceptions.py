@@ -10,7 +10,7 @@ class PynamoDBException(Exception):
     pass
 
 
-class ConnectionError(PynamoDBException):
+class PynamoDBConnectionError(PynamoDBException):
     """
     A base class for connection errors
     """
@@ -18,52 +18,52 @@ class ConnectionError(PynamoDBException):
     msg = "Connection Error"
 
     def __init__(self, msg=None):
-        super(ConnectionError, self).__init__(msg)
+        super(PynamoDBConnectionError, self).__init__(msg)
 
 
-class DeleteError(ConnectionError):
+class DeleteError(PynamoDBConnectionError):
     """
     Raised when an error occurs deleting an item
     """
     msg = "Error deleting item"
 
 
-class QueryError(ConnectionError):
+class QueryError(PynamoDBConnectionError):
     """
     Raised when queries fail
     """
     msg = "Error performing query"
 
 
-class ScanError(ConnectionError):
+class ScanError(PynamoDBConnectionError):
     """
     Raised when a scan operation fails
     """
     msg = "Error performing scan"
 
 
-class PutError(ConnectionError):
+class PutError(PynamoDBConnectionError):
     """
     Raised when an item fails to be created
     """
     msg = "Error putting item"
 
 
-class UpdateError(ConnectionError):
+class UpdateError(PynamoDBConnectionError):
     """
     Raised when an item fails to be updated
     """
     msg = "Error updating item"
 
 
-class GetError(ConnectionError):
+class GetError(PynamoDBConnectionError):
     """
     Raised when an item fails to be retrieved
     """
     msg = "Error getting item"
 
 
-class TableError(ConnectionError):
+class TableError(PynamoDBConnectionError):
     """
     An error involving a dynamodb table operation
     """

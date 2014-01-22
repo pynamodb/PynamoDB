@@ -14,12 +14,14 @@ from pynamodb.constants import (
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES
 )
 
+
 class ModelContextManager(object):
     """
     A class for managing batch operations
     """
     def __init__(self, model, auto_commit=True):
         self.model = model
+        self.auto_commit = auto_commit
         self.max_operations = 25
         self.pending_operations = []
 
@@ -27,7 +29,7 @@ class ModelContextManager(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        return
+        pass
 
 
 class BatchWrite(ModelContextManager):
@@ -127,11 +129,11 @@ class Model(object):
         return [cls.from_raw_data(item) for item in data]
 
     @classmethod
-    def batch_write(cls):
+    def batch_write(cls, auto_commit=True):
         """
         Returns a context manager for a batch operation
         """
-        return BatchWrite(cls)
+        return BatchWrite(cls, auto_commit=auto_commit)
 
     def set_defaults(self):
         """

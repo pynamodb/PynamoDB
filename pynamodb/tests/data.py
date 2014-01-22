@@ -177,3 +177,37 @@ GET_ITEM_DATA = {
         }
     }
 }
+SIMPLE_BATCH_GET_ITEMS = {
+    'UnprocessedKeys': {},
+    'Responses': {
+        'SimpleModel': [
+            {'user_name': {'S': '9'}, 'epoch': {'S': '2014-01-22T15:06:48.151712+0000'}, 'user_id': {'S': 'hash-9'}},
+            {'user_name': {'S': '4'}, 'epoch': {'S': '2014-01-22T15:06:48.150765+0000'}, 'user_id': {'S': 'hash-4'}},
+            {'user_name': {'S': '3'}, 'epoch': {'S': '2014-01-22T15:06:48.150574+0000'}, 'user_id': {'S': 'hash-3'}},
+            {'user_name': {'S': '2'}, 'epoch': {'S': '2014-01-22T15:06:48.150382+0000'}, 'user_id': {'S': 'hash-2'}},
+            {'user_name': {'S': '1'}, 'epoch': {'S': '2014-01-22T15:06:48.150190+0000'}, 'user_id': {'S': 'hash-1'}},
+            {'user_name': {'S': '8'}, 'epoch': {'S': '2014-01-22T15:06:48.151523+0000'}, 'user_id': {'S': 'hash-8'}},
+            {'user_name': {'S': '7'}, 'epoch': {'S': '2014-01-22T15:06:48.151334+0000'}, 'user_id': {'S': 'hash-7'}},
+            {'user_name': {'S': '6'}, 'epoch': {'S': '2014-01-22T15:06:48.151145+0000'}, 'user_id': {'S': 'hash-6'}},
+            {'user_name': {'S': '5'}, 'epoch': {'S': '2014-01-22T15:06:48.150957+0000'}, 'user_id': {'S': 'hash-5'}},
+            {'user_name': {'S': '0'}, 'epoch': {'S': '2014-01-22T15:06:48.149991+0000'}, 'user_id': {'S': 'hash-0'}}
+        ]
+    }
+}
+BATCH_GET_ITEMS = {
+    'UnprocessedKeys': {},
+    'Responses': {
+        'UserModel': [
+            {'user_name': {'S': '9'}, 'epoch': {'S': '2014-01-22T15:06:48.151712+0000'}, 'user_id': {'S': 'hash-9'}},
+            {'user_name': {'S': '4'}, 'epoch': {'S': '2014-01-22T15:06:48.150765+0000'}, 'user_id': {'S': 'hash-4'}},
+            {'user_name': {'S': '3'}, 'epoch': {'S': '2014-01-22T15:06:48.150574+0000'}, 'user_id': {'S': 'hash-3'}},
+            {'user_name': {'S': '2'}, 'epoch': {'S': '2014-01-22T15:06:48.150382+0000'}, 'user_id': {'S': 'hash-2'}},
+            {'user_name': {'S': '1'}, 'epoch': {'S': '2014-01-22T15:06:48.150190+0000'}, 'user_id': {'S': 'hash-1'}},
+            {'user_name': {'S': '8'}, 'epoch': {'S': '2014-01-22T15:06:48.151523+0000'}, 'user_id': {'S': 'hash-8'}},
+            {'user_name': {'S': '7'}, 'epoch': {'S': '2014-01-22T15:06:48.151334+0000'}, 'user_id': {'S': 'hash-7'}},
+            {'user_name': {'S': '6'}, 'epoch': {'S': '2014-01-22T15:06:48.151145+0000'}, 'user_id': {'S': 'hash-6'}},
+            {'user_name': {'S': '5'}, 'epoch': {'S': '2014-01-22T15:06:48.150957+0000'}, 'user_id': {'S': 'hash-5'}},
+            {'user_name': {'S': '0'}, 'epoch': {'S': '2014-01-22T15:06:48.149991+0000'}, 'user_id': {'S': 'hash-0'}}
+        ]
+    }
+}
