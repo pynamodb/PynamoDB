@@ -31,14 +31,25 @@ if TestModel.table_name not in tables['TableNames']:
 
 pprint.pprint(TestModel.meta())
 obj = TestModel('foo', 'bar')
-print(obj.save())
 obj2 = TestModel.get('foo', 'bar')
-print(obj2)
 print(obj.epoch.strftime(DATETIME_FORMAT), obj2.epoch.strftime(DATETIME_FORMAT))
 obj3 = TestModel('setitem', 'setrange', scores={1, 2.1})
 obj3.save()
-print(obj3.scores)
 obj3.update()
-print(obj3.scores)
+
+
+with TestModel.batch_write() as batch:
+    items = [TestModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]
+    for item in items:
+        batch.save(item)
+
+for item in TestModel.scan():
+    print(item)
+
+with TestModel.batch_write() as batch:
+    items = [TestModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]
+    for item in items:
+        batch.delete(item)
+
 for item in TestModel.scan():
     print(item)

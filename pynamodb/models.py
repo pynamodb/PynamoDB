@@ -11,8 +11,51 @@ from .types import HASH, RANGE
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
-    RANGE_KEY, ATTRIBUTES
+    RANGE_KEY, ATTRIBUTES, PUT, DELETE
 )
+
+class ModelContextManager(object):
+    """
+    A class for managing batch operations
+    """
+    def __init__(self, model):
+        self.model = model
+        self.max_operations = 25
+        self.pending_operations = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return
+
+class BatchWrite(ModelContextManager):
+    """
+    A class for batch writes
+    """
+    def save(self, put_item):
+        if len(self.pending_operations) == self.max_operations:
+            raise ValueError("DynamoDB allows a maximum of 25 batch operations")
+        self.pending_operations.append({"action": PUT, "item": put_item})
+
+    def delete(self, del_item):
+        if len(self.pending_operations) == self.max_operations:
+            raise ValueError("DynamoDB allows a maximum of 25 batch operations")
+        self.pending_operations.append({"action": DELETE, "item": del_item})
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        put_items = []
+        delete_items = []
+        attrs_name = pythonic(ATTRIBUTES)
+        for item in self.pending_operations:
+            if item['action'] == PUT:
+                put_items.append(item['item'].serialize(attr_map=True)[attrs_name])
+            elif item['action'] == DELETE:
+                delete_items.append(item['item'].get_keys())
+        return self.model.get_connection().batch_write_item(
+            put_items=put_items,
+            delete_items=delete_items
+        )
 
 
 class Model(object):
@@ -44,6 +87,13 @@ class Model(object):
             return values[item]
         else:
             return object.__getattribute__(self, item)
+
+    @classmethod
+    def batch_write(cls):
+        """
+        Returns a context manager for a batch operation
+        """
+        return BatchWrite(cls)
 
     def set_defaults(self):
         """
@@ -93,12 +143,34 @@ class Model(object):
             cls.connection = TableConnection(cls.table_name)
         return cls.connection
 
+    def delete(self):
+        """
+        Deletes this object from dynamodb
+        """
+        args, kwargs = self._get_save_args(attributes=False)
+        return self.get_connection().delete_item(*args, **kwargs)
+
     def save(self):
         """
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args()
         return self.get_connection().put_item(*args, **kwargs)
+
+    def get_keys(self):
+        """
+        Returns the proper arguments for deleting
+        """
+        serialized = self.serialize()
+        hash_key = serialized.get(HASH)
+        range_key = serialized.get(RANGE, None)
+        hash_keyname = self.meta().hash_keyname
+        range_keyname = self.meta().range_keyname
+        attrs = {
+            hash_keyname: hash_key,
+            range_keyname: range_key
+        }
+        return attrs
 
     def _get_save_args(self, attributes=True):
         """
@@ -135,7 +207,7 @@ class Model(object):
                 if value:
                     self.attribute_values[name] = attr_instance.deserialize(value)
 
-    def serialize(self):
+    def serialize(self, attr_map=False):
         """
         Serializes a value for use with DynamoDB
         """
@@ -148,14 +220,19 @@ class Model(object):
                     continue
                 else:
                     raise ValueError("Attribute '{0}' cannot be None".format(name))
-            if attr.is_hash_key:
-                attrs[HASH] = attr.serialize(value)
-            elif attr.is_range_key:
-                attrs[RANGE] = attr.serialize(value)
-            else:
+            if attr_map:
                 attrs[attributes][name] = {
                     ATTR_TYPE_MAP[attr.attr_type]: attr.serialize(value)
                 }
+            else:
+                if attr.is_hash_key:
+                    attrs[HASH] = attr.serialize(value)
+                elif attr.is_range_key:
+                    attrs[RANGE] = attr.serialize(value)
+                else:
+                    attrs[attributes][name] = {
+                        ATTR_TYPE_MAP[attr.attr_type]: attr.serialize(value)
+                    }
         return attrs
 
     @classmethod

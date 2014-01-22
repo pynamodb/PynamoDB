@@ -136,6 +136,31 @@ class ModelTestCase(TestCase):
                 item.user_name,
                 GET_MODEL_ITEM_DATA.get(ITEM).get('user_name').get(STRING_SHORT))
 
+    def test_delete(self):
+        """
+        Model.delete
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), MODEL_TABLE_DATA
+            item = UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), None
+            item.delete()
+            params = {
+                'key': {
+                    'user_id': {
+                        'S': 'bar'
+                    },
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'table_name': 'UserModel'
+            }
+            args = req.call_args[1]
+            self.assertEqual(args, params)
+
     def test_save(self):
         """
         Model.save
