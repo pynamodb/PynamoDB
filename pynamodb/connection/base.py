@@ -1,6 +1,7 @@
 """
 Lowest level connection
 """
+import six
 from botocore.session import get_session
 from .util import pythonic
 from .exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError
@@ -27,6 +28,12 @@ class MetaTable(object):
         self.data = data
         self._range_keyname = None
         self._hash_keyname = None
+
+    def __repr__(self):
+        if self.data:
+            return six.u("MetaTable<{0}>".format(self.data.get(TABLE_NAME)))
+        else:
+            return six.u("MetaTable")
 
     @property
     def range_keyname(self):
@@ -143,6 +150,9 @@ class Connection(object):
             self.region = region
         else:
             self.region = DEFAULT_REGION
+
+    def __repr__(self):
+        return six.u("Connection<{0}>".format(self.endpoint.host))
 
     @property
     def session(self):

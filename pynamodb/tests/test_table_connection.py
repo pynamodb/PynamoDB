@@ -6,11 +6,11 @@ from pynamodb.connection import TableConnection
 from pynamodb.connection.constants import DEFAULT_REGION, HTTP_OK
 from unittest import TestCase
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
+import six
 
-# Py2/3
-try:
+if six.PY3:
     from unittest.mock import patch
-except ImportError:
+else:
     from mock import patch
 
 from .response import HttpOK

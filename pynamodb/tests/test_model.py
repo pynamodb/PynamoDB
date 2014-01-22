@@ -41,7 +41,7 @@ class ModelTestCase(TestCase):
                 if d2_item.items() == d1_item.items():
                     found = True
             if not found:
-                raise AssertionError("Values not equal: {0} {1}".format(list1, list2))
+                raise AssertionError("Values not equal: {0} {1}".format(d1_item, list2))
 
     def test_create_model(self):
         """
@@ -60,12 +60,6 @@ class ModelTestCase(TestCase):
                     {
                         'AttributeName': 'user_id', 'AttributeType': 'S'
                     },
-                    {
-                        'AttributeName': 'zip_code', 'AttributeType': 'N'
-                    },
-                    {
-                        'AttributeName': 'picture', 'AttributeType': 'B'
-                    }
                 ],
                 'provisioned_throughput': {
                     'ReadCapacityUnits': 2, 'WriteCapacityUnits': 2
@@ -108,5 +102,4 @@ class ModelTestCase(TestCase):
                 },
                 'table_name': 'UserModel'
             }
-
             self.assertEqual(req.call_args[1], params)
