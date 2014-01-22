@@ -3,10 +3,11 @@ pynamodb attributes
 """
 import six
 import json
+from base64 import b64encode, b64decode
 from delorean import Delorean, parse
-
 from pynamodb.constants import (
-    STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET
+    STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
+    DEFAULT_ENCODING
 )
 
 
@@ -51,7 +52,7 @@ class SetMixin(object):
         Because dynamodb doesn't store empty attributes,
         empty sets return None
         """
-        if len(value):
+        if value and len(value):
             return [json.dumps(val) for val in sorted(value)]
         else:
             return None
@@ -60,7 +61,8 @@ class SetMixin(object):
         """
         Deserializes a set
         """
-        return set([json.loads(val) for val in value])
+        if value and len(value):
+            return set([json.loads(val) for val in value])
 
 
 class BinaryAttribute(Attribute):
@@ -73,9 +75,15 @@ class BinaryAttribute(Attribute):
 
     def serialize(self, value):
         """
-        Returns a utf-8 encoded binary string
+        Returns a base64 encoded binary string
         """
-        return six.b(value)
+        return b64encode(value).decode(DEFAULT_ENCODING)
+
+    def deserialize(self, value):
+        """
+        Returns a decoded string from base64
+        """
+        return b64decode(value.encode(DEFAULT_ENCODING))
 
 
 class BinarySetAttribute(SetMixin, Attribute):
@@ -86,6 +94,22 @@ class BinarySetAttribute(SetMixin, Attribute):
         kwargs.setdefault('attr_type', BINARY_SET)
         kwargs.setdefault('null', True)
         super(BinarySetAttribute, self).__init__(**kwargs)
+
+    def serialize(self, value):
+        """
+        Returns a base64 encoded binary string
+        """
+        if value and len(value):
+            return [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]
+        else:
+            return None
+
+    def deserialize(self, value):
+        """
+        Returns a decoded string from base64
+        """
+        if value and len(value):
+            return set([b64decode(val.encode(DEFAULT_ENCODING)) for val in value])
 
 
 class UnicodeSetAttribute(SetMixin, Attribute):

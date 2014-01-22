@@ -56,6 +56,7 @@ UTC = 'UTC'
 KEY = 'Key'
 
 # Defaults
+DEFAULT_ENCODING = 'utf-8'
 DEFAULT_REGION = 'us-east-1'
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 SERVICE_NAME = 'dynamodb'

@@ -4,7 +4,9 @@ Test model API
 import copy
 from pynamodb.constants import ITEM, STRING_SHORT
 from pynamodb.models import Model
-from pynamodb.attributes import UnicodeAttribute, NumberAttribute, BinaryAttribute
+from pynamodb.attributes import (
+    UnicodeAttribute, NumberAttribute, BinaryAttribute,
+    UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute)
 from unittest import TestCase
 from .response import HttpOK
 from .data import MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA
@@ -26,6 +28,9 @@ class SimpleUserModel(Model):
     table_name = 'SimpleModel'
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
+    numbers = NumberSetAttribute()
+    aliases = UnicodeSetAttribute()
+    icons = BinarySetAttribute()
 
 
 class UserModel(Model):
@@ -104,11 +109,15 @@ class ModelTestCase(TestCase):
             self.assertEqual(item.email, 'needs_email')
             self.assertEqual(item.callable_field, 42)
             self.assertEqual(repr(item), '{0}<{1}, {2}>'.format(UserModel.table_name, item.user_name, item.user_id))
+            self.assertEqual(repr(UserModel.meta()), 'MetaTable<{0}>'.format('Thread'))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(SIMPLE_MODEL_TABLE_DATA), SIMPLE_MODEL_TABLE_DATA
             item = SimpleUserModel('foo')
             self.assertEqual(repr(item), '{0}<{1}>'.format(SimpleUserModel.table_name, item.user_name))
+            self.assertRaises(ValueError, item.save)
+
+        self.assertRaises(ValueError, UserModel.from_raw_data, None)
 
     def test_update(self):
         """
