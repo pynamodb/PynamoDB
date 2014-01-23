@@ -5,6 +5,7 @@ pynamodb.models
 DynamoDB Models for PynamoDB
 """
 
+import time
 import six
 import copy
 from .attributes import Attribute
@@ -19,7 +20,7 @@ from pynamodb.constants import (
     LOCAL_SECONDARY_INDEX, INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION,
     KEYS_ONLY, ALL, INCLUDE, GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, EQ, LE, LT, GT, GE, BEGINS_WITH, BETWEEN,
-    COMPARISON_OPERATOR, ATTR_VALUE_LIST)
+    COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_DESCRIPTION, TABLE_STATUS, ACTIVE)
 
 
 class ModelContextManager(object):
@@ -458,20 +459,39 @@ class Model(object):
             yield cls.from_raw_data(item)
 
     @classmethod
+    def exists(cls):
+        """
+        Returns True if this table exists, False otherwise
+        """
+        return cls.get_connection().describe_table() is not None
+
+    @classmethod
     def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None):
         """
         Create the table for this model
         """
-        schema = cls.schema()
-        schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
-        schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
-        index_data = cls.get_indexes()
-        schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
-        schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
-        schema[pythonic(ATTR_DEFINITIONS)].extend(index_data.get(pythonic(ATTR_DEFINITIONS)))
-        return cls.get_connection().create_table(
-            **schema
-        )
+        if not cls.exists():
+            schema = cls.schema()
+            schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
+            schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+            index_data = cls.get_indexes()
+            schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
+            schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
+            schema[pythonic(ATTR_DEFINITIONS)].extend(index_data.get(pythonic(ATTR_DEFINITIONS)))
+            cls.get_connection().create_table(
+                **schema
+            )
+        if wait:
+            while True:
+                status = cls.get_connection().describe_table()
+                if status:
+                    data = status.get(TABLE_STATUS)
+                    if data == ACTIVE:
+                        return
+                    else:
+                        time.sleep(2)
+                else:
+                    raise ValueError("No TableStatus returned for table")
 
 
 class Index(object):
