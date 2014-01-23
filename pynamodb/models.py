@@ -441,7 +441,7 @@ class Model(object):
                         ATTR_VALUE_LIST: value
                     }
                 else:
-                    raise ValueError("Could not parse filter: {0}".format(filter))
+                    raise ValueError("Could not parse filter: {0}".format(query))
         data = cls.get_connection().query(
             hash_key,
             key_conditions=key_conditions
