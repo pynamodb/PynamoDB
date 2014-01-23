@@ -3,7 +3,7 @@ Example use of the TableConnection API
 """
 from pynamodb.connection import TableConnection
 
-# Get a tableection
+# Get a table connection
 table = TableConnection('table-name')
 
 # Describe the table
