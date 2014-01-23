@@ -3,7 +3,7 @@ PynamoDB
 ========
 
 .. image:: https://travis-ci.org/jlafon/PynamoDB.png?branch=devel
-:target: https://travis-ci.org/jlafon/PynamoDB
+        :target: https://travis-ci.org/jlafon/PynamoDB
 
 A Pythonic interface for DynamoDB
 
