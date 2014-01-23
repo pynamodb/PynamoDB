@@ -359,11 +359,13 @@ class Model(object):
                         pythonic(PROJECTION): {
                             PROJECTION_TYPE: item_cls.projection.projection_type,
                         },
-                        pythonic(PROVISIONED_THROUGHPUT): {
+
+                    }
+                    if item_cls.index_type == GLOBAL_SECONDARY_INDEX:
+                        idx[pythonic(PROVISIONED_THROUGHPUT)] = {
                             READ_CAPACITY_UNITS: item_cls.read_capacity_units,
                             WRITE_CAPACITY_UNITS: item_cls.write_capacity_units
                         }
-                    }
                     cls.indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
                     if item_cls.projection.non_key_attributes:
                         idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = item_cls.projection.non_key_attributes
@@ -371,7 +373,6 @@ class Model(object):
                         cls.indexes[pythonic(GLOBAL_SECONDARY_INDEXES)].append(idx)
                     else:
                         cls.indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
-
         return cls.indexes
 
     @classmethod
