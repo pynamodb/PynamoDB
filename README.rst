@@ -11,6 +11,10 @@ A rich API that is compatible with Python 2 and Python 3.
 
 See documentation at http://pynamodb.readthedocs.org/
 
+Installation::
+
+    $ pip install pynamodb
+
 Features
 ========
 
