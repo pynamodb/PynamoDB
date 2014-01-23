@@ -538,7 +538,7 @@ class ModelTestCase(TestCase):
             }
             schema = IndexedModel.email_index.schema()
             self.assert_dict_lists_equal(schema['key_schema'], params['key_schema'])
-            self.assertEqual(schema['attribute_definitions'], params['attribute_definitions'])
+            self.assert_dict_lists_equal(schema['attribute_definitions'], params['attribute_definitions'])
 
     def test_local_index(self):
         """
@@ -589,7 +589,7 @@ class ModelTestCase(TestCase):
             }
             schema = LocalIndexedModel.email_index.schema()
             self.assert_dict_lists_equal(schema['key_schema'], params['key_schema'])
-            self.assertEqual(params['attribute_definitions'], schema['attribute_definitions'])
+            self.assert_dict_lists_equal(params['attribute_definitions'], schema['attribute_definitions'])
 
     def test_projections(self):
         """
