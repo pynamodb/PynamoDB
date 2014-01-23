@@ -75,36 +75,8 @@ class ModelTestCase(TestCase):
         """
         self.maxDiff = None
         with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK(), None
+            req.return_value = HttpOK, MODEL_TABLE_DATA
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
-            params = {
-                'table_name': 'UserModel',
-                'attribute_definitions': [
-                    {
-                        'AttributeName': 'user_name', 'AttributeType': 'S'
-                    },
-                    {
-                        'AttributeName': 'user_id', 'AttributeType': 'S'
-                    },
-                ],
-                'provisioned_throughput': {
-                    'ReadCapacityUnits': 2, 'WriteCapacityUnits': 2
-                },
-                'key_schema': [
-                    {
-                        'AttributeName': 'user_name', 'KeyType': 'HASH'
-                    },
-                    {
-                        'AttributeName': 'user_id', 'KeyType': 'RANGE'
-                    }
-                ]
-            }
-            params = {item: value for item, value in iter(sorted(params.items()))}
-            mock_params = req.call_args[1]
-            self.assertEqual(params['provisioned_throughput'], mock_params['provisioned_throughput'])
-            self.assertEqual(params['table_name'], mock_params['table_name'])
-            self.assert_dict_lists_equal(params['attribute_definitions'], mock_params['attribute_definitions'])
-            self.assert_dict_lists_equal(params['key_schema'], mock_params['key_schema'])
 
     def test_model_attrs(self):
         """
@@ -275,7 +247,8 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]
             req.return_value = HttpOK(), BATCH_GET_ITEMS
-            UserModel.batch_get(item_keys)
+            for item in UserModel.batch_get(item_keys):
+                self.assertIsNotNone(item)
             params = {
                 'request_items': {
                     'UserModel': {
