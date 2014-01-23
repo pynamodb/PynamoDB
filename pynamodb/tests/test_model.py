@@ -72,7 +72,7 @@ class LocalIndexedModel(Model):
     table_name = 'SimpleModel'
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
-    email_index = EmailIndex()
+    email_index = LocalEmailIndex()
     numbers = NumberSetAttribute()
     aliases = UnicodeSetAttribute()
     icons = BinarySetAttribute()
@@ -550,6 +550,8 @@ class ModelTestCase(TestCase):
                 ]
             }
             schema = IndexedModel.email_index.schema()
+            args = req.call_args[1]
+            self.assertEqual(args['global_secondary_indexes'][0]['ProvisionedThroughput'], {'ReadCapacityUnits': 2, 'WriteCapacityUnits': 1})
             self.assert_dict_lists_equal(schema['key_schema'], params['key_schema'])
             self.assert_dict_lists_equal(schema['attribute_definitions'], params['attribute_definitions'])
 
@@ -601,6 +603,8 @@ class ModelTestCase(TestCase):
                 ]
             }
             schema = LocalIndexedModel.email_index.schema()
+            args = req.call_args[1]
+            self.assertTrue('ProvisionedThroughput' not in args['local_secondary_indexes'][0])
             self.assert_dict_lists_equal(schema['key_schema'], params['key_schema'])
             self.assert_dict_lists_equal(params['attribute_definitions'], schema['attribute_definitions'])
 
