@@ -247,11 +247,12 @@ class Model(object):
             kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return args, kwargs
 
-    def update(self):
+    def update(self, consistent_read=False):
         """
         Retrieves this object's data from dynamodb and syncs this local object
         """
         args, kwargs = self._get_save_args(attributes=False)
+        kwargs.setdefault('consistent_read', consistent_read)
         attrs = self.get_connection().get_item(*args, **kwargs)
         self.deserialize(attrs.get(ITEM, {}))
 
@@ -414,7 +415,7 @@ class Model(object):
         return schema
 
     @classmethod
-    def query(cls, hash_key, **filters):
+    def query(cls, hash_key, consistent_read=False, **filters):
         """
         Provides a high level query API
         """
@@ -444,17 +445,18 @@ class Model(object):
                     raise ValueError("Could not parse filter: {0}".format(query))
         data = cls.get_connection().query(
             hash_key,
+            consistent_read=consistent_read,
             key_conditions=key_conditions
         )
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
 
     @classmethod
-    def scan(cls):
+    def scan(cls, segment=None, total_segments=None):
         """
         Iterates through all items in the table
         """
-        data = cls.get_connection().scan()
+        data = cls.get_connection().scan(segment=segment, total_segments=total_segments)
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
 

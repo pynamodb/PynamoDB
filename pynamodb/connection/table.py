@@ -117,6 +117,8 @@ class TableConnection(object):
              limit=None,
              scan_filter=None,
              return_consumed_capacity=None,
+             segment=None,
+             total_segments=None,
              exclusive_start_key=None):
         """
         Performs the scan operation
@@ -127,6 +129,8 @@ class TableConnection(object):
             limit=limit,
             scan_filter=scan_filter,
             return_consumed_capacity=return_consumed_capacity,
+            segment=segment,
+            total_segments=total_segments,
             exclusive_start_key=exclusive_start_key)
 
     def query(self,

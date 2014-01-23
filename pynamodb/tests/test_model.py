@@ -3,6 +3,7 @@ Test model API
 """
 import copy
 import six
+from pynamodb.connection.exceptions import TableError
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE
 )
@@ -145,7 +146,6 @@ class ModelTestCase(TestCase):
         FakeDB = MagicMock()
         FakeDB.side_effect = fake_dynamodb
 
-
         with patch(PATCH_METHOD, new=FakeDB) as req:
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
 
@@ -170,8 +170,21 @@ class ModelTestCase(TestCase):
 
         scope_args = {'count': 0}
         with patch(PATCH_METHOD, new=FakeWait) as req:
-            req.return_value = HttpOK, MODEL_TABLE_DATA
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2, wait=True)
+
+        def bad_server(obj, **kwargs):
+            if scope_args['count'] == 0:
+                scope_args['count'] += 1
+                return HttpBadRequest(), {}
+            elif scope_args['count'] == 1 or scope_args['count'] == 2:
+                return HttpBadRequest(), {}
+
+        BadServer = MagicMock()
+        BadServer.side_effect = bad_server
+
+        scope_args = {'count': 0}
+        with patch(PATCH_METHOD, new=BadServer) as req:
+            self.assertRaises(TableError, UserModel.create_table, read_capacity_units=2, write_capacity_units=2, wait=True)
 
     def test_model_attrs(self):
         """
