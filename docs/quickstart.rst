@@ -1,0 +1,120 @@
+Usage
+=====
+
+`PynamoDB` was written from scratch to be Pythonic, and supports the entire DynamoDB API.
+
+Creating a model
+^^^^^^^^^^^^^^^^
+
+Let's create a simple model to describe users.
+
+::
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+    class UserModel(Model):
+        """
+        A DynamoDB User
+        """
+        table_name = 'dynamodb-user'
+        email = UnicodeAttribute(hash_key=True)
+        first_name = UnicodeAttribute()
+        last_name = UnicodeAttribute()
+
+Models are backed by DynamoDB tables. In this example, the model has a hash key attribute
+that stores the user's email address. Any attribute can be set as a hash key by including the argument
+`hash_key=True`.
+
+PynamoDB allows you to create the table:
+
+    >>> UserModel.create_table(read_capacity_units=1, write_capacity_units=1)
+
+Now you can create a user:
+
+    >>> user = UserModel('test@example.com', first_name='Samuel', last_name='Adams')
+    dynamodb-user<test@example.com>
+
+To write the user to DynamoDB, just call save:
+
+    >>> user.save()
+
+Attributes can be accessed and set normally:
+
+    >>> user.email
+    'test@example.com'
+    >>> user.email = 'foo-bar'
+    >>> user.email
+    'foo-bar
+
+Did another process update the user? We can update the user with data from DynamoDB::
+
+    >>> user.update()
+
+Ready to delete the user?
+
+    >>> user.delete()
+
+Querying
+^^^^^^^^
+
+`PynamoDB` provides an intuitive abstraction over the DynamoDB Query API.
+All of the Query API comparison operators are supported.
+
+Suppose you had a table with both a hash key that is the user's last name
+and a range key that is the user's first name:
+
+::
+
+    class UserModel(Model):
+            """
+            A DynamoDB User
+            """
+            table_name = 'dynamodb-user'
+            email = UnicodeAttribute()
+            first_name = UnicodeAttribute(range_key=True)
+            last_name = UnicodeAttribute(hash_key=True)
+
+Now, suppose that you want to search the table for users with a last name
+'Smith', and first name that begins with the letter 'J':
+
+::
+
+    for user in UserModel.query('Smith', first_name__begins_with='J'):
+        print(user.first_name)
+
+
+Batch Operations
+^^^^^^^^^^^^^^^^
+
+`PynamoDB` provides context managers for batch operations.
+
+.. note::
+
+    DynamoDB limits batch write operations to 25 `PutRequests` and `DeleteRequests` combined. `PynamoDB` automatically groups your writes 25 at a time for you.
+
+Let's create a whole bunch of users:
+
+::
+
+    with UserModel.batch_write() as batch:
+        for i in range(100):
+            batch.save(UserModel('user-{0}@example.com', first_name='Samuel', last_name='Adams'))
+
+Now, suppose you want to retrieve all those users:
+
+::
+
+    user_keys = [('user-{0}@example.com'.format(i)) for i in range(100)]
+    for item in UserModel.batch_get(user_keys):
+        print(item)
+
+Perhaps you want to delete all these users:
+
+::
+
+    with UserModel.batch_write() as batch:
+        items = [UserModel('user-{0}@example.com'.format(x)) for x in range(100)]
+        for item in items:
+            batch.delete(item)
+

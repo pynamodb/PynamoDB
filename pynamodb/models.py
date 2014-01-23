@@ -1,6 +1,10 @@
 """
+pynamodb.models
+~~~~~~~~~~~~~~~~
+
 DynamoDB Models for PynamoDB
 """
+
 import six
 import copy
 from .attributes import Attribute
@@ -11,14 +15,18 @@ from .types import HASH, RANGE
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
-    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES
-)
+    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, GLOBAL_SECONDARY_INDEX,
+    LOCAL_SECONDARY_INDEX, INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION,
+    KEYS_ONLY, ALL, INCLUDE, GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES,
+    PROJECTION_TYPE, NON_KEY_ATTRIBUTES, EQ, LE, LT, GT, GE, BEGINS_WITH, BETWEEN,
+    COMPARISON_OPERATOR, ATTR_VALUE_LIST)
 
 
 class ModelContextManager(object):
     """
     A class for managing batch operations
     """
+
     def __init__(self, model, auto_commit=True):
         self.model = model
         self.auto_commit = auto_commit
@@ -36,6 +44,7 @@ class BatchWrite(ModelContextManager):
     """
     A class for batch writes
     """
+
     def save(self, put_item):
         if len(self.pending_operations) == self.max_operations:
             if not self.auto_commit:
@@ -76,16 +85,25 @@ class BatchWrite(ModelContextManager):
 
 class Model(object):
     """
-    Defines a pynamodb model
+    Defines a `PynamoDB` Model
+
+    This model is backed by a table in DynamoDB.
+    You can create the table by with the ``create_table`` method.
     """
     table_name = None
     hash_key = None
     meta_table = None
     range_key = None
     attributes = None
+    indexes = None
     connection = None
 
     def __init__(self, hash_key=None, range_key=None, **attrs):
+        """
+        :param hash_key: Required. The hash key for this object.
+        :param range_key: Only required if the table has a range key attribute.
+        :param attrs: A dictionary of attributes to set on this object.
+        """
         self.attribute_values = {}
         self.set_defaults()
         if hash_key:
@@ -126,7 +144,8 @@ class Model(object):
         data = cls.get_connection().batch_get_item(
             keys_to_get
         ).get(RESPONSES).get(cls.table_name)
-        return [cls.from_raw_data(item) for item in data]
+        for item in data:
+            yield cls.from_raw_data(item)
 
     @classmethod
     def batch_write(cls, auto_commit=True):
@@ -286,8 +305,12 @@ class Model(object):
         data = cls.get_connection().get_item(
             hash_key,
             range_key=range_key,
-            consistent_read=consistent_read).get(ITEM)
-        return cls.from_raw_data(data)
+            consistent_read=consistent_read
+        )
+        if data:
+            return cls.from_raw_data(data.get(ITEM))
+        else:
+            return None
 
     @classmethod
     def from_raw_data(cls, data):
@@ -311,6 +334,43 @@ class Model(object):
             if attr:
                 kwargs[name] = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
         return cls(*args, **kwargs)
+
+    @classmethod
+    def get_indexes(cls):
+        """
+        Returns a list of the secondary indexes
+        """
+        if cls.indexes is None:
+            cls.indexes = {
+                pythonic(GLOBAL_SECONDARY_INDEXES): [],
+                pythonic(LOCAL_SECONDARY_INDEXES): [],
+                pythonic(ATTR_DEFINITIONS): []
+            }
+            for item in dir(cls):
+                item_cls = getattr(cls, item).__class__
+                if issubclass(item_cls, (Index, )):
+                    item_cls = getattr(cls, item)
+                    schema = item_cls.schema()
+                    idx = {
+                        pythonic(INDEX_NAME): item,
+                        pythonic(KEY_SCHEMA): schema.get(pythonic(KEY_SCHEMA)),
+                        pythonic(PROJECTION): {
+                            PROJECTION_TYPE: item_cls.projection.projection_type,
+                        },
+                        pythonic(PROVISIONED_THROUGHPUT): {
+                            READ_CAPACITY_UNITS: item_cls.read_capacity_units,
+                            WRITE_CAPACITY_UNITS: item_cls.write_capacity_units
+                        }
+                    }
+                    cls.indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
+                    if item_cls.projection.non_key_attributes:
+                        idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = item_cls.projection.non_key_attributes
+                    if item_cls.index_type == GLOBAL_SECONDARY_INDEX:
+                        cls.indexes[pythonic(GLOBAL_SECONDARY_INDEXES)].append(idx)
+                    else:
+                        cls.indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
+
+        return cls.indexes
 
     @classmethod
     def get_attributes(cls):
@@ -353,6 +413,42 @@ class Model(object):
         return schema
 
     @classmethod
+    def query(cls, hash_key, **filters):
+        """
+        Provides a high level query API
+        """
+        operators = {
+            'eq': EQ,
+            'le': LE,
+            'lt': LT,
+            'ge': GE,
+            'gt': GT,
+            'begins_with': BEGINS_WITH,
+            'between': BETWEEN
+        }
+        key_conditions = {}
+        for query, value in filters.items():
+            attribute = None
+            for token in query.split('__'):
+                if not isinstance(value, list):
+                    value = [value]
+                if attribute is None:
+                    attribute = token
+                elif token in operators:
+                    key_conditions[attribute] = {
+                        COMPARISON_OPERATOR: operators.get(token),
+                        ATTR_VALUE_LIST: value
+                    }
+                else:
+                    raise ValueError("Could not parse filter: {0}".format(filter))
+        data = cls.get_connection().query(
+            hash_key,
+            key_conditions=key_conditions
+        )
+        for item in data.get(ITEMS):
+            yield cls.from_raw_data(item)
+
+    @classmethod
     def scan(cls):
         """
         Iterates through all items in the table
@@ -369,6 +465,113 @@ class Model(object):
         schema = cls.schema()
         schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
         schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+        index_data = cls.get_indexes()
+        schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
+        schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
+        schema[pythonic(ATTR_DEFINITIONS)].extend(index_data.get(pythonic(ATTR_DEFINITIONS)))
         return cls.get_connection().create_table(
             **schema
         )
+
+
+class Index(object):
+    """
+    Base class for secondary indexes
+    """
+    projection = None
+    attributes = None
+    read_capacity_units = None
+    write_capacity_units = None
+    index_type = None
+
+    def __init__(self):
+        if not self.projection:
+            raise ValueError("No projection defined, define a projection for this class")
+
+    @classmethod
+    def schema(cls):
+        """
+        Returns the schema for this index
+        """
+        attr_definitions = []
+        schema = []
+        for attr_name, attr_cls in cls.get_attributes().items():
+            attr_definitions.append({
+                pythonic(ATTR_NAME): attr_name,
+                pythonic(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
+            })
+            if attr_cls.is_hash_key:
+                schema.append({
+                    ATTR_NAME: attr_name,
+                    KEY_TYPE: HASH
+                })
+            elif attr_cls.is_range_key:
+                schema.append({
+                    ATTR_NAME: attr_name,
+                    KEY_TYPE: RANGE
+                })
+        return {
+            pythonic(KEY_SCHEMA): schema,
+            pythonic(ATTR_DEFINITIONS): attr_definitions
+        }
+
+    @classmethod
+    def get_attributes(cls):
+        """
+        Returns the list of attributes for this class
+        """
+        if cls.attributes is None:
+            cls.attributes = {}
+            for item in dir(cls):
+                item_cls = getattr(cls, item).__class__
+                if issubclass(item_cls, (Attribute, )):
+                    cls.attributes[item] = getattr(cls, item)
+        return cls.attributes
+
+
+class GlobalSecondaryIndex(Index):
+    """
+    A global secondary index
+    """
+    index_type = GLOBAL_SECONDARY_INDEX
+
+
+class LocalSecondaryIndex(Index):
+    """
+    A local secondary index
+    """
+    index_type = LOCAL_SECONDARY_INDEX
+
+
+class Projection(object):
+    """
+    A class for presenting projections
+    """
+    projection_type = None
+    non_key_attributes = None
+
+
+class KeysOnlyProjection(Projection):
+    """
+    Keys only projection
+    """
+    projection_type = KEYS_ONLY
+
+
+class IncludeProjection(Projection):
+    """
+    An INCLUDE projection
+    """
+    projection_type = INCLUDE
+
+    def __init__(self, non_attr_keys=None):
+        if not non_attr_keys:
+            raise ValueError("The INCLUDE type projection requires a list of string attribute names")
+        self.non_key_attributes = non_attr_keys
+
+
+class AllProjection(Projection):
+    """
+    An ALL projection
+    """
+    projection_type = ALL

@@ -183,11 +183,11 @@ class Connection(object):
                 self._endpoint = self.service.get_endpoint(self.region)
         return self._endpoint
 
-    def get_meta_table(self, table_name):
+    def get_meta_table(self, table_name, refresh=False):
         """
         Returns a MetaTable
         """
-        if table_name not in self._tables:
+        if table_name not in self._tables or refresh:
             operation_kwargs = {
                 pythonic(TABLE_NAME): table_name
             }
@@ -249,7 +249,7 @@ class Connection(object):
                 ATTR_NAME: item.get(pythonic(ATTR_NAME)),
                 KEY_TYPE: str(item.get(pythonic(KEY_TYPE))).upper()
             })
-        operation_kwargs[pythonic(KEY_SCHEMA)] = key_schema_list
+        operation_kwargs[pythonic(KEY_SCHEMA)] = sorted(key_schema_list, key=lambda x: x.get(KEY_TYPE))
 
         local_secondary_indexes_list = []
         if local_secondary_indexes:
@@ -336,7 +336,7 @@ class Connection(object):
         """
         Performs the DescribeTable operation
         """
-        tbl = self.get_meta_table(table_name)
+        tbl = self.get_meta_table(table_name, refresh=True)
         if tbl:
             return tbl.data
         else:

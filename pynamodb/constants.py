@@ -96,12 +96,16 @@ ATTR_TYPE_MAP = {
     BINARY_SET_SHORT: BINARY_SET
 }
 # Constants needed for creating indexes
+LOCAL_SECONDARY_INDEX = 'LocalSecondaryIndex'
 LOCAL_SECONDARY_INDEXES = 'LocalSecondaryIndexes'
+GLOBAL_SECONDARY_INDEX = 'GlobalSecondaryIndex'
 GLOBAL_SECONDARY_INDEXES = 'GlobalSecondaryIndexes'
 PROJECTION = 'Projection'
 PROJECTION_TYPE = 'ProjectionType'
 NON_KEY_ATTRIBUTES = 'NonKeyAttributes'
-
+KEYS_ONLY = 'KEYS_ONLY'
+ALL = 'ALL'
+INCLUDE = 'INCLUDE'
 
 # These are constants used in the KeyConditions parameter
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditions
