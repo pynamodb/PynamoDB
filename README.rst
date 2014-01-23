@@ -2,6 +2,9 @@
 PynamoDB
 ========
 
+.. image:: https://travis-ci.org/jlafon/PynamoDB.png?branch=devel
+:target: https://travis-ci.org/jlafon/PynamoDB
+
 A Pythonic interface for DynamoDB
 
 A rich API that is compatible with Python 2 and Python 3.
