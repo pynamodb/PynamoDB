@@ -1,5 +1,5 @@
 """
-An example table using Amazon's Thread example
+An using Amazon's Thread example for motivation
 
 http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleTablesAndData.html
 """
