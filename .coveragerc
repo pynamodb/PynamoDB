@@ -1,6 +1,3 @@
 [run]
 source = pynamodb/.
 omit = pynamodb/tests/integration/*
-
-[html]
-directory = html
