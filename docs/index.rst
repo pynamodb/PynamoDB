@@ -27,8 +27,7 @@ Topics
 
    quickstart
    api
-
-
+   contributing
 
 Indices and tables
 ==================
