@@ -18,6 +18,7 @@ setup(
     description='A Pythonic Interface to DynamoDB',
     long_description=open('README.rst').read(),
     zip_safe=False,
+    license='MIT',
     keywords='python dynamodb amazon',
     install_requires=[
         'Delorean',
@@ -26,7 +27,6 @@ setup(
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
-        'Intended Audience :: Developers',
         'Intended Audience :: Developers',
         'Programming Language :: Python',
         'Operating System :: OS Independent',
