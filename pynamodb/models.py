@@ -8,17 +8,19 @@ DynamoDB Models for PynamoDB
 import time
 import six
 import copy
+from six import with_metaclass
 from .attributes import Attribute
 from .connection.base import MetaTable
 from .connection.table import TableConnection
 from .connection.util import pythonic
 from .types import HASH, RANGE
+from pynamodb.indexes import Index
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, GLOBAL_SECONDARY_INDEX,
-    LOCAL_SECONDARY_INDEX, INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION,
-    KEYS_ONLY, ALL, INCLUDE, GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES,
+    INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION,
+    GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, EQ, LE, LT, GT, GE, BEGINS_WITH, BETWEEN,
     COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_STATUS, ACTIVE)
 
@@ -84,7 +86,23 @@ class BatchWrite(ModelContextManager):
         )
 
 
-class Model(object):
+class MetaModel(type):
+    """
+    Model meta class
+
+    This class is just here so that index queries have nice syntax.
+    Model.index.query()
+    """
+    def __init__(cls, name, bases, attrs):
+        if isinstance(attrs, dict):
+            for attr_name, attr_obj in attrs.items():
+                if issubclass(attr_obj.__class__, (Index, )):
+                    attr_obj.__class__.model = cls
+                    attr_obj.index_name = attr_name
+                elif issubclass(attr_obj.__class__, (Attribute, )):
+                    attr_obj.attr_name = attr_name
+
+class Model(with_metaclass(MetaModel)):
     """
     Defines a `PynamoDB` Model
 
@@ -106,13 +124,16 @@ class Model(object):
         :param range_key: Only required if the table has a range key attribute.
         :param attrs: A dictionary of attributes to set on this object.
         """
+        self.attribute_values = {}
         self.set_defaults()
         if hash_key:
             setattr(self, self.meta().hash_keyname, hash_key)
         if range_key:
             setattr(self, self.meta().range_keyname, range_key)
         self.set_attributes(**attrs)
-        self._wire_indexes()
+
+    def __getattribute__(self, item):
+        return object.__getattribute__(self, item)
 
     @classmethod
     def batch_get(cls, items):
@@ -158,13 +179,14 @@ class Model(object):
                 value = default()
             else:
                 value = default
-            if value:
-                attr.value = value
+            if value is not None:
+                setattr(self, name, value)
 
     def set_attributes(self, **attrs):
         """
         Sets the attributes for this object
         """
+
         for key, value in attrs.items():
             setattr(self, key, value)
 
@@ -363,17 +385,6 @@ class Model(object):
         return cls(*args, **kwargs)
 
     @classmethod
-    def _wire_indexes(cls):
-        """
-        Sets the `model` attribute on each index to `cls`
-        """
-        if cls.index_classes is None:
-            cls.get_indexes()
-            for index_name, index in cls.index_classes.items():
-                index.model = cls
-                index.index_name = index_name
-
-    @classmethod
     def get_indexes(cls):
         """
         Returns a list of the secondary indexes
@@ -473,6 +484,7 @@ class Model(object):
             'between': BETWEEN
         }
         key_conditions = {}
+        cls.get_indexes()
         if index_name:
             hash_key = cls.index_classes[index_name].hash_key_attribute().serialize(hash_key)
         else:
@@ -532,7 +544,12 @@ class Model(object):
             index_data = cls.get_indexes()
             schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
             schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
-            schema[pythonic(ATTR_DEFINITIONS)].extend(index_data.get(pythonic(ATTR_DEFINITIONS)))
+            index_attrs = index_data.get(pythonic(ATTR_DEFINITIONS))
+            attr_keys = [attr.get(pythonic(ATTR_NAME)) for attr in schema.get(pythonic(ATTR_DEFINITIONS))]
+            for attr in index_attrs:
+                attr_name = attr.get(pythonic(ATTR_NAME))
+                if not attr_name in attr_keys:
+                    schema[pythonic(ATTR_DEFINITIONS)].append(attr)
             cls.get_connection().create_table(
                 **schema
             )
@@ -549,163 +566,3 @@ class Model(object):
                     raise ValueError("No TableStatus returned for table")
 
 
-class Index(object):
-    """
-    Base class for secondary indexes
-    """
-    projection = None
-    attributes = None
-    read_capacity_units = None
-    write_capacity_units = None
-    index_type = None
-    model = None
-    index_name = None
-
-    def __init__(self):
-        if not self.projection:
-            raise ValueError("No projection defined, define a projection for this class")
-
-    @classmethod
-    def query(cls, *args, **kwargs):
-        """
-        Queries an index
-        """
-        pass
-
-    @classmethod
-    def range_key_attribute(cls):
-        """
-        Returns the attribute class for the range key
-        """
-        for attr_cls in cls.get_attributes().values():
-            if attr_cls.is_range_key:
-                return attr_cls
-
-    @classmethod
-    def hash_key_attribute(cls):
-        """
-        Returns the attribute class for the hash key
-        """
-        for attr_cls in cls.get_attributes().values():
-            if attr_cls.is_hash_key:
-                return attr_cls
-
-    @classmethod
-    def schema(cls):
-        """
-        Returns the schema for this index
-        """
-        attr_definitions = []
-        schema = []
-        for attr_name, attr_cls in cls.get_attributes().items():
-            attr_definitions.append({
-                pythonic(ATTR_NAME): attr_name,
-                pythonic(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
-            })
-            if attr_cls.is_hash_key:
-                schema.append({
-                    ATTR_NAME: attr_name,
-                    KEY_TYPE: HASH
-                })
-            elif attr_cls.is_range_key:
-                schema.append({
-                    ATTR_NAME: attr_name,
-                    KEY_TYPE: RANGE
-                })
-        return {
-            pythonic(KEY_SCHEMA): schema,
-            pythonic(ATTR_DEFINITIONS): attr_definitions
-        }
-
-    @classmethod
-    def get_attributes(cls):
-        """
-        Returns the list of attributes for this class
-        """
-        if cls.attributes is None:
-            cls.attributes = {}
-            for item in dir(cls):
-                item_cls = getattr(cls, item).__class__
-                if issubclass(item_cls, (Attribute, )):
-                    cls.attributes[item] = getattr(cls, item)
-        return cls.attributes
-
-
-class GlobalSecondaryIndex(Index):
-    """
-    A global secondary index
-    """
-    index_type = GLOBAL_SECONDARY_INDEX
-
-    def query(self,
-              hash_key,
-              scan_index_forward=None,
-              consistent_read=False,
-              **filters):
-        """
-        Queries an index
-        """
-        return self.model.query(
-            hash_key,
-            index_name=self.index_name,
-            scan_index_forward=scan_index_forward,
-            consistent_read=consistent_read,
-            **filters
-        )
-
-
-class LocalSecondaryIndex(Index):
-    """
-    A local secondary index
-    """
-    index_type = LOCAL_SECONDARY_INDEX
-
-    @classmethod
-    def query(cls,
-              hash_key,
-              scan_index_forward=None,
-              consistent_read=False,
-              **filters):
-        """
-        Queries an index
-        """
-        return cls.model.query(
-            hash_key,
-            index_name=cls.index_name,
-            scan_index_forward=scan_index_forward,
-            consistent_read=consistent_read,
-        )
-
-
-class Projection(object):
-    """
-    A class for presenting projections
-    """
-    projection_type = None
-    non_key_attributes = None
-
-
-class KeysOnlyProjection(Projection):
-    """
-    Keys only projection
-    """
-    projection_type = KEYS_ONLY
-
-
-class IncludeProjection(Projection):
-    """
-    An INCLUDE projection
-    """
-    projection_type = INCLUDE
-
-    def __init__(self, non_attr_keys=None):
-        if not non_attr_keys:
-            raise ValueError("The INCLUDE type projection requires a list of string attribute names")
-        self.non_key_attributes = non_attr_keys
-
-
-class AllProjection(Projection):
-    """
-    An ALL projection
-    """
-    projection_type = ALL

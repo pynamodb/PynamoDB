@@ -8,8 +8,9 @@ from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE
 )
-from pynamodb.models import (
-    Model, GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
+from pynamodb.models import Model
+from pynamodb.indexes import (
+    GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
     IncludeProjection, KeysOnlyProjection, Index
 )
 from pynamodb.attributes import (
@@ -262,7 +263,7 @@ class ModelTestCase(TestCase):
             params = {
                 'item': {
                     'callable_field': {
-                        'N': 42
+                        'N': '42'
                     },
                     'email': {
                         'S': u'needs_email'
@@ -273,9 +274,6 @@ class ModelTestCase(TestCase):
                     'user_name': {
                         'S': u'foo'
                     },
-                    'zip_code': {
-                        'N': 88030
-                    }
                 },
                 'table_name': 'UserModel'
             }

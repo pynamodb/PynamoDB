@@ -3,6 +3,7 @@ pynamodb attributes
 """
 import six
 import json
+import copy
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
@@ -10,11 +11,18 @@ from pynamodb.constants import (
     DEFAULT_ENCODING
 )
 
+class ValueAttribute(object):
+    """
+
+    """
+    pass
 
 class Attribute(object):
     """
     An attribute of a model
     """
+    attr_name = None
+
     def __init__(self,
                  attr_type=str,
                  hash_key=False,
@@ -30,12 +38,15 @@ class Attribute(object):
         self.is_range_key = range_key
 
     def __set__(self, instance, value):
+        if isinstance(value, Attribute):
+            return self
         if instance:
+            instance.attribute_values[self.attr_name] = value
             self.value = value
 
     def __get__(self, instance, owner):
         if instance:
-            return self.value
+            return instance.attribute_values.get(self.attr_name, None)
         else:
             return self
 
@@ -165,6 +176,18 @@ class NumberAttribute(Attribute):
     def __init__(self, **kwargs):
         kwargs.setdefault('attr_type', NUMBER)
         super(NumberAttribute, self).__init__(**kwargs)
+
+    def serialize(self, value):
+        """
+        Encode numbers as JSON
+        """
+        return json.dumps(value)
+
+    def deserialize(self, value):
+        """
+        Decode numbers from JSON
+        """
+        return json.loads(value)
 
 
 class UTCDateTimeAttribute(Attribute):

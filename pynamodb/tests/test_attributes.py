@@ -147,14 +147,16 @@ class NumberAttributeTestCase(TestCase):
         NumberAttribute.serialize
         """
         attr = NumberAttribute()
-        self.assertEqual(attr.serialize(1), 1)
+        self.assertEqual(attr.serialize(3.141), '3.141')
+        self.assertEqual(attr.serialize(1), '1')
 
     def test_number_deserialize(self):
         """
         NumberAttribute.deserialize
         """
         attr = NumberAttribute()
-        self.assertEqual(attr.deserialize(1), 1)
+        self.assertEqual(attr.deserialize('1'), 1)
+        self.assertEqual(attr.deserialize('3.141'), 3.141)
 
     def test_number_set_deserialize(self):
         """
