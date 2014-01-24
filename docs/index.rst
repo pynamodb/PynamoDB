@@ -27,6 +27,8 @@ Topics
 
    quickstart
    api
+   indexes
+   low_level
    contributing
 
 Indices and tables
