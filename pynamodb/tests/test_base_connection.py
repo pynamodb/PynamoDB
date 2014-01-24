@@ -1029,7 +1029,7 @@ class ConnectionTestCase(TestCase):
                 table_name,
                 "FooForum",
                 limit=1,
-                index_name='alt-index',
+                index_name='LastPostIndex',
                 attributes_to_get=['ForumName'],
                 exclusive_start_key="FooForum",
                 consistent_read=True
@@ -1042,7 +1042,7 @@ class ConnectionTestCase(TestCase):
                         'S': 'FooForum'
                     }
                 },
-                'index_name': 'alt-index',
+                'index_name': 'LastPostIndex',
                 'attributes_to_get': ['ForumName'],
                 'key_conditions': {
                     'ForumName': {

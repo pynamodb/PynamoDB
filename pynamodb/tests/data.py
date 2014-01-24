@@ -112,6 +112,26 @@ DESCRIBE_TABLE_DATA = {
                 "KeyType": "RANGE"
             }
         ],
+        "GlobalSecondaryIndexes": [
+            {
+                "IndexName": "LastPostIndex",
+                "IndexSizeBytes": 0,
+                "ItemCount": 0,
+                "KeySchema": [
+                    {
+                        "AttributeName": "ForumName",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "LastPostDateTime",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "KEYS_ONLY"
+                }
+            }
+        ],
         "LocalSecondaryIndexes": [
             {
                 "IndexName": "LastPostIndex",

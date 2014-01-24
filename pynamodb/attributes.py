@@ -22,11 +22,22 @@ class Attribute(object):
                  null=False,
                  default=None
                  ):
+        self.value = None
         self.default = default
         self.null = null
         self.attr_type = attr_type
         self.is_hash_key = hash_key
         self.is_range_key = range_key
+
+    def __set__(self, instance, value):
+        if instance:
+            self.value = value
+
+    def __get__(self, instance, owner):
+        if instance:
+            return self.value
+        else:
+            return self
 
     def serialize(self, value):
         """

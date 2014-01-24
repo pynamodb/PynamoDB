@@ -1,7 +1,7 @@
 Usage
 =====
 
-`PynamoDB` was written from scratch to be Pythonic, and supports the entire DynamoDB API.
+PynamoDB was written from scratch to be Pythonic, and supports the entire DynamoDB API.
 
 Creating a model
 ^^^^^^^^^^^^^^^^

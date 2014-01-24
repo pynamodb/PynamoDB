@@ -20,7 +20,7 @@ from pynamodb.constants import (
     LOCAL_SECONDARY_INDEX, INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION,
     KEYS_ONLY, ALL, INCLUDE, GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, EQ, LE, LT, GT, GE, BEGINS_WITH, BETWEEN,
-    COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_DESCRIPTION, TABLE_STATUS, ACTIVE)
+    COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_STATUS, ACTIVE)
 
 
 class ModelContextManager(object):
@@ -98,6 +98,7 @@ class Model(object):
     attributes = None
     indexes = None
     connection = None
+    index_classes = None
 
     def __init__(self, hash_key=None, range_key=None, **attrs):
         """
@@ -105,23 +106,13 @@ class Model(object):
         :param range_key: Only required if the table has a range key attribute.
         :param attrs: A dictionary of attributes to set on this object.
         """
-        self.attribute_values = {}
         self.set_defaults()
         if hash_key:
-            self.attribute_values[self.meta().hash_keyname] = hash_key
+            setattr(self, self.meta().hash_keyname, hash_key)
         if range_key:
-            self.attribute_values[self.meta().range_keyname] = range_key
+            setattr(self, self.meta().range_keyname, range_key)
         self.set_attributes(**attrs)
-
-    def __getattribute__(self, item):
-        """
-        Smarter than the average attribute
-        """
-        values = object.__getattribute__(self, 'attribute_values')
-        if item in values:
-            return values[item]
-        else:
-            return object.__getattribute__(self, item)
+        self._wire_indexes()
 
     @classmethod
     def batch_get(cls, items):
@@ -133,13 +124,15 @@ class Model(object):
         keys_to_get = []
         for item in items:
             if range_keyname:
+                hash_key, range_key = cls.serialize_keys(item[0], item[1])
                 keys_to_get.append({
-                    hash_keyname: item[0],
-                    range_keyname: item[1]
+                    hash_keyname: hash_key,
+                    range_keyname: range_key
                 })
             else:
+                hash_key = cls.serialize_keys(item[0], None)[0]
                 keys_to_get.append({
-                    hash_keyname: item[0]
+                    hash_keyname: hash_key
                 })
 
         data = cls.get_connection().batch_get_item(
@@ -166,20 +159,20 @@ class Model(object):
             else:
                 value = default
             if value:
-                self.attribute_values[name] = value
+                attr.value = value
 
     def set_attributes(self, **attrs):
         """
         Sets the attributes for this object
         """
         for key, value in attrs.items():
-            self.attribute_values[key] = value
+            setattr(self, key, value)
 
     def __repr__(self):
-        hash_key = self.attribute_values.get(self.meta().hash_keyname, None)
+        hash_key = getattr(self, self.meta().hash_keyname, None)
         if hash_key and self.table_name:
             if self.meta().range_keyname:
-                range_key = self.attribute_values.get(self.meta().range_keyname, None)
+                range_key = getattr(self, self.meta().range_keyname, None)
                 msg = "{0}<{1}, {2}>".format(self.table_name, hash_key, range_key)
             else:
                 msg = "{0}<{1}>".format(self.table_name, hash_key)
@@ -266,7 +259,7 @@ class Model(object):
                 attr_type = ATTR_TYPE_MAP[attr_instance.attr_type]
                 value = attr.get(attr_type, None)
                 if value:
-                    self.attribute_values[name] = attr_instance.deserialize(value)
+                    setattr(self, name, attr_instance.deserialize(value))
 
     def serialize(self, attr_map=False):
         """
@@ -275,7 +268,7 @@ class Model(object):
         attributes = pythonic(ATTRIBUTES)
         attrs = {attributes: {}}
         for name, attr in self.get_attributes().items():
-            value = self.attribute_values.get(name)
+            value = getattr(self, name)
             if value is None:
                 if attr.null:
                     continue
@@ -297,6 +290,37 @@ class Model(object):
         return attrs
 
     @classmethod
+    def serialize_keys(cls, hash_key, range_key=None):
+        """
+        Serializes the hash and range keys
+        """
+        hash_key = cls.hash_key_attribute().serialize(hash_key)
+        if range_key:
+            range_key = cls.range_key_attribute().serialize(range_key)
+        return hash_key, range_key
+
+    @classmethod
+    def range_key_attribute(cls):
+        """
+        Returns the attribute class for the hash key
+        """
+        attributes = cls.get_attributes()
+        range_keyname = cls.meta().range_keyname
+        if range_keyname:
+            return attributes[range_keyname]
+        else:
+            return None
+
+    @classmethod
+    def hash_key_attribute(cls):
+        """
+        Returns the attribute class for the hash key
+        """
+        attributes = cls.get_attributes()
+        hash_keyname = cls.meta().hash_keyname
+        return attributes[hash_keyname]
+
+    @classmethod
     def get(cls,
             hash_key,
             range_key=None,
@@ -304,6 +328,7 @@ class Model(object):
         """
         Returns a single object using the provided keys
         """
+        hash_key, range_key = cls.serialize_keys(hash_key, range_key)
         data = cls.get_connection().get_item(
             hash_key,
             range_key=range_key,
@@ -338,6 +363,17 @@ class Model(object):
         return cls(*args, **kwargs)
 
     @classmethod
+    def _wire_indexes(cls):
+        """
+        Sets the `model` attribute on each index to `cls`
+        """
+        if cls.index_classes is None:
+            cls.get_indexes()
+            for index_name, index in cls.index_classes.items():
+                index.model = cls
+                index.index_name = index_name
+
+    @classmethod
     def get_indexes(cls):
         """
         Returns a list of the secondary indexes
@@ -348,10 +384,12 @@ class Model(object):
                 pythonic(LOCAL_SECONDARY_INDEXES): [],
                 pythonic(ATTR_DEFINITIONS): []
             }
+            cls.index_classes = {}
             for item in dir(cls):
                 item_cls = getattr(cls, item).__class__
                 if issubclass(item_cls, (Index, )):
                     item_cls = getattr(cls, item)
+                    cls.index_classes[item] = item_cls
                     schema = item_cls.schema()
                     idx = {
                         pythonic(INDEX_NAME): item,
@@ -416,7 +454,12 @@ class Model(object):
         return schema
 
     @classmethod
-    def query(cls, hash_key, consistent_read=False, **filters):
+    def query(cls,
+              hash_key,
+              consistent_read=False,
+              index_name=None,
+              scan_index_forward=None,
+              **filters):
         """
         Provides a high level query API
         """
@@ -430,13 +473,20 @@ class Model(object):
             'between': BETWEEN
         }
         key_conditions = {}
+        if index_name:
+            hash_key = cls.index_classes[index_name].hash_key_attribute().serialize(hash_key)
+        else:
+            hash_key = cls.serialize_keys(hash_key, None)[0]
+        attribute_classes = cls.get_attributes()
         for query, value in filters.items():
             attribute = None
             for token in query.split('__'):
-                if not isinstance(value, list):
-                    value = [value]
                 if attribute is None:
                     attribute = token
+                    attribute_class = attribute_classes.get(attribute)
+                    if not isinstance(value, list):
+                        value = [value]
+                    value = [attribute_class.serialize(val) for val in value]
                 elif token in operators:
                     key_conditions[attribute] = {
                         COMPARISON_OPERATOR: operators.get(token),
@@ -446,7 +496,9 @@ class Model(object):
                     raise ValueError("Could not parse filter: {0}".format(query))
         data = cls.get_connection().query(
             hash_key,
+            index_name=index_name,
             consistent_read=consistent_read,
+            scan_index_forward=scan_index_forward,
             key_conditions=key_conditions
         )
         for item in data.get(ITEMS):
@@ -506,10 +558,37 @@ class Index(object):
     read_capacity_units = None
     write_capacity_units = None
     index_type = None
+    model = None
+    index_name = None
 
     def __init__(self):
         if not self.projection:
             raise ValueError("No projection defined, define a projection for this class")
+
+    @classmethod
+    def query(cls, *args, **kwargs):
+        """
+        Queries an index
+        """
+        pass
+
+    @classmethod
+    def range_key_attribute(cls):
+        """
+        Returns the attribute class for the range key
+        """
+        for attr_cls in cls.get_attributes().values():
+            if attr_cls.is_range_key:
+                return attr_cls
+
+    @classmethod
+    def hash_key_attribute(cls):
+        """
+        Returns the attribute class for the hash key
+        """
+        for attr_cls in cls.get_attributes().values():
+            if attr_cls.is_hash_key:
+                return attr_cls
 
     @classmethod
     def schema(cls):
@@ -558,12 +637,44 @@ class GlobalSecondaryIndex(Index):
     """
     index_type = GLOBAL_SECONDARY_INDEX
 
+    def query(self,
+              hash_key,
+              scan_index_forward=None,
+              consistent_read=False,
+              **filters):
+        """
+        Queries an index
+        """
+        return self.model.query(
+            hash_key,
+            index_name=self.index_name,
+            scan_index_forward=scan_index_forward,
+            consistent_read=consistent_read,
+            **filters
+        )
+
 
 class LocalSecondaryIndex(Index):
     """
     A local secondary index
     """
     index_type = LOCAL_SECONDARY_INDEX
+
+    @classmethod
+    def query(cls,
+              hash_key,
+              scan_index_forward=None,
+              consistent_read=False,
+              **filters):
+        """
+        Queries an index
+        """
+        return cls.model.query(
+            hash_key,
+            index_name=cls.index_name,
+            scan_index_forward=scan_index_forward,
+            consistent_read=consistent_read,
+        )
 
 
 class Projection(object):
