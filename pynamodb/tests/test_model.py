@@ -4,6 +4,7 @@ Test model API
 import copy
 import six
 from pynamodb.connection.exceptions import TableError
+from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE
 )
@@ -271,6 +272,9 @@ class ModelTestCase(TestCase):
                     },
                     'user_name': {
                         'S': u'foo'
+                    },
+                    'zip_code': {
+                        'N': 88030
                     }
                 },
                 'table_name': 'UserModel'
@@ -293,8 +297,13 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item, attrs in zip(UserModel.query('foo', user_id__between=['id-1', 'id-3']), items):
-                self.assertEqual(item.user_id, attrs['user_id'].get(STRING_SHORT))
+            queried = []
+            for item in UserModel.query('foo', user_id__between=['id-1', 'id-3']):
+                queried.append(item.serialize().get(RANGE))
+            self.assertListEqual(
+                [item.get('user_id').get(STRING_SHORT) for item in items],
+                queried
+            )
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -303,8 +312,10 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item, attrs in zip(UserModel.query('foo', user_id__gt='id-1'), items):
-                self.assertEqual(item.user_id, attrs['user_id'].get(STRING_SHORT))
+            queried = []
+            for item in UserModel.query('foo', user_id__gt='id-1'):
+                queried.append(item.serialize())
+            self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -313,8 +324,10 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item, attrs in zip(UserModel.query('foo', user_id__lt='id-1'), items):
-                self.assertEqual(item.user_id, attrs['user_id'].get(STRING_SHORT))
+            queried = []
+            for item in UserModel.query('foo', user_id__lt='id-1'):
+                queried.append(item.serialize())
+            self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -323,8 +336,10 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item, attrs in zip(UserModel.query('foo', user_id__ge='id-1'), items):
-                self.assertEqual(item.user_id, attrs['user_id'].get(STRING_SHORT))
+            queried = []
+            for item in UserModel.query('foo', user_id__ge='id-1'):
+                queried.append(item.serialize())
+            self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -333,8 +348,10 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item, attrs in zip(UserModel.query('foo', user_id__le='id-1'), items):
-                self.assertEqual(item.user_id, attrs['user_id'].get(STRING_SHORT))
+            queried = []
+            for item in UserModel.query('foo', user_id__le='id-1'):
+                queried.append(item.serialize())
+            self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -343,8 +360,10 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item, attrs in zip(UserModel.query('foo', user_id__eq='id-1'), items):
-                self.assertEqual(item.user_id, attrs['user_id'].get(STRING_SHORT))
+            queried = []
+            for item in UserModel.query('foo', user_id__eq='id-1'):
+                queried.append(item.serialize())
+            self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -353,8 +372,10 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item, attrs in zip(UserModel.query('foo', user_id__begins_with='id'), items):
-                self.assertEqual(item.user_id, attrs['user_id'].get(STRING_SHORT))
+            queried = []
+            for item in UserModel.query('foo', user_id__begins_with='id'):
+                queried.append(item.serialize())
+            self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -363,9 +384,10 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item, attrs in zip(UserModel.query('foo'), items):
-                self.assertEqual(item.user_id, attrs['user_id'].get(STRING_SHORT))
-
+            queried = []
+            for item in UserModel.query('foo'):
+                queried.append(item.serialize())
+            self.assertTrue(len(queried) == len(items))
 
     def test_scan(self):
         """
@@ -382,8 +404,13 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item, attrs in zip(UserModel.scan(), items):
-                self.assertEqual(item.user_id, attrs['user_id'].get(STRING_SHORT))
+            scanned_items = []
+            for item in UserModel.scan():
+                scanned_items.append(item.serialize().get(RANGE))
+            self.assertListEqual(
+                [item.get('user_id').get(STRING_SHORT) for item in items],
+                scanned_items
+            )
 
     def test_get(self):
         """

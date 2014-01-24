@@ -57,6 +57,24 @@ class MetaTable(object):
                     break
         return self._hash_keyname
 
+    def get_index_hash_keyname(self, index_name):
+        """
+        Returns the name of the hash key for a given index
+        """
+        global_indexes = self.data.get(GLOBAL_SECONDARY_INDEXES)
+        local_indexes = self.data.get(LOCAL_SECONDARY_INDEXES)
+        indexes = []
+        if local_indexes:
+            indexes += local_indexes
+        if global_indexes:
+            indexes += global_indexes
+        for index in indexes:
+            if index.get(INDEX_NAME) == index_name:
+                for schema_key in index.get(KEY_SCHEMA):
+                    if schema_key.get(KEY_TYPE) == HASH:
+                        return schema_key.get(ATTR_NAME)
+
+
     def get_item_attribute_map(self, attributes, item_key=ITEM, pythonic_key=True):
         """
         Builds up a dynamodb compatible AttributeValue map
@@ -686,7 +704,12 @@ class Connection(object):
             operation_kwargs[pythonic(SELECT)] = str(select).upper()
         if scan_index_forward is not None:
             operation_kwargs[pythonic(SCAN_INDEX_FORWARD)] = scan_index_forward
-        hash_keyname = self.get_meta_table(table_name).hash_keyname
+        if index_name:
+            hash_keyname = self.get_meta_table(table_name).get_index_hash_keyname(index_name)
+            if not hash_keyname:
+                raise ValueError("No hash key attribute for index: {0}".format(index_name))
+        else:
+            hash_keyname = self.get_meta_table(table_name).hash_keyname
         operation_kwargs[pythonic(KEY_CONDITIONS)] = {
             hash_keyname: {
                 ATTR_VALUE_LIST: [{
