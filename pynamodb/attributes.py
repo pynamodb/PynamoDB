@@ -150,7 +150,10 @@ class UnicodeAttribute(Attribute):
         """
         Returns a unicode string
         """
-        return six.u(value)
+        if isinstance(value, six.text_type):
+            return value
+        else:
+            return six.u(value)
 
 
 class NumberSetAttribute(SetMixin, Attribute):
