@@ -2,7 +2,8 @@
 Examples using DynamoDB indexes
 """
 from datetime import datetime
-from pynamodb.models import Model, GlobalSecondaryIndex, AllProjection
+from pynamodb.models import Model
+from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
 from pynamodb.attributes import UTCDateTimeAttribute, UnicodeAttribute, NumberAttribute
 
 
