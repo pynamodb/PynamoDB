@@ -3,7 +3,6 @@ pynamodb attributes
 """
 import six
 import json
-import copy
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
@@ -11,11 +10,6 @@ from pynamodb.constants import (
     DEFAULT_ENCODING
 )
 
-class ValueAttribute(object):
-    """
-
-    """
-    pass
 
 class Attribute(object):
     """

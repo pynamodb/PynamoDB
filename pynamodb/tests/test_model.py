@@ -32,6 +32,7 @@ else:
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
 
+
 class EmailIndex(GlobalSecondaryIndex):
     """
     A global secondary index for email addresses
@@ -545,6 +546,7 @@ class ModelTestCase(TestCase):
             IndexedModel('foo', 'bar')
 
         scope_args = {'count': 0}
+
         def fake_dynamodb(obj, **kwargs):
             if kwargs == {'table_name': UserModel.table_name}:
                 if scope_args['count'] == 0:
@@ -589,6 +591,7 @@ class ModelTestCase(TestCase):
             LocalIndexedModel('foo', 'bar')
 
         scope_args = {'count': 0}
+
         def fake_dynamodb(obj, **kwargs):
             if kwargs == {'table_name': UserModel.table_name}:
                 if scope_args['count'] == 0:

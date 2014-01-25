@@ -74,7 +74,6 @@ class MetaTable(object):
                     if schema_key.get(KEY_TYPE) == HASH:
                         return schema_key.get(ATTR_NAME)
 
-
     def get_item_attribute_map(self, attributes, item_key=ITEM, pythonic_key=True):
         """
         Builds up a dynamodb compatible AttributeValue map

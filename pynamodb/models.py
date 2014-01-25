@@ -102,6 +102,7 @@ class MetaModel(type):
                 elif issubclass(attr_obj.__class__, (Attribute, )):
                     attr_obj.attr_name = attr_name
 
+
 class Model(with_metaclass(MetaModel)):
     """
     Defines a `PynamoDB` Model
@@ -588,5 +589,3 @@ class Model(with_metaclass(MetaModel)):
                         time.sleep(2)
                 else:
                     raise ValueError("No TableStatus returned for table")
-
-
