@@ -541,8 +541,7 @@ class ModelTestCase(TestCase):
         """
         Models.GlobalSecondaryIndex
         """
-        self.assertIsNone(Index.query())
-        self.assertEqual(IndexedModel.email_index.hash_key_attribute(), "email")
+        self.assertIsNotNone(IndexedModel.email_index.hash_key_attribute())
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), MODEL_TABLE_DATA
