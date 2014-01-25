@@ -19,10 +19,10 @@ from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, GLOBAL_SECONDARY_INDEX,
-    INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION,
-    GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES,
+    INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ATTR_UPDATES, ALL_NEW,
+    GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, EQ, LE, LT, GT, GE, BEGINS_WITH, BETWEEN,
-    COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_STATUS, ACTIVE)
+    COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_STATUS, ACTIVE, RETURN_VALUES)
 
 
 class ModelContextManager(object):
@@ -224,6 +224,30 @@ class Model(with_metaclass(MetaModel)):
         """
         args, kwargs = self._get_save_args(attributes=False)
         return self.get_connection().delete_item(*args, **kwargs)
+
+    def update_item(self, attribute, value, action=None):
+        args, kwargs = self._get_save_args()
+        for attr_name, attr_cls in self.get_attributes().items():
+            if attr_name == attribute:
+                value = attr_cls.serialize(value)
+                break
+        del(kwargs[pythonic(ATTRIBUTES)])
+        kwargs[pythonic(ATTR_UPDATES)] = {
+            attribute: {
+                ACTION: action.upper(),
+                VALUE: value
+            }
+        }
+        kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
+        data = self.get_connection().update_item(
+            *args,
+            **kwargs
+        )
+        for name, value in data.get(ATTRIBUTES).items():
+            attr = self.get_attributes().get(name, None)
+            if attr:
+                setattr(self, name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
+        return data
 
     def save(self):
         """
