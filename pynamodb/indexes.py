@@ -126,6 +126,7 @@ class LocalSecondaryIndex(Index):
             index_name=cls.index_name,
             scan_index_forward=scan_index_forward,
             consistent_read=consistent_read,
+            **filters
         )
 
 

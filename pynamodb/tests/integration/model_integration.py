@@ -91,5 +91,5 @@ query_obj.save()
 for item in TestModel.epoch_index.query(tstamp):
     print("Item queried from index: {0}".format(item))
 
-for item in TestModel.view_index.query('foo'):
-    print("Item queried from index: {0}".format(item))
+for item in TestModel.view_index.query('foo', view__gt=0):
+    print("Item queried from index: {0}".format(item.view))

@@ -98,7 +98,7 @@ class MetaModel(type):
             for attr_name, attr_obj in attrs.items():
                 if issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.__class__.model = cls
-                    attr_obj.index_name = attr_name
+                    attr_obj.__class__.index_name = attr_name
                 elif issubclass(attr_obj.__class__, (Attribute, )):
                     attr_obj.attr_name = attr_name
 
