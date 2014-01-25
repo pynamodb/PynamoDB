@@ -208,9 +208,9 @@ class ModelTestCase(TestCase):
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
 
-    def test_update(self):
+    def test_refresh(self):
         """
-        Model.update
+        Model.refresh
         """
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), MODEL_TABLE_DATA
@@ -218,7 +218,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(GET_MODEL_ITEM_DATA), GET_MODEL_ITEM_DATA
-            item.update()
+            item.refresh()
             self.assertEqual(
                 item.user_name,
                 GET_MODEL_ITEM_DATA.get(ITEM).get('user_name').get(STRING_SHORT))

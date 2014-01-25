@@ -262,7 +262,7 @@ class Model(with_metaclass(MetaModel)):
             kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return args, kwargs
 
-    def update(self, consistent_read=False):
+    def refresh(self, consistent_read=False):
         """
         Retrieves this object's data from dynamodb and syncs this local object
         """
