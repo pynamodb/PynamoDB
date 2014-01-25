@@ -17,7 +17,7 @@ PynamoDB
     :target: https://pypi.python.org/pypi/pynamodb/
 
 
-A Pythonic interface for `DynamoDB <http://aws.amazon.com/dynamodb/>`.
+A Pythonic interface for `DynamoDB <http://aws.amazon.com/dynamodb/>`_.
 
 A rich API that is compatible with Python 2 and Python 3.
 
