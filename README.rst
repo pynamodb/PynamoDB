@@ -2,10 +2,12 @@
 PynamoDB
 ========
 
+.. image:: https://badge.fury.io/py/pynamodb.png
+    :target: http://badge.fury.io/py/pynamodb
 .. image:: https://travis-ci.org/jlafon/PynamoDB.png?branch=devel
-        :target: https://travis-ci.org/jlafon/PynamoDB
+    :target: https://travis-ci.org/jlafon/PynamoDB
 .. image:: https://coveralls.io/repos/jlafon/PynamoDB/badge.png?branch=devel
-        :target: https://coveralls.io/r/jlafon/PynamoDB
+    :target: https://coveralls.io/r/jlafon/PynamoDB
 
 A Pythonic interface for DynamoDB
 
