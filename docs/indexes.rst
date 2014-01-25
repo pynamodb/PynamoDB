@@ -5,12 +5,16 @@ DynamoDB supports two types of indexes: global secondary indexes, and local seco
 Indexes can make accessing your data more efficient, and should be used when appropriate. See
 `the documentation for more information <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html>`__.
 
-Defining an index
-^^^^^^^^^^^^^^^^^
+Global Secondary Indexes
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Indexes are defined as classes, just like models. Here is a simple index class:
 
 ::
+
+    from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
+    from pynamodb.attributes import NumberAttribute
+
 
     class ViewIndex(GlobalSecondaryIndex):
         """
@@ -39,6 +43,11 @@ projection classes.
 We still need to attach the index to the model in order for us to use it. You define it as
 a class attribute on the model, as in this example::
 
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+    from pynamodb.indexes import ViewIndex
+
+
     class TestModel(Model):
         """
         A test model that uses a global secondary index
@@ -49,11 +58,34 @@ a class attribute on the model, as in this example::
         view_index = ViewIndex()
         view = NumberAttribute(default=0)
 
+
+Local Secondary Indexes
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Local secondary indexes are defined just like global ones, but they inherit from ``LocalSecondaryIndex`` instead::
+
+    from pynamodb.indexes import LocalSecondaryIndex, AllProjection
+    from pynamodb.attributes import NumberAttribute
+
+
+    class ViewIndex(LocalSecondaryIndex):
+        """
+        This class represents a local secondary index
+        """
+        # All attributes are projected
+        projection = AllProjection()
+        forum = UnicodeAttribute(hash_key=True)
+        view = NumberAttribute(range_key=True)
+
+
+You must specify the same hash key on the local secondary index and the model. The range key can be any attribute.
+
+
 Querying an index
 ^^^^^^^^^^^^^^^^^^
 
 Index queries use the same syntax as model queries. Continuing our example, we can query
-the ``view_index`` simply by calling ``query``::
+the ``view_index``  global secondary index simply by calling ``query``::
 
     for item in TestModel.view_index.query(1):
         print("Item queried from index: {0}".format(item))
@@ -61,3 +93,9 @@ the ``view_index`` simply by calling ``query``::
 This example queries items from the table using the global secondary index, called ``view_index``, using
 a hash key value of 1 for the index. This would return all ``TestModel`` items that have a ``view`` attribute
 of value 1.
+
+Local secondary index queries have a similar syntax. They require a hash key, and can include conditions on the
+range key of the index. Here is an example that queries the index for values of ``view`` greater than zero::
+
+    for item in TestModel.view_index.query('foo', view__gt=0):
+        print("Item queried from index: {0}".format(item.view))
