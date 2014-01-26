@@ -17,8 +17,10 @@ from pynamodb.constants import (
     INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
     PUT_ITEM, HTTP_OK, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
-    WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME,
-    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST)
+    WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
+    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST,
+    CONSUMED_CAPACITY, CAPACITY_UNITS
+    )
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -28,6 +30,7 @@ class MetaTable(object):
     """
     A pythonic wrapper around table metadata
     """
+
     def __init__(self, data):
         self.data = data
         self._range_keyname = None
@@ -159,6 +162,7 @@ class Connection(object):
     """
     A higher level abstraction over botocore
     """
+
     def __init__(self, region=None, host=None):
         self._endpoint = None
         self._session = None
@@ -198,6 +202,27 @@ class Connection(object):
             response.content)
         )
 
+    def dispatch(self, operation_name, operation_kwargs):
+        """
+        Dispatches `operation_name` with arguments ``operation_kwargs`
+        """
+        if operation_name not in [DESCRIBE_TABLE, LIST_TABLES, UPDATE_TABLE, DELETE_TABLE, CREATE_TABLE]:
+            if pythonic(RETURN_CONSUMED_CAPACITY) not in operation_kwargs:
+                operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
+        self._log_debug(operation_name, operation_kwargs)
+        response, data = self.service.get_operation(operation_name).call(self.endpoint, **operation_kwargs)
+        if not response.ok:
+            self._log_error(operation_name, response)
+        if CONSUMED_CAPACITY in data:
+            log.debug("{0} {1} consumed {2} units".format(
+                    data.get(TABLE_NAME, ''),
+                    operation_name,
+                    data.get(CAPACITY_UNITS)
+                )
+            )
+        self._log_debug_response(operation_kwargs, response)
+        return response, data
+
     @property
     def session(self):
         """
@@ -236,15 +261,12 @@ class Connection(object):
             operation_kwargs = {
                 pythonic(TABLE_NAME): table_name
             }
-            self._log_debug(DESCRIBE_TABLE, operation_kwargs)
-            response, data = self.service.get_operation(DESCRIBE_TABLE).call(self.endpoint, **operation_kwargs)
+            response, data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
             if not response.ok:
-                self._log_debug(DESCRIBE_TABLE, response)
                 if response.status_code == HTTP_BAD_REQUEST:
                     return None
                 else:
                     raise TableError("Unable to describe table: {0}".format(response.content))
-            self._log_debug_response(DESCRIBE_TABLE, response)
             self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
         return self._tables[table_name]
 
@@ -256,11 +278,10 @@ class Connection(object):
                      write_capacity_units=None,
                      global_secondary_indexes=None,
                      local_secondary_indexes=None,
-                     ):
+    ):
         """
         Performs the CreateTable operation
         """
-        operation = self.service.get_operation(CREATE_TABLE)
         operation_kwargs = {
             pythonic(TABLE_NAME): table_name,
             pythonic(PROVISIONED_THROUGHPUT): {
@@ -308,11 +329,8 @@ class Connection(object):
                     PROJECTION: index.get(pythonic(PROJECTION)),
                 })
             operation_kwargs[pythonic(LOCAL_SECONDARY_INDEXES)] = local_secondary_indexes_list
-        self._log_debug(CREATE_TABLE, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(CREATE_TABLE, response)
+        response, data = self.dispatch(CREATE_TABLE, operation_kwargs)
         if response.status_code != HTTP_OK:
-            self._log_error(CREATE_TABLE, response)
             raise TableError("Failed to create table: {0}".format(response.content))
         return data
 
@@ -320,15 +338,11 @@ class Connection(object):
         """
         Performs the DeleteTable operation
         """
-        operation = self.service.get_operation(DELETE_TABLE)
         operation_kwargs = {
             pythonic(TABLE_NAME): table_name
         }
-        self._log_debug(DELETE_TABLE, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(DELETE_TABLE, response)
+        response, data = self.dispatch(DELETE_TABLE, operation_kwargs)
         if response.status_code != HTTP_OK:
-            self._log_error(DELETE_TABLE, response)
             raise TableError("Failed to delete table: {0}".format(response.content))
 
     def update_table(self,
@@ -339,7 +353,6 @@ class Connection(object):
         """
         Performs the UpdateTable operation
         """
-        operation = self.service.get_operation(UPDATE_TABLE)
         operation_kwargs = {
             pythonic(TABLE_NAME): table_name
         }
@@ -363,18 +376,14 @@ class Connection(object):
                     }
                 })
             operation_kwargs[pythonic(GLOBAL_SECONDARY_INDEX_UPDATES)] = global_secondary_indexes_list
-        self._log_debug(UPDATE_TABLE, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(UPDATE_TABLE, response)
+        response, data = self.dispatch(UPDATE_TABLE, operation_kwargs)
         if not response.ok:
-            self._log_error(UPDATE_TABLE, response)
             raise TableError("Failed to update table: {0}".format(response.content))
 
     def list_tables(self, exclusive_start_table_name=None, limit=None):
         """
         Performs the ListTables operation
         """
-        operation = self.service.get_operation(LIST_TABLES)
         operation_kwargs = {}
         if exclusive_start_table_name:
             operation_kwargs.update({
@@ -384,11 +393,8 @@ class Connection(object):
             operation_kwargs.update({
                 pythonic(LIMIT): limit
             })
-        self._log_debug(LIST_TABLES, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(LIST_TABLES, response)
+        response, data = self.dispatch(LIST_TABLES, operation_kwargs)
         if not response.ok:
-            self._log_error(LIST_TABLES, response)
             raise TableError("Unable to list tables: {0}".format(response.content))
         return data
 
@@ -476,7 +482,6 @@ class Connection(object):
         """
         Performs the DeleteItem operation and returns the result
         """
-        operation = self.service.get_operation(DELETE_ITEM)
         operation_kwargs = {pythonic(TABLE_NAME): table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
 
@@ -488,11 +493,8 @@ class Connection(object):
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics:
             operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
-        self._log_debug(DELETE_ITEM, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(DELETE_ITEM, response)
+        response, data = self.dispatch(DELETE_ITEM, operation_kwargs)
         if not response.ok:
-            self._log_error(DELETE_ITEM, response)
             raise DeleteError("Failed to delete item: {0}".format(response.content))
         return data
 
@@ -505,17 +507,16 @@ class Connection(object):
                     return_consumed_capacity=None,
                     return_item_collection_metrics=None,
                     return_values=None
-                    ):
+    ):
         """
         Performs the UpdateItem operation
         """
-        operation = self.service.get_operation(UPDATE_ITEM)
         operation_kwargs = {pythonic(TABLE_NAME): table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
         if expected:
             operation_kwargs.update(self.get_expected_map(table_name, expected))
         if return_consumed_capacity:
-                operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics:
             operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
         if return_values:
@@ -536,11 +537,8 @@ class Connection(object):
                     attr_type: update.get(VALUE)
                 }
             }
-        self._log_debug(UPDATE_ITEM, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(UPDATE_ITEM, response)
+        response, data = self.dispatch(UPDATE_ITEM, operation_kwargs)
         if not response.ok:
-            self._log_error(UPDATE_ITEM, response)
             raise UpdateError("Failed to update item: {0}".format(response.content))
         return data
 
@@ -556,7 +554,6 @@ class Connection(object):
         """
         Performs the PutItem operation and returns the result
         """
-        operation = self.service.get_operation(PUT_ITEM)
         operation_kwargs = {pythonic(TABLE_NAME): table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=ITEM))
         if attributes:
@@ -570,11 +567,8 @@ class Connection(object):
             operation_kwargs.update(self.get_return_values_map(return_values))
         if expected:
             operation_kwargs.update(self.get_expected_map(table_name, expected))
-        self._log_debug(PUT_ITEM, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(PUT_ITEM, response)
+        response, data = self.dispatch(PUT_ITEM, operation_kwargs)
         if not response.ok:
-            self._log_error(PUT_ITEM, response)
             raise PutError("Failed to put item: {0}".format(response.content))
         return data
 
@@ -589,7 +583,6 @@ class Connection(object):
         """
         if put_items is None and delete_items is None:
             raise ValueError("Either put_items or delete_items must be specified")
-        operation = self.service.get_operation(BATCH_WRITE_ITEM)
         operation_kwargs = {
             pythonic(REQUEST_ITEMS): {
                 table_name: []
@@ -612,11 +605,8 @@ class Connection(object):
                     DELETE_REQUEST: self.get_item_attribute_map(table_name, item, item_key=KEY, pythonic_key=False)
                 })
         operation_kwargs[pythonic(REQUEST_ITEMS)][table_name] = delete_items_list + put_items_list
-        self._log_debug(BATCH_WRITE_ITEM, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(BATCH_WRITE_ITEM, response)
+        response, data = self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
         if not response.ok:
-            self._log_error(BATCH_WRITE_ITEM, response)
             raise PutError("Failed to batch write items: {0}".format(response.content))
         return data
 
@@ -629,7 +619,6 @@ class Connection(object):
         """
         Performs the batch get item operation
         """
-        operation = self.service.get_operation(BATCH_GET_ITEM)
         operation_kwargs = {
             pythonic(REQUEST_ITEMS): {
                 table_name: {}
@@ -651,11 +640,8 @@ class Connection(object):
                 self.get_item_attribute_map(table_name, key)[pythonic(ITEM)]
             )
         operation_kwargs[pythonic(REQUEST_ITEMS)][table_name].update(keys_map)
-        self._log_debug(BATCH_GET_ITEM, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(BATCH_GET_ITEM, response)
+        response, data = self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         if not response.ok:
-            self._log_error(BATCH_GET_ITEM, response)
             raise GetError("Failed to batch get items: {0}".format(response.content))
         return data
 
@@ -668,18 +654,14 @@ class Connection(object):
         """
         Performs the GetItem operation and returns the result
         """
-        operation = self.service.get_operation(GET_ITEM)
         operation_kwargs = {}
         if attributes_to_get is not None:
             operation_kwargs[pythonic(ATTRS_TO_GET)] = attributes_to_get
         operation_kwargs[pythonic(CONSISTENT_READ)] = consistent_read
         operation_kwargs[pythonic(TABLE_NAME)] = table_name
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
-        self._log_debug(GET_ITEM, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(GET_ITEM, response)
+        response, data = self.dispatch(GET_ITEM, operation_kwargs)
         if not response.ok:
-            self._log_error(GET_ITEM, response)
             raise GetError("Failed to get item: {0}".format(response.content))
         return data
 
@@ -695,7 +677,6 @@ class Connection(object):
         """
         Performs the scan operation
         """
-        operation = self.service.get_operation(SCAN)
         operation_kwargs = {pythonic(TABLE_NAME): table_name}
         if attributes_to_get is not None:
             operation_kwargs[pythonic(ATTRS_TO_GET)] = attributes_to_get
@@ -720,11 +701,8 @@ class Connection(object):
                     ATTR_VALUE_LIST: [{attr_type: value for value in condition.get(ATTR_VALUE_LIST)}],
                     COMPARISON_OPERATOR: operator
                 }
-        self._log_debug(SCAN, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(SCAN, response)
+        response, data = self.dispatch(SCAN, operation_kwargs)
         if not response.ok:
-            self._log_error(SCAN, response)
             raise ScanError("Failed to scan table: {0}".format(response.content))
         return data
 
@@ -740,11 +718,10 @@ class Connection(object):
               return_consumed_capacity=None,
               scan_index_forward=None,
               select=None
-              ):
+    ):
         """
         Performs the Query operation and returns the result
         """
-        operation = self.service.get_operation(QUERY)
         operation_kwargs = {pythonic(TABLE_NAME): table_name}
         if attributes_to_get:
             operation_kwargs[pythonic(ATTRS_TO_GET)] = attributes_to_get
@@ -773,8 +750,8 @@ class Connection(object):
         operation_kwargs[pythonic(KEY_CONDITIONS)] = {
             hash_keyname: {
                 ATTR_VALUE_LIST: [{
-                    self.get_attribute_type(table_name, hash_keyname): hash_key,
-                }],
+                                      self.get_attribute_type(table_name, hash_keyname): hash_key,
+                                  }],
                 COMPARISON_OPERATOR: EQ
             },
         }
@@ -790,10 +767,7 @@ class Connection(object):
                     COMPARISON_OPERATOR: operator
                 }
 
-        self._log_debug(QUERY, operation_kwargs)
-        response, data = operation.call(self.endpoint, **operation_kwargs)
-        self._log_debug_response(QUERY, response)
+        response, data = self.dispatch(QUERY, operation_kwargs)
         if not response.ok:
-            self._log_error(QUERY, response)
             raise QueryError("Failed to query items: {0}".format(response.content))
         return data
