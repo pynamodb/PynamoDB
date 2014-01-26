@@ -3,10 +3,11 @@ Test model API
 """
 import copy
 import six
+from pynamodb.connection.util import pythonic
 from pynamodb.connection.exceptions import TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
-    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE
+    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -536,6 +537,27 @@ class ModelTestCase(TestCase):
                 items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(30)]
                 for item in items:
                     batch.save(item)
+
+        scope_args = {'count': 0}
+        def fake_unprocessed_keys(*args, **kwargs):
+            if pythonic(REQUEST_ITEMS) in kwargs:
+                items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name)[1:]
+                unprocessed = {
+                    UNPROCESSED_KEYS: {
+                        UserModel.table_name: items
+                    }
+                }
+                return HttpOK(unprocessed), unprocessed
+            return HttpOK({}), {}
+
+        batch_write_mock = MagicMock()
+        batch_write_mock.side_effect = fake_unprocessed_keys
+
+        with patch(PATCH_METHOD, new=batch_write_mock) as req:
+            items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(500)]
+            for item in items:
+                batch.save(item)
+
 
     def test_global_index(self):
         """
