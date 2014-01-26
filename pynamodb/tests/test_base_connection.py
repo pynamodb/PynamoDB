@@ -339,6 +339,7 @@ class ConnectionTestCase(TestCase):
                 "Amazon DynamoDB",
                 "How do I update multiple items?")
             params = {
+                'return_consumed_capacity': 'TOTAL',
                 'key': {
                     'ForumName': {
                         'S': 'Amazon DynamoDB'
@@ -359,6 +360,7 @@ class ConnectionTestCase(TestCase):
                 return_values='ALL_NEW'
             )
             params = {
+                'return_consumed_capacity': 'TOTAL',
                 'key': {
                     'ForumName': {
                         'S': 'Amazon DynamoDB'
@@ -436,7 +438,8 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'table_name': self.test_table_name,
-                'return_item_collection_metrics': 'SIZE'
+                'return_item_collection_metrics': 'SIZE',
+                'return_consumed_capacity': 'TOTAL'
             }
             self.assertEqual(req.call_args[1], params)
 
@@ -472,6 +475,7 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'table_name': self.test_table_name,
+                'return_consumed_capacity': 'TOTAL',
                 'return_item_collection_metrics': 'SIZE'
             }
             self.assertEqual(req.call_args[1], params)
@@ -510,6 +514,7 @@ class ConnectionTestCase(TestCase):
                 attributes_to_get=['ForumName']
             )
             params = {
+                'return_consumed_capacity': 'TOTAL',
                 'attributes_to_get': ['ForumName'],
                 'key': {
                     'ForumName': {
@@ -636,6 +641,7 @@ class ConnectionTestCase(TestCase):
                         'Action': 'PUT'
                     }
                 },
+                'return_consumed_capacity': 'TOTAL',
                 'table_name': 'ci-table'
             }
             self.assertEqual(req.call_args[1], params)
@@ -696,6 +702,7 @@ class ConnectionTestCase(TestCase):
                 attributes={'ForumName': 'foo-value'}
             )
             params = {'table_name': self.test_table_name,
+                      'return_consumed_capacity': 'TOTAL',
                       'item': {'ForumName': {'S': 'foo-value'}, 'Subject': {'S': 'foo-range-key'}}}
             self.assertEqual(req.call_args[1], params)
 
@@ -707,8 +714,18 @@ class ConnectionTestCase(TestCase):
                 range_key='foo-range-key',
                 attributes={'ForumName': 'foo-value'}
             )
-            params = {'item': {'ForumName': {'S': 'foo-value'}, 'Subject': {'S': 'foo-range-key'}},
-                      'table_name': self.test_table_name}
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'item': {
+                    'ForumName': {
+                        'S': 'foo-value'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'table_name': self.test_table_name
+            }
             self.assertEqual(req.call_args[1], params)
 
         with patch(PATCH_METHOD) as req:
@@ -720,8 +737,26 @@ class ConnectionTestCase(TestCase):
                 attributes={'foo': {'S': 'bar'}},
                 expected={'Forum': {'Exists': False}}
             )
-            params = {'table_name': self.test_table_name, 'expected': {'Forum': {'Exists': False}},
-                      'item': {'ForumName': {'S': 'item1-hash'}, 'foo': {'S': 'bar'}, 'Subject': {'S': 'item1-range'}}}
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': self.test_table_name,
+                'expected': {
+                    'Forum': {
+                        'Exists': False
+                    }
+                },
+                'item': {
+                    'ForumName': {
+                        'S': 'item1-hash'
+                    },
+                    'foo': {
+                        'S': 'bar'
+                    },
+                    'Subject': {
+                        'S': 'item1-range'
+                    }
+                }
+            }
             self.assertEqual(req.call_args[1], params)
 
         with patch(PATCH_METHOD) as req:
@@ -733,8 +768,28 @@ class ConnectionTestCase(TestCase):
                 attributes={'foo': {'S': 'bar'}},
                 expected={'ForumName': {'Value': 'item1-hash'}}
             )
-            params = {'table_name': self.test_table_name, 'expected': {'ForumName': {'Value': {'S': 'item1-hash'}}},
-                      'item': {'ForumName': {'S': 'item1-hash'}, 'foo': {'S': 'bar'}, 'Subject': {'S': 'item1-range'}}}
+            params = {
+                'table_name': self.test_table_name,
+                'expected': {
+                    'ForumName': {
+                        'Value': {
+                            'S': 'item1-hash'
+                        }
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL',
+                'item': {
+                    'ForumName': {
+                        'S': 'item1-hash'
+                    },
+                    'foo': {
+                        'S': 'bar'
+                    },
+                    'Subject': {
+                        'S': 'item1-range'
+                    }
+                }
+            }
             self.assertEqual(req.call_args[1], params)
 
     def test_batch_write_item(self):
@@ -791,17 +846,23 @@ class ConnectionTestCase(TestCase):
                 table_name,
                 put_items=items
             )
-            params = {'request_items': {
-                'Thread': [{'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-0'}}}},
-                           {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-1'}}}},
-                           {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-2'}}}},
-                           {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-3'}}}},
-                           {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-4'}}}},
-                           {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-5'}}}},
-                           {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-6'}}}},
-                           {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-7'}}}},
-                           {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-8'}}}},
-                           {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-9'}}}}]}}
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'request_items': {
+                    'Thread': [
+                        {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-0'}}}},
+                        {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-1'}}}},
+                        {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-2'}}}},
+                        {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-3'}}}},
+                        {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-4'}}}},
+                        {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-5'}}}},
+                        {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-6'}}}},
+                        {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-7'}}}},
+                        {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-8'}}}},
+                        {'PutRequest': {'Item': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-9'}}}}
+                    ]
+                }
+            }
             self.assertEqual(req.call_args[1], params)
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpBadRequest(), {}
@@ -818,17 +879,23 @@ class ConnectionTestCase(TestCase):
                 table_name,
                 delete_items=items
             )
-            params = {'request_items': {
-                'Thread': [{'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-0'}}}},
-                           {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-1'}}}},
-                           {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-2'}}}},
-                           {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-3'}}}},
-                           {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-4'}}}},
-                           {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-5'}}}},
-                           {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-6'}}}},
-                           {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-7'}}}},
-                           {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-8'}}}},
-                           {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-9'}}}}]}}
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'request_items': {
+                    'Thread': [
+                        {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-0'}}}},
+                        {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-1'}}}},
+                        {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-2'}}}},
+                        {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-3'}}}},
+                        {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-4'}}}},
+                        {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-5'}}}},
+                        {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-6'}}}},
+                        {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-7'}}}},
+                        {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-8'}}}},
+                        {'DeleteRequest': {'Key': {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-9'}}}}
+                    ]
+                }
+            }
             self.assertEqual(req.call_args[1], params)
 
         with patch(PATCH_METHOD) as req:
@@ -924,17 +991,25 @@ class ConnectionTestCase(TestCase):
                 table_name,
                 items
             )
-            params = {'request_items': {'Thread': {
-                'Keys': [{'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-0'}},
-                         {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-1'}},
-                         {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-2'}},
-                         {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-3'}},
-                         {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-4'}},
-                         {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-5'}},
-                         {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-6'}},
-                         {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-7'}},
-                         {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-8'}},
-                         {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-9'}}]}}}
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'request_items': {
+                    'Thread': {
+                        'Keys': [
+                            {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-0'}},
+                            {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-1'}},
+                            {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-2'}},
+                            {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-3'}},
+                            {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-4'}},
+                            {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-5'}},
+                            {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-6'}},
+                            {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-7'}},
+                            {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-8'}},
+                            {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-9'}}
+                        ]
+                    }
+                }
+            }
             self.assertEqual(req.call_args[1], params)
 
     def test_query(self):
@@ -1012,6 +1087,7 @@ class ConnectionTestCase(TestCase):
                 key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
             )
             params = {
+                'return_consumed_capacity': 'TOTAL',
                 'key_conditions': {
                     'ForumName': {
                         'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': [{
@@ -1036,6 +1112,7 @@ class ConnectionTestCase(TestCase):
             )
             params = {
                 'limit': 1,
+                'return_consumed_capacity': 'TOTAL',
                 'consistent_read': True,
                 'exclusive_start_key': {
                     'ForumName': {
@@ -1064,6 +1141,7 @@ class ConnectionTestCase(TestCase):
                 exclusive_start_key="FooForum"
             )
             params = {
+                'return_consumed_capacity': 'TOTAL',
                 'exclusive_start_key': {
                     'ForumName': {
                         'S': 'FooForum'
@@ -1121,7 +1199,10 @@ class ConnectionTestCase(TestCase):
             conn.scan(
                 table_name,
             )
-            params = {'table_name': table_name}
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': table_name
+            }
             self.assertEqual(req.call_args[1], params)
 
         kwargs = {
@@ -1169,6 +1250,7 @@ class ConnectionTestCase(TestCase):
                 **kwargs
             )
             params = {
+                'return_consumed_capacity': 'TOTAL',
                 'table_name': table_name,
                 'scan_filter': {
                     'ForumName': {

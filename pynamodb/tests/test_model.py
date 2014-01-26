@@ -7,7 +7,7 @@ from pynamodb.connection.util import pythonic
 from pynamodb.connection.exceptions import TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
-    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS
+    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, RESPONSES, KEYS
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -245,6 +245,7 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
+                'return_consumed_capacity': 'TOTAL',
                 'table_name': 'UserModel'
             }
             args = req.call_args[1]
@@ -277,6 +278,7 @@ class ModelTestCase(TestCase):
                         'S': u'foo'
                     },
                 },
+                'return_consumed_capacity': 'TOTAL',
                 'table_name': 'UserModel'
             }
 
@@ -420,6 +422,7 @@ class ModelTestCase(TestCase):
             if kwargs == {'table_name': UserModel.table_name}:
                 return HttpOK(MODEL_TABLE_DATA), MODEL_TABLE_DATA
             elif kwargs == {
+                'return_consumed_capacity': 'TOTAL',
                 'table_name': 'UserModel',
                 'key': {'user_name': {'S': 'foo'},
                         'user_id': {'S': 'bar'}}, 'consistent_read': False}:
@@ -445,6 +448,7 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
+                'return_consumed_capacity': 'TOTAL',
                 'table_name': 'UserModel'
             }
             self.assertEqual(req.call_args[1], params)
@@ -505,6 +509,31 @@ class ModelTestCase(TestCase):
                 args['request_items']['UserModel']['Keys'],
             )
 
+        def fake_batch_get(*args, **kwargs):
+            if pythonic(REQUEST_ITEMS) in kwargs:
+                item = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[0]
+                items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[1:]
+                response = {
+                    UNPROCESSED_KEYS: {
+                        UserModel.table_name: {
+                            KEYS: items
+                        }
+                    },
+                    RESPONSES: {
+                        UserModel.table_name: [item]
+                    }
+                }
+                return HttpOK(response), response
+            return HttpOK({}), {}
+
+        batch_get_mock = MagicMock()
+        batch_get_mock.side_effect = fake_batch_get
+
+        with patch(PATCH_METHOD, new=batch_get_mock) as req:
+            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(1000)]
+            for item in UserModel.batch_get(item_keys):
+                self.assertIsNotNone(item)
+
     def test_batch_write(self):
         """
         Model.batch_write
@@ -538,7 +567,6 @@ class ModelTestCase(TestCase):
                 for item in items:
                     batch.save(item)
 
-        scope_args = {'count': 0}
         def fake_unprocessed_keys(*args, **kwargs):
             if pythonic(REQUEST_ITEMS) in kwargs:
                 items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name)[1:]
@@ -557,7 +585,6 @@ class ModelTestCase(TestCase):
             items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(500)]
             for item in items:
                 batch.save(item)
-
 
     def test_global_index(self):
         """
