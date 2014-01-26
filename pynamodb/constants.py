@@ -150,6 +150,8 @@ EXPECTED = 'Expected'
 
 # These are the valid ReturnConsumedCapacity values used in multiple operations
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_BatchGetItem.html#DDB-BatchGetItem-request-ReturnConsumedCapacity
+CONSUMED_CAPACITY = 'ConsumedCapacity'
+CAPACITY_UNITS = 'CapacityUnits'
 INDEXES = 'INDEXES'
 TOTAL = 'TOTAL'
 NONE = 'NONE'
