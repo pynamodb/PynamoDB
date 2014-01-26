@@ -213,7 +213,7 @@ class Connection(object):
         response, data = self.service.get_operation(operation_name).call(self.endpoint, **operation_kwargs)
         if not response.ok:
             self._log_error(operation_name, response)
-        if CONSUMED_CAPACITY in data:
+        if data and CONSUMED_CAPACITY in data:
             log.debug("{0} {1} consumed {2} units".format(
                     data.get(TABLE_NAME, ''),
                     operation_name,
