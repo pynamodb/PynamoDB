@@ -23,7 +23,7 @@ from pynamodb.constants import (
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, EQ, LE, LT, GT, GE, BEGINS_WITH, BETWEEN,
     COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_STATUS, ACTIVE, RETURN_VALUES,
-    BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS)
+    BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS, PUT_REQUEST, DELETE_REQUEST)
 
 
 class ModelContextManager(object):
@@ -89,14 +89,20 @@ class BatchWrite(ModelContextManager):
         )
         if not data:
             return
-        unprocessed_keys = data.get(self.model.table_name, {}).get(UNPROCESSED_KEYS)
+        unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.table_name)
         while unprocessed_keys:
+            put_items = []
+            delete_items = []
+            for key in unprocessed_keys:
+                if PUT_REQUEST in key:
+                    put_items.append(key.get(PUT_REQUEST))
+                elif DELETE_REQUEST in key:
+                    delete_items.append(key.get(DELETE_REQUEST))
             data = self.model.get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items
             )
-            unprocessed_keys = data.get(self.model.table_name, {}).get(UNPROCESSED_KEYS)
-        return unprocessed_keys
+            unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.table_name)
 
 
 class MetaModel(type):
