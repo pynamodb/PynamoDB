@@ -20,9 +20,10 @@ from pynamodb.constants import (
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, GLOBAL_SECONDARY_INDEX,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ATTR_UPDATES, ALL_NEW,
-    GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE,
+    GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, EQ, LE, LT, GT, GE, BEGINS_WITH, BETWEEN,
-    COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_STATUS, ACTIVE, RETURN_VALUES)
+    COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_STATUS, ACTIVE, RETURN_VALUES,
+    BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS)
 
 
 class ModelContextManager(object):
@@ -80,10 +81,22 @@ class BatchWrite(ModelContextManager):
             elif item['action'] == DELETE:
                 delete_items.append(item['item'].get_keys())
         self.pending_operations = []
-        return self.model.get_connection().batch_write_item(
+        if not len(put_items) and not len(delete_items):
+            return
+        data = self.model.get_connection().batch_write_item(
             put_items=put_items,
             delete_items=delete_items
         )
+        if not data:
+            return
+        unprocessed_keys = data.get(self.model.table_name, {}).get(UNPROCESSED_KEYS)
+        while unprocessed_keys:
+            data = self.model.get_connection().batch_write_item(
+                put_items=put_items,
+                delete_items=delete_items
+            )
+            unprocessed_keys = data.get(self.model.table_name, {}).get(UNPROCESSED_KEYS)
+        return unprocessed_keys
 
 
 class MetaModel(type):
@@ -144,7 +157,17 @@ class Model(with_metaclass(MetaModel)):
         hash_keyname = cls.meta().hash_keyname
         range_keyname = cls.meta().range_keyname
         keys_to_get = []
-        for item in items:
+        while items:
+            if len(keys_to_get) == BATCH_GET_PAGE_LIMIT:
+                while keys_to_get:
+                    page, unprocessed_keys = cls._batch_get_page(keys_to_get)
+                    for batch_item in page:
+                        yield cls.from_raw_data(batch_item)
+                    if unprocessed_keys:
+                        keys_to_get = unprocessed_keys
+                    else:
+                        keys_to_get = []
+            item = items.pop()
             if range_keyname:
                 hash_key, range_key = cls.serialize_keys(item[0], item[1])
                 keys_to_get.append({
@@ -157,11 +180,27 @@ class Model(with_metaclass(MetaModel)):
                     hash_keyname: hash_key
                 })
 
+        while keys_to_get:
+            page, unprocessed_keys = cls._batch_get_page(keys_to_get)
+            for batch_item in page:
+                yield cls.from_raw_data(batch_item)
+            if unprocessed_keys:
+                keys_to_get = unprocessed_keys
+            else:
+                keys_to_get = []
+
+    @classmethod
+    def _batch_get_page(cls, keys_to_get):
+        """
+        Returns a single page from BatchGetItem
+        Also returns any unprocessed items
+        """
         data = cls.get_connection().batch_get_item(
             keys_to_get
-        ).get(RESPONSES).get(cls.table_name)
-        for item in data:
-            yield cls.from_raw_data(item)
+        )
+        item_data = data.get(RESPONSES).get(cls.table_name)
+        unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.table_name, {}).get(KEYS, None)
+        return item_data, unprocessed_items
 
     @classmethod
     def batch_write(cls, auto_commit=True):
