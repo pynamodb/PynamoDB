@@ -3,7 +3,7 @@ Lowest level connection
 """
 import six
 from botocore.session import get_session
-
+import logging
 from .util import pythonic
 from .exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError
 from ..types import HASH, RANGE
@@ -19,6 +19,9 @@ from pynamodb.constants import (
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST)
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 class MetaTable(object):
@@ -170,6 +173,25 @@ class Connection(object):
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.endpoint.host))
 
+    def _log_debug(self, operation, kwargs):
+        """
+        Sends a debug message to the logger
+        """
+        log.debug("Calling {0} with arguments {1}".format(
+            operation,
+            kwargs
+        ))
+
+    def _log_error(self, operation, response):
+        """
+        Sends an error message to the logger
+        """
+        log.error("{0} failed with status: {1}, message: {2}".format(
+            operation,
+            response.status_code,
+            response.content)
+        )
+
     @property
     def session(self):
         """
@@ -208,8 +230,10 @@ class Connection(object):
             operation_kwargs = {
                 pythonic(TABLE_NAME): table_name
             }
+            self._log_debug(DESCRIBE_TABLE, operation_kwargs)
             response, data = self.service.get_operation(DESCRIBE_TABLE).call(self.endpoint, **operation_kwargs)
             if not response.ok:
+                self._log_debug(DESCRIBE_TABLE, response)
                 if response.status_code == HTTP_BAD_REQUEST:
                     return None
                 else:
@@ -277,8 +301,10 @@ class Connection(object):
                     PROJECTION: index.get(pythonic(PROJECTION)),
                 })
             operation_kwargs[pythonic(LOCAL_SECONDARY_INDEXES)] = local_secondary_indexes_list
+        self._log_debug(CREATE_TABLE, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if response.status_code != HTTP_OK:
+            self._log_error(CREATE_TABLE, response)
             raise TableError("Failed to create table: {0}".format(response.content))
         return data
 
@@ -291,7 +317,9 @@ class Connection(object):
             pythonic(TABLE_NAME): table_name
         }
         response, data = operation.call(self.endpoint, **operation_kwargs)
+        self._log_debug(DELETE_TABLE, operation_kwargs)
         if response.status_code != HTTP_OK:
+            self._log_error(DELETE_TABLE, response)
             raise TableError("Failed to delete table: {0}".format(response.content))
 
     def update_table(self,
@@ -326,8 +354,10 @@ class Connection(object):
                     }
                 })
             operation_kwargs[pythonic(GLOBAL_SECONDARY_INDEX_UPDATES)] = global_secondary_indexes_list
+        self._log_debug(UPDATE_TABLE, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
+            self._log_error(UPDATE_TABLE, response)
             raise TableError("Failed to update table: {0}".format(response.content))
 
     def list_tables(self, exclusive_start_table_name=None, limit=None):
@@ -344,8 +374,10 @@ class Connection(object):
             operation_kwargs.update({
                 pythonic(LIMIT): limit
             })
+        self._log_debug(LIST_TABLES, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
+            self._log_error(LIST_TABLES, response)
             raise TableError("Unable to list tables: {0}".format(response.content))
         return data
 
@@ -445,9 +477,10 @@ class Connection(object):
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics:
             operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
+        self._log_debug(DELETE_ITEM, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
-
         if not response.ok:
+            self._log_error(DELETE_ITEM, response)
             raise DeleteError("Failed to delete item: {0}".format(response.content))
         return data
 
@@ -491,9 +524,11 @@ class Connection(object):
                     attr_type: update.get(VALUE)
                 }
             }
+        self._log_debug(UPDATE_ITEM, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
 
         if not response.ok:
+            self._log_error(UPDATE_ITEM, response)
             raise UpdateError("Failed to update item: {0}".format(response.content))
         return data
 
@@ -523,9 +558,10 @@ class Connection(object):
             operation_kwargs.update(self.get_return_values_map(return_values))
         if expected:
             operation_kwargs.update(self.get_expected_map(table_name, expected))
-
+        self._log_debug(PUT_ITEM, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
+            self._log_error(PUT_ITEM, response)
             raise PutError("Failed to put item: {0}".format(response.content))
         return data
 
@@ -563,8 +599,10 @@ class Connection(object):
                     DELETE_REQUEST: self.get_item_attribute_map(table_name, item, item_key=KEY, pythonic_key=False)
                 })
         operation_kwargs[pythonic(REQUEST_ITEMS)][table_name] = delete_items_list + put_items_list
+        self._log_debug(BATCH_WRITE_ITEM, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
+            self._log_error(BATCH_WRITE_ITEM, response)
             raise PutError("Failed to batch write items: {0}".format(response.content))
         return data
 
@@ -599,8 +637,10 @@ class Connection(object):
                 self.get_item_attribute_map(table_name, key)[pythonic(ITEM)]
             )
         operation_kwargs[pythonic(REQUEST_ITEMS)][table_name].update(keys_map)
+        self._log_debug(BATCH_GET_ITEM, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
+            self._log_error(BATCH_GET_ITEM, response)
             raise GetError("Failed to batch get items: {0}".format(response.content))
         return data
 
@@ -620,8 +660,10 @@ class Connection(object):
         operation_kwargs[pythonic(CONSISTENT_READ)] = consistent_read
         operation_kwargs[pythonic(TABLE_NAME)] = table_name
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
+        self._log_debug(GET_ITEM, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
+            self._log_error(GET_ITEM, response)
             raise GetError("Failed to get item: {0}".format(response.content))
         return data
 
@@ -662,8 +704,10 @@ class Connection(object):
                     ATTR_VALUE_LIST: [{attr_type: value for value in condition.get(ATTR_VALUE_LIST)}],
                     COMPARISON_OPERATOR: operator
                 }
+        self._log_debug(SCAN, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
+            self._log_error(SCAN, response)
             raise ScanError("Failed to scan table: {0}".format(response.content))
         return data
 
@@ -729,7 +773,9 @@ class Connection(object):
                     COMPARISON_OPERATOR: operator
                 }
 
+        self._log_debug(QUERY, operation_kwargs)
         response, data = operation.call(self.endpoint, **operation_kwargs)
         if not response.ok:
+            self._log_error(QUERY, response)
             raise QueryError("Failed to query items: {0}".format(response.content))
         return data
