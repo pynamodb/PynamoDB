@@ -158,6 +158,32 @@ class UnicodeAttribute(Attribute):
             return six.u(value)
 
 
+class JSONAttribute(Attribute):
+    """
+    A JSON Attribute
+
+    Encodes JSON to unicode internally
+    """
+    def __init__(self, **kwargs):
+        kwargs.setdefault('attr_type', STRING)
+        super(JSONAttribute, self).__init__(**kwargs)
+
+    def serialize(self, value):
+        """
+        Serializes JSON to unicode
+        """
+        if value is None:
+            return None
+        encoded = json.dumps(value)
+        return six.u(encoded)
+
+    def deserialize(self, value):
+        """
+        Deserializes JSON
+        """
+        return json.loads(value)
+
+
 class BooleanAttribute(Attribute):
     """
     A class for boolean attributes

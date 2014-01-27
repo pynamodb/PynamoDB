@@ -11,7 +11,8 @@ from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
-    DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET, BINARY)
+    JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
+    BINARY)
 
 
 class UTCDateTimeAttributeTestCase(TestCase):
@@ -283,3 +284,38 @@ class BooleanAttributeTestCase(TestCase):
         attr = BooleanAttribute()
         self.assertEqual(attr.deserialize(1), True)
         self.assertEqual(attr.deserialize(0), False)
+
+
+class JSONAttributeTestCase(TestCase):
+    """
+    Tests json attributes
+    """
+    def test_json_attribute(self):
+        """
+        JSONAttribute.default
+        """
+        attr = JSONAttribute()
+        self.assertIsNotNone(attr)
+
+        self.assertEqual(attr.attr_type, STRING)
+        attr = JSONAttribute(default={})
+        self.assertEqual(attr.default, {})
+
+    def test_json_serialize(self):
+        """
+        JSONAttribute.serialize
+        """
+        attr = JSONAttribute()
+        item = {'foo': 'bar', 'bool': True, 'number': 3.141}
+        self.assertEqual(attr.serialize(item), six.u(json.dumps(item)))
+        self.assertEqual(attr.serialize({}), six.u('{}'))
+        self.assertEqual(attr.serialize(None), None)
+
+    def test_json_deserialize(self):
+        """
+        JSONAttribute.deserialize
+        """
+        attr = JSONAttribute()
+        item = {'foo': 'bar', 'bool': True, 'number': 3.141}
+        encoded = six.u(json.dumps(item))
+        self.assertEqual(attr.deserialize(encoded), item)
