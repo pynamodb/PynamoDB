@@ -388,18 +388,21 @@ class Model(with_metaclass(MetaModel)):
                     continue
                 else:
                     raise ValueError("Attribute '{0}' cannot be None".format(name))
+            serialized = attr.serialize(value)
+            if serialized is None:
+                continue
             if attr_map:
                 attrs[attributes][name] = {
-                    ATTR_TYPE_MAP[attr.attr_type]: attr.serialize(value)
+                    ATTR_TYPE_MAP[attr.attr_type]: serialized
                 }
             else:
                 if attr.is_hash_key:
-                    attrs[HASH] = attr.serialize(value)
+                    attrs[HASH] = serialized
                 elif attr.is_range_key:
-                    attrs[RANGE] = attr.serialize(value)
+                    attrs[RANGE] = serialized
                 else:
                     attrs[attributes][name] = {
-                        ATTR_TYPE_MAP[attr.attr_type]: attr.serialize(value)
+                        ATTR_TYPE_MAP[attr.attr_type]: serialized
                     }
         return attrs
 
