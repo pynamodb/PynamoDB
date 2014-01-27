@@ -21,10 +21,10 @@ from pynamodb.constants import (
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, GLOBAL_SECONDARY_INDEX,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ATTR_UPDATES, ALL_NEW,
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
-    PROJECTION_TYPE, NON_KEY_ATTRIBUTES, EQ, LE, LT, GT, GE, BEGINS_WITH, BETWEEN,
-    COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_STATUS, ACTIVE, RETURN_VALUES,
-    BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS, PUT_REQUEST, DELETE_REQUEST,
-    LAST_EVALUATED_KEY)
+    PROJECTION_TYPE, NON_KEY_ATTRIBUTES, COMPARISON_OPERATOR, ATTR_VALUE_LIST,
+    TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
+    PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP,
+    SCAN_OPERATOR_MAP)
 
 
 class ModelContextManager(object):
@@ -536,30 +536,11 @@ class Model(with_metaclass(MetaModel)):
         return schema
 
     @classmethod
-    def query(cls,
-              hash_key,
-              consistent_read=False,
-              index_name=None,
-              scan_index_forward=None,
-              **filters):
+    def _build_filters(cls, operator_map, filters):
         """
-        Provides a high level query API
+        Builds an appropriate condition map
         """
-        operators = {
-            'eq': EQ,
-            'le': LE,
-            'lt': LT,
-            'ge': GE,
-            'gt': GT,
-            'begins_with': BEGINS_WITH,
-            'between': BETWEEN
-        }
         key_conditions = {}
-        cls.get_indexes()
-        if index_name:
-            hash_key = cls.index_classes[index_name].hash_key_attribute().serialize(hash_key)
-        else:
-            hash_key = cls.serialize_keys(hash_key, None)[0]
         attribute_classes = cls.get_attributes()
         for query, value in filters.items():
             attribute = None
@@ -570,13 +551,32 @@ class Model(with_metaclass(MetaModel)):
                     if not isinstance(value, list):
                         value = [value]
                     value = [attribute_class.serialize(val) for val in value]
-                elif token in operators:
+                elif token in operator_map:
                     key_conditions[attribute] = {
-                        COMPARISON_OPERATOR: operators.get(token),
+                        COMPARISON_OPERATOR: operator_map.get(token),
                         ATTR_VALUE_LIST: value
                     }
                 else:
                     raise ValueError("Could not parse filter: {0}".format(query))
+        return key_conditions
+
+    @classmethod
+    def query(cls,
+              hash_key,
+              consistent_read=False,
+              index_name=None,
+              scan_index_forward=None,
+              **filters):
+        """
+        Provides a high level query API
+        """
+        key_conditions = {}
+        cls.get_indexes()
+        if index_name:
+            hash_key = cls.index_classes[index_name].hash_key_attribute().serialize(hash_key)
+        else:
+            hash_key = cls.serialize_keys(hash_key, None)[0]
+        key_conditions = cls._build_filters(QUERY_OPERATOR_MAP, filters)
         data = cls.get_connection().query(
             hash_key,
             index_name=index_name,
@@ -601,13 +601,35 @@ class Model(with_metaclass(MetaModel)):
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
     @classmethod
-    def scan(cls, segment=None, total_segments=None):
+    def scan(cls,
+             segment=None,
+             total_segments=None,
+             limit=None,
+             **filters):
         """
         Iterates through all items in the table
         """
-        data = cls.get_connection().scan(segment=segment, total_segments=total_segments)
+        scan_filter = cls._build_filters(QUERY_OPERATOR_MAP, filters)
+        data = cls.get_connection().scan(
+            segment=segment,
+            limit=limit,
+            scan_filter=scan_filter,
+            total_segments=total_segments
+        )
+        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
+        while last_evaluated_key:
+            data = cls.get_connection().scan(
+                exclusive_start_key=last_evaluated_key,
+                limit=limit,
+                scan_filter=scan_filter,
+                segment=segment,
+                total_segments=total_segments
+            )
+            for item in data.get(ITEMS):
+                yield cls.from_raw_data(item)
+            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
     @classmethod
     def exists(cls):
