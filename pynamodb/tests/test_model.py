@@ -7,7 +7,8 @@ from pynamodb.connection.util import pythonic
 from pynamodb.connection.exceptions import TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
-    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, RESPONSES, KEYS
+    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS,
+    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -390,6 +391,30 @@ class ModelTestCase(TestCase):
             for item in UserModel.query('foo'):
                 queried.append(item.serialize())
             self.assertTrue(len(queried) == len(items))
+
+        def fake_query(*args, **kwargs):
+            start_key = kwargs.get(pythonic(EXCLUSIVE_START_KEY), None)
+            if start_key:
+                idx = 0
+                for item in BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name):
+                    idx += 1
+                    if item == start_key:
+                        break
+                items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[idx:idx+1]
+            else:
+                items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[:1]
+            data = {
+                ITEMS: items,
+                LAST_EVALUATED_KEY: items[-1] if len(items) else None
+            }
+            return HttpOK(data), data
+
+        FakeQuery = MagicMock()
+        FakeQuery.side_effect = fake_query
+
+        with patch(PATCH_METHOD, new=FakeQuery) as req:
+            for item in UserModel.query('foo'):
+                self.assertIsNotNone(item)
 
     def test_scan(self):
         """
