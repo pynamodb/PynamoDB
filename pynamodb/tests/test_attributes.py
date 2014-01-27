@@ -10,7 +10,8 @@ from unittest import TestCase
 from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
-    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, DEFAULT_ENCODING)
+    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
+    DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET, BINARY)
 
 
 class UTCDateTimeAttributeTestCase(TestCase):
@@ -23,7 +24,7 @@ class UTCDateTimeAttributeTestCase(TestCase):
         """
         attr = UTCDateTimeAttribute()
         self.assertIsNotNone(attr)
-
+        self.assertEqual(attr.attr_type, STRING)
         tstamp = datetime.now()
         attr = UTCDateTimeAttribute(default=tstamp)
         self.assertEqual(attr.default, tstamp)
@@ -58,6 +59,7 @@ class BinaryAttributeTestCase(TestCase):
         """
         attr = BinaryAttribute()
         self.assertIsNotNone(attr)
+        self.assertEqual(attr.attr_type, BINARY)
 
         attr = BinaryAttribute(default=b'foo')
         self.assertEqual(attr.default, b'foo')
@@ -138,6 +140,7 @@ class NumberAttributeTestCase(TestCase):
         """
         attr = NumberAttribute()
         self.assertIsNotNone(attr)
+        self.assertEqual(attr.attr_type, NUMBER)
 
         attr = NumberAttribute(default=1)
         self.assertEqual(attr.default, 1)
@@ -183,7 +186,6 @@ class NumberAttributeTestCase(TestCase):
         attr = NumberSetAttribute(default={1, 2})
         self.assertEqual(attr.default, {1, 2})
 
-
 class UnicodeAttributeTestCase(TestCase):
     """
     Tests unicode attributes
@@ -194,6 +196,7 @@ class UnicodeAttributeTestCase(TestCase):
         """
         attr = UnicodeAttribute()
         self.assertIsNotNone(attr)
+        self.assertEqual(attr.attr_type, STRING)
 
         attr = UnicodeAttribute(default=six.u('foo'))
         self.assertEqual(attr.default, six.u('foo'))
@@ -244,3 +247,36 @@ class UnicodeAttributeTestCase(TestCase):
 
         attr = UnicodeSetAttribute(default={six.u('foo'), six.u('bar')})
         self.assertEqual(attr.default, {six.u('foo'), six.u('bar')})
+
+
+class BooleanAttributeTestCase(TestCase):
+    """
+    Tests boolean attributes
+    """
+    def test_boolean_attribute(self):
+        """
+        BooleanAttribute.default
+        """
+        attr = BooleanAttribute()
+        self.assertIsNotNone(attr)
+
+        self.assertEqual(attr.attr_type, NUMBER)
+        attr = BooleanAttribute(default=True)
+        self.assertEqual(attr.default, True)
+
+    def test_boolean_serialize(self):
+        """
+        BooleanAttribute.serialize
+        """
+        attr = BooleanAttribute()
+        self.assertEqual(attr.serialize(True), 1)
+        self.assertEqual(attr.serialize(False), 0)
+        self.assertEqual(attr.serialize(None), None)
+
+    def test_boolean_deserialize(self):
+        """
+        BooleanAttribute.deserialize
+        """
+        attr = BooleanAttribute()
+        self.assertEqual(attr.deserialize(1), True)
+        self.assertEqual(attr.deserialize(0), False)

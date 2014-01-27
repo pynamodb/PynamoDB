@@ -158,6 +158,34 @@ class UnicodeAttribute(Attribute):
             return six.u(value)
 
 
+class BooleanAttribute(Attribute):
+    """
+    A class for boolean attributes
+
+    This attribute type uses a number attribute to save space
+    """
+    def __init__(self, **kwargs):
+        kwargs.setdefault('attr_type', NUMBER)
+        super(BooleanAttribute, self).__init__(**kwargs)
+
+    def serialize(self, value):
+        """
+        Encodes True as 1, False as 0
+        """
+        if value is None:
+            return None
+        elif value:
+            return 1
+        else:
+            return 0
+
+    def deserialize(self, value):
+        """
+        Encode
+        """
+        return bool(value)
+
+
 class NumberSetAttribute(SetMixin, Attribute):
     """
     A number set attribute
