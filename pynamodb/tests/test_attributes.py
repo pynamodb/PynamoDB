@@ -94,6 +94,7 @@ class BinaryAttributeTestCase(TestCase):
         BinarySetAttribute.serialize
         """
         attr = BinarySetAttribute()
+        self.assertEqual(attr.attr_type, BINARY_SET)
         self.assertEqual(
             attr.serialize({b'foo', b'bar'}),
             [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted({b'foo', b'bar'})])
@@ -166,6 +167,7 @@ class NumberAttributeTestCase(TestCase):
         NumberSetAttribute.deserialize
         """
         attr = NumberSetAttribute()
+        self.assertEqual(attr.attr_type, NUMBER_SET)
         self.assertEqual(attr.deserialize([json.dumps(val) for val in sorted({1, 2})]), {1, 2})
 
     def test_number_set_serialize(self):
@@ -223,6 +225,7 @@ class UnicodeAttributeTestCase(TestCase):
         UnicodeSetAttribute.serialize
         """
         attr = UnicodeSetAttribute()
+        self.assertEqual(attr.attr_type, STRING_SET)
         self.assertEqual(attr.deserialize(None), None)
         self.assertEqual(
             attr.serialize({six.u('foo'), six.u('bar')}),
@@ -244,7 +247,7 @@ class UnicodeAttributeTestCase(TestCase):
         """
         attr = UnicodeSetAttribute()
         self.assertIsNotNone(attr)
-
+        self.assertEqual(attr.attr_type, STRING_SET)
         attr = UnicodeSetAttribute(default={six.u('foo'), six.u('bar')})
         self.assertEqual(attr.default, {six.u('foo'), six.u('bar')})
 
