@@ -23,7 +23,8 @@ from pynamodb.constants import (
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, EQ, LE, LT, GT, GE, BEGINS_WITH, BETWEEN,
     COMPARISON_OPERATOR, ATTR_VALUE_LIST, TABLE_STATUS, ACTIVE, RETURN_VALUES,
-    BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS, PUT_REQUEST, DELETE_REQUEST)
+    BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS, PUT_REQUEST, DELETE_REQUEST,
+    LAST_EVALUATED_KEY)
 
 
 class ModelContextManager(object):
@@ -583,8 +584,21 @@ class Model(with_metaclass(MetaModel)):
             scan_index_forward=scan_index_forward,
             key_conditions=key_conditions
         )
+        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
+        while last_evaluated_key:
+            data = cls.get_connection().query(
+                hash_key,
+                exclusive_start_key=last_evaluated_key,
+                index_name=index_name,
+                consistent_read=consistent_read,
+                scan_index_forward=scan_index_forward,
+                key_conditions=key_conditions
+            )
+            for item in data.get(ITEMS):
+                yield cls.from_raw_data(item)
+            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
     @classmethod
     def scan(cls, segment=None, total_segments=None):
