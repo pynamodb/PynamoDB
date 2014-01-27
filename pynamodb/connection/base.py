@@ -149,13 +149,20 @@ class MetaTable(object):
         """
         Builds the exclusive start key attribute map
         """
-        return {
-            pythonic(EXCLUSIVE_START_KEY): {
-                self.hash_keyname: {
-                    self.get_attribute_type(self.hash_keyname): exclusive_start_key
+        if isinstance(exclusive_start_key, dict) and self.hash_keyname in exclusive_start_key:
+            # This is useful when paginating results, as the LastEvaluatedKey returned is already
+            # structured properly
+            return {
+                pythonic(EXCLUSIVE_START_KEY): exclusive_start_key
+            }
+        else:
+            return {
+                pythonic(EXCLUSIVE_START_KEY): {
+                    self.hash_keyname: {
+                        self.get_attribute_type(self.hash_keyname): exclusive_start_key
+                    }
                 }
             }
-        }
 
 
 class Connection(object):
@@ -214,7 +221,8 @@ class Connection(object):
         if not response.ok:
             self._log_error(operation_name, response)
         if data and CONSUMED_CAPACITY in data:
-            log.debug("{0} {1} consumed {2} units".format(
+            log.debug(
+                "{0} {1} consumed {2} units".format(
                     data.get(TABLE_NAME, ''),
                     operation_name,
                     data.get(CAPACITY_UNITS)
@@ -277,8 +285,7 @@ class Connection(object):
                      read_capacity_units=None,
                      write_capacity_units=None,
                      global_secondary_indexes=None,
-                     local_secondary_indexes=None,
-    ):
+                     local_secondary_indexes=None):
         """
         Performs the CreateTable operation
         """
@@ -506,8 +513,7 @@ class Connection(object):
                     expected=None,
                     return_consumed_capacity=None,
                     return_item_collection_metrics=None,
-                    return_values=None
-    ):
+                    return_values=None):
         """
         Performs the UpdateItem operation
         """
@@ -717,8 +723,7 @@ class Connection(object):
               limit=None,
               return_consumed_capacity=None,
               scan_index_forward=None,
-              select=None
-    ):
+              select=None):
         """
         Performs the Query operation and returns the result
         """
@@ -749,9 +754,11 @@ class Connection(object):
             hash_keyname = self.get_meta_table(table_name).hash_keyname
         operation_kwargs[pythonic(KEY_CONDITIONS)] = {
             hash_keyname: {
-                ATTR_VALUE_LIST: [{
-                                      self.get_attribute_type(table_name, hash_keyname): hash_key,
-                                  }],
+                ATTR_VALUE_LIST: [
+                    {
+                        self.get_attribute_type(table_name, hash_keyname): hash_key,
+                    }
+                ],
                 COMPARISON_OPERATOR: EQ
             },
         }
