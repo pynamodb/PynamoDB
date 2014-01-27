@@ -1165,9 +1165,26 @@ class ConnectionTestCase(TestCase):
         """
         conn = Connection()
         table_name = 'Thread'
+
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), DESCRIBE_TABLE_DATA
             conn.describe_table(table_name)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.scan(
+                table_name,
+                segment=0,
+                total_segments=22,
+            )
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': table_name,
+                'segment': 0,
+                'total_segments': 22,
+            }
+            self.assertDictEqual(req.call_args[1], params)
+
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), {}
             conn.scan(

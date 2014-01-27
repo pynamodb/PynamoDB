@@ -695,7 +695,7 @@ class Connection(object):
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if exclusive_start_key:
             operation_kwargs.update(self.get_exclusive_start_key_map(table_name, exclusive_start_key))
-        if segment:
+        if segment is not None:
             operation_kwargs[pythonic(SEGMENT)] = segment
         if total_segments:
             operation_kwargs[pythonic(TOTAL_SEGMENTS)] = total_segments
