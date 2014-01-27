@@ -211,6 +211,7 @@ class UnicodeAttributeTestCase(TestCase):
         attr = UnicodeAttribute()
         self.assertEqual(attr.serialize('foo'), six.u('foo'))
         self.assertEqual(attr.serialize(u'foo'), six.u('foo'))
+        self.assertEqual(attr.serialize(u''), None)
         self.assertEqual(attr.serialize(None), None)
 
     def test_unicode_deserialize(self):
