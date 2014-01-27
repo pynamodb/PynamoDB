@@ -225,7 +225,7 @@ class Connection(object):
                 "{0} {1} consumed {2} units".format(
                     data.get(TABLE_NAME, ''),
                     operation_name,
-                    data.get(CAPACITY_UNITS)
+                    data.get(CONSUMED_CAPACITY, {}).get(CAPACITY_UNITS)
                 )
             )
         self._log_debug_response(operation_kwargs, response)
