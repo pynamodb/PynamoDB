@@ -3,6 +3,7 @@ Test model API
 """
 import copy
 import six
+from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
 from pynamodb.connection.exceptions import TableError
 from pynamodb.types import RANGE
@@ -94,6 +95,14 @@ class SimpleUserModel(Model):
     aliases = UnicodeSetAttribute()
     icons = BinarySetAttribute()
 
+class ThrottledUserModel(Model):
+    """
+    A testing model
+    """
+    table_name = 'UserModel'
+    user_name = UnicodeAttribute(hash_key=True)
+    user_id = UnicodeAttribute(range_key=True)
+    throttle = Throttle('50')
 
 class UserModel(Model):
     """
@@ -261,7 +270,7 @@ class ModelTestCase(TestCase):
             item = UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK(), None
+            req.return_value = HttpOK({}), {}
             item.save()
             args = req.call_args[1]
             params = {
@@ -568,7 +577,7 @@ class ModelTestCase(TestCase):
             UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK(), None
+            req.return_value = HttpOK({}), {}
 
             with UserModel.batch_write(auto_commit=False) as batch:
                 items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(25)]
@@ -732,3 +741,16 @@ class ModelTestCase(TestCase):
             pass
 
         self.assertRaises(ValueError, BadIndex)
+
+    def test_throttle(self):
+        """
+        Throttle.add_record
+        """
+        throt = Throttle(30)
+        throt.add_record(None)
+        for i in range(10):
+            throt.add_record(1)
+            throt.throttle()
+        for i in range(2):
+            throt.add_record(50)
+            throt.throttle()
