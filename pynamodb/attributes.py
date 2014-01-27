@@ -150,7 +150,9 @@ class UnicodeAttribute(Attribute):
         """
         Returns a unicode string
         """
-        if isinstance(value, six.text_type):
+        if value is None:
+            return None
+        elif isinstance(value, six.text_type):
             return value
         else:
             return six.u(value)
