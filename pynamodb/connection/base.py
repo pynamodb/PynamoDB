@@ -221,11 +221,14 @@ class Connection(object):
         if not response.ok:
             self._log_error(operation_name, response)
         if data and CONSUMED_CAPACITY in data:
+            capacity = data.get(CONSUMED_CAPACITY)
+            if isinstance(capacity, dict) and CAPACITY_UNITS in capacity:
+                capacity = capacity.get(CAPACITY_UNITS)
             log.debug(
                 "{0} {1} consumed {2} units".format(
                     data.get(TABLE_NAME, ''),
                     operation_name,
-                    data.get(CONSUMED_CAPACITY, {}).get(CAPACITY_UNITS)
+                    capacity
                 )
             )
         self._log_debug_response(operation_kwargs, response)
