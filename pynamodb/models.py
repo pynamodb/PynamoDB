@@ -9,6 +9,7 @@ import time
 import six
 import copy
 from six import with_metaclass
+from .throttle import NoThrottle
 from .attributes import Attribute
 from .connection.base import MetaTable
 from .connection.table import TableConnection
@@ -24,7 +25,8 @@ from pynamodb.constants import (
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, COMPARISON_OPERATOR, ATTR_VALUE_LIST,
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP,
-    SCAN_OPERATOR_MAP)
+    SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
+    CAPACITY_UNITS)
 
 
 class ModelContextManager(object):
@@ -35,7 +37,7 @@ class ModelContextManager(object):
     def __init__(self, model, auto_commit=True):
         self.model = model
         self.auto_commit = auto_commit
-        self.max_operations = 25
+        self.max_operations = BATCH_WRITE_PAGE_LIMIT
         self.pending_operations = []
 
     def __enter__(self):
@@ -84,10 +86,12 @@ class BatchWrite(ModelContextManager):
         self.pending_operations = []
         if not len(put_items) and not len(delete_items):
             return
+        self.model.throttle.throttle()
         data = self.model.get_connection().batch_write_item(
             put_items=put_items,
             delete_items=delete_items
         )
+        self.model.add_throttle_record(data.get(CONSUMED_CAPACITY, None))
         if not data:
             return
         unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.table_name)
@@ -99,10 +103,12 @@ class BatchWrite(ModelContextManager):
                     put_items.append(key.get(PUT_REQUEST))
                 elif DELETE_REQUEST in key:
                     delete_items.append(key.get(DELETE_REQUEST))
+            self.model.throttle.throttle()
             data = self.model.get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items
             )
+            self.model.add_throttle_record(data.get(CONSUMED_CAPACITY))
             unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.table_name)
 
 
@@ -138,6 +144,7 @@ class Model(with_metaclass(MetaModel)):
     indexes = None
     connection = None
     index_classes = None
+    throttle = NoThrottle()
 
     def __init__(self, hash_key=None, range_key=None, **attrs):
         """
@@ -153,8 +160,17 @@ class Model(with_metaclass(MetaModel)):
             setattr(self, self.meta().range_keyname, range_key)
         self.set_attributes(**attrs)
 
-    def __getattribute__(self, item):
-        return object.__getattribute__(self, item)
+    @classmethod
+    def add_throttle_record(cls, records):
+        """
+        Pulls out the table name and capacity units from `records` and
+        puts it in `self.throttle`
+        """
+        if records:
+            for record in records:
+                if record.get(TABLE_NAME) == cls.table_name:
+                    cls.throttle.add_record(record.get(CAPACITY_UNITS))
+                    break
 
     @classmethod
     def batch_get(cls, items):
@@ -205,6 +221,7 @@ class Model(with_metaclass(MetaModel)):
         data = cls.get_connection().batch_get_item(
             keys_to_get
         )
+        cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
         item_data = data.get(RESPONSES).get(cls.table_name)
         unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.table_name, {}).get(KEYS, None)
         return item_data, unprocessed_items
@@ -290,6 +307,7 @@ class Model(with_metaclass(MetaModel)):
             *args,
             **kwargs
         )
+        self.throttle.add_record(data.get(CONSUMED_CAPACITY))
         for name, value in data.get(ATTRIBUTES).items():
             attr = self.get_attributes().get(name, None)
             if attr:
@@ -301,7 +319,9 @@ class Model(with_metaclass(MetaModel)):
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args()
-        return self.get_connection().put_item(*args, **kwargs)
+        data = self.get_connection().put_item(*args, **kwargs)
+        self.throttle.add_record(data.get(CONSUMED_CAPACITY))
+        return data
 
     def get_keys(self):
         """
@@ -340,6 +360,7 @@ class Model(with_metaclass(MetaModel)):
         args, kwargs = self._get_save_args(attributes=False)
         kwargs.setdefault('consistent_read', consistent_read)
         attrs = self.get_connection().get_item(*args, **kwargs)
+        self.throttle.add_record(attrs.get(CONSUMED_CAPACITY))
         self.deserialize(attrs.get(ITEM, {}))
 
     def deserialize(self, attrs):
@@ -427,6 +448,7 @@ class Model(with_metaclass(MetaModel)):
             range_key=range_key,
             consistent_read=consistent_read
         )
+        cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
         if data:
             return cls.from_raw_data(data.get(ITEM))
         else:
@@ -584,6 +606,7 @@ class Model(with_metaclass(MetaModel)):
             scan_index_forward=scan_index_forward,
             key_conditions=key_conditions
         )
+        cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
@@ -596,6 +619,7 @@ class Model(with_metaclass(MetaModel)):
                 scan_index_forward=scan_index_forward,
                 key_conditions=key_conditions
             )
+            cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):
                 yield cls.from_raw_data(item)
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
@@ -609,7 +633,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Iterates through all items in the table
         """
-        scan_filter = cls._build_filters(QUERY_OPERATOR_MAP, filters)
+        scan_filter = cls._build_filters(SCAN_OPERATOR_MAP, filters)
         data = cls.get_connection().scan(
             segment=segment,
             limit=limit,
@@ -617,6 +641,7 @@ class Model(with_metaclass(MetaModel)):
             total_segments=total_segments
         )
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
         while last_evaluated_key:
