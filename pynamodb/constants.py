@@ -22,7 +22,6 @@ GLOBAL_SECONDARY_INDEX_UPDATES = 'GlobalSecondaryIndexUpdates'
 RETURN_ITEM_COLL_METRICS = 'ReturnItemCollectionMetrics'
 EXCLUSIVE_START_TABLE_NAME = 'ExclusiveStartTableName'
 RETURN_CONSUMED_CAPACITY = 'ReturnConsumedCapacity'
-EXCLUSIVE_START_KEY = 'ExclusiveStartKey'
 COMPARISON_OPERATOR = 'ComparisonOperator'
 SCAN_INDEX_FORWARD = 'ScanIndexForward'
 ATTR_DEFINITIONS = 'AttributeDefinitions'
@@ -113,6 +112,8 @@ INCLUDE = 'INCLUDE'
 
 # These are constants used in the KeyConditions parameter
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditions
+EXCLUSIVE_START_KEY = 'ExclusiveStartKey'
+LAST_EVALUATED_KEY = 'LastEvaluatedKey'
 BEGINS_WITH = 'BEGINS_WITH'
 BETWEEN = 'BETWEEN'
 EQ = 'EQ'
