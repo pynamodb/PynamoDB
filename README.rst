@@ -9,8 +9,6 @@ PynamoDB
     :target: https://travis-ci.org/jlafon/PynamoDB
 .. image:: https://coveralls.io/repos/jlafon/PynamoDB/badge.png?branch=devel
     :target: https://coveralls.io/r/jlafon/PynamoDB
-.. image:: https://pypip.in/egg/pynamodb/badge.png
-    :target: https://pypi.python.org/pypi/pynamodb/
 .. image:: https://pypip.in/wheel/pynamodb/badge.png
     :target: https://pypi.python.org/pypi/pynamodb/
 .. image:: https://pypip.in/license/pynamodb/badge.png
