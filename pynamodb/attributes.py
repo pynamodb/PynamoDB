@@ -201,15 +201,15 @@ class BooleanAttribute(Attribute):
         if value is None:
             return None
         elif value:
-            return 1
+            return json.dumps(1)
         else:
-            return 0
+            return json.dumps(0)
 
     def deserialize(self, value):
         """
         Encode
         """
-        return bool(value)
+        return bool(json.loads(value))
 
 
 class NumberSetAttribute(SetMixin, Attribute):

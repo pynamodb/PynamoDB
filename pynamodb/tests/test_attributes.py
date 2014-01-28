@@ -274,8 +274,8 @@ class BooleanAttributeTestCase(TestCase):
         BooleanAttribute.serialize
         """
         attr = BooleanAttribute()
-        self.assertEqual(attr.serialize(True), 1)
-        self.assertEqual(attr.serialize(False), 0)
+        self.assertEqual(attr.serialize(True), json.dumps(1))
+        self.assertEqual(attr.serialize(False), json.dumps(0))
         self.assertEqual(attr.serialize(None), None)
 
     def test_boolean_deserialize(self):
@@ -283,8 +283,8 @@ class BooleanAttributeTestCase(TestCase):
         BooleanAttribute.deserialize
         """
         attr = BooleanAttribute()
-        self.assertEqual(attr.deserialize(1), True)
-        self.assertEqual(attr.deserialize(0), False)
+        self.assertEqual(attr.deserialize('1'), True)
+        self.assertEqual(attr.deserialize('0'), False)
 
 
 class JSONAttributeTestCase(TestCase):
