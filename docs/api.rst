@@ -30,6 +30,11 @@ Installation
 
     $ pip install pynamodb
 
+.. note::
+
+    PynamoDB is still under development. More advanced features are available with the development version
+    of PynamoDB. You can install it directly from GitHub with pip: `pip install git+https://github.com/jlafon/PynamoDB#egg=pynamodb`
+
 Getting Started
 ^^^^^^^^^^^^^^^
 
@@ -68,32 +73,140 @@ Here is an example, using the same table structure as shown in `Amazon's DynamoD
 
 The ``table_name`` class attribute is required, and tells the model which DynamoDB table to use. The ``forum_name`` attribute
 is specified as the hash key for this table with the ``hash_key`` argument. Specifying that an attribute is a range key is done
-with the ``range_key`` attribute.
+with the ``range_key`` attribute. You can specify a default value for any field, and `default` can even be a function.
+
+PynamoDB comes with several built in attribute types for convenience, which include the following:
+
+* UnicodeAttribute
+* UnicodeSetAttribute
+* NumberAttribute
+* NumberSetAttribute
+* BinaryAttribute
+* BinarySetAttribute
+* UTCDateTimeAttribute
+* BooleanAttribute
+* JSONAttribute
+
+All of these built in attributes handle serializing and deserializng themselves, in both Python 2 and Python 3.
 
 Creating the table
 ------------------
 
 If your table doesn't already exist, you will have to create it. This can be done with easily:
 
-    >>> Thread.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+    >>> if not Thread.exists():
+            Thread.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
 The ``wait`` argument tells PynamoDB to wait until the table is ready for use before returning.
 
-Connection
-----------
 
-The `Connection`  API provides a Pythonic wrapper over the Amazon DynamoDB API. All operations
-are supported, and it provides a primitive starting point for the other two APIs.
+Using the Model
+^^^^^^^^^^^^^^^
 
-TableConnection
----------------
+Now that you've defined a model (referring to the example above), you can start interacting with
+your DynamoDB table. You can create a new `Thread` item by calling the `Thread` constructor.
 
-The `TabelConnection` API is a small convenience layer built on the `Connection` that provides
- all of the DynamoDB API for a given table.
+Creating Items
+--------------
+::
 
-Model
------
+    >>> thread_item = Thread('forum_name', 'forum_subject')
 
-This is where the fun begins, with bulk operations, query filters, context managers, and automatic
-attribute binding. The `Model` class provides very high level features for interacting with DynamoDB.
+The first two arguments are automatically assigned to the item's hash and range keys. You can
+specify attributes during construction as well::
 
+    >>> thread_item = Thread('forum_name', 'forum_subject', replies=10)
+
+The item won't be added to your DynamoDB table until you call save::
+
+    >>> thread_item.save()
+
+If you want to retrieve an item that already exists in your table, you can do that with `get`::
+
+    >>> thread_item = Thread.get('forum_name', 'forum_subject')
+
+
+Updating Items
+--------------
+
+You can update an item with the latest data from your table::
+
+    >>> thread_item.refresh()
+
+Updates to table items are supported too, even atomic updates. Here is an example of
+atomically updating the view count of an item::
+
+    >>> thread_item.update_item('views', 1, action='add')
+
+Batch Operations
+^^^^^^^^^^^^^^^^
+
+Batch operations are supported using context managers, and iterators. The DynamoDB API has limits for each batch operation
+that it supports, but PynamoDB removes the need implement your own grouping or pagination. Instead, it handles
+pagination for you automatically.
+
+Batch Writes
+-------------
+
+Here is an example using a context manager for a bulk write operation:
+::
+
+    with Thread.batch_write() as batch:
+        items = [TestModel('forum-{0}'.format(x), 'thread-{0}'.format(x)) for x in range(1000)]
+        for item in items:
+            batch.save(item)
+
+Batch Gets
+-------------
+
+Here is an example using an iterator for retrieving items in bulk:
+::
+
+    item_keys = [('forum-{0}'.format(x), 'thread-{0}'.format(x)) for x in range(1000)]
+    for item in Thread.batch_get(item_keys):
+        print(item)
+
+Query Filters
+-------------
+
+You can query items from your table using a simple syntax, similar to other Python ORMs:
+::
+
+    for item in Thread.query('ForumName', thread__begins_with='mygreatprefix'):
+        print("Query returned item {0}".format(item))
+
+Query filters are translated from an ORM like syntax to DynamoDB API calls, and use
+the following syntax: `attribute__operator=value`, where `attribute` is the name of an attribute
+and `operator` can be one of the following:
+
+ * eq
+ * le
+ * lt
+ * ge
+ * gt
+ * begins_with
+ * between
+
+Scan Filters
+------------
+
+Scan filters have the same syntax as Query filters, but support different operations (a consequence of the
+DynamoDB API - not PynamoDB). The supported operators are:
+
+ * eq
+ * ne
+ * le
+ * lt
+ * gt
+ * not_null
+ * null
+ * contains
+ * not_contains
+ * begins_with
+ * between
+
+You can even specify multiple filters:
+::
+
+    >>> for item in Thread.scan(forum__begins_with='Prefix', views__gt=10):
+            print(item)
