@@ -325,7 +325,7 @@ class ModelTestCase(TestCase):
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
-            for item in UserModel.query('foo', user_id__gt='id-1'):
+            for item in UserModel.query('foo', user_id__gt='id-1', user_id__le='id-2'):
                 queried.append(item.serialize())
             self.assertTrue(len(queried) == len(items))
 
