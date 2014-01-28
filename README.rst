@@ -17,7 +17,7 @@ PynamoDB
 
 A Pythonic interface for `DynamoDB <http://aws.amazon.com/dynamodb/>`_.
 
-A rich API that is compatible with Python 2 and Python 3.
+A rich API that is compatible with Python 2 and Python.
 
 See documentation at http://pynamodb.readthedocs.org/
 
@@ -25,11 +25,16 @@ Installation::
 
     $ pip install pynamodb
 
+or install the development version::
+
+    $ pip install git+https://github.com/jlafon/PynamoDB#egg=pynamodb
+
 Features
 ========
 
 * Python 2 support
 * Python 3 support
+* An ORM-like interface with query and scan filters
 * Fully tested
 * Includes the entire DynamoDB API
 * Supports both unicode and binary DynamoDB attributes
