@@ -399,7 +399,7 @@ class Connection(object):
             operation_kwargs.update({
                 pythonic(EXCLUSIVE_START_TABLE_NAME): exclusive_start_table_name
             })
-        if limit:
+        if limit is not None:
             operation_kwargs.update({
                 pythonic(LIMIT): limit
             })
@@ -689,7 +689,7 @@ class Connection(object):
         operation_kwargs = {pythonic(TABLE_NAME): table_name}
         if attributes_to_get is not None:
             operation_kwargs[pythonic(ATTRS_TO_GET)] = attributes_to_get
-        if limit:
+        if limit is not None:
             operation_kwargs[pythonic(LIMIT)] = limit
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
@@ -739,7 +739,7 @@ class Connection(object):
             operation_kwargs.update(self.get_exclusive_start_key_map(table_name, exclusive_start_key))
         if index_name:
             operation_kwargs[pythonic(INDEX_NAME)] = index_name
-        if limit:
+        if limit is not None:
             operation_kwargs[pythonic(LIMIT)] = limit
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
