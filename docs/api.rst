@@ -21,7 +21,7 @@ DynamoDB. I quickly realized that my go to library, `dynamodb-mapper <http://dyn
 In fact, it won't be supporting them anytime soon because dynamodb-mapper relies on another
 library, `boto.dynamodb <http://docs.pythonboto.org/en/latest/migrations/dynamodb_v1_to_v2.html>`__,
 which itself won't support them. In fact, boto doesn't support
-Python 3 either.
+Python 3 either. If you want to know more, `I blogged about it <http://jlafon.io/pynamodb.html>`__.
 
 Installation
 ^^^^^^^^^^^^

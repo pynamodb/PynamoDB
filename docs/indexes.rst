@@ -45,7 +45,6 @@ a class attribute on the model, as in this example::
 
     from pynamodb.models import Model
     from pynamodb.attributes import UnicodeAttribute
-    from pynamodb.indexes import ViewIndex
 
 
     class TestModel(Model):
