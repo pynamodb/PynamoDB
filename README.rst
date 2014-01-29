@@ -33,13 +33,13 @@ Create a model that describes your DynamoDB table.
     from pynamodb.attributes import UnicodeAttribute
 
     class UserModel(Model):
-            """
-            A DynamoDB User
-            """
-            table_name = 'dynamodb-user'
-            email = UnicodeAttribute(null=True)
-            first_name = UnicodeAttribute(range_key=True)
-            last_name = UnicodeAttribute(hash_key=True)
+        """
+        A DynamoDB User
+        """
+        table_name = 'dynamodb-user'
+        email = UnicodeAttribute(null=True)
+        first_name = UnicodeAttribute(range_key=True)
+        last_name = UnicodeAttribute(hash_key=True)
 
 Now, search your table for all users with a last name of 'Smith' and whose
 first name begins with 'J':
