@@ -452,8 +452,9 @@ class Model(with_metaclass(MetaModel)):
             consistent_read=consistent_read
         )
         cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
-        if data:
-            return cls.from_raw_data(data.get(ITEM))
+        item_data = data.get(ITEM)
+        if item_data:
+            return cls.from_raw_data(item_data)
         else:
             return None
 
