@@ -3,16 +3,16 @@ PynamoDB
 ========
 
 .. image:: https://pypip.in/v/pynamodb/badge.png
-:target: https://pypi.python.org/pypi/pynamodb/
+    :target: https://pypi.python.org/pypi/pynamodb/
     :alt: Latest Version
 .. image:: https://travis-ci.org/jlafon/PynamoDB.png?branch=devel
-:target: https://travis-ci.org/jlafon/PynamoDB
+    :target: https://travis-ci.org/jlafon/PynamoDB
 .. image:: https://coveralls.io/repos/jlafon/PynamoDB/badge.png?branch=devel
-:target: https://coveralls.io/r/jlafon/PynamoDB
+    :target: https://coveralls.io/r/jlafon/PynamoDB
 .. image:: https://pypip.in/wheel/pynamodb/badge.png
-:target: https://pypi.python.org/pypi/pynamodb/
+    :target: https://pypi.python.org/pypi/pynamodb/
 .. image:: https://pypip.in/license/pynamodb/badge.png
-:target: https://pypi.python.org/pypi/pynamodb/
+    :target: https://pypi.python.org/pypi/pynamodb/
 
 A Pythonic interface for Amazon's `DynamoDB <http://aws.amazon.com/dynamodb/>`_ that supports
 Python 2 and 3.
