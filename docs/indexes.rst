@@ -89,6 +89,7 @@ Querying an index
 
 Index queries use the same syntax as model queries. Continuing our example, we can query
 the ``view_index``  global secondary index simply by calling ``query``:
+
 .. code-block:: python
 
     for item in TestModel.view_index.query(1):
@@ -100,6 +101,7 @@ of value 1.
 
 Local secondary index queries have a similar syntax. They require a hash key, and can include conditions on the
 range key of the index. Here is an example that queries the index for values of ``view`` greater than zero:
+
 .. code-block:: python
 
     for item in TestModel.view_index.query('foo', view__gt=0):

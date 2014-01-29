@@ -161,6 +161,7 @@ Batch Writes
 -------------
 
 Here is an example using a context manager for a bulk write operation:
+
 .. code-block:: python
 
     with Thread.batch_write() as batch:
@@ -172,6 +173,7 @@ Batch Gets
 -------------
 
 Here is an example using an iterator for retrieving items in bulk:
+
 .. code-block:: python
 
     item_keys = [('forum-{0}'.format(x), 'thread-{0}'.format(x)) for x in range(1000)]
@@ -182,6 +184,7 @@ Query Filters
 -------------
 
 You can query items from your table using a simple syntax, similar to other Python ORMs:
+
 .. code-block:: python
 
     for item in Thread.query('ForumName', thread__begins_with='mygreatprefix'):

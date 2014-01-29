@@ -9,6 +9,7 @@ Creating a connection
 ^^^^^^^^^^^^^^^^^^^^^
 
 Creating a connection is simple:
+
 .. code-block:: python
 
     from pynamodb.connection import Connection
@@ -16,6 +17,7 @@ Creating a connection is simple:
     conn = Connection()
 
 You can specify a different DynamoDB url:
+
 .. code-block:: python
 
     conn = Connection(host='http://alternative-domain/')
@@ -31,17 +33,20 @@ Modifying tables
 ^^^^^^^^^^^^^^^^
 
 You can easily list tables:
+
 .. code-block:: python
 
     >>> conn.list_tables()
     {u'TableNames': [u'Thread']}
 
 or delete a table:
+
 .. code-block:: python
 
     >>> conn.delete_table('Thread')
 
 If you want to change the capacity of a table, that can be done as well:
+
 .. code-block:: python
 
     >>> conn.update_table('Thread', read_capacity_units=20, write_capacity_units=20)
@@ -82,16 +87,19 @@ Modifying items
 ^^^^^^^^^^^^^^^
 
 The low level API can perform item operationst too, such as getting an item:
+
 .. code-block:: python
 
     conn.get_item('table_name', 'hash_key', 'range_key')
 
 You can put items as well, specifying the keys and any other attributes:
+
 .. code-block:: python
 
     conn.put_item('table_name', 'hash_key', 'range_key', attributes={'key': 'value'})
 
 Deleting an item has similar syntax:
+
 .. code-block:: python
 
     conn.delete_item('table_name', 'hash_key', 'range_key')
