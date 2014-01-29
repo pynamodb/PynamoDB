@@ -221,6 +221,7 @@ DynamoDB API - not PynamoDB). The supported operators are:
  * between
 
 You can even specify multiple filters:
+
 .. code-block:: python
 
     >>> for item in Thread.scan(forum__begins_with='Prefix', views__gt=10):
