@@ -43,6 +43,7 @@ Create a model that describes your DynamoDB table.
 
 Now, search your table for all users with a last name of 'Smith' and whose
 first name begins with 'J':
+
 .. code-block:: python
 
     for user in UserModel.query('Smith', first_name__begins_with='J'):
