@@ -10,7 +10,7 @@ Global Secondary Indexes
 
 Indexes are defined as classes, just like models. Here is a simple index class:
 
-::
+.. code-block:: python
 
     from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
     from pynamodb.attributes import NumberAttribute
@@ -41,7 +41,9 @@ projection classes.
 * ``IncludeProjection(attributes)``: Only the specified ``attributes`` are projected.
 
 We still need to attach the index to the model in order for us to use it. You define it as
-a class attribute on the model, as in this example::
+a class attribute on the model, as in this example:
+
+.. code-block:: python
 
     from pynamodb.models import Model
     from pynamodb.attributes import UnicodeAttribute
@@ -61,7 +63,9 @@ a class attribute on the model, as in this example::
 Local Secondary Indexes
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Local secondary indexes are defined just like global ones, but they inherit from ``LocalSecondaryIndex`` instead::
+Local secondary indexes are defined just like global ones, but they inherit from ``LocalSecondaryIndex`` instead:
+
+.. code-block:: python
 
     from pynamodb.indexes import LocalSecondaryIndex, AllProjection
     from pynamodb.attributes import NumberAttribute
@@ -84,7 +88,8 @@ Querying an index
 ^^^^^^^^^^^^^^^^^^
 
 Index queries use the same syntax as model queries. Continuing our example, we can query
-the ``view_index``  global secondary index simply by calling ``query``::
+the ``view_index``  global secondary index simply by calling ``query``:
+.. code-block:: python
 
     for item in TestModel.view_index.query(1):
         print("Item queried from index: {0}".format(item))
@@ -94,7 +99,8 @@ a hash key value of 1 for the index. This would return all ``TestModel`` items t
 of value 1.
 
 Local secondary index queries have a similar syntax. They require a hash key, and can include conditions on the
-range key of the index. Here is an example that queries the index for values of ``view`` greater than zero::
+range key of the index. Here is an example that queries the index for values of ``view`` greater than zero:
+.. code-block:: python
 
     for item in TestModel.view_index.query('foo', view__gt=0):
         print("Item queried from index: {0}".format(item.view))

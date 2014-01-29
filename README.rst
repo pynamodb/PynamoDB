@@ -26,7 +26,8 @@ Basic Usage
 ^^^^^^^^^^^
 
 Create a model that describes your DynamoDB table.
-::
+
+.. code-block:: python
 
     from pynamodb.models import Model
     from pynamodb.attributes import UnicodeAttribute
@@ -42,12 +43,14 @@ Create a model that describes your DynamoDB table.
 
 Now, search your table for all users with a last name of 'Smith' and whose
 first name begins with 'J':
-::
+.. code-block:: python
 
     for user in UserModel.query('Smith', first_name__begins_with='J'):
         print(user.first_name)
 
-Create a new user::
+Create a new user:
+
+.. code-block:: python
 
     user = UserModel('John', 'Denver')
     user.save()
@@ -55,7 +58,9 @@ Create a new user::
 Advanced Usage
 ^^^^^^^^^^^^^^
 
-Wan't to use indexes? No problem::
+Wan't to use indexes? No problem:
+
+.. code-block:: python
 
     from pynamodb.models import Model
     from pynamodb.indexes import GlobalSecondaryIndex, AllProjection
@@ -74,7 +79,9 @@ Wan't to use indexes? No problem::
         view = NumberAttribute(default=0)
         view_index = ViewIndex()
 
-Now query the index for all items with 0 views::
+Now query the index for all items with 0 views:
+
+.. code-block:: python
 
     for item in TestModel.view_index.query(0):
         print("Item queried from index: {0}".format(item))

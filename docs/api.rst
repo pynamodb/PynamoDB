@@ -53,7 +53,7 @@ inherit from ``pynamodb.attributes.Attribute``. The most common attributes have 
 
 Here is an example, using the same table structure as shown in `Amazon's DynamoDB Thread example <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleTablesAndData.html>`__.
 
-::
+.. code-block:: python
 
     from pynamodb.models import Model
     from pynamodb.attributes import (
@@ -94,6 +94,8 @@ Creating the table
 
 If your table doesn't already exist, you will have to create it. This can be done with easily:
 
+.. code-block:: python
+
     >>> if not Thread.exists():
             Thread.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
@@ -108,20 +110,26 @@ your DynamoDB table. You can create a new `Thread` item by calling the `Thread` 
 
 Creating Items
 --------------
-::
+.. code-block:: python
 
     >>> thread_item = Thread('forum_name', 'forum_subject')
 
 The first two arguments are automatically assigned to the item's hash and range keys. You can
-specify attributes during construction as well::
+specify attributes during construction as well:
+
+.. code-block:: python
 
     >>> thread_item = Thread('forum_name', 'forum_subject', replies=10)
 
-The item won't be added to your DynamoDB table until you call save::
+The item won't be added to your DynamoDB table until you call save:
+
+.. code-block:: python
 
     >>> thread_item.save()
 
-If you want to retrieve an item that already exists in your table, you can do that with `get`::
+If you want to retrieve an item that already exists in your table, you can do that with `get`:
+
+.. code-block:: python
 
     >>> thread_item = Thread.get('forum_name', 'forum_subject')
 
@@ -129,12 +137,16 @@ If you want to retrieve an item that already exists in your table, you can do th
 Updating Items
 --------------
 
-You can update an item with the latest data from your table::
+You can update an item with the latest data from your table:
+
+.. code-block:: python
 
     >>> thread_item.refresh()
 
 Updates to table items are supported too, even atomic updates. Here is an example of
-atomically updating the view count of an item::
+atomically updating the view count of an item:
+
+.. code-block:: python
 
     >>> thread_item.update_item('views', 1, action='add')
 
@@ -149,7 +161,7 @@ Batch Writes
 -------------
 
 Here is an example using a context manager for a bulk write operation:
-::
+.. code-block:: python
 
     with Thread.batch_write() as batch:
         items = [TestModel('forum-{0}'.format(x), 'thread-{0}'.format(x)) for x in range(1000)]
@@ -160,7 +172,7 @@ Batch Gets
 -------------
 
 Here is an example using an iterator for retrieving items in bulk:
-::
+.. code-block:: python
 
     item_keys = [('forum-{0}'.format(x), 'thread-{0}'.format(x)) for x in range(1000)]
     for item in Thread.batch_get(item_keys):
@@ -170,7 +182,7 @@ Query Filters
 -------------
 
 You can query items from your table using a simple syntax, similar to other Python ORMs:
-::
+.. code-block:: python
 
     for item in Thread.query('ForumName', thread__begins_with='mygreatprefix'):
         print("Query returned item {0}".format(item))
@@ -206,7 +218,7 @@ DynamoDB API - not PynamoDB). The supported operators are:
  * between
 
 You can even specify multiple filters:
-::
+.. code-block:: python
 
     >>> for item in Thread.scan(forum__begins_with='Prefix', views__gt=10):
             print(item)
