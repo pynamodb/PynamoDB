@@ -286,7 +286,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Deletes this object from dynamodb
         """
-        args, kwargs = self._get_save_args(attributes=False)
+        args, kwargs = self._get_save_args(attributes=False, null_check=False)
         return self.get_connection().delete_item(*args, **kwargs)
 
     def update_item(self, attribute, value, action=None):
@@ -338,12 +338,12 @@ class Model(with_metaclass(MetaModel)):
         }
         return attrs
 
-    def _get_save_args(self, attributes=True):
+    def _get_save_args(self, attributes=True, null_check=True):
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
         """
         kwargs = {}
-        serialized = self.serialize()
+        serialized = self.serialize(null_check=null_check)
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
         args = (hash_key, )
@@ -375,7 +375,7 @@ class Model(with_metaclass(MetaModel)):
                 if value:
                     setattr(self, name, attr_instance.deserialize(value))
 
-    def serialize(self, attr_map=False):
+    def serialize(self, attr_map=False, null_check=True):
         """
         Serializes a value for use with DynamoDB
         """
@@ -386,7 +386,7 @@ class Model(with_metaclass(MetaModel)):
             if value is None:
                 if attr.null:
                     continue
-                else:
+                elif null_check:
                     raise ValueError("Attribute '{0}' cannot be None".format(name))
             serialized = attr.serialize(value)
             if serialized is None:
