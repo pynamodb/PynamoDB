@@ -109,3 +109,9 @@ Features
 * Provides iterators for working with queries, scans, that are automatically paginated
 * Automatic pagination for bulk operations
 * Complex queries
+
+
+.. image:: https://d2weczhvl823v0.cloudfront.net/jlafon/pynamodb/trend.png
+   :alt: Bitdeli badge
+   :target: https://bitdeli.com/free
+
