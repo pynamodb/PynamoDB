@@ -8,6 +8,7 @@ DynamoDB Models for PynamoDB
 import time
 import six
 import copy
+import logging
 from six import with_metaclass
 from .throttle import NoThrottle
 from .attributes import Attribute
@@ -27,6 +28,10 @@ from pynamodb.constants import (
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
     CAPACITY_UNITS)
+
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 class ModelContextManager(object):
@@ -75,6 +80,7 @@ class BatchWrite(ModelContextManager):
         """
         Writes all of the changes
         """
+        log.debug("{0} committing batch operation".format(self.model))
         put_items = []
         delete_items = []
         attrs_name = pythonic(ATTRIBUTES)
@@ -92,7 +98,7 @@ class BatchWrite(ModelContextManager):
             delete_items=delete_items
         )
         self.model.add_throttle_record(data.get(CONSUMED_CAPACITY, None))
-        if not data:
+        if data is None:
             return
         unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.table_name)
         while unprocessed_keys:
@@ -104,6 +110,7 @@ class BatchWrite(ModelContextManager):
                 elif DELETE_REQUEST in key:
                     delete_items.append(key.get(DELETE_REQUEST))
             self.model.throttle.throttle()
+            log.debug("Resending {0} unprocessed keys for batch operation".format(len(unprocessed_keys)))
             data = self.model.get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items
@@ -218,6 +225,7 @@ class Model(with_metaclass(MetaModel)):
         Returns a single page from BatchGetItem
         Also returns any unprocessed items
         """
+        log.debug("Fetching a BatchGetItem page")
         data = cls.get_connection().batch_get_item(
             keys_to_get
         )
@@ -603,6 +611,7 @@ class Model(with_metaclass(MetaModel)):
         else:
             hash_key = cls.serialize_keys(hash_key, None)[0]
         key_conditions = cls._build_filters(QUERY_OPERATOR_MAP, filters)
+        log.debug("Fetching first query page")
         data = cls.get_connection().query(
             hash_key,
             index_name=index_name,
@@ -615,6 +624,7 @@ class Model(with_metaclass(MetaModel)):
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
         while last_evaluated_key:
+            log.debug("Fetching query page with exclusive start key: {0}".format(last_evaluated_key))
             data = cls.get_connection().query(
                 hash_key,
                 exclusive_start_key=last_evaluated_key,
@@ -644,11 +654,13 @@ class Model(with_metaclass(MetaModel)):
             scan_filter=scan_filter,
             total_segments=total_segments
         )
+        log.debug("Fetching first scan page")
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
         cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
         while last_evaluated_key:
+            log.debug("Fetching scan page with exclusive start key: {0}".format(last_evaluated_key))
             data = cls.get_connection().scan(
                 exclusive_start_key=last_evaluated_key,
                 limit=limit,
