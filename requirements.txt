@@ -9,5 +9,5 @@ python-dateutil==2.2
 pytz==2013.9
 requests==2.2.1
 six==1.5.2
-tox==1.6.1
+tox==1.7.0
 python-coveralls==2.4.2

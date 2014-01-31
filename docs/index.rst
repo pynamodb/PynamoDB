@@ -29,6 +29,7 @@ Topics
    api
    indexes
    low_level
+   awsaccess
    contributing
 
 Indices and tables

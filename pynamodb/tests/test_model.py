@@ -3,10 +3,13 @@ Test model API
 """
 import copy
 import six
+from pynamodb.throttle import Throttle
+from pynamodb.connection.util import pythonic
 from pynamodb.connection.exceptions import TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
-    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE
+    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS,
+    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -31,6 +34,7 @@ else:
     from mock import MagicMock
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
+
 
 class EmailIndex(GlobalSecondaryIndex):
     """
@@ -91,6 +95,14 @@ class SimpleUserModel(Model):
     aliases = UnicodeSetAttribute()
     icons = BinarySetAttribute()
 
+class ThrottledUserModel(Model):
+    """
+    A testing model
+    """
+    table_name = 'UserModel'
+    user_name = UnicodeAttribute(hash_key=True)
+    user_id = UnicodeAttribute(range_key=True)
+    throttle = Throttle('50')
 
 class UserModel(Model):
     """
@@ -208,9 +220,9 @@ class ModelTestCase(TestCase):
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
 
-    def test_update(self):
+    def test_refresh(self):
         """
-        Model.update
+        Model.refresh
         """
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), MODEL_TABLE_DATA
@@ -218,7 +230,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(GET_MODEL_ITEM_DATA), GET_MODEL_ITEM_DATA
-            item.update()
+            item.refresh()
             self.assertEqual(
                 item.user_name,
                 GET_MODEL_ITEM_DATA.get(ITEM).get('user_name').get(STRING_SHORT))
@@ -243,6 +255,7 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
+                'return_consumed_capacity': 'TOTAL',
                 'table_name': 'UserModel'
             }
             args = req.call_args[1]
@@ -257,7 +270,7 @@ class ModelTestCase(TestCase):
             item = UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK(), None
+            req.return_value = HttpOK({}), {}
             item.save()
             args = req.call_args[1]
             params = {
@@ -275,6 +288,7 @@ class ModelTestCase(TestCase):
                         'S': u'foo'
                     },
                 },
+                'return_consumed_capacity': 'TOTAL',
                 'table_name': 'UserModel'
             }
 
@@ -311,7 +325,7 @@ class ModelTestCase(TestCase):
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
-            for item in UserModel.query('foo', user_id__gt='id-1'):
+            for item in UserModel.query('foo', user_id__gt='id-1', user_id__le='id-2'):
                 queried.append(item.serialize())
             self.assertTrue(len(queried) == len(items))
 
@@ -387,6 +401,30 @@ class ModelTestCase(TestCase):
                 queried.append(item.serialize())
             self.assertTrue(len(queried) == len(items))
 
+        def fake_query(*args, **kwargs):
+            start_key = kwargs.get(pythonic(EXCLUSIVE_START_KEY), None)
+            if start_key:
+                idx = 0
+                for item in BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name):
+                    idx += 1
+                    if item == start_key:
+                        break
+                items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[idx:idx+1]
+            else:
+                items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[:1]
+            data = {
+                ITEMS: items,
+                LAST_EVALUATED_KEY: items[-1] if len(items) else None
+            }
+            return HttpOK(data), data
+
+        FakeQuery = MagicMock()
+        FakeQuery.side_effect = fake_query
+
+        with patch(PATCH_METHOD, new=FakeQuery) as req:
+            for item in UserModel.query('foo'):
+                self.assertIsNotNone(item)
+
     def test_scan(self):
         """
         Model.scan
@@ -418,6 +456,7 @@ class ModelTestCase(TestCase):
             if kwargs == {'table_name': UserModel.table_name}:
                 return HttpOK(MODEL_TABLE_DATA), MODEL_TABLE_DATA
             elif kwargs == {
+                'return_consumed_capacity': 'TOTAL',
                 'table_name': 'UserModel',
                 'key': {'user_name': {'S': 'foo'},
                         'user_id': {'S': 'bar'}}, 'consistent_read': False}:
@@ -443,6 +482,7 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
+                'return_consumed_capacity': 'TOTAL',
                 'table_name': 'UserModel'
             }
             self.assertEqual(req.call_args[1], params)
@@ -503,6 +543,31 @@ class ModelTestCase(TestCase):
                 args['request_items']['UserModel']['Keys'],
             )
 
+        def fake_batch_get(*args, **kwargs):
+            if pythonic(REQUEST_ITEMS) in kwargs:
+                item = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[0]
+                items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[1:]
+                response = {
+                    UNPROCESSED_KEYS: {
+                        UserModel.table_name: {
+                            KEYS: items
+                        }
+                    },
+                    RESPONSES: {
+                        UserModel.table_name: [item]
+                    }
+                }
+                return HttpOK(response), response
+            return HttpOK({}), {}
+
+        batch_get_mock = MagicMock()
+        batch_get_mock.side_effect = fake_batch_get
+
+        with patch(PATCH_METHOD, new=batch_get_mock) as req:
+            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(1000)]
+            for item in UserModel.batch_get(item_keys):
+                self.assertIsNotNone(item)
+
     def test_batch_write(self):
         """
         Model.batch_write
@@ -512,7 +577,7 @@ class ModelTestCase(TestCase):
             UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK(), None
+            req.return_value = HttpOK({}), {}
 
             with UserModel.batch_write(auto_commit=False) as batch:
                 items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(25)]
@@ -535,16 +600,38 @@ class ModelTestCase(TestCase):
                 items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(30)]
                 for item in items:
                     batch.save(item)
+
+        def fake_unprocessed_keys(*args, **kwargs):
+            if pythonic(REQUEST_ITEMS) in kwargs:
+                items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name)[1:]
+                unprocessed = {
+                    UNPROCESSED_KEYS: {
+                        UserModel.table_name: items
+                    }
+                }
+                return HttpOK(unprocessed), unprocessed
+            return HttpOK({}), {}
+
+        batch_write_mock = MagicMock()
+        batch_write_mock.side_effect = fake_unprocessed_keys
+
+        with patch(PATCH_METHOD, new=batch_write_mock) as req:
+            items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(500)]
+            for item in items:
+                batch.save(item)
 
     def test_global_index(self):
         """
         Models.GlobalSecondaryIndex
         """
+        self.assertIsNotNone(IndexedModel.email_index.hash_key_attribute())
+
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), MODEL_TABLE_DATA
             IndexedModel('foo', 'bar')
 
         scope_args = {'count': 0}
+
         def fake_dynamodb(obj, **kwargs):
             if kwargs == {'table_name': UserModel.table_name}:
                 if scope_args['count'] == 0:
@@ -589,6 +676,7 @@ class ModelTestCase(TestCase):
             LocalIndexedModel('foo', 'bar')
 
         scope_args = {'count': 0}
+
         def fake_dynamodb(obj, **kwargs):
             if kwargs == {'table_name': UserModel.table_name}:
                 if scope_args['count'] == 0:
@@ -653,3 +741,16 @@ class ModelTestCase(TestCase):
             pass
 
         self.assertRaises(ValueError, BadIndex)
+
+    def test_throttle(self):
+        """
+        Throttle.add_record
+        """
+        throt = Throttle(30)
+        throt.add_record(None)
+        for i in range(10):
+            throt.add_record(1)
+            throt.throttle()
+        for i in range(2):
+            throt.add_record(50)
+            throt.throttle()

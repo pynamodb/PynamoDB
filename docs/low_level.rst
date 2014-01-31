@@ -8,7 +8,9 @@ written on top of it.
 Creating a connection
 ^^^^^^^^^^^^^^^^^^^^^
 
-Creating a connection is simple::
+Creating a connection is simple:
+
+.. code-block:: python
 
     from pynamodb.connection import Connection
 
@@ -16,13 +18,13 @@ Creating a connection is simple::
 
 You can specify a different DynamoDB url:
 
-::
+.. code-block:: python
 
     conn = Connection(host='http://alternative-domain/')
 
 By default, PynamoDB will connect to the us-east-1 region, but you can specify a different one.
 
-::
+.. code-block:: python
 
     conn = Connection(region='us-west-1')
 
@@ -30,23 +32,29 @@ By default, PynamoDB will connect to the us-east-1 region, but you can specify a
 Modifying tables
 ^^^^^^^^^^^^^^^^
 
-You can easily list tables::
+You can easily list tables:
+
+.. code-block:: python
 
     >>> conn.list_tables()
     {u'TableNames': [u'Thread']}
 
-or delete a table::
+or delete a table:
+
+.. code-block:: python
 
     >>> conn.delete_table('Thread')
 
-If you want to change the capacity of a table, that can be done as well::
+If you want to change the capacity of a table, that can be done as well:
+
+.. code-block:: python
 
     >>> conn.update_table('Thread', read_capacity_units=20, write_capacity_units=20)
 
 You can create tables as well, although the syntax is verbose. You should really use the model API instead,
 but here is a low level example to demonstrate the point:
 
-::
+.. code-block:: python
 
     kwargs = {
         'write_capacity_units': 1,
@@ -78,15 +86,21 @@ but here is a low level example to demonstrate the point:
 Modifying items
 ^^^^^^^^^^^^^^^
 
-The low level API can perform item operationst too, such as getting an item::
+The low level API can perform item operationst too, such as getting an item:
+
+.. code-block:: python
 
     conn.get_item('table_name', 'hash_key', 'range_key')
 
-You can put items as well, specifying the keys and any other attributes::
+You can put items as well, specifying the keys and any other attributes:
+
+.. code-block:: python
 
     conn.put_item('table_name', 'hash_key', 'range_key', attributes={'key': 'value'})
 
-Deleting an item has similar syntax::
+Deleting an item has similar syntax:
+
+.. code-block:: python
 
     conn.delete_item('table_name', 'hash_key', 'range_key')
 

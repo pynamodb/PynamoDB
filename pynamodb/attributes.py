@@ -3,7 +3,6 @@ pynamodb attributes
 """
 import six
 import json
-import copy
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
@@ -11,11 +10,6 @@ from pynamodb.constants import (
     DEFAULT_ENCODING
 )
 
-class ValueAttribute(object):
-    """
-
-    """
-    pass
 
 class Attribute(object):
     """
@@ -156,7 +150,66 @@ class UnicodeAttribute(Attribute):
         """
         Returns a unicode string
         """
-        return six.u(value)
+        if value is None or not len(value):
+            return None
+        elif isinstance(value, six.text_type):
+            return value
+        else:
+            return six.u(value)
+
+
+class JSONAttribute(Attribute):
+    """
+    A JSON Attribute
+
+    Encodes JSON to unicode internally
+    """
+    def __init__(self, **kwargs):
+        kwargs.setdefault('attr_type', STRING)
+        super(JSONAttribute, self).__init__(**kwargs)
+
+    def serialize(self, value):
+        """
+        Serializes JSON to unicode
+        """
+        if value is None:
+            return None
+        encoded = json.dumps(value)
+        return six.u(encoded)
+
+    def deserialize(self, value):
+        """
+        Deserializes JSON
+        """
+        return json.loads(value)
+
+
+class BooleanAttribute(Attribute):
+    """
+    A class for boolean attributes
+
+    This attribute type uses a number attribute to save space
+    """
+    def __init__(self, **kwargs):
+        kwargs.setdefault('attr_type', NUMBER)
+        super(BooleanAttribute, self).__init__(**kwargs)
+
+    def serialize(self, value):
+        """
+        Encodes True as 1, False as 0
+        """
+        if value is None:
+            return None
+        elif value:
+            return json.dumps(1)
+        else:
+            return json.dumps(0)
+
+    def deserialize(self, value):
+        """
+        Encode
+        """
+        return bool(json.loads(value))
 
 
 class NumberSetAttribute(SetMixin, Attribute):

@@ -22,12 +22,12 @@ GLOBAL_SECONDARY_INDEX_UPDATES = 'GlobalSecondaryIndexUpdates'
 RETURN_ITEM_COLL_METRICS = 'ReturnItemCollectionMetrics'
 EXCLUSIVE_START_TABLE_NAME = 'ExclusiveStartTableName'
 RETURN_CONSUMED_CAPACITY = 'ReturnConsumedCapacity'
-EXCLUSIVE_START_KEY = 'ExclusiveStartKey'
 COMPARISON_OPERATOR = 'ComparisonOperator'
 SCAN_INDEX_FORWARD = 'ScanIndexForward'
 ATTR_DEFINITIONS = 'AttributeDefinitions'
 ATTR_VALUE_LIST = 'AttributeValueList'
 TABLE_DESCRIPTION = 'TableDescription'
+UNPROCESSED_KEYS = 'UnprocessedKeys'
 CONSISTENT_READ = 'ConsistentRead'
 DELETE_REQUEST = 'DeleteRequest'
 RETURN_VALUES = 'ReturnValues'
@@ -112,6 +112,8 @@ INCLUDE = 'INCLUDE'
 
 # These are constants used in the KeyConditions parameter
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditions
+EXCLUSIVE_START_KEY = 'ExclusiveStartKey'
+LAST_EVALUATED_KEY = 'LastEvaluatedKey'
 BEGINS_WITH = 'BEGINS_WITH'
 BETWEEN = 'BETWEEN'
 EQ = 'EQ'
@@ -123,6 +125,15 @@ GT = 'GT'
 IN = 'IN'
 KEY_CONDITIONS = 'KeyConditions'
 COMPARISON_OPERATOR_VALUES = [EQ, LE, LT, GE, GT, BEGINS_WITH, BETWEEN]
+QUERY_OPERATOR_MAP = {
+    'eq': EQ,
+    'le': LE,
+    'lt': LT,
+    'ge': GE,
+    'gt': GT,
+    'begins_with': BEGINS_WITH,
+    'between': BETWEEN
+}
 
 # These are the valid select values for the Scan operation
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html#DDB-Scan-request-Select
@@ -135,6 +146,20 @@ ALL_PROJECTED_ATTRIBUTES = 'ALL_PROJECTED_ATTRIBUTES'
 SPECIFIC_ATTRIBUTES = 'SPECIFIC_ATTRIBUTES'
 COUNT = 'COUNT'
 SELECT_VALUES = [ALL_ATTRIBUTES, ALL_PROJECTED_ATTRIBUTES, SPECIFIC_ATTRIBUTES, COUNT]
+SCAN_OPERATOR_MAP = {
+    'eq': EQ,
+    'ne': NE,
+    'le': LE,
+    'lt': LT,
+    'ge': GT,
+    'not_null': NOT_NULL,
+    'null': NULL,
+    'contains': CONTAINS,
+    'not_contains': NOT_CONTAINS,
+    'begins_with': BEGINS_WITH,
+    'in': IN,
+    'between': BETWEEN
+}
 
 # These are the valid comparison operators for the Scan operation
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html#DDB-Scan-request-ScanFilter
@@ -149,6 +174,8 @@ EXPECTED = 'Expected'
 
 # These are the valid ReturnConsumedCapacity values used in multiple operations
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_BatchGetItem.html#DDB-BatchGetItem-request-ReturnConsumedCapacity
+CONSUMED_CAPACITY = 'ConsumedCapacity'
+CAPACITY_UNITS = 'CapacityUnits'
 INDEXES = 'INDEXES'
 TOTAL = 'TOTAL'
 NONE = 'NONE'
@@ -173,3 +200,5 @@ PUT = 'PUT'
 DELETE = 'DELETE'
 ADD = 'ADD'
 ATTR_UPDATE_ACTIONS = [PUT, DELETE, ADD]
+BATCH_GET_PAGE_LIMIT = 100
+BATCH_WRITE_PAGE_LIMIT = 25

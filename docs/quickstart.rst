@@ -47,9 +47,9 @@ Attributes can be accessed and set normally:
     >>> user.email
     'foo-bar
 
-Did another process update the user? We can update the user with data from DynamoDB::
+Did another process update the user? We can refresh the user with data from DynamoDB::
 
-    >>> user.update()
+    >>> user.refresh()
 
 Ready to delete the user?
 
