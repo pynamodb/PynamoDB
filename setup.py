@@ -15,7 +15,7 @@ setup(
     name='pynamodb',
     version=__import__('pynamodb').__version__,
     packages=find_packages(),
-    url='http://jlafon.io/pynamodb',
+    url='http://jlafon.io/pynamodb.html',
     author='Jharrod LaFon',
     author_email='jlafon@eyesopen.com',
     description='A Pythonic Interface to DynamoDB',
