@@ -255,6 +255,9 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a datetime object and returns a string
         """
+        if isinstance(value, unicode):
+            #already serialized
+            return value
         fmt = Delorean(value, timezone=UTC).datetime.strftime(DATETIME_FORMAT)
         return six.u(fmt)
 
