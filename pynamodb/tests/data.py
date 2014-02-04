@@ -179,6 +179,20 @@ GET_MODEL_ITEM_DATA = {
         }
     }
 }
+COMPLEX_ITEM_DATA = {
+    "ConsumedCapacity": {
+        "CapacityUnits": 1,
+        "TableName": "Thread"
+    },
+    'Item': {
+        'date_created': {
+            'S': '2014-02-03T23:58:10.963333+0000'
+        },
+        'name': {
+            'S': 'bar'
+        }
+    }
+}
 
 GET_ITEM_DATA = {
     "ConsumedCapacity": {
@@ -231,3 +245,34 @@ BATCH_GET_ITEMS = {
         ]
     }
 }
+
+COMPLEX_TABLE_DATA = {
+    'Table': {
+        'ItemCount': 0, 'TableName': 'ComplexKey',
+        'ProvisionedThroughput': {
+            'ReadCapacityUnits': 2,
+            'WriteCapacityUnits': 2,
+            'NumberOfDecreasesToday': 0
+        },
+        'CreationDateTime': 1391471876.86,
+        'TableStatus': 'ACTIVE',
+        'AttributeDefinitions': [
+            {
+                'AttributeName': 'date_created', 'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'name', 'AttributeType': 'S'
+            }
+        ],
+        'KeySchema': [
+            {
+                'AttributeName': 'name', 'KeyType': 'HASH'
+            },
+            {
+                'AttributeName': 'date_created', 'KeyType': 'RANGE'
+            }
+        ],
+        'TableSizeBytes': 0
+    }
+}
+
