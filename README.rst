@@ -59,7 +59,7 @@ Create a new user:
 Advanced Usage
 ^^^^^^^^^^^^^^
 
-Wan't to use indexes? No problem:
+Want to use indexes? No problem:
 
 .. code-block:: python
 
