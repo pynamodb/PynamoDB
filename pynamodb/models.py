@@ -478,11 +478,16 @@ class Model(with_metaclass(MetaModel)):
         hash_keyname = cls.meta().hash_keyname
         range_keyname = cls.meta().range_keyname
         hash_key_type = cls.meta().get_attribute_type(hash_keyname)
-        args = (mutable_data.pop(hash_keyname).get(hash_key_type),)
+        hash_key = mutable_data.pop(hash_keyname).get(hash_key_type)
+        hash_key_attr = cls.get_attributes().get(hash_keyname)
+        hash_key = hash_key_attr.deserialize(hash_key)
+        args = (hash_key,)
         kwargs = {}
         if range_keyname:
+            range_key_attr = cls.get_attributes().get(range_keyname)
             range_key_type = cls.meta().get_attribute_type(range_keyname)
-            kwargs['range_key'] = mutable_data.pop(range_keyname).get(range_key_type)
+            range_key = mutable_data.pop(range_keyname).get(range_key_type)
+            kwargs['range_key'] = range_key_attr.deserialize(range_key)
         for name, value in mutable_data.items():
             attr = cls.get_attributes().get(name, None)
             if attr:

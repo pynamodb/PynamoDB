@@ -3,6 +3,7 @@ Test model API
 """
 import copy
 import six
+from datetime import datetime
 from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
 from pynamodb.connection.exceptions import TableError
@@ -17,13 +18,15 @@ from pynamodb.indexes import (
     IncludeProjection, KeysOnlyProjection, Index
 )
 from pynamodb.attributes import (
-    UnicodeAttribute, NumberAttribute, BinaryAttribute,
+    UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute)
 from unittest import TestCase
 from .response import HttpOK, HttpBadRequest
 from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
-    BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS)
+    BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
+    COMPLEX_ITEM_DATA
+)
 
 # Py2/3
 if six.PY3:
@@ -115,6 +118,15 @@ class UserModel(Model):
     zip_code = NumberAttribute(null=True)
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)
+
+
+class ComplexKeyModel(Model):
+    """
+    This model has a key that must be serialized/deserialized properly
+    """
+    table_name = 'ComplexKey'
+    name = UnicodeAttribute(hash_key=True)
+    date_created = UTCDateTimeAttribute(default=datetime.utcnow)
 
 
 class ModelTestCase(TestCase):
@@ -234,6 +246,18 @@ class ModelTestCase(TestCase):
             self.assertEqual(
                 item.user_name,
                 GET_MODEL_ITEM_DATA.get(ITEM).get('user_name').get(STRING_SHORT))
+
+    def test_complex_key(self):
+        """
+        Model with complex key
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), COMPLEX_TABLE_DATA
+            item = ComplexKeyModel('test')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(COMPLEX_ITEM_DATA), COMPLEX_ITEM_DATA
+            item.refresh()
 
     def test_delete(self):
         """
