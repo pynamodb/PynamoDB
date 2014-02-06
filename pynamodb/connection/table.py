@@ -1,5 +1,6 @@
 """
-Connection classes
+PynamoDB Connection classes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 from .base import Connection
 
