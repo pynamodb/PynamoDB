@@ -2,11 +2,14 @@
 Test model API
 """
 import copy
-import six
 from datetime import datetime
+from unittest import TestCase
+
+import six
+
 from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
-from pynamodb.connection.exceptions import TableError
+from pynamodb.exceptions import TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS,
@@ -20,13 +23,13 @@ from pynamodb.indexes import (
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute)
-from unittest import TestCase
 from .response import HttpOK, HttpBadRequest
 from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA
 )
+
 
 # Py2/3
 if six.PY3:
@@ -239,6 +242,10 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), MODEL_TABLE_DATA
             item = UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            self.assertRaises(item.DoesNotExist, item.refresh)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(GET_MODEL_ITEM_DATA), GET_MODEL_ITEM_DATA
@@ -515,7 +522,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
-            self.assertIsNone(UserModel.get('foo', 'bar'))
+            self.assertRaises(UserModel.DoesNotExist, UserModel.get, 'foo', 'bar')
 
     def test_batch_get(self):
         """

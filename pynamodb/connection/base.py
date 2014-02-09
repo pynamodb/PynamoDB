@@ -1,12 +1,14 @@
 """
 Lowest level connection
 """
+import logging
+
 import six
 from botocore.session import get_session
-import logging
+
 from .util import pythonic
-from .exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError
 from ..types import HASH, RANGE
+from pynamodb.exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -21,6 +23,7 @@ from pynamodb.constants import (
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST,
     CONSUMED_CAPACITY, CAPACITY_UNITS
     )
+
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())

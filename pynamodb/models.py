@@ -10,6 +10,7 @@ import six
 import copy
 import logging
 from six import with_metaclass
+from .exceptions import DoesNotExist
 from .throttle import NoThrottle
 from .attributes import Attribute
 from .connection.base import MetaTable
@@ -170,6 +171,7 @@ class Model(with_metaclass(MetaModel)):
     connection = None
     index_classes = None
     throttle = NoThrottle()
+    DoesNotExist = DoesNotExist
 
     def __init__(self, hash_key=None, range_key=None, **attrs):
         """
@@ -414,7 +416,10 @@ class Model(with_metaclass(MetaModel)):
         kwargs.setdefault('consistent_read', consistent_read)
         attrs = self.get_connection().get_item(*args, **kwargs)
         self.throttle.add_record(attrs.get(CONSUMED_CAPACITY))
-        self.deserialize(attrs.get(ITEM, {}))
+        item_data = attrs.get(ITEM, None)
+        if item_data is None:
+            raise self.DoesNotExist("This item does not exist in the table.")
+        self.deserialize(item_data)
 
     def deserialize(self, attrs):
         """
@@ -520,7 +525,7 @@ class Model(with_metaclass(MetaModel)):
         if item_data:
             return cls.from_raw_data(item_data)
         else:
-            return None
+            raise cls.DoesNotExist()
 
     @classmethod
     def from_raw_data(cls, data):
