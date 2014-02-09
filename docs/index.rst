@@ -26,7 +26,7 @@ Topics
    :maxdepth: 2
 
    quickstart
-   api
+   tutorial
    indexes
    low_level
    awsaccess
