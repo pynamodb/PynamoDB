@@ -205,8 +205,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'PynamoDB.tex', 'PynamoDB Documentation',
-   'Jharrod LaFon', 'manual'),
+    ('index', 'PynamoDB.tex', 'PynamoDB Documentation',
+     'Jharrod LaFon', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -249,9 +249,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'PynamoDB', 'PynamoDB Documentation',
-   'Jharrod LaFon', 'PynamoDB', 'One line description of project.',
-   'Miscellaneous'),
+    ('index', 'PynamoDB', 'PynamoDB Documentation',
+     'Jharrod LaFon', 'PynamoDB', 'One line description of project.',
+     'Miscellaneous'),
 ]
 
 # Documents to append as an appendix to all manuals.
