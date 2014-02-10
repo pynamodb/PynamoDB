@@ -36,9 +36,9 @@ in this example. Indexes are said to *project* attributes from the main table in
 As such, there are three styles of projection in DynamoDB, and PynamoDB provides three corresponding
 projection classes.
 
-* ``AllProjection``: All attributes are projected.
-* ``KeysOnlyProjection``: Only the index and primary keys are projected.
-* ``IncludeProjection(attributes)``: Only the specified ``attributes`` are projected.
+* :py:class:`AllProjection <pynamodb.indexes.AllProjection>`: All attributes are projected.
+* :py:class:`KeysOnlyProjection <pynamodb.indexes.KeysOnlyProjection>`: Only the index and primary keys are projected.
+* :py:class:`IncludeProjection(attributes) <pynamodb.indexes.IncludeProjection>`: Only the specified ``attributes`` are projected.
 
 We still need to attach the index to the model in order for us to use it. You define it as
 a class attribute on the model, as in this example:

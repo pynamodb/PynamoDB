@@ -1,5 +1,5 @@
 """
-pynamodb attributes
+PynamoDB attributes
 """
 import six
 import json

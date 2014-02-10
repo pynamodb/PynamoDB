@@ -32,6 +32,16 @@ Topics
    awsaccess
    contributing
 
+
+API docs
+========
+
+.. toctree::
+   :maxdepth: 2
+
+   api
+
+
 Indices and tables
 ==================
 

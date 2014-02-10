@@ -77,15 +77,15 @@ with the ``range_key`` attribute. You can specify a default value for any field,
 
 PynamoDB comes with several built in attribute types for convenience, which include the following:
 
-* UnicodeAttribute
-* UnicodeSetAttribute
-* NumberAttribute
-* NumberSetAttribute
-* BinaryAttribute
-* BinarySetAttribute
-* UTCDateTimeAttribute
-* BooleanAttribute
-* JSONAttribute
+* :py:class:`UnicodeAttribute <pynamodb.attributes.UnicodeAttribute>`
+* :py:class:`UnicodeSetAttribute <pynamodb.attributes.UnicodeSetAttribute>`
+* :py:class:`NumberAttribute <pynamodb.attributes.NumberAttribute>`
+* :py:class:`NumberSetAttribute <pynamodb.attributes.NumberSetAttribute>`
+* :py:class:`BinaryAttribute <pynamodb.attributes.BinaryAttribute>`
+* :py:class:`BinarySetAttribute <pynamodb.attributes.BinarySetAttribute>`
+* :py:class:`UTCDateTimeAttribute <pynamodb.attributes.UTCDateTimeAttribute>`
+* :py:class:`BooleanAttribute <pynamodb.attributes.BooleanAttribute>`
+* :py:class:`JSONAttribute <pynamodb.attributes.JSONAttribute>`
 
 All of these built in attributes handle serializing and deserializng themselves, in both Python 2 and Python 3.
 
