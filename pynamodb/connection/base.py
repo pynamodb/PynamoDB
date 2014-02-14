@@ -260,12 +260,12 @@ class Connection(object):
         """
         Returns an endpoint connection to `self.region`
         """
-        if self._endpoint is None:
-            if self.host:
-                self._endpoint = self.service.get_endpoint(self.region, endpoint_url=self.host)
-            else:
-                self._endpoint = self.service.get_endpoint(self.region)
-        return self._endpoint
+        end_point = None
+        if self.host:
+            end_point = self.service.get_endpoint(self.region, endpoint_url=self.host)
+        else:
+            end_point = self.service.get_endpoint(self.region)
+        return end_point
 
     def get_meta_table(self, table_name, refresh=False):
         """
