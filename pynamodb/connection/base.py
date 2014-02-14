@@ -214,7 +214,7 @@ class Connection(object):
 
     def dispatch(self, operation_name, operation_kwargs):
         """
-        Dispatches `operation_name` with arguments ``operation_kwargs`
+        Dispatches `operation_name` with arguments `operation_kwargs`
         """
         if operation_name not in [DESCRIBE_TABLE, LIST_TABLES, UPDATE_TABLE, DELETE_TABLE, CREATE_TABLE]:
             if pythonic(RETURN_CONSUMED_CAPACITY) not in operation_kwargs:

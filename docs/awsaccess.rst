@@ -11,3 +11,6 @@ As for the permissions granted via IAM, many tasks can be carried out by PynamoD
 policies as required, see the
 `DynamoDB <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/UsingIAMWithDDB.html>`_ docs for more
 information.
+
+Finally, see the `AWS CLI documentation <http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-installing-credentials>`_
+for more details on how to pass credentials to botocore.

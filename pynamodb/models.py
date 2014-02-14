@@ -1,7 +1,4 @@
 """
-pynamodb.models
-~~~~~~~~~~~~~~~~
-
 DynamoDB Models for PynamoDB
 """
 
