@@ -537,6 +537,26 @@ class ModelTestCase(TestCase):
             item_keys = ['hash-{0}'.format(x) for x in range(10)]
             for item in SimpleUserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'request_items': {
+                    'SimpleModel': {
+                        'Keys': [
+                            {'user_name': {'S': 'hash-9'}},
+                            {'user_name': {'S': 'hash-8'}},
+                            {'user_name': {'S': 'hash-7'}},
+                            {'user_name': {'S': 'hash-6'}},
+                            {'user_name': {'S': 'hash-5'}},
+                            {'user_name': {'S': 'hash-4'}},
+                            {'user_name': {'S': 'hash-3'}},
+                            {'user_name': {'S': 'hash-2'}},
+                            {'user_name': {'S': 'hash-1'}},
+                            {'user_name': {'S': 'hash-0'}}
+                        ]
+                    }
+                }
+            }
+            self.assertEqual(params, req.call_args[1])
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), MODEL_TABLE_DATA

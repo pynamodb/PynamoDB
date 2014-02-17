@@ -228,7 +228,7 @@ class Model(with_metaclass(MetaModel)):
                     range_keyname: range_key
                 })
             else:
-                hash_key = cls.serialize_keys(item[0], None)[0]
+                hash_key = cls.serialize_keys(item, None)[0]
                 keys_to_get.append({
                     hash_keyname: hash_key
                 })
