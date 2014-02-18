@@ -57,6 +57,16 @@ Create a new user:
     user = UserModel('John', 'Denver')
     user.save()
 
+Retrieve an existing user:
+
+.. code-block:: python
+
+    try:
+        user = UserModel.get('John', 'Denver')
+        print(user)
+    except UserModel.DoesNotExist:
+        print("User does not exist")
+
 Advanced Usage
 ^^^^^^^^^^^^^^
 

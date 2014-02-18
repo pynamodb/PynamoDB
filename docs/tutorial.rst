@@ -133,7 +133,7 @@ If you want to retrieve an item that already exists in your table, you can do th
 
     >>> thread_item = Thread.get('forum_name', 'forum_subject')
 
-If the item doesn't exist, `None` will be returned.
+If the item doesn't exist, `Thread.DoesNotExist` will be raised.
 
 Updating Items
 --------------
