@@ -174,9 +174,6 @@ class Connection(object):
     """
 
     def __init__(self, region=None, host=None):
-        self._endpoint = None
-        self._session = None
-        self._service = None
         self._tables = {}
         self.host = host
         if region:
@@ -242,18 +239,14 @@ class Connection(object):
         """
         Returns a valid botocore session
         """
-        if self._session is None:
-            self._session = get_session()
-        return self._session
+        return get_session()
 
     @property
     def service(self):
         """
         Returns a reference to the dynamodb service
         """
-        if self._service is None:
-            self._service = self.session.get_service(SERVICE_NAME)
-        return self._service
+        return self.session.get_service(SERVICE_NAME)
 
     @property
     def endpoint(self):
