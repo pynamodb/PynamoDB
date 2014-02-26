@@ -1,14 +1,13 @@
 """
-pynamodb.models
-~~~~~~~~~~~~~~~~
-
 DynamoDB Models for PynamoDB
 """
 
 import time
 import six
 import copy
+import logging
 from six import with_metaclass
+from .exceptions import DoesNotExist
 from .throttle import NoThrottle
 from .attributes import Attribute
 from .connection.base import MetaTable
@@ -29,9 +28,14 @@ from pynamodb.constants import (
     CAPACITY_UNITS)
 
 
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
+
+
 class ModelContextManager(object):
     """
     A class for managing batch operations
+
     """
 
     def __init__(self, model, auto_commit=True):
@@ -53,6 +57,13 @@ class BatchWrite(ModelContextManager):
     """
 
     def save(self, put_item):
+        """
+        This adds `put_item` to the list of pending writes to be performed.
+        Additionally, the a BatchWriteItem will be performed if the length of items
+        reaches 25.
+
+        :param put_item: Should be an instance of a `Model` to be written
+        """
         if len(self.pending_operations) == self.max_operations:
             if not self.auto_commit:
                 raise ValueError("DynamoDB allows a maximum of 25 batch operations")
@@ -61,6 +72,12 @@ class BatchWrite(ModelContextManager):
         self.pending_operations.append({"action": PUT, "item": put_item})
 
     def delete(self, del_item):
+        """
+        This adds `del_item` to the list of pending deletes to be performed.
+        If the list of items reaches 25, a BatchWriteItem will be called.
+
+        :param del_item: Should be an instance of a `Model` to be deleted
+        """
         if len(self.pending_operations) == self.max_operations:
             if not self.auto_commit:
                 raise ValueError("DynamoDB allows a maximum of 25 batch operations")
@@ -69,12 +86,17 @@ class BatchWrite(ModelContextManager):
         self.pending_operations.append({"action": DELETE, "item": del_item})
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        This ensures that all pending operations are committed when
+        the context is exited
+        """
         return self.commit()
 
     def commit(self):
         """
-        Writes all of the changes
+        Writes all of the changes that are pending
         """
+        log.debug("{0} committing batch operation".format(self.model))
         put_items = []
         delete_items = []
         attrs_name = pythonic(ATTRIBUTES)
@@ -92,7 +114,7 @@ class BatchWrite(ModelContextManager):
             delete_items=delete_items
         )
         self.model.add_throttle_record(data.get(CONSUMED_CAPACITY, None))
-        if not data:
+        if data is None:
             return
         unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.table_name)
         while unprocessed_keys:
@@ -104,6 +126,7 @@ class BatchWrite(ModelContextManager):
                 elif DELETE_REQUEST in key:
                     delete_items.append(key.get(DELETE_REQUEST))
             self.model.throttle.throttle()
+            log.debug("Resending {0} unprocessed keys for batch operation".format(len(unprocessed_keys)))
             data = self.model.get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items
@@ -145,6 +168,7 @@ class Model(with_metaclass(MetaModel)):
     connection = None
     index_classes = None
     throttle = NoThrottle()
+    DoesNotExist = DoesNotExist
 
     def __init__(self, hash_key=None, range_key=None, **attrs):
         """
@@ -163,8 +187,11 @@ class Model(with_metaclass(MetaModel)):
     @classmethod
     def add_throttle_record(cls, records):
         """
+        (Experimental)
         Pulls out the table name and capacity units from `records` and
         puts it in `self.throttle`
+
+        :param records: A list of usage records
         """
         if records:
             for record in records:
@@ -176,6 +203,9 @@ class Model(with_metaclass(MetaModel)):
     def batch_get(cls, items):
         """
         BatchGetItem for this model
+
+        :param items: Should be a list of hash keys to retrieve, or a list of
+            tuples if range keys are used.
         """
         hash_keyname = cls.meta().hash_keyname
         range_keyname = cls.meta().range_keyname
@@ -198,7 +228,7 @@ class Model(with_metaclass(MetaModel)):
                     range_keyname: range_key
                 })
             else:
-                hash_key = cls.serialize_keys(item[0], None)[0]
+                hash_key = cls.serialize_keys(item, None)[0]
                 keys_to_get.append({
                     hash_keyname: hash_key
                 })
@@ -217,7 +247,10 @@ class Model(with_metaclass(MetaModel)):
         """
         Returns a single page from BatchGetItem
         Also returns any unprocessed items
+
+        :param keys_to_get: A list of keys
         """
+        log.debug("Fetching a BatchGetItem page")
         data = cls.get_connection().batch_get_item(
             keys_to_get
         )
@@ -229,7 +262,9 @@ class Model(with_metaclass(MetaModel)):
     @classmethod
     def batch_write(cls, auto_commit=True):
         """
-        Returns a context manager for a batch operation
+        Returns a context manager for a batch operation'
+
+        :param auto_commit: Commits writes automatically if `True`
         """
         return BatchWrite(cls, auto_commit=auto_commit)
 
@@ -290,6 +325,16 @@ class Model(with_metaclass(MetaModel)):
         return self.get_connection().delete_item(*args, **kwargs)
 
     def update_item(self, attribute, value, action=None):
+        """
+        Updates an item using the UpdateItem operation.
+
+        This should be used for updating a single attribute of an item.
+
+        :param attribute: The name of the attribute to be updated
+        :param value: The new value for the attribute.
+        :param action: The action to take if this item already exists.
+            See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html#DDB-UpdateItem-request-AttributeUpdate
+        """
         args, kwargs = self._get_save_args()
         for attr_name, attr_cls in self.get_attributes().items():
             if attr_name == attribute:
@@ -341,6 +386,11 @@ class Model(with_metaclass(MetaModel)):
     def _get_save_args(self, attributes=True, null_check=True):
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
+
+        This is used for serializing items to be saved, or for serializing just the keys.
+
+        :param attributes: If True, then attributes are included.
+        :param null_check: If True, then attributes are checked for null.
         """
         kwargs = {}
         serialized = self.serialize(null_check=null_check)
@@ -356,16 +406,23 @@ class Model(with_metaclass(MetaModel)):
     def refresh(self, consistent_read=False):
         """
         Retrieves this object's data from dynamodb and syncs this local object
+
+        :param consistent_read: If True, then a consistent read is performed.
         """
         args, kwargs = self._get_save_args(attributes=False)
         kwargs.setdefault('consistent_read', consistent_read)
         attrs = self.get_connection().get_item(*args, **kwargs)
         self.throttle.add_record(attrs.get(CONSUMED_CAPACITY))
-        self.deserialize(attrs.get(ITEM, {}))
+        item_data = attrs.get(ITEM, None)
+        if item_data is None:
+            raise self.DoesNotExist("This item does not exist in the table.")
+        self.deserialize(item_data)
 
     def deserialize(self, attrs):
         """
-        Sets attributes sent back from dynamodb on this object
+        Sets attributes sent back from DynamoDB on this object
+
+        :param attrs: A dictionary of attributes to update this item with.
         """
         for name, attr in attrs.items():
             attr_instance = self.get_attributes().get(name, None)
@@ -378,6 +435,9 @@ class Model(with_metaclass(MetaModel)):
     def serialize(self, attr_map=False, null_check=True):
         """
         Serializes a value for use with DynamoDB
+
+        :param attr_map: If True, then attributes are returned
+        :param null_check: If True, then attributes are checked for null
         """
         attributes = pythonic(ATTRIBUTES)
         attrs = {attributes: {}}
@@ -410,6 +470,9 @@ class Model(with_metaclass(MetaModel)):
     def serialize_keys(cls, hash_key, range_key=None):
         """
         Serializes the hash and range keys
+
+        :param hash_key: The hash key value
+        :param range_key: The range key value
         """
         hash_key = cls.hash_key_attribute().serialize(hash_key)
         if range_key:
@@ -424,9 +487,10 @@ class Model(with_metaclass(MetaModel)):
         attributes = cls.get_attributes()
         range_keyname = cls.meta().range_keyname
         if range_keyname:
-            return attributes[range_keyname]
+            attr = attributes[range_keyname]
         else:
-            return None
+            attr = None
+        return attr
 
     @classmethod
     def hash_key_attribute(cls):
@@ -444,6 +508,9 @@ class Model(with_metaclass(MetaModel)):
             consistent_read=False):
         """
         Returns a single object using the provided keys
+
+        :param hash_key: The hash key of the desired item
+        :param range_key: The range key of the desired item, only used when appropriate.
         """
         hash_key, range_key = cls.serialize_keys(hash_key, range_key)
         data = cls.get_connection().get_item(
@@ -456,13 +523,15 @@ class Model(with_metaclass(MetaModel)):
         if item_data:
             return cls.from_raw_data(item_data)
         else:
-            return None
+            raise cls.DoesNotExist()
 
     @classmethod
     def from_raw_data(cls, data):
         """
         Returns an instance of this class
         from the raw data
+
+        :param data: A serialized DynamoDB object
         """
         mutable_data = copy.copy(data)
         if mutable_data is None:
@@ -470,11 +539,16 @@ class Model(with_metaclass(MetaModel)):
         hash_keyname = cls.meta().hash_keyname
         range_keyname = cls.meta().range_keyname
         hash_key_type = cls.meta().get_attribute_type(hash_keyname)
-        args = (mutable_data.pop(hash_keyname).get(hash_key_type),)
+        hash_key = mutable_data.pop(hash_keyname).get(hash_key_type)
+        hash_key_attr = cls.get_attributes().get(hash_keyname)
+        hash_key = hash_key_attr.deserialize(hash_key)
+        args = (hash_key,)
         kwargs = {}
         if range_keyname:
+            range_key_attr = cls.get_attributes().get(range_keyname)
             range_key_type = cls.meta().get_attribute_type(range_keyname)
-            kwargs['range_key'] = mutable_data.pop(range_keyname).get(range_key_type)
+            range_key = mutable_data.pop(range_keyname).get(range_key_type)
+            kwargs['range_key'] = range_key_attr.deserialize(range_key)
         for name, value in mutable_data.items():
             attr = cls.get_attributes().get(name, None)
             if attr:
@@ -565,6 +639,9 @@ class Model(with_metaclass(MetaModel)):
     def _build_filters(cls, operator_map, filters):
         """
         Builds an appropriate condition map
+
+        :param operator_map: The mapping of operators used
+        :param filters: A list of item filters
         """
         key_conditions = {}
         attribute_classes = cls.get_attributes()
@@ -595,14 +672,20 @@ class Model(with_metaclass(MetaModel)):
               **filters):
         """
         Provides a high level query API
+
+        :param hash_key: The hash key to query
+        :param consistent_read: If True, a consistent read is performed
+        :param index_name: If set, then this index is used
+        :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
+            Controls descending or ascending results
         """
-        key_conditions = {}
         cls.get_indexes()
         if index_name:
             hash_key = cls.index_classes[index_name].hash_key_attribute().serialize(hash_key)
         else:
             hash_key = cls.serialize_keys(hash_key, None)[0]
         key_conditions = cls._build_filters(QUERY_OPERATOR_MAP, filters)
+        log.debug("Fetching first query page")
         data = cls.get_connection().query(
             hash_key,
             index_name=index_name,
@@ -615,6 +698,7 @@ class Model(with_metaclass(MetaModel)):
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
         while last_evaluated_key:
+            log.debug("Fetching query page with exclusive start key: {0}".format(last_evaluated_key))
             data = cls.get_connection().query(
                 hash_key,
                 exclusive_start_key=last_evaluated_key,
@@ -636,6 +720,11 @@ class Model(with_metaclass(MetaModel)):
              **filters):
         """
         Iterates through all items in the table
+
+        :param segment: If set, then scans the segment
+        :param total_segments: If set, then specifies total segments
+        :param limit: Used to limit the number of results returned
+        :param filters: A list of item filters
         """
         scan_filter = cls._build_filters(SCAN_OPERATOR_MAP, filters)
         data = cls.get_connection().scan(
@@ -644,11 +733,13 @@ class Model(with_metaclass(MetaModel)):
             scan_filter=scan_filter,
             total_segments=total_segments
         )
+        log.debug("Fetching first scan page")
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
         cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
         while last_evaluated_key:
+            log.debug("Fetching scan page with exclusive start key: {0}".format(last_evaluated_key))
             data = cls.get_connection().scan(
                 exclusive_start_key=last_evaluated_key,
                 limit=limit,
@@ -671,6 +762,10 @@ class Model(with_metaclass(MetaModel)):
     def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None):
         """
         Create the table for this model
+
+        :param wait: If set, then this call will block until the table is ready for use
+        :param read_capacity_units: Sets the read capacity units for this table
+        :param write_capacity_units: Sets the write capacity units for this table
         """
         if not cls.exists():
             schema = cls.schema()

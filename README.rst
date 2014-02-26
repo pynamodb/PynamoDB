@@ -20,7 +20,8 @@ Python 2 and 3.
 DynamoDB is a great NoSQL service provided by Amazon, but the API is verbose.
 PynamoDB presents you with a simple, elegant API.
 
-See documentation at http://pynamodb.readthedocs.org/
+See documentation at http://pynamodb.readthedocs.org/ or
+ask questions on the `Google group <https://groups.google.com/forum/#!forum/pynamodb>`_.
 
 Basic Usage
 ^^^^^^^^^^^
@@ -56,10 +57,20 @@ Create a new user:
     user = UserModel('John', 'Denver')
     user.save()
 
+Retrieve an existing user:
+
+.. code-block:: python
+
+    try:
+        user = UserModel.get('John', 'Denver')
+        print(user)
+    except UserModel.DoesNotExist:
+        print("User does not exist")
+
 Advanced Usage
 ^^^^^^^^^^^^^^
 
-Wan't to use indexes? No problem:
+Want to use indexes? No problem:
 
 .. code-block:: python
 

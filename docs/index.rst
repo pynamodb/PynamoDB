@@ -26,11 +26,21 @@ Topics
    :maxdepth: 2
 
    quickstart
-   api
+   tutorial
    indexes
    low_level
    awsaccess
    contributing
+
+
+API docs
+========
+
+.. toctree::
+   :maxdepth: 2
+
+   api
+
 
 Indices and tables
 ==================

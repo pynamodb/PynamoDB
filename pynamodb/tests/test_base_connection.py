@@ -6,7 +6,7 @@ from unittest import TestCase
 import six
 
 from pynamodb.connection import Connection
-from pynamodb.connection.exceptions import (
+from pynamodb.exceptions import (
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError)
 from pynamodb.constants import DEFAULT_REGION
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA

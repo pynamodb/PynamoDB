@@ -1,5 +1,5 @@
 """
-PynamoDB Throttling
+PynamoDB Throttling (Experimental)
 """
 import time
 import logging
@@ -11,6 +11,7 @@ class ThrottleBase(object):
     """
     A class to provide a throttling API to the user
     """
+
     def __init__(self, capacity, window=1200, initial_sleep=None):
         self.capacity = float(capacity)
         self.window = window
@@ -47,6 +48,7 @@ class NoThrottle(ThrottleBase):
     """
     The default throttle class, does nothing
     """
+
     def __init__(self):
         pass
 
@@ -63,6 +65,7 @@ class Throttle(ThrottleBase):
 
     If the throughput is under the desired capacity, then API throttling will be reduced cautiously.
     """
+
     def throttle(self):
         """
         This uses a method similar to additive increase, multiplicative decrease

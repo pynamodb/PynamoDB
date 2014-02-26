@@ -1,12 +1,14 @@
 """
 Lowest level connection
 """
+import logging
+
 import six
 from botocore.session import get_session
-import logging
+
 from .util import pythonic
-from .exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError
 from ..types import HASH, RANGE
+from pynamodb.exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -20,7 +22,8 @@ from pynamodb.constants import (
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST,
     CONSUMED_CAPACITY, CAPACITY_UNITS
-    )
+)
+
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -171,9 +174,6 @@ class Connection(object):
     """
 
     def __init__(self, region=None, host=None):
-        self._endpoint = None
-        self._session = None
-        self._service = None
         self._tables = {}
         self.host = host
         if region:
@@ -211,7 +211,7 @@ class Connection(object):
 
     def dispatch(self, operation_name, operation_kwargs):
         """
-        Dispatches `operation_name` with arguments ``operation_kwargs`
+        Dispatches `operation_name` with arguments `operation_kwargs`
         """
         if operation_name not in [DESCRIBE_TABLE, LIST_TABLES, UPDATE_TABLE, DELETE_TABLE, CREATE_TABLE]:
             if pythonic(RETURN_CONSUMED_CAPACITY) not in operation_kwargs:
@@ -239,30 +239,25 @@ class Connection(object):
         """
         Returns a valid botocore session
         """
-        if self._session is None:
-            self._session = get_session()
-        return self._session
+        return get_session()
 
     @property
     def service(self):
         """
         Returns a reference to the dynamodb service
         """
-        if self._service is None:
-            self._service = self.session.get_service(SERVICE_NAME)
-        return self._service
+        return self.session.get_service(SERVICE_NAME)
 
     @property
     def endpoint(self):
         """
         Returns an endpoint connection to `self.region`
         """
-        if self._endpoint is None:
-            if self.host:
-                self._endpoint = self.service.get_endpoint(self.region, endpoint_url=self.host)
-            else:
-                self._endpoint = self.service.get_endpoint(self.region)
-        return self._endpoint
+        if self.host:
+            end_point = self.service.get_endpoint(self.region, endpoint_url=self.host)
+        else:
+            end_point = self.service.get_endpoint(self.region)
+        return end_point
 
     def get_meta_table(self, table_name, refresh=False):
         """

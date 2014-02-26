@@ -68,3 +68,10 @@ class TableError(PynamoDBConnectionError):
     An error involving a dynamodb table operation
     """
     msg = "Error performing a table operation"
+
+
+class DoesNotExist(PynamoDBException):
+    """
+    Raised when an item queried does not exist
+    """
+    msg = "Item does not exist"
