@@ -487,9 +487,10 @@ class Model(with_metaclass(MetaModel)):
         attributes = cls.get_attributes()
         range_keyname = cls.meta().range_keyname
         if range_keyname:
-            return attributes[range_keyname]
+            attr = attributes[range_keyname]
         else:
-            return None
+            attr = None
+        return attr
 
     @classmethod
     def hash_key_attribute(cls):

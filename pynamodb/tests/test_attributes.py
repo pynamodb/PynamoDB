@@ -189,6 +189,7 @@ class NumberAttributeTestCase(TestCase):
         attr = NumberSetAttribute(default={1, 2})
         self.assertEqual(attr.default, {1, 2})
 
+
 class UnicodeAttributeTestCase(TestCase):
     """
     Tests unicode attributes

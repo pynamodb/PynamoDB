@@ -101,6 +101,7 @@ class SimpleUserModel(Model):
     aliases = UnicodeSetAttribute()
     icons = BinarySetAttribute()
 
+
 class ThrottledUserModel(Model):
     """
     A testing model
@@ -109,6 +110,7 @@ class ThrottledUserModel(Model):
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
     throttle = Throttle('50')
+
 
 class UserModel(Model):
     """
@@ -172,10 +174,10 @@ class ModelTestCase(TestCase):
             else:
                 return HttpOK(content={}), {}
 
-        FakeDB = MagicMock()
-        FakeDB.side_effect = fake_dynamodb
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
 
-        with patch(PATCH_METHOD, new=FakeDB) as req:
+        with patch(PATCH_METHOD, new=fake_db) as req:
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
 
         with patch(PATCH_METHOD) as req:
@@ -194,11 +196,11 @@ class ModelTestCase(TestCase):
             else:
                 return HttpOK(MODEL_TABLE_DATA), MODEL_TABLE_DATA
 
-        FakeWait = MagicMock()
-        FakeWait.side_effect = fake_wait
+        mock_wait = MagicMock()
+        mock_wait.side_effect = fake_wait
 
         scope_args = {'count': 0}
-        with patch(PATCH_METHOD, new=FakeWait) as req:
+        with patch(PATCH_METHOD, new=mock_wait) as req:
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2, wait=True)
 
         def bad_server(obj, **kwargs):
@@ -208,12 +210,18 @@ class ModelTestCase(TestCase):
             elif scope_args['count'] == 1 or scope_args['count'] == 2:
                 return HttpBadRequest(), {}
 
-        BadServer = MagicMock()
-        BadServer.side_effect = bad_server
+        bad_mock_server = MagicMock()
+        bad_mock_server.side_effect = bad_server
 
         scope_args = {'count': 0}
-        with patch(PATCH_METHOD, new=BadServer) as req:
-            self.assertRaises(TableError, UserModel.create_table, read_capacity_units=2, write_capacity_units=2, wait=True)
+        with patch(PATCH_METHOD, new=bad_mock_server) as req:
+            self.assertRaises(
+                TableError,
+                UserModel.create_table,
+                read_capacity_units=2,
+                write_capacity_units=2,
+                wait=True
+            )
 
     def test_model_attrs(self):
         """
@@ -435,24 +443,24 @@ class ModelTestCase(TestCase):
         def fake_query(*args, **kwargs):
             start_key = kwargs.get(pythonic(EXCLUSIVE_START_KEY), None)
             if start_key:
-                idx = 0
-                for item in BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name):
-                    idx += 1
-                    if item == start_key:
+                item_idx = 0
+                for query_item in BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name):
+                    item_idx += 1
+                    if query_item == start_key:
                         break
-                items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[idx:idx+1]
+                query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[item_idx:item_idx+1]
             else:
-                items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[:1]
+                query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[:1]
             data = {
-                ITEMS: items,
-                LAST_EVALUATED_KEY: items[-1] if len(items) else None
+                ITEMS: query_items,
+                LAST_EVALUATED_KEY: query_items[-1] if len(query_items) else None
             }
             return HttpOK(data), data
 
-        FakeQuery = MagicMock()
-        FakeQuery.side_effect = fake_query
+        mock_query = MagicMock()
+        mock_query.side_effect = fake_query
 
-        with patch(PATCH_METHOD, new=FakeQuery) as req:
+        with patch(PATCH_METHOD, new=mock_query) as req:
             for item in UserModel.query('foo'):
                 self.assertIsNotNone(item)
 
@@ -494,10 +502,10 @@ class ModelTestCase(TestCase):
                 return HttpOK(GET_MODEL_ITEM_DATA), GET_MODEL_ITEM_DATA
             return HttpOK(), MODEL_TABLE_DATA
 
-        FakeDB = MagicMock()
-        FakeDB.side_effect = fake_dynamodb
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
 
-        with patch(PATCH_METHOD, new=FakeDB) as req:
+        with patch(PATCH_METHOD, new=fake_db) as req:
             item = UserModel.get(
                 'foo',
                 'bar'
@@ -594,18 +602,18 @@ class ModelTestCase(TestCase):
                 args['request_items']['UserModel']['Keys'],
             )
 
-        def fake_batch_get(*args, **kwargs):
+        def fake_batch_get(*batch_args, **kwargs):
             if pythonic(REQUEST_ITEMS) in kwargs:
-                item = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[0]
-                items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[1:]
+                batch_item = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[0]
+                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[1:]
                 response = {
                     UNPROCESSED_KEYS: {
                         UserModel.table_name: {
-                            KEYS: items
+                            KEYS: batch_items
                         }
                     },
                     RESPONSES: {
-                        UserModel.table_name: [item]
+                        UserModel.table_name: [batch_item]
                     }
                 }
                 return HttpOK(response), response
@@ -654,10 +662,10 @@ class ModelTestCase(TestCase):
 
         def fake_unprocessed_keys(*args, **kwargs):
             if pythonic(REQUEST_ITEMS) in kwargs:
-                items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name)[1:]
+                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name)[1:]
                 unprocessed = {
                     UNPROCESSED_KEYS: {
-                        UserModel.table_name: items
+                        UserModel.table_name: batch_items
                     }
                 }
                 return HttpOK(unprocessed), unprocessed
@@ -697,10 +705,10 @@ class ModelTestCase(TestCase):
             else:
                 return HttpOK(content={}), {}
 
-        FakeDB = MagicMock()
-        FakeDB.side_effect = fake_dynamodb
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
 
-        with patch(PATCH_METHOD, new=FakeDB) as req:
+        with patch(PATCH_METHOD, new=fake_db) as req:
             IndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
             params = {
                 'attribute_definitions': [
@@ -714,7 +722,13 @@ class ModelTestCase(TestCase):
             }
             schema = IndexedModel.email_index.schema()
             args = req.call_args[1]
-            self.assertEqual(args['global_secondary_indexes'][0]['ProvisionedThroughput'], {'ReadCapacityUnits': 2, 'WriteCapacityUnits': 1})
+            self.assertEqual(
+                args['global_secondary_indexes'][0]['ProvisionedThroughput'],
+                {
+                    'ReadCapacityUnits': 2,
+                    'WriteCapacityUnits': 1
+                }
+            )
             self.assert_dict_lists_equal(schema['key_schema'], params['key_schema'])
             self.assert_dict_lists_equal(schema['attribute_definitions'], params['attribute_definitions'])
 
@@ -742,10 +756,10 @@ class ModelTestCase(TestCase):
             else:
                 return HttpOK(content={}), {}
 
-        FakeDB = MagicMock()
-        FakeDB.side_effect = fake_dynamodb
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
 
-        with patch(PATCH_METHOD, new=FakeDB) as req:
+        with patch(PATCH_METHOD, new=fake_db) as req:
             LocalIndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
             params = {
                 'attribute_definitions': [

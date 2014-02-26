@@ -22,7 +22,7 @@ from pynamodb.constants import (
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST,
     CONSUMED_CAPACITY, CAPACITY_UNITS
-    )
+)
 
 
 log = logging.getLogger(__name__)
@@ -253,7 +253,6 @@ class Connection(object):
         """
         Returns an endpoint connection to `self.region`
         """
-        end_point = None
         if self.host:
             end_point = self.service.get_endpoint(self.region, endpoint_url=self.host)
         else:
