@@ -31,7 +31,7 @@ Topics
    low_level
    awsaccess
    contributing
-
+   release_notes
 
 API docs
 ========
