@@ -1,10 +1,11 @@
-PynamoDB v0.1.11
+Release Notes
 ================
 
-:date: 2014-02-09
 
-Changes
+v0.1.11
 --------
+
+:date: 2014-02-26
 
 * New exception behavior: Model.get and Model.refresh will now raise DoesNotExist if the item is not found in the table.
 * Correctly deserialize complex key types. Fixes #3
