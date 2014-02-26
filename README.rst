@@ -20,8 +20,12 @@ Python 2 and 3.
 DynamoDB is a great NoSQL service provided by Amazon, but the API is verbose.
 PynamoDB presents you with a simple, elegant API.
 
-See documentation at http://pynamodb.readthedocs.org/ or
-ask questions on the `Google group <https://groups.google.com/forum/#!forum/pynamodb>`_.
+Useful links:
+
+* See the full documentation at http://pynamodb.readthedocs.org/
+* Ask questions at `Google group <https://groups.google.com/forum/#!forum/pynamodb>`_
+* See release notes at http://pynamodb.readthedocs.org/en/latest/release_notes.html
+
 
 Basic Usage
 ^^^^^^^^^^^
