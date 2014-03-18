@@ -2,6 +2,7 @@
 Lowest level connection
 """
 import logging
+import os
 
 import six
 from botocore.session import get_session
@@ -178,7 +179,7 @@ class Connection(object):
         self.host = host
         if region:
             self.region = region
-        else:
+        elif 'BOTO_DEFAULT_REGION' not in os.environ:
             self.region = DEFAULT_REGION
 
     def __repr__(self):
