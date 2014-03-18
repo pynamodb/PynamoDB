@@ -194,6 +194,8 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK, MODEL_TABLE_DATA
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
+            # The default region is us-east-1
+            self.assertEqual(req.call_args[0][0].region_name, 'us-east-1')
 
         # A table with a specified region
         self.assertEqual(RegionSpecificModel.region, 'us-west-1')

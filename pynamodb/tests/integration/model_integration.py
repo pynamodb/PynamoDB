@@ -4,6 +4,7 @@ Integration tests for the model API
 from __future__ import print_function
 import pprint
 from datetime import datetime
+from pynamodb.connection import TableConnection
 from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
 from pynamodb.constants import DATETIME_FORMAT
@@ -35,6 +36,7 @@ class TestModel(Model):
     """
     A model for testing
     """
+    region = 'us-west-1'
     table_name = 'pynamodb-ci'
     forum = UnicodeAttribute(hash_key=True)
     thread = UnicodeAttribute(range_key=True)
@@ -45,25 +47,30 @@ class TestModel(Model):
     content = BinaryAttribute(null=True)
     scores = NumberSetAttribute()
 
-
 if not TestModel.exists():
     print("Creating table")
-    TestModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    #TestModel.create_table(read_capacity_units=1, write_capacity_units=1)
 
-# pprint.pprint(TestModel.schema())
-# obj = TestModel('foo', 'bar')
-# obj.save()
-# obj2 = TestModel('foo2', 'bar2')
-# print(obj2, obj)
-# print(obj.epoch.strftime(DATETIME_FORMAT), obj2.epoch.strftime(DATETIME_FORMAT))
-# obj3 = TestModel('setitem', 'setrange', scores={1, 2.1})
-# obj3.save()
-# obj3.refresh()
-#
-# with TestModel.batch_write() as batch:
-#     items = [TestModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]
-#     for item in items:
-#         batch.save(item)
+
+obj = TestModel('1', '2')
+obj.save()
+obj.refresh()
+pprint.pprint(TestModel.schema())
+obj = TestModel('foo', 'bar')
+obj.save()
+obj2 = TestModel('foo2', 'bar2')
+print(obj2, obj)
+print(obj.epoch.strftime(DATETIME_FORMAT), obj2.epoch.strftime(DATETIME_FORMAT))
+obj3 = TestModel('setitem', 'setrange', scores={1, 2.1})
+obj3.save()
+obj3.refresh()
+
+with TestModel.batch_write() as batch:
+    items = [TestModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]
+    for item in items:
+        batch.save(item)
+
+
 #
 # item_keys = [('hash-{0}'.format(x), 'thread-{0}'.format(x)) for x in range(10)]
 #
