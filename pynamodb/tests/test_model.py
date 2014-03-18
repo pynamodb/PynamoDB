@@ -40,6 +40,7 @@ else:
     from mock import MagicMock
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
+SESSION_PATCH_METHODD = 'botocore.session.get_session'
 
 
 class EmailIndex(GlobalSecondaryIndex):
@@ -125,6 +126,16 @@ class UserModel(Model):
     callable_field = NumberAttribute(default=lambda: 42)
 
 
+class RegionSpecificModel(Model):
+    """
+    A testing model
+    """
+    region = 'us-west-1'
+    table_name = 'RegionSpecificModel'
+    user_name = UnicodeAttribute(hash_key=True)
+    user_id = UnicodeAttribute(range_key=True)
+
+
 class ComplexKeyModel(Model):
     """
     This model has a key that must be serialized/deserialized properly
@@ -183,6 +194,13 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK, MODEL_TABLE_DATA
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
+
+        # A table with a specified region
+        self.assertEqual(RegionSpecificModel.region, 'us-west-1')
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK, MODEL_TABLE_DATA
+            RegionSpecificModel.create_table(read_capacity_units=2, write_capacity_units=2)
+            self.assertEqual(req.call_args[0][0].region_name, 'us-west-1')
 
         def fake_wait(obj, **kwargs):
             if scope_args['count'] == 0:
