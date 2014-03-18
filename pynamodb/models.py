@@ -25,7 +25,7 @@ from pynamodb.constants import (
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS)
+    CAPACITY_UNITS, DEFAULT_REGION)
 
 
 log = logging.getLogger(__name__)
@@ -167,6 +167,7 @@ class Model(with_metaclass(MetaModel)):
     indexes = None
     connection = None
     index_classes = None
+    region = DEFAULT_REGION
     throttle = NoThrottle()
     DoesNotExist = DoesNotExist
 
@@ -314,7 +315,7 @@ class Model(with_metaclass(MetaModel)):
         Returns a (cached) connection
         """
         if cls.connection is None:
-            cls.connection = TableConnection(cls.table_name)
+            cls.connection = TableConnection(cls.table_name, region=cls.region)
         return cls.connection
 
     def delete(self):
