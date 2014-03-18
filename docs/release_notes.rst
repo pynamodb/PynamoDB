@@ -1,9 +1,15 @@
 Release Notes
-================
+=============
 
+v0.1.12
+-------
+
+:date: 2014-03-18
+
+* Added a region attribute to model classes, allowing users to specify the AWS region, per model. Fixes #6.
 
 v0.1.11
---------
+-------
 
 :date: 2014-02-26
 
