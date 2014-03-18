@@ -17,6 +17,7 @@ Let's create a simple model to describe users.
         """
         A DynamoDB User
         """
+        region = 'us-west-1'
         table_name = 'dynamodb-user'
         email = UnicodeAttribute(hash_key=True)
         first_name = UnicodeAttribute()
@@ -24,7 +25,7 @@ Let's create a simple model to describe users.
 
 Models are backed by DynamoDB tables. In this example, the model has a hash key attribute
 that stores the user's email address. Any attribute can be set as a hash key by including the argument
-`hash_key=True`.
+`hash_key=True`. The `region` attribute is not required, and will default to `us-east-` if not provided.
 
 PynamoDB allows you to create the table:
 
