@@ -646,6 +646,78 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[1], params)
 
+        attr_updates = {
+            'Subject': {
+                'Value': {'S': 'foo-subject'},
+                'Action': 'PUT'
+            },
+        }
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.update_item(
+                self.test_table_name,
+                'foo-key',
+                attribute_updates=attr_updates,
+                range_key='foo-range-key',
+            )
+            params = {
+                'key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'attribute_updates': {
+                    'Subject': {
+                        'Value': {
+                            'S': 'foo-subject'
+                        },
+                        'Action': 'PUT'
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'ci-table'
+            }
+            self.assertEqual(req.call_args[1], params)
+
+        attr_updates = {
+            'Subject': {
+                'Value': {'N': '1'},
+                'Action': 'ADD'
+            },
+        }
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.update_item(
+                self.test_table_name,
+                'foo-key',
+                attribute_updates=attr_updates,
+                range_key='foo-range-key',
+            )
+            params = {
+                'key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'attribute_updates': {
+                    'Subject': {
+                        'Value': {
+                            'N': '1'
+                        },
+                        'Action': 'ADD'
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'ci-table'
+            }
+            self.assertEqual(req.call_args[1], params)
+
     def test_put_item(self):
         """
         Connection.put_item

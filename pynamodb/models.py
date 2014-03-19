@@ -337,15 +337,19 @@ class Model(with_metaclass(MetaModel)):
             See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html#DDB-UpdateItem-request-AttributeUpdate
         """
         args, kwargs = self._get_save_args()
+        attribute_cls = None
         for attr_name, attr_cls in self.get_attributes().items():
             if attr_name == attribute:
                 value = attr_cls.serialize(value)
+                attribute_cls = attr_cls
                 break
         del(kwargs[pythonic(ATTRIBUTES)])
         kwargs[pythonic(ATTR_UPDATES)] = {
             attribute: {
                 ACTION: action.upper(),
-                VALUE: value
+                VALUE: {
+                    ATTR_TYPE_MAP[attribute_cls.attr_type]: value
+                }
             }
         }
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW

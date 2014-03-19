@@ -527,18 +527,25 @@ class Connection(object):
             operation_kwargs.update(self.get_return_values_map(return_values))
         if not attribute_updates:
             raise ValueError("{0} cannot be empty".format(ATTR_UPDATES))
-        # {"path": {"Action": "PUT", Value: "Foo"}}
+        # {"path": {"Action": "PUT", "Value": "Foo"}}
 
         operation_kwargs[pythonic(ATTR_UPDATES)] = {}
         for key, update in attribute_updates.items():
-            attr_type = self.get_attribute_type(table_name, key)
+            value = update.get(VALUE)
+            if isinstance(value, six.string_types):
+                attr_type = self.get_attribute_type(table_name, key)
+                value = update.get(VALUE)
+            elif isinstance(value, dict):
+                attr_type, value = value.popitem()
+            else:
+                raise ValueError("Invalid attribute update: {0}".format(value))
             action = update.get(ACTION)
             if action not in ATTR_UPDATE_ACTIONS:
                 raise ValueError("{0} must be one of {1}".format(ACTION, ATTR_UPDATE_ACTIONS))
             operation_kwargs[pythonic(ATTR_UPDATES)][key] = {
                 ACTION: action,
                 VALUE: {
-                    attr_type: update.get(VALUE)
+                    attr_type: value
                 }
             }
         response, data = self.dispatch(UPDATE_ITEM, operation_kwargs)

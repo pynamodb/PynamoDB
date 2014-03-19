@@ -13,7 +13,7 @@ from pynamodb.exceptions import TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS,
-    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY
+    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -101,6 +101,7 @@ class SimpleUserModel(Model):
     numbers = NumberSetAttribute()
     aliases = UnicodeSetAttribute()
     icons = BinarySetAttribute()
+    views = NumberAttribute(null=True)
 
 
 class ThrottledUserModel(Model):
@@ -318,6 +319,48 @@ class ModelTestCase(TestCase):
                 'table_name': 'UserModel'
             }
             args = req.call_args[1]
+            self.assertEqual(args, params)
+
+    def test_update_item(self):
+        """
+        Model.update_item
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), SIMPLE_MODEL_TABLE_DATA
+            item = SimpleUserModel('foo', email='bar')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            item.save()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
+            item.update_item('views', 10, action='add')
+            args = req.call_args[1]
+            params = {
+                'table_name': 'SimpleModel',
+                'return_values': 'ALL_NEW',
+                'key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'attribute_updates': {
+                    'views': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'N': '10'
+                        }
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL'
+            }
             self.assertEqual(args, params)
 
     def test_save(self):
