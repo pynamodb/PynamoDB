@@ -1,6 +1,13 @@
 Release Notes
 =============
 
+v0.1.13
+-------
+
+:date: 2014-03-20
+
+* Bug fix release. Proper handling of update_item attributes for atomic item updates, with tests. Fixes #7.
+
 v0.1.12
 -------
 
