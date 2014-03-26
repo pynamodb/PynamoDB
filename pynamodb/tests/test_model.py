@@ -69,7 +69,8 @@ class IndexedModel(Model):
     """
     A model with an index
     """
-    table_name = 'SimpleModel'
+    class Meta:
+        table_name = 'SimpleModel'
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     email_index = EmailIndex()
@@ -82,7 +83,8 @@ class LocalIndexedModel(Model):
     """
     A model with an index
     """
-    table_name = 'SimpleModel'
+    class Meta:
+        table_name = 'SimpleModel'
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     email_index = LocalEmailIndex()
@@ -95,7 +97,8 @@ class SimpleUserModel(Model):
     """
     A hash key only model
     """
-    table_name = 'SimpleModel'
+    class Meta:
+        table_name = 'SimpleModel'
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     numbers = NumberSetAttribute()
@@ -108,7 +111,8 @@ class ThrottledUserModel(Model):
     """
     A testing model
     """
-    table_name = 'UserModel'
+    class Meta:
+        table_name = 'UserModel'
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
     throttle = Throttle('50')
@@ -118,7 +122,8 @@ class UserModel(Model):
     """
     A testing model
     """
-    table_name = 'UserModel'
+    class Meta:
+        table_name = 'UserModel'
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
     picture = BinaryAttribute(null=True)
@@ -127,12 +132,24 @@ class UserModel(Model):
     callable_field = NumberAttribute(default=lambda: 42)
 
 
+class HostSpecificModel(Model):
+    """
+    A testing model
+    """
+    class Meta:
+        host = 'http://localhost'
+        table_name = 'RegionSpecificModel'
+    user_name = UnicodeAttribute(hash_key=True)
+    user_id = UnicodeAttribute(range_key=True)
+
+
 class RegionSpecificModel(Model):
     """
     A testing model
     """
-    region = 'us-west-1'
-    table_name = 'RegionSpecificModel'
+    class Meta:
+        region = 'us-west-1'
+        table_name = 'RegionSpecificModel'
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
 
@@ -141,7 +158,8 @@ class ComplexKeyModel(Model):
     """
     This model has a key that must be serialized/deserialized properly
     """
-    table_name = 'ComplexKey'
+    class Meta:
+        table_name = 'ComplexKey'
     name = UnicodeAttribute(hash_key=True)
     date_created = UTCDateTimeAttribute(default=datetime.utcnow)
 
@@ -173,7 +191,7 @@ class ModelTestCase(TestCase):
         scope_args = {'count': 0}
 
         def fake_dynamodb(obj, **kwargs):
-            if kwargs == {'table_name': UserModel.table_name}:
+            if kwargs == {'table_name': UserModel.Meta.table_name}:
                 if scope_args['count'] == 0:
                     return HttpBadRequest(), {}
                 elif scope_args['count'] == 1:
@@ -192,6 +210,8 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=fake_db) as req:
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
 
+        # Test for default region
+        self.assertEqual(UserModel.Meta.region, 'us-east-1')
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK, MODEL_TABLE_DATA
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
@@ -199,11 +219,18 @@ class ModelTestCase(TestCase):
             self.assertEqual(req.call_args[0][0].region_name, 'us-east-1')
 
         # A table with a specified region
-        self.assertEqual(RegionSpecificModel.region, 'us-west-1')
+        self.assertEqual(RegionSpecificModel.Meta.region, 'us-west-1')
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK, MODEL_TABLE_DATA
             RegionSpecificModel.create_table(read_capacity_units=2, write_capacity_units=2)
             self.assertEqual(req.call_args[0][0].region_name, 'us-west-1')
+
+         # A table with a specified host
+        self.assertEqual(HostSpecificModel.Meta.host, 'http://localhost')
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK, MODEL_TABLE_DATA
+            HostSpecificModel.create_table(read_capacity_units=2, write_capacity_units=2)
+            self.assertEqual(req.call_args[0][0].host, 'http://localhost')
 
         def fake_wait(obj, **kwargs):
             if scope_args['count'] == 0:
@@ -253,13 +280,13 @@ class ModelTestCase(TestCase):
             item = UserModel('foo', 'bar')
             self.assertEqual(item.email, 'needs_email')
             self.assertEqual(item.callable_field, 42)
-            self.assertEqual(repr(item), '{0}<{1}, {2}>'.format(UserModel.table_name, item.user_name, item.user_id))
-            self.assertEqual(repr(UserModel.meta()), 'MetaTable<{0}>'.format('Thread'))
+            self.assertEqual(repr(item), '{0}<{1}, {2}>'.format(UserModel.Meta.table_name, item.user_name, item.user_id))
+            self.assertEqual(repr(UserModel.get_meta_data()), 'MetaTable<{0}>'.format('Thread'))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(SIMPLE_MODEL_TABLE_DATA), SIMPLE_MODEL_TABLE_DATA
             item = SimpleUserModel('foo')
-            self.assertEqual(repr(item), '{0}<{1}>'.format(SimpleUserModel.table_name, item.user_name))
+            self.assertEqual(repr(item), '{0}<{1}>'.format(SimpleUserModel.Meta.table_name, item.user_name))
             self.assertRaises(ValueError, item.save)
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
@@ -507,13 +534,13 @@ class ModelTestCase(TestCase):
             start_key = kwargs.get(pythonic(EXCLUSIVE_START_KEY), None)
             if start_key:
                 item_idx = 0
-                for query_item in BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name):
+                for query_item in BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name):
                     item_idx += 1
                     if query_item == start_key:
                         break
-                query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[item_idx:item_idx+1]
+                query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[item_idx:item_idx+1]
             else:
-                query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[:1]
+                query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[:1]
             data = {
                 ITEMS: query_items,
                 LAST_EVALUATED_KEY: query_items[-1] if len(query_items) else None
@@ -555,7 +582,7 @@ class ModelTestCase(TestCase):
         Model.get
         """
         def fake_dynamodb(*args, **kwargs):
-            if kwargs == {'table_name': UserModel.table_name}:
+            if kwargs == {'table_name': UserModel.Meta.table_name}:
                 return HttpOK(MODEL_TABLE_DATA), MODEL_TABLE_DATA
             elif kwargs == {
                 'return_consumed_capacity': 'TOTAL',
@@ -667,16 +694,16 @@ class ModelTestCase(TestCase):
 
         def fake_batch_get(*batch_args, **kwargs):
             if pythonic(REQUEST_ITEMS) in kwargs:
-                batch_item = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[0]
-                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[1:]
+                batch_item = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.Meta.table_name).get(KEYS)[0]
+                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.Meta.table_name).get(KEYS)[1:]
                 response = {
                     UNPROCESSED_KEYS: {
-                        UserModel.table_name: {
+                        UserModel.Meta.table_name: {
                             KEYS: batch_items
                         }
                     },
                     RESPONSES: {
-                        UserModel.table_name: [batch_item]
+                        UserModel.Meta.table_name: [batch_item]
                     }
                 }
                 return HttpOK(response), response
@@ -725,10 +752,10 @@ class ModelTestCase(TestCase):
 
         def fake_unprocessed_keys(*args, **kwargs):
             if pythonic(REQUEST_ITEMS) in kwargs:
-                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name)[1:]
+                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.Meta.table_name)[1:]
                 unprocessed = {
                     UNPROCESSED_KEYS: {
-                        UserModel.table_name: batch_items
+                        UserModel.Meta.table_name: batch_items
                     }
                 }
                 return HttpOK(unprocessed), unprocessed
@@ -755,7 +782,7 @@ class ModelTestCase(TestCase):
         scope_args = {'count': 0}
 
         def fake_dynamodb(obj, **kwargs):
-            if kwargs == {'table_name': UserModel.table_name}:
+            if kwargs == {'table_name': UserModel.Meta.table_name}:
                 if scope_args['count'] == 0:
                     return HttpBadRequest(), {}
                 elif scope_args['count'] == 1:
@@ -806,7 +833,7 @@ class ModelTestCase(TestCase):
         scope_args = {'count': 0}
 
         def fake_dynamodb(obj, **kwargs):
-            if kwargs == {'table_name': UserModel.table_name}:
+            if kwargs == {'table_name': UserModel.Meta.table_name}:
                 if scope_args['count'] == 0:
                     return HttpBadRequest(), {}
                 elif scope_args['count'] == 1:

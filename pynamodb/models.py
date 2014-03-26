@@ -25,7 +25,7 @@ from pynamodb.constants import (
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, DEFAULT_REGION)
+    CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST)
 
 
 log = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ class BatchWrite(ModelContextManager):
         self.model.add_throttle_record(data.get(CONSUMED_CAPACITY, None))
         if data is None:
             return
-        unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.table_name)
+        unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.Meta.table_name)
         while unprocessed_keys:
             put_items = []
             delete_items = []
@@ -132,7 +132,13 @@ class BatchWrite(ModelContextManager):
                 delete_items=delete_items
             )
             self.model.add_throttle_record(data.get(CONSUMED_CAPACITY))
-            unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.table_name)
+            unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.Meta.table_name)
+
+
+class DefaultMeta(object):
+    table_name = None
+    region = DEFAULT_REGION
+    host = None
 
 
 class MetaModel(type):
@@ -150,6 +156,13 @@ class MetaModel(type):
                     attr_obj.__class__.index_name = attr_name
                 elif issubclass(attr_obj.__class__, (Attribute, )):
                     attr_obj.attr_name = attr_name
+                elif attr_name == META_CLASS_NAME:
+                    if not hasattr(attr_obj, REGION):
+                        setattr(attr_obj, REGION, DEFAULT_REGION)
+                    if not hasattr(attr_obj, HOST):
+                        setattr(attr_obj, HOST, None)
+            if META_CLASS_NAME not in attrs:
+                setattr(cls, META_CLASS_NAME, DefaultMeta)
 
 
 class Model(with_metaclass(MetaModel)):
@@ -167,7 +180,6 @@ class Model(with_metaclass(MetaModel)):
     indexes = None
     connection = None
     index_classes = None
-    region = DEFAULT_REGION
     throttle = NoThrottle()
     DoesNotExist = DoesNotExist
 
@@ -180,9 +192,9 @@ class Model(with_metaclass(MetaModel)):
         self.attribute_values = {}
         self.set_defaults()
         if hash_key:
-            setattr(self, self.meta().hash_keyname, hash_key)
+            setattr(self, self.get_meta_data().hash_keyname, hash_key)
         if range_key:
-            setattr(self, self.meta().range_keyname, range_key)
+            setattr(self, self.get_meta_data().range_keyname, range_key)
         self.set_attributes(**attrs)
 
     @classmethod
@@ -196,7 +208,7 @@ class Model(with_metaclass(MetaModel)):
         """
         if records:
             for record in records:
-                if record.get(TABLE_NAME) == cls.table_name:
+                if record.get(TABLE_NAME) == cls.Meta.table_name:
                     cls.throttle.add_record(record.get(CAPACITY_UNITS))
                     break
 
@@ -208,8 +220,8 @@ class Model(with_metaclass(MetaModel)):
         :param items: Should be a list of hash keys to retrieve, or a list of
             tuples if range keys are used.
         """
-        hash_keyname = cls.meta().hash_keyname
-        range_keyname = cls.meta().range_keyname
+        hash_keyname = cls.get_meta_data().hash_keyname
+        range_keyname = cls.get_meta_data().range_keyname
         keys_to_get = []
         while items:
             if len(keys_to_get) == BATCH_GET_PAGE_LIMIT:
@@ -256,8 +268,8 @@ class Model(with_metaclass(MetaModel)):
             keys_to_get
         )
         cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
-        item_data = data.get(RESPONSES).get(cls.table_name)
-        unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.table_name, {}).get(KEYS, None)
+        item_data = data.get(RESPONSES).get(cls.Meta.table_name)
+        unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.Meta.table_name, {}).get(KEYS, None)
         return item_data, unprocessed_items
 
     @classmethod
@@ -291,17 +303,17 @@ class Model(with_metaclass(MetaModel)):
             setattr(self, key, value)
 
     def __repr__(self):
-        hash_key = getattr(self, self.meta().hash_keyname, None)
-        if hash_key and self.table_name:
-            if self.meta().range_keyname:
-                range_key = getattr(self, self.meta().range_keyname, None)
-                msg = "{0}<{1}, {2}>".format(self.table_name, hash_key, range_key)
+        hash_key = getattr(self, self.get_meta_data().hash_keyname, None)
+        if hash_key and self.Meta.table_name:
+            if self.get_meta_data().range_keyname:
+                range_key = getattr(self, self.get_meta_data().range_keyname, None)
+                msg = "{0}<{1}, {2}>".format(self.Meta.table_name, hash_key, range_key)
             else:
-                msg = "{0}<{1}>".format(self.table_name, hash_key)
+                msg = "{0}<{1}>".format(self.Meta.table_name, hash_key)
             return six.u(msg)
 
     @classmethod
-    def meta(cls):
+    def get_meta_data(cls):
         """
         A helper object that contains meta data about this table
         """
@@ -315,7 +327,7 @@ class Model(with_metaclass(MetaModel)):
         Returns a (cached) connection
         """
         if cls.connection is None:
-            cls.connection = TableConnection(cls.table_name, region=cls.region)
+            cls.connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host)
         return cls.connection
 
     def delete(self):
@@ -380,8 +392,8 @@ class Model(with_metaclass(MetaModel)):
         serialized = self.serialize()
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
-        hash_keyname = self.meta().hash_keyname
-        range_keyname = self.meta().range_keyname
+        hash_keyname = self.get_meta_data().hash_keyname
+        range_keyname = self.get_meta_data().range_keyname
         attrs = {
             hash_keyname: hash_key,
             range_keyname: range_key
@@ -490,7 +502,7 @@ class Model(with_metaclass(MetaModel)):
         Returns the attribute class for the hash key
         """
         attributes = cls.get_attributes()
-        range_keyname = cls.meta().range_keyname
+        range_keyname = cls.get_meta_data().range_keyname
         if range_keyname:
             attr = attributes[range_keyname]
         else:
@@ -503,7 +515,7 @@ class Model(with_metaclass(MetaModel)):
         Returns the attribute class for the hash key
         """
         attributes = cls.get_attributes()
-        hash_keyname = cls.meta().hash_keyname
+        hash_keyname = cls.get_meta_data().hash_keyname
         return attributes[hash_keyname]
 
     @classmethod
@@ -541,9 +553,9 @@ class Model(with_metaclass(MetaModel)):
         mutable_data = copy.copy(data)
         if mutable_data is None:
             raise ValueError("Received no mutable_data to construct object")
-        hash_keyname = cls.meta().hash_keyname
-        range_keyname = cls.meta().range_keyname
-        hash_key_type = cls.meta().get_attribute_type(hash_keyname)
+        hash_keyname = cls.get_meta_data().hash_keyname
+        range_keyname = cls.get_meta_data().range_keyname
+        hash_key_type = cls.get_meta_data().get_attribute_type(hash_keyname)
         hash_key = mutable_data.pop(hash_keyname).get(hash_key_type)
         hash_key_attr = cls.get_attributes().get(hash_keyname)
         hash_key = hash_key_attr.deserialize(hash_key)
@@ -551,7 +563,7 @@ class Model(with_metaclass(MetaModel)):
         kwargs = {}
         if range_keyname:
             range_key_attr = cls.get_attributes().get(range_keyname)
-            range_key_type = cls.meta().get_attribute_type(range_keyname)
+            range_key_type = cls.get_meta_data().get_attribute_type(range_keyname)
             range_key = mutable_data.pop(range_keyname).get(range_key_type)
             kwargs['range_key'] = range_key_attr.deserialize(range_key)
         for name, value in mutable_data.items():
