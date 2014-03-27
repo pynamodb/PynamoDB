@@ -151,16 +151,17 @@ class MetaModel(type):
     def __init__(cls, name, bases, attrs):
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
-                if issubclass(attr_obj.__class__, (Index, )):
-                    attr_obj.__class__.model = cls
-                    attr_obj.__class__.index_name = attr_name
-                elif issubclass(attr_obj.__class__, (Attribute, )):
-                    attr_obj.attr_name = attr_name
-                elif attr_name == META_CLASS_NAME:
+                if attr_name == META_CLASS_NAME:
                     if not hasattr(attr_obj, REGION):
                         setattr(attr_obj, REGION, DEFAULT_REGION)
                     if not hasattr(attr_obj, HOST):
                         setattr(attr_obj, HOST, None)
+                elif issubclass(attr_obj.__class__, (Index, )):
+                    attr_obj.__class__.model = cls
+                    attr_obj.__class__.index_name = attr_name
+                elif issubclass(attr_obj.__class__, (Attribute, )):
+                    attr_obj.attr_name = attr_name
+
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
 
@@ -241,7 +242,7 @@ class Model(with_metaclass(MetaModel)):
                     range_keyname: range_key
                 })
             else:
-                hash_key = cls.serialize_keys(item, None)[0]
+                hash_key = cls.serialize_keys(item)[0]
                 keys_to_get.append({
                     hash_keyname: hash_key
                 })
@@ -585,7 +586,9 @@ class Model(with_metaclass(MetaModel)):
             }
             cls.index_classes = {}
             for item in dir(cls):
-                item_cls = getattr(cls, item).__class__
+                item_cls = getattr(getattr(cls, item), "__class__", None)
+                if item_cls is None:
+                    continue
                 if issubclass(item_cls, (Index, )):
                     item_cls = getattr(cls, item)
                     cls.index_classes[item] = item_cls
@@ -620,7 +623,9 @@ class Model(with_metaclass(MetaModel)):
         if cls.attributes is None:
             cls.attributes = {}
             for item in dir(cls):
-                item_cls = getattr(cls, item).__class__
+                item_cls = getattr(getattr(cls, item), "__class__", None)
+                if item_cls is None:
+                    continue
                 if issubclass(item_cls, (Attribute, )):
                     cls.attributes[item] = getattr(cls, item)
         return cls.attributes
@@ -700,7 +705,7 @@ class Model(with_metaclass(MetaModel)):
         if index_name:
             hash_key = cls.index_classes[index_name].hash_key_attribute().serialize(hash_key)
         else:
-            hash_key = cls.serialize_keys(hash_key, None)[0]
+            hash_key = cls.serialize_keys(hash_key)[0]
         key_conditions = cls._build_filters(QUERY_OPERATOR_MAP, filters)
         log.debug("Fetching first query page")
         data = cls.get_connection().query(

@@ -275,4 +275,3 @@ COMPLEX_TABLE_DATA = {
         'TableSizeBytes': 0
     }
 }
-
