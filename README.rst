@@ -106,6 +106,25 @@ Now query the index for all items with 0 views:
 
 It's really that simple.
 
+
+Want to use DynamoDB local? Just add a ``host`` name attribute and specify your local server.
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+    class UserModel(Model):
+        """
+        A DynamoDB User
+        """
+        class Meta:
+            table_name = 'dynamodb-user'
+            host = 'http://localhost:8000'
+        email = UnicodeAttribute(null=True)
+        first_name = UnicodeAttribute(range_key=True)
+        last_name = UnicodeAttribute(hash_key=True)
+
 Installation::
 
     $ pip install pynamodb
@@ -120,6 +139,7 @@ Features
 * Python 3 support
 * Python 2 support
 * An ORM-like interface with query and scan filters
+* Compatible with DynamoDB Local
 * Includes the entire DynamoDB API
 * Supports both unicode and binary DynamoDB attributes
 * Support for global secondary indexes, local secondary indexes, and batch operations
