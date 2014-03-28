@@ -26,6 +26,15 @@ Useful links:
 * Ask questions at `Google group <https://groups.google.com/forum/#!forum/pynamodb>`_
 * See release notes at http://pynamodb.readthedocs.org/en/latest/release_notes.html
 
+Installation
+============
+From PyPi::
+
+    $ pip install pynamodb
+
+From GitHub::
+
+    $ pip install git+https://github.com/jlafon/PynamoDB#egg=pynamodb
 
 Basic Usage
 ^^^^^^^^^^^
@@ -125,13 +134,6 @@ Want to use DynamoDB local? Just add a ``host`` name attribute and specify your 
         first_name = UnicodeAttribute(range_key=True)
         last_name = UnicodeAttribute(hash_key=True)
 
-Installation::
-
-    $ pip install pynamodb
-
-or install the development version::
-
-    $ pip install git+https://github.com/jlafon/PynamoDB#egg=pynamodb
 
 Features
 ========
