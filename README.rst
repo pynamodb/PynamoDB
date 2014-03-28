@@ -41,7 +41,8 @@ Create a model that describes your DynamoDB table.
         """
         A DynamoDB User
         """
-        table_name = 'dynamodb-user'
+        class Meta:
+            table_name = 'dynamodb-user'
         email = UnicodeAttribute(null=True)
         first_name = UnicodeAttribute(range_key=True)
         last_name = UnicodeAttribute(hash_key=True)
@@ -89,7 +90,8 @@ Want to use indexes? No problem:
         view = NumberAttribute(default=0, hash_key=True)
 
     class TestModel(Model):
-        table_name = 'TestModel'
+        class Meta:
+            table_name = 'TestModel'
         forum = UnicodeAttribute(hash_key=True)
         thread = UnicodeAttribute(range_key=True)
         view = NumberAttribute(default=0)
