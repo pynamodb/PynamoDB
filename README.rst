@@ -51,7 +51,7 @@ Create a model that describes your DynamoDB table.
         A DynamoDB User
         """
         class Meta:
-            table_name = 'dynamodb-user'
+            table_name = "dynamodb-user"
         email = UnicodeAttribute(null=True)
         first_name = UnicodeAttribute(range_key=True)
         last_name = UnicodeAttribute(hash_key=True)
@@ -61,14 +61,14 @@ first name begins with 'J':
 
 .. code-block:: python
 
-    for user in UserModel.query('Smith', first_name__begins_with='J'):
+    for user in UserModel.query("Smith", first_name__begins_with="J"):
         print(user.first_name)
 
 Create a new user:
 
 .. code-block:: python
 
-    user = UserModel('John', 'Denver')
+    user = UserModel("John", "Denver")
     user.save()
 
 Retrieve an existing user:
@@ -76,7 +76,7 @@ Retrieve an existing user:
 .. code-block:: python
 
     try:
-        user = UserModel.get('John', 'Denver')
+        user = UserModel.get("John", "Denver")
         print(user)
     except UserModel.DoesNotExist:
         print("User does not exist")
@@ -93,14 +93,15 @@ Want to use indexes? No problem:
     from pynamodb.attributes import NumberAttribute, UnicodeAttribute
 
     class ViewIndex(GlobalSecondaryIndex):
-        read_capacity_units = 2
-        write_capacity_units = 1
-        projection = AllProjection()
+        class Meta:
+            read_capacity_units = 2
+            write_capacity_units = 1
+            projection = AllProjection()
         view = NumberAttribute(default=0, hash_key=True)
 
     class TestModel(Model):
         class Meta:
-            table_name = 'TestModel'
+            table_name = "TestModel"
         forum = UnicodeAttribute(hash_key=True)
         thread = UnicodeAttribute(range_key=True)
         view = NumberAttribute(default=0)
@@ -128,8 +129,8 @@ Want to use DynamoDB local? Just add a ``host`` name attribute and specify your 
         A DynamoDB User
         """
         class Meta:
-            table_name = 'dynamodb-user'
-            host = 'http://localhost:8000'
+            table_name = "dynamodb-user"
+            host = "http://localhost:8000"
         email = UnicodeAttribute(null=True)
         first_name = UnicodeAttribute(range_key=True)
         last_name = UnicodeAttribute(hash_key=True)
