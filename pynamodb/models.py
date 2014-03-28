@@ -157,8 +157,8 @@ class MetaModel(type):
                     if not hasattr(attr_obj, HOST):
                         setattr(attr_obj, HOST, None)
                 elif issubclass(attr_obj.__class__, (Index, )):
-                    attr_obj.__class__.model = cls
-                    attr_obj.__class__.index_name = attr_name
+                    attr_obj.Meta.model = cls
+                    attr_obj.Meta.index_name = attr_name
                 elif issubclass(attr_obj.__class__, (Attribute, )):
                     attr_obj.attr_name = attr_name
 
@@ -195,7 +195,10 @@ class Model(with_metaclass(MetaModel)):
         if hash_key:
             setattr(self, self.get_meta_data().hash_keyname, hash_key)
         if range_key:
-            setattr(self, self.get_meta_data().range_keyname, range_key)
+            range_keyname = self.get_meta_data().range_keyname
+            if range_keyname is None:
+                raise ValueError("This table has no range key, but a range key value was provided: {0}".format(range_key))
+            setattr(self, range_keyname, range_key)
         self.set_attributes(**attrs)
 
     @classmethod
@@ -673,6 +676,8 @@ class Model(with_metaclass(MetaModel)):
                 if attribute is None:
                     attribute = token
                     attribute_class = attribute_classes.get(attribute)
+                    if attribute_class is None:
+                        raise ValueError("Attribute {0} specified for filter does not exist.".format(attribute))
                     if not isinstance(value, list):
                         value = [value]
                     value = [attribute_class.serialize(val) for val in value]
@@ -681,6 +686,8 @@ class Model(with_metaclass(MetaModel)):
                         COMPARISON_OPERATOR: operator_map.get(token),
                         ATTR_VALUE_LIST: value
                     }
+                elif token not in operator_map:
+                    raise ValueError("{0} is not a valid filter. Must be one of {1}".format(token, operator_map.keys()))
                 else:
                     raise ValueError("Could not parse filter: {0}".format(query))
         return key_conditions

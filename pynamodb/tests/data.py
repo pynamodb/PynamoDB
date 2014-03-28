@@ -84,6 +84,63 @@ MODEL_TABLE_DATA = {
     }
 }
 
+
+INDEX_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "user_name",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "email",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "numbers",
+                "AttributeType": "NS"
+            },
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 0,
+        "KeySchema": [
+            {
+                "AttributeName": "user_name",
+                "KeyType": "HASH"
+            },
+        ],
+        "GlobalSecondaryIndexes": [
+            {
+                "IndexName": "email_index",
+                "IndexSizeBytes": 0,
+                "ItemCount": 0,
+                "KeySchema": [
+                    {
+                        "AttributeName": "email",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "numbers",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "KEYS_ONLY"
+                }
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "IndexedModel",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}
+
+
 DESCRIBE_TABLE_DATA = {
     "Table": {
         "AttributeDefinitions": [

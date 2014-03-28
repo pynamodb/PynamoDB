@@ -11,19 +11,6 @@ from pynamodb.connection.util import pythonic
 from six import with_metaclass
 
 
-class DefaultIndexMeta(object):
-    """
-    Contains the default settings for an `Index`
-    """
-    projection = None
-    attributes = None
-    read_capacity_units = None
-    write_capacity_units = None
-    index_type = None
-    model = None
-    index_name = None
-
-
 class IndexMeta(type):
     """
     Index meta class
@@ -119,9 +106,9 @@ class GlobalSecondaryIndex(Index):
         """
         Queries an index
         """
-        return self.model.query(
+        return self.Meta.model.query(
             hash_key,
-            index_name=self.index_name,
+            index_name=self.Meta.index_name,
             scan_index_forward=scan_index_forward,
             consistent_read=consistent_read,
             **filters
@@ -141,9 +128,9 @@ class LocalSecondaryIndex(Index):
         """
         Queries an index
         """
-        return cls.model.query(
+        return cls.Meta.model.query(
             hash_key,
-            index_name=cls.index_name,
+            index_name=cls.Meta.index_name,
             scan_index_forward=scan_index_forward,
             consistent_read=consistent_read,
             **filters
