@@ -62,7 +62,9 @@ Here is an example, using the same table structure as shown in `Amazon's DynamoD
 
 
     class Thread(Model):
-        table_name = 'Thread'
+        class Meta:
+            table_name = 'Thread'
+
         forum_name = UnicodeAttribute(hash_key=True)
         subject = UnicodeAttribute(range_key=True)
         views = NumberAttribute(default=0)
@@ -71,9 +73,10 @@ Here is an example, using the same table structure as shown in `Amazon's DynamoD
         tags = UnicodeSetAttribute()
         last_post_datetime = UTCDateTimeAttribute()
 
-The ``table_name`` class attribute is required, and tells the model which DynamoDB table to use. The ``forum_name`` attribute
-is specified as the hash key for this table with the ``hash_key`` argument. Specifying that an attribute is a range key is done
-with the ``range_key`` attribute. You can specify a default value for any field, and `default` can even be a function.
+The ``Meta`` class is required with the ``table_name`` class attribute to tell the model which DynamoDB table to use -
+``Meta`` can be used to configure the model in other ways too, such as setting the ``region``. The ``forum_name``
+attribute is specified as the hash key for this table with the ``hash_key`` argument; similarly the ``subject``
+attribute is specified as the range key with the ``range_key`` attribute. You can specify a default value for any field, and ``default`` can even be a function.
 
 PynamoDB comes with several built in attribute types for convenience, which include the following:
 
