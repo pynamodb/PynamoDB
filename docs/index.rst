@@ -28,6 +28,7 @@ Topics
    quickstart
    tutorial
    indexes
+   local
    low_level
    awsaccess
    contributing
