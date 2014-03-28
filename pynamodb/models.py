@@ -386,7 +386,8 @@ class Model(with_metaclass(MetaModel)):
         """
         args, kwargs = self._get_save_args()
         data = self.get_connection().put_item(*args, **kwargs)
-        self.throttle.add_record(data.get(CONSUMED_CAPACITY))
+        if isinstance(data, dict):
+            self.throttle.add_record(data.get(CONSUMED_CAPACITY))
         return data
 
     def get_keys(self):
