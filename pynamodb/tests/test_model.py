@@ -47,9 +47,10 @@ class EmailIndex(GlobalSecondaryIndex):
     """
     A global secondary index for email addresses
     """
-    read_capacity_units = 2
-    write_capacity_units = 1
-    projection = AllProjection()
+    class Meta:
+        read_capacity_units = 2
+        write_capacity_units = 1
+        projection = AllProjection()
     email = UnicodeAttribute(hash_key=True)
     numbers = NumberSetAttribute(range_key=True)
 
@@ -58,9 +59,10 @@ class LocalEmailIndex(LocalSecondaryIndex):
     """
     A global secondary index for email addresses
     """
-    read_capacity_units = 2
-    write_capacity_units = 1
-    projection = AllProjection()
+    class Meta:
+        read_capacity_units = 2
+        write_capacity_units = 1
+        projection = AllProjection()
     email = UnicodeAttribute(hash_key=True)
     numbers = NumberSetAttribute(range_key=True)
 
@@ -713,7 +715,7 @@ class ModelTestCase(TestCase):
         batch_get_mock.side_effect = fake_batch_get
 
         with patch(PATCH_METHOD, new=batch_get_mock) as req:
-            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(1000)]
+            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(100)]
             for item in UserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
 
@@ -774,7 +776,7 @@ class ModelTestCase(TestCase):
         Models.GlobalSecondaryIndex
         """
         self.assertIsNotNone(IndexedModel.email_index.hash_key_attribute())
-
+        self.assertEqual(IndexedModel.email_index.Meta.projection.projection_type, AllProjection.projection_type)
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), MODEL_TABLE_DATA
             IndexedModel('foo', 'bar')
@@ -810,7 +812,7 @@ class ModelTestCase(TestCase):
                     {'AttributeName': 'email', 'KeyType': 'HASH'}
                 ]
             }
-            schema = IndexedModel.email_index.schema()
+            schema = IndexedModel.email_index.get_schema()
             args = req.call_args[1]
             self.assertEqual(
                 args['global_secondary_indexes'][0]['ProvisionedThroughput'],
@@ -870,7 +872,7 @@ class ModelTestCase(TestCase):
                     }
                 ]
             }
-            schema = LocalIndexedModel.email_index.schema()
+            schema = LocalIndexedModel.email_index.get_schema()
             args = req.call_args[1]
             self.assertTrue('ProvisionedThroughput' not in args['local_secondary_indexes'][0])
             self.assert_dict_lists_equal(schema['key_schema'], params['key_schema'])

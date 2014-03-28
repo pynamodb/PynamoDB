@@ -14,11 +14,11 @@ from .connection.base import MetaTable
 from .connection.table import TableConnection
 from .connection.util import pythonic
 from .types import HASH, RANGE
-from pynamodb.indexes import Index
+from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
-    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, GLOBAL_SECONDARY_INDEX,
+    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ATTR_UPDATES, ALL_NEW,
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, COMPARISON_OPERATOR, ATTR_VALUE_LIST,
@@ -592,24 +592,24 @@ class Model(with_metaclass(MetaModel)):
                 if issubclass(item_cls, (Index, )):
                     item_cls = getattr(cls, item)
                     cls.index_classes[item] = item_cls
-                    schema = item_cls.schema()
+                    schema = item_cls.get_schema()
                     idx = {
                         pythonic(INDEX_NAME): item,
                         pythonic(KEY_SCHEMA): schema.get(pythonic(KEY_SCHEMA)),
                         pythonic(PROJECTION): {
-                            PROJECTION_TYPE: item_cls.projection.projection_type,
+                            PROJECTION_TYPE: item_cls.Meta.projection.projection_type,
                         },
 
                     }
-                    if item_cls.index_type == GLOBAL_SECONDARY_INDEX:
+                    if issubclass(item_cls.__class__, GlobalSecondaryIndex):
                         idx[pythonic(PROVISIONED_THROUGHPUT)] = {
-                            READ_CAPACITY_UNITS: item_cls.read_capacity_units,
-                            WRITE_CAPACITY_UNITS: item_cls.write_capacity_units
+                            READ_CAPACITY_UNITS: item_cls.Meta.read_capacity_units,
+                            WRITE_CAPACITY_UNITS: item_cls.Meta.write_capacity_units
                         }
                     cls.indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
-                    if item_cls.projection.non_key_attributes:
-                        idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = item_cls.projection.non_key_attributes
-                    if item_cls.index_type == GLOBAL_SECONDARY_INDEX:
+                    if item_cls.Meta.projection.non_key_attributes:
+                        idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = item_cls.Meta.projection.non_key_attributes
+                    if issubclass(item_cls.__class__, GlobalSecondaryIndex):
                         cls.indexes[pythonic(GLOBAL_SECONDARY_INDEXES)].append(idx)
                     else:
                         cls.indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
@@ -631,7 +631,7 @@ class Model(with_metaclass(MetaModel)):
         return cls.attributes
 
     @classmethod
-    def schema(cls):
+    def get_schema(cls):
         """
         Returns the schema for this table
         """
@@ -790,7 +790,7 @@ class Model(with_metaclass(MetaModel)):
         :param write_capacity_units: Sets the write capacity units for this table
         """
         if not cls.exists():
-            schema = cls.schema()
+            schema = cls.get_schema()
             schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
             schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
             index_data = cls.get_indexes()
