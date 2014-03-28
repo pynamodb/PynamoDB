@@ -11,7 +11,9 @@ from datetime import datetime
 
 
 class Thread(Model):
-    table_name = 'Thread'
+    class Meta:
+        table_name = "Thread"
+        host = "http://localhost:8000"
     forum_name = UnicodeAttribute(hash_key=True)
     subject = UnicodeAttribute(range_key=True)
     views = NumberAttribute(default=0)
@@ -21,7 +23,8 @@ class Thread(Model):
     last_post_datetime = UTCDateTimeAttribute()
 
 # Create the table
-Thread.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+if not Thread.exists():
+    Thread.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
 # Create a thread
 thread_item = Thread(
@@ -47,7 +50,7 @@ with Thread.batch_write() as batch:
         batch.save(thread)
 
 # Batch get
-item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x) for x in range(100))]
+item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(100)]
 for item in Thread.batch_get(item_keys):
     print(item)
 

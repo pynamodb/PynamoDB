@@ -10,11 +10,11 @@ class ViewIndex(GlobalSecondaryIndex):
     """
     This class represents a global secondary index
     """
-    read_capacity_units = 2
-    write_capacity_units = 1
-    # All attributes are projected
-    projection = AllProjection()
-
+    class Meta:
+        read_capacity_units = 1
+        write_capacity_units = 1
+        # All attributes are projected
+        projection = AllProjection()
     # This attribute is the hash key for the index
     # Note that this attribute must also exist
     # in the model
@@ -25,12 +25,23 @@ class TestModel(Model):
     """
     A test model that uses a global secondary index
     """
-    table_name = 'TestModel'
+    class Meta:
+        table_name = "TestModel"
+        # Set host for using DynamoDB Local
+        host = "http://localhost:8000"
     forum = UnicodeAttribute(hash_key=True)
     thread = UnicodeAttribute(range_key=True)
     view_index = ViewIndex()
     view = NumberAttribute(default=0)
 
+if not TestModel.exists():
+    TestModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+
+
+# Create an item
+item = TestModel('forum-example', 'thread-example')
+item.view = 1
+item.save()
 
 # Indexes can be queried easily using the index's hash key
 for item in TestModel.view_index.query(1):

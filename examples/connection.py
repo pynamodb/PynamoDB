@@ -5,7 +5,7 @@ from __future__ import print_function
 from pynamodb.connection import Connection
 
 # Get a connection
-conn = Connection()
+conn = Connection(host='http://localhost:8000')
 
 # List tables
 print(conn.list_tables())
