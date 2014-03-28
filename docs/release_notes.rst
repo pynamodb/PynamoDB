@@ -1,5 +1,48 @@
 Release Notes
 =============
+v1.0.0
+------
+
+:date: 2014-03-28
+
+* Major update: New syntax for specifying models that is not backward compatible.
+
+.. important::
+    The syntax for models has changed!
+
+The old way:
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+
+    class Thread(Model):
+        table_name = 'Thread'
+        forum_name = UnicodeAttribute(hash_key=True)
+
+The new way:
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+
+    class Thread(Model):
+        class Meta:
+            table_name = 'Thread'
+        forum_name = UnicodeAttribute(hash_key=True)
+
+Other, less important changes:
+
+* Added explicit support for specifying the server hostname in models
+* Added documentation for using DynamoDB Local
+* Made examples runnable with DynamoDB Local by default
+* Added documentation for the use of ``default`` and ``null`` on model attributes
+* Improved testing for index queries
+
 
 v0.1.13
 -------
