@@ -43,13 +43,6 @@ class Index(with_metaclass(IndexMeta)):
     Base class for secondary indexes
     """
     Meta = None
-    # projection = None
-    # attributes = None
-    # read_capacity_units = None
-    # write_capacity_units = None
-    # index_type = None
-    # model = None
-    # index_name = None
 
     def __init__(self):
         if self.Meta is None:
