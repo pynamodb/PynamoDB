@@ -985,7 +985,12 @@ class ModelTestCase(TestCase):
                 {'attribute_type': 'NS', 'attribute_name': 'numbers'}
             ]
         }
-        self.assertEqual(schema, expected)
+        self.assert_dict_lists_equal(
+            schema['attribute_definitions'],
+            expected['attribute_definitions']
+        )
+        self.assertEqual(schema['local_secondary_indexes'][0]['projection']['ProjectionType'], 'INCLUDE')
+        self.assertEqual(schema['local_secondary_indexes'][0]['projection']['NonKeyAttributes'], ['numbers'])
 
         def fake_dynamodb(obj, **kwargs):
             if kwargs == {'table_name': UserModel.Meta.table_name}:
