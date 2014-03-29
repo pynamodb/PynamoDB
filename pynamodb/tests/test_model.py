@@ -67,6 +67,15 @@ class LocalEmailIndex(LocalSecondaryIndex):
     numbers = NumberSetAttribute(range_key=True)
 
 
+class NonKeyAttrIndex(LocalSecondaryIndex):
+    class Meta:
+        read_capacity_units = 2
+        write_capacity_units = 1
+        projection = IncludeProjection(non_attr_keys=['numbers'])
+    email = UnicodeAttribute(hash_key=True)
+    numbers = NumberSetAttribute(range_key=True)
+
+
 class IndexedModel(Model):
     """
     A model with an index
@@ -76,6 +85,7 @@ class IndexedModel(Model):
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     email_index = EmailIndex()
+    include_index = NonKeyAttrIndex()
     numbers = NumberSetAttribute()
     aliases = UnicodeSetAttribute()
     icons = BinarySetAttribute()
@@ -208,6 +218,12 @@ class ModelTestCase(TestCase):
 
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as outer:
+            with patch("pynamodb.connection.TableConnection.describe_table") as req:
+                req.return_value = None
+                with self.assertRaises(ValueError):
+                    UserModel.create_table(read_capacity_units=2, write_capacity_units=2, wait=True)
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
@@ -579,6 +595,30 @@ class ModelTestCase(TestCase):
                 scanned_items
             )
 
+        def fake_scan(*args, **kwargs):
+            start_key = kwargs.get(pythonic(EXCLUSIVE_START_KEY), None)
+            if start_key:
+                item_idx = 0
+                for scan_item in BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name):
+                    item_idx += 1
+                    if scan_item == start_key:
+                        break
+                scan_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[item_idx:item_idx+1]
+            else:
+                scan_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[:1]
+            data = {
+                ITEMS: scan_items,
+                LAST_EVALUATED_KEY: scan_items[-1] if len(scan_items) else None
+            }
+            return HttpOK(data), data
+
+        mock_scan = MagicMock()
+        mock_scan.side_effect = fake_scan
+
+        with patch(PATCH_METHOD, new=mock_scan) as req:
+            for item in UserModel.scan():
+                self.assertIsNotNone(item)
+
     def test_get(self):
         """
         Model.get
@@ -715,7 +755,7 @@ class ModelTestCase(TestCase):
         batch_get_mock.side_effect = fake_batch_get
 
         with patch(PATCH_METHOD, new=batch_get_mock) as req:
-            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(100)]
+            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(200)]
             for item in UserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
 
@@ -729,6 +769,16 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
+
+            with UserModel.batch_write(auto_commit=False) as batch:
+                pass
+
+            with self.assertRaises(ValueError):
+                with UserModel.batch_write(auto_commit=False) as batch:
+                    items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(26)]
+                    for item in items:
+                        batch.delete(item)
+                    self.assertRaises(ValueError, batch.save, UserModel('asdf', '1234'))
 
             with UserModel.batch_write(auto_commit=False) as batch:
                 items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(25)]
@@ -788,6 +838,11 @@ class ModelTestCase(TestCase):
         # startswith not valid
         with self.assertRaises(ValueError):
             for item in IndexedModel.email_index.query('foo', user_name__startswith='foo'):
+                queried.append(item.serialize().get(RANGE))
+
+        # name not valid
+        with self.assertRaises(ValueError):
+            for item in IndexedModel.email_index.query('foo', name='foo'):
                 queried.append(item.serialize().get(RANGE))
 
         with patch(PATCH_METHOD) as req:
@@ -892,6 +947,45 @@ class ModelTestCase(TestCase):
             LocalIndexedModel('foo', 'bar')
 
         scope_args = {'count': 0}
+
+        schema = IndexedModel.get_indexes()
+
+        expected = {
+            'local_secondary_indexes': [
+                {
+                    'key_schema': [
+                        {'KeyType': 'HASH', 'AttributeName': 'email'},
+                        {'KeyType': 'RANGE', 'AttributeName': 'numbers'}
+                    ],
+                    'index_name': 'include_index',
+                    'projection': {
+                        'ProjectionType': 'INCLUDE',
+                        'NonKeyAttributes': ['numbers']
+                    }
+                }
+            ],
+            'global_secondary_indexes': [
+                {
+                    'key_schema': [
+                        {'KeyType': 'HASH', 'AttributeName': 'email'},
+                        {'KeyType': 'RANGE', 'AttributeName': 'numbers'}
+                    ],
+                    'index_name': 'email_index',
+                    'projection': {'ProjectionType': 'ALL'},
+                    'provisioned_throughput': {
+                        'WriteCapacityUnits': 1,
+                        'ReadCapacityUnits': 2
+                    }
+                }
+            ],
+            'attribute_definitions': [
+                {'attribute_type': 'S', 'attribute_name': 'email'},
+                {'attribute_type': 'NS', 'attribute_name': 'numbers'},
+                {'attribute_type': 'S', 'attribute_name': 'email'},
+                {'attribute_type': 'NS', 'attribute_name': 'numbers'}
+            ]
+        }
+        self.assertEqual(schema, expected)
 
         def fake_dynamodb(obj, **kwargs):
             if kwargs == {'table_name': UserModel.Meta.table_name}:
