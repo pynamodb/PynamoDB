@@ -17,15 +17,16 @@ Let's create a simple model to describe users.
         """
         A DynamoDB User
         """
-        region = 'us-west-1'
-        table_name = 'dynamodb-user'
+        class Meta:
+            table_name = 'dynamodb-user'
+            region = 'us-west-1'
         email = UnicodeAttribute(hash_key=True)
         first_name = UnicodeAttribute()
         last_name = UnicodeAttribute()
 
 Models are backed by DynamoDB tables. In this example, the model has a hash key attribute
 that stores the user's email address. Any attribute can be set as a hash key by including the argument
-`hash_key=True`. The `region` attribute is not required, and will default to `us-east-` if not provided.
+`hash_key=True`. The `region` attribute is not required, and will default to `us-east-1` if not provided.
 
 PynamoDB allows you to create the table:
 
@@ -71,7 +72,8 @@ and a range key that is the user's first name:
             """
             A DynamoDB User
             """
-            table_name = 'dynamodb-user'
+            class Meta:
+                table_name = 'dynamodb-user'
             email = UnicodeAttribute()
             first_name = UnicodeAttribute(range_key=True)
             last_name = UnicodeAttribute(hash_key=True)

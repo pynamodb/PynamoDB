@@ -30,10 +30,8 @@ Installation
 
     $ pip install pynamodb
 
-.. note::
 
-    PynamoDB is still under development. More advanced features are available with the development version
-    of PynamoDB. You can install it directly from GitHub with pip: `pip install git+https://github.com/jlafon/PynamoDB#egg=pynamodb`
+Don't have pip? `Here are instructions for installing pip. <http://pip.readthedocs.org/en/latest/installing.html>`_.
 
 Getting Started
 ^^^^^^^^^^^^^^^
@@ -62,7 +60,9 @@ Here is an example, using the same table structure as shown in `Amazon's DynamoD
 
 
     class Thread(Model):
-        table_name = 'Thread'
+        class Meta:
+            table_name = 'Thread'
+
         forum_name = UnicodeAttribute(hash_key=True)
         subject = UnicodeAttribute(range_key=True)
         views = NumberAttribute(default=0)
@@ -71,9 +71,97 @@ Here is an example, using the same table structure as shown in `Amazon's DynamoD
         tags = UnicodeSetAttribute()
         last_post_datetime = UTCDateTimeAttribute()
 
-The ``table_name`` class attribute is required, and tells the model which DynamoDB table to use. The ``forum_name`` attribute
-is specified as the hash key for this table with the ``hash_key`` argument. Specifying that an attribute is a range key is done
-with the ``range_key`` attribute. You can specify a default value for any field, and `default` can even be a function.
+All DynamoDB tables have a hash key, and you must specify which attribute is the hash key for each ``Model`` you define.
+The ``forum_name`` attribute in this example is specified as the hash key for this table with the ``hash_key`` argument;
+similarly the ``subject`` attribute is specified as the range key with the ``range_key`` argument.
+
+Model Settings
+--------------
+
+The ``Meta`` class is required with at least the ``table_name`` class attribute to tell the model which DynamoDB table to use -
+``Meta`` can be used to configure the model in other ways too. You can specify which DynamoDB region to use with the  ``region``,
+and the URL endpoint for DynamoDB can be specified using the  ``host`` attribute.
+
+Here is an example that specifies both the ``host`` and the ``region`` to use:
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+
+    class Thread(Model):
+        class Meta:
+            table_name = 'Thread'
+            # Specifies the region
+            region = 'us-west-1'
+            # Specifies the hostname
+            host = 'http://localhost'
+        forum_name = UnicodeAttribute(hash_key=True)
+
+Defining Model Attributes
+-------------------------
+
+A ``Model`` has attributes, which are mapped to attributes in DynamoDB. Attributes are responsible for serializing/deserializing
+values to a format that DynamoDB accepts, optionally specifying whether or not an attribute may be empty using the `null` argument,
+and optionally specifying a default value with the `default` argument. You can specify a default value for any field, and ``default``
+can even be a function.
+
+.. note::
+
+    `DynamoDB will not store empty attributes <http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html>`_.
+    By default, an ``Attribute`` cannot be ``None`` unless you specify ``null=True`` in the
+    attribute constructor.
+
+DynamoDB attributes can't be null and set attributes can't be empty.
+PynamoDB attempts to do the right thing by pruning null attributes when serializing an item to be put into DynamoDB.
+By default, PynamoDB attributes can't be null either - but you can easily override that by adding ``null=True`` to the constructor of the attribute.
+When you make an attribute nullable, PynamoDB will omit that value if the value is ``None`` when saving to DynamoDB.
+It is not recommended to give every attribute a value if those values can represent null, as those values representing null take up space - which literally costs you money
+(DynamoDB pricing is based on reads and writes per second per KB).
+Instead, treat the absence of a value as equivalent to being null (which is what PynamoDB does).
+The only exception of course, are hash and range keys which must always have a value.
+
+Here is an example of an attribute with a default value:
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+
+    class Thread(Model):
+        class Meta:
+            table_name = 'Thread'
+        forum_name = UnicodeAttribute(hash_key=True, default='My Default Value')
+
+Here is an example of an attribute with a default *callable* value:
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+    def my_default_value():
+        return 'My default value'
+
+    class Thread(Model):
+        class Meta:
+            table_name = 'Thread'
+        forum_name = UnicodeAttribute(hash_key=True, default=my_default_value)
+
+Here is an example of an attribute that can be empty:
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+    class Thread(Model):
+        class Meta:
+            table_name = 'Thread'
+        forum_name = UnicodeAttribute(hash_key=True)
+        my_nullable_attribute = UnicodeAttribute(null=True)
 
 PynamoDB comes with several built in attribute types for convenience, which include the following:
 

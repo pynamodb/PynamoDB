@@ -14,18 +14,18 @@ from .connection.base import MetaTable
 from .connection.table import TableConnection
 from .connection.util import pythonic
 from .types import HASH, RANGE
-from pynamodb.indexes import Index
+from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
-    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, GLOBAL_SECONDARY_INDEX,
+    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ATTR_UPDATES, ALL_NEW,
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, COMPARISON_OPERATOR, ATTR_VALUE_LIST,
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, DEFAULT_REGION)
+    CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST)
 
 
 log = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ class BatchWrite(ModelContextManager):
         self.model.add_throttle_record(data.get(CONSUMED_CAPACITY, None))
         if data is None:
             return
-        unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.table_name)
+        unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.Meta.table_name)
         while unprocessed_keys:
             put_items = []
             delete_items = []
@@ -132,7 +132,13 @@ class BatchWrite(ModelContextManager):
                 delete_items=delete_items
             )
             self.model.add_throttle_record(data.get(CONSUMED_CAPACITY))
-            unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.table_name)
+            unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.Meta.table_name)
+
+
+class DefaultMeta(object):
+    table_name = None
+    region = DEFAULT_REGION
+    host = None
 
 
 class MetaModel(type):
@@ -145,11 +151,19 @@ class MetaModel(type):
     def __init__(cls, name, bases, attrs):
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
-                if issubclass(attr_obj.__class__, (Index, )):
-                    attr_obj.__class__.model = cls
-                    attr_obj.__class__.index_name = attr_name
+                if attr_name == META_CLASS_NAME:
+                    if not hasattr(attr_obj, REGION):
+                        setattr(attr_obj, REGION, DEFAULT_REGION)
+                    if not hasattr(attr_obj, HOST):
+                        setattr(attr_obj, HOST, None)
+                elif issubclass(attr_obj.__class__, (Index, )):
+                    attr_obj.Meta.model = cls
+                    attr_obj.Meta.index_name = attr_name
                 elif issubclass(attr_obj.__class__, (Attribute, )):
                     attr_obj.attr_name = attr_name
+
+            if META_CLASS_NAME not in attrs:
+                setattr(cls, META_CLASS_NAME, DefaultMeta)
 
 
 class Model(with_metaclass(MetaModel)):
@@ -167,7 +181,6 @@ class Model(with_metaclass(MetaModel)):
     indexes = None
     connection = None
     index_classes = None
-    region = DEFAULT_REGION
     throttle = NoThrottle()
     DoesNotExist = DoesNotExist
 
@@ -180,9 +193,12 @@ class Model(with_metaclass(MetaModel)):
         self.attribute_values = {}
         self.set_defaults()
         if hash_key:
-            setattr(self, self.meta().hash_keyname, hash_key)
+            setattr(self, self.get_meta_data().hash_keyname, hash_key)
         if range_key:
-            setattr(self, self.meta().range_keyname, range_key)
+            range_keyname = self.get_meta_data().range_keyname
+            if range_keyname is None:
+                raise ValueError("This table has no range key, but a range key value was provided: {0}".format(range_key))
+            setattr(self, range_keyname, range_key)
         self.set_attributes(**attrs)
 
     @classmethod
@@ -196,7 +212,7 @@ class Model(with_metaclass(MetaModel)):
         """
         if records:
             for record in records:
-                if record.get(TABLE_NAME) == cls.table_name:
+                if record.get(TABLE_NAME) == cls.Meta.table_name:
                     cls.throttle.add_record(record.get(CAPACITY_UNITS))
                     break
 
@@ -208,8 +224,8 @@ class Model(with_metaclass(MetaModel)):
         :param items: Should be a list of hash keys to retrieve, or a list of
             tuples if range keys are used.
         """
-        hash_keyname = cls.meta().hash_keyname
-        range_keyname = cls.meta().range_keyname
+        hash_keyname = cls.get_meta_data().hash_keyname
+        range_keyname = cls.get_meta_data().range_keyname
         keys_to_get = []
         while items:
             if len(keys_to_get) == BATCH_GET_PAGE_LIMIT:
@@ -229,7 +245,7 @@ class Model(with_metaclass(MetaModel)):
                     range_keyname: range_key
                 })
             else:
-                hash_key = cls.serialize_keys(item, None)[0]
+                hash_key = cls.serialize_keys(item)[0]
                 keys_to_get.append({
                     hash_keyname: hash_key
                 })
@@ -256,8 +272,8 @@ class Model(with_metaclass(MetaModel)):
             keys_to_get
         )
         cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
-        item_data = data.get(RESPONSES).get(cls.table_name)
-        unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.table_name, {}).get(KEYS, None)
+        item_data = data.get(RESPONSES).get(cls.Meta.table_name)
+        unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.Meta.table_name, {}).get(KEYS, None)
         return item_data, unprocessed_items
 
     @classmethod
@@ -291,17 +307,17 @@ class Model(with_metaclass(MetaModel)):
             setattr(self, key, value)
 
     def __repr__(self):
-        hash_key = getattr(self, self.meta().hash_keyname, None)
-        if hash_key and self.table_name:
-            if self.meta().range_keyname:
-                range_key = getattr(self, self.meta().range_keyname, None)
-                msg = "{0}<{1}, {2}>".format(self.table_name, hash_key, range_key)
+        hash_key = getattr(self, self.get_meta_data().hash_keyname, None)
+        if hash_key and self.Meta.table_name:
+            if self.get_meta_data().range_keyname:
+                range_key = getattr(self, self.get_meta_data().range_keyname, None)
+                msg = "{0}<{1}, {2}>".format(self.Meta.table_name, hash_key, range_key)
             else:
-                msg = "{0}<{1}>".format(self.table_name, hash_key)
+                msg = "{0}<{1}>".format(self.Meta.table_name, hash_key)
             return six.u(msg)
 
     @classmethod
-    def meta(cls):
+    def get_meta_data(cls):
         """
         A helper object that contains meta data about this table
         """
@@ -314,8 +330,14 @@ class Model(with_metaclass(MetaModel)):
         """
         Returns a (cached) connection
         """
+        if not hasattr(cls, "Meta") or cls.Meta.table_name is None:
+            raise AttributeError(
+                """As of v1.0 PynamoDB Models require a `Meta` class.
+                See http://pynamodb.readthedocs.org/en/latest/release_notes.html"""
+            )
+
         if cls.connection is None:
-            cls.connection = TableConnection(cls.table_name, region=cls.region)
+            cls.connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host)
         return cls.connection
 
     def delete(self):
@@ -370,7 +392,8 @@ class Model(with_metaclass(MetaModel)):
         """
         args, kwargs = self._get_save_args()
         data = self.get_connection().put_item(*args, **kwargs)
-        self.throttle.add_record(data.get(CONSUMED_CAPACITY))
+        if isinstance(data, dict):
+            self.throttle.add_record(data.get(CONSUMED_CAPACITY))
         return data
 
     def get_keys(self):
@@ -380,8 +403,8 @@ class Model(with_metaclass(MetaModel)):
         serialized = self.serialize()
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
-        hash_keyname = self.meta().hash_keyname
-        range_keyname = self.meta().range_keyname
+        hash_keyname = self.get_meta_data().hash_keyname
+        range_keyname = self.get_meta_data().range_keyname
         attrs = {
             hash_keyname: hash_key,
             range_keyname: range_key
@@ -490,7 +513,7 @@ class Model(with_metaclass(MetaModel)):
         Returns the attribute class for the hash key
         """
         attributes = cls.get_attributes()
-        range_keyname = cls.meta().range_keyname
+        range_keyname = cls.get_meta_data().range_keyname
         if range_keyname:
             attr = attributes[range_keyname]
         else:
@@ -503,7 +526,7 @@ class Model(with_metaclass(MetaModel)):
         Returns the attribute class for the hash key
         """
         attributes = cls.get_attributes()
-        hash_keyname = cls.meta().hash_keyname
+        hash_keyname = cls.get_meta_data().hash_keyname
         return attributes[hash_keyname]
 
     @classmethod
@@ -541,9 +564,9 @@ class Model(with_metaclass(MetaModel)):
         mutable_data = copy.copy(data)
         if mutable_data is None:
             raise ValueError("Received no mutable_data to construct object")
-        hash_keyname = cls.meta().hash_keyname
-        range_keyname = cls.meta().range_keyname
-        hash_key_type = cls.meta().get_attribute_type(hash_keyname)
+        hash_keyname = cls.get_meta_data().hash_keyname
+        range_keyname = cls.get_meta_data().range_keyname
+        hash_key_type = cls.get_meta_data().get_attribute_type(hash_keyname)
         hash_key = mutable_data.pop(hash_keyname).get(hash_key_type)
         hash_key_attr = cls.get_attributes().get(hash_keyname)
         hash_key = hash_key_attr.deserialize(hash_key)
@@ -551,7 +574,7 @@ class Model(with_metaclass(MetaModel)):
         kwargs = {}
         if range_keyname:
             range_key_attr = cls.get_attributes().get(range_keyname)
-            range_key_type = cls.meta().get_attribute_type(range_keyname)
+            range_key_type = cls.get_meta_data().get_attribute_type(range_keyname)
             range_key = mutable_data.pop(range_keyname).get(range_key_type)
             kwargs['range_key'] = range_key_attr.deserialize(range_key)
         for name, value in mutable_data.items():
@@ -573,28 +596,30 @@ class Model(with_metaclass(MetaModel)):
             }
             cls.index_classes = {}
             for item in dir(cls):
-                item_cls = getattr(cls, item).__class__
+                item_cls = getattr(getattr(cls, item), "__class__", None)
+                if item_cls is None:
+                    continue
                 if issubclass(item_cls, (Index, )):
                     item_cls = getattr(cls, item)
                     cls.index_classes[item] = item_cls
-                    schema = item_cls.schema()
+                    schema = item_cls.get_schema()
                     idx = {
                         pythonic(INDEX_NAME): item,
                         pythonic(KEY_SCHEMA): schema.get(pythonic(KEY_SCHEMA)),
                         pythonic(PROJECTION): {
-                            PROJECTION_TYPE: item_cls.projection.projection_type,
+                            PROJECTION_TYPE: item_cls.Meta.projection.projection_type,
                         },
 
                     }
-                    if item_cls.index_type == GLOBAL_SECONDARY_INDEX:
+                    if issubclass(item_cls.__class__, GlobalSecondaryIndex):
                         idx[pythonic(PROVISIONED_THROUGHPUT)] = {
-                            READ_CAPACITY_UNITS: item_cls.read_capacity_units,
-                            WRITE_CAPACITY_UNITS: item_cls.write_capacity_units
+                            READ_CAPACITY_UNITS: item_cls.Meta.read_capacity_units,
+                            WRITE_CAPACITY_UNITS: item_cls.Meta.write_capacity_units
                         }
                     cls.indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
-                    if item_cls.projection.non_key_attributes:
-                        idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = item_cls.projection.non_key_attributes
-                    if item_cls.index_type == GLOBAL_SECONDARY_INDEX:
+                    if item_cls.Meta.projection.non_key_attributes:
+                        idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = item_cls.Meta.projection.non_key_attributes
+                    if issubclass(item_cls.__class__, GlobalSecondaryIndex):
                         cls.indexes[pythonic(GLOBAL_SECONDARY_INDEXES)].append(idx)
                     else:
                         cls.indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
@@ -608,13 +633,15 @@ class Model(with_metaclass(MetaModel)):
         if cls.attributes is None:
             cls.attributes = {}
             for item in dir(cls):
-                item_cls = getattr(cls, item).__class__
+                item_cls = getattr(getattr(cls, item), "__class__", None)
+                if item_cls is None:
+                    continue
                 if issubclass(item_cls, (Attribute, )):
                     cls.attributes[item] = getattr(cls, item)
         return cls.attributes
 
     @classmethod
-    def schema(cls):
+    def get_schema(cls):
         """
         Returns the schema for this table
         """
@@ -656,6 +683,8 @@ class Model(with_metaclass(MetaModel)):
                 if attribute is None:
                     attribute = token
                     attribute_class = attribute_classes.get(attribute)
+                    if attribute_class is None:
+                        raise ValueError("Attribute {0} specified for filter does not exist.".format(attribute))
                     if not isinstance(value, list):
                         value = [value]
                     value = [attribute_class.serialize(val) for val in value]
@@ -664,6 +693,8 @@ class Model(with_metaclass(MetaModel)):
                         COMPARISON_OPERATOR: operator_map.get(token),
                         ATTR_VALUE_LIST: value
                     }
+                elif token not in operator_map:
+                    raise ValueError("{0} is not a valid filter. Must be one of {1}".format(token, operator_map.keys()))
                 else:
                     raise ValueError("Could not parse filter: {0}".format(query))
         return key_conditions
@@ -688,7 +719,7 @@ class Model(with_metaclass(MetaModel)):
         if index_name:
             hash_key = cls.index_classes[index_name].hash_key_attribute().serialize(hash_key)
         else:
-            hash_key = cls.serialize_keys(hash_key, None)[0]
+            hash_key = cls.serialize_keys(hash_key)[0]
         key_conditions = cls._build_filters(QUERY_OPERATOR_MAP, filters)
         log.debug("Fetching first query page")
         data = cls.get_connection().query(
@@ -773,7 +804,7 @@ class Model(with_metaclass(MetaModel)):
         :param write_capacity_units: Sets the write capacity units for this table
         """
         if not cls.exists():
-            schema = cls.schema()
+            schema = cls.get_schema()
             schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
             schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
             index_data = cls.get_indexes()

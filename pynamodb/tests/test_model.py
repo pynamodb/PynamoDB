@@ -27,7 +27,7 @@ from .response import HttpOK, HttpBadRequest
 from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
-    COMPLEX_ITEM_DATA
+    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA
 )
 
 
@@ -43,13 +43,19 @@ PATCH_METHOD = 'botocore.operation.Operation.call'
 SESSION_PATCH_METHODD = 'botocore.session.get_session'
 
 
+class OldStyleModel(Model):
+    table_name = 'IndexedModel'
+    user_name = UnicodeAttribute(hash_key=True)
+
+
 class EmailIndex(GlobalSecondaryIndex):
     """
     A global secondary index for email addresses
     """
-    read_capacity_units = 2
-    write_capacity_units = 1
-    projection = AllProjection()
+    class Meta:
+        read_capacity_units = 2
+        write_capacity_units = 1
+        projection = AllProjection()
     email = UnicodeAttribute(hash_key=True)
     numbers = NumberSetAttribute(range_key=True)
 
@@ -58,9 +64,19 @@ class LocalEmailIndex(LocalSecondaryIndex):
     """
     A global secondary index for email addresses
     """
-    read_capacity_units = 2
-    write_capacity_units = 1
-    projection = AllProjection()
+    class Meta:
+        read_capacity_units = 2
+        write_capacity_units = 1
+        projection = AllProjection()
+    email = UnicodeAttribute(hash_key=True)
+    numbers = NumberSetAttribute(range_key=True)
+
+
+class NonKeyAttrIndex(LocalSecondaryIndex):
+    class Meta:
+        read_capacity_units = 2
+        write_capacity_units = 1
+        projection = IncludeProjection(non_attr_keys=['numbers'])
     email = UnicodeAttribute(hash_key=True)
     numbers = NumberSetAttribute(range_key=True)
 
@@ -69,10 +85,12 @@ class IndexedModel(Model):
     """
     A model with an index
     """
-    table_name = 'SimpleModel'
+    class Meta:
+        table_name = 'IndexedModel'
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     email_index = EmailIndex()
+    include_index = NonKeyAttrIndex()
     numbers = NumberSetAttribute()
     aliases = UnicodeSetAttribute()
     icons = BinarySetAttribute()
@@ -82,7 +100,8 @@ class LocalIndexedModel(Model):
     """
     A model with an index
     """
-    table_name = 'SimpleModel'
+    class Meta:
+        table_name = 'LocalIndexedModel'
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     email_index = LocalEmailIndex()
@@ -95,7 +114,8 @@ class SimpleUserModel(Model):
     """
     A hash key only model
     """
-    table_name = 'SimpleModel'
+    class Meta:
+        table_name = 'SimpleModel'
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     numbers = NumberSetAttribute()
@@ -108,7 +128,8 @@ class ThrottledUserModel(Model):
     """
     A testing model
     """
-    table_name = 'UserModel'
+    class Meta:
+        table_name = 'UserModel'
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
     throttle = Throttle('50')
@@ -118,7 +139,8 @@ class UserModel(Model):
     """
     A testing model
     """
-    table_name = 'UserModel'
+    class Meta:
+        table_name = 'UserModel'
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
     picture = BinaryAttribute(null=True)
@@ -127,12 +149,24 @@ class UserModel(Model):
     callable_field = NumberAttribute(default=lambda: 42)
 
 
+class HostSpecificModel(Model):
+    """
+    A testing model
+    """
+    class Meta:
+        host = 'http://localhost'
+        table_name = 'RegionSpecificModel'
+    user_name = UnicodeAttribute(hash_key=True)
+    user_id = UnicodeAttribute(range_key=True)
+
+
 class RegionSpecificModel(Model):
     """
     A testing model
     """
-    region = 'us-west-1'
-    table_name = 'RegionSpecificModel'
+    class Meta:
+        region = 'us-west-1'
+        table_name = 'RegionSpecificModel'
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
 
@@ -141,7 +175,8 @@ class ComplexKeyModel(Model):
     """
     This model has a key that must be serialized/deserialized properly
     """
-    table_name = 'ComplexKey'
+    class Meta:
+        table_name = 'ComplexKey'
     name = UnicodeAttribute(hash_key=True)
     date_created = UTCDateTimeAttribute(default=datetime.utcnow)
 
@@ -173,7 +208,7 @@ class ModelTestCase(TestCase):
         scope_args = {'count': 0}
 
         def fake_dynamodb(obj, **kwargs):
-            if kwargs == {'table_name': UserModel.table_name}:
+            if kwargs == {'table_name': UserModel.Meta.table_name}:
                 if scope_args['count'] == 0:
                     return HttpBadRequest(), {}
                 elif scope_args['count'] == 1:
@@ -189,9 +224,17 @@ class ModelTestCase(TestCase):
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
 
+        with patch(PATCH_METHOD, new=fake_db) as outer:
+            with patch("pynamodb.connection.TableConnection.describe_table") as req:
+                req.return_value = None
+                with self.assertRaises(ValueError):
+                    UserModel.create_table(read_capacity_units=2, write_capacity_units=2, wait=True)
+
         with patch(PATCH_METHOD, new=fake_db) as req:
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
 
+        # Test for default region
+        self.assertEqual(UserModel.Meta.region, 'us-east-1')
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK, MODEL_TABLE_DATA
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
@@ -199,11 +242,18 @@ class ModelTestCase(TestCase):
             self.assertEqual(req.call_args[0][0].region_name, 'us-east-1')
 
         # A table with a specified region
-        self.assertEqual(RegionSpecificModel.region, 'us-west-1')
+        self.assertEqual(RegionSpecificModel.Meta.region, 'us-west-1')
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK, MODEL_TABLE_DATA
             RegionSpecificModel.create_table(read_capacity_units=2, write_capacity_units=2)
             self.assertEqual(req.call_args[0][0].region_name, 'us-west-1')
+
+         # A table with a specified host
+        self.assertEqual(HostSpecificModel.Meta.host, 'http://localhost')
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK, MODEL_TABLE_DATA
+            HostSpecificModel.create_table(read_capacity_units=2, write_capacity_units=2)
+            self.assertEqual(req.call_args[0][0].host, 'http://localhost')
 
         def fake_wait(obj, **kwargs):
             if scope_args['count'] == 0:
@@ -253,13 +303,13 @@ class ModelTestCase(TestCase):
             item = UserModel('foo', 'bar')
             self.assertEqual(item.email, 'needs_email')
             self.assertEqual(item.callable_field, 42)
-            self.assertEqual(repr(item), '{0}<{1}, {2}>'.format(UserModel.table_name, item.user_name, item.user_id))
-            self.assertEqual(repr(UserModel.meta()), 'MetaTable<{0}>'.format('Thread'))
+            self.assertEqual(repr(item), '{0}<{1}, {2}>'.format(UserModel.Meta.table_name, item.user_name, item.user_id))
+            self.assertEqual(repr(UserModel.get_meta_data()), 'MetaTable<{0}>'.format('Thread'))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(SIMPLE_MODEL_TABLE_DATA), SIMPLE_MODEL_TABLE_DATA
             item = SimpleUserModel('foo')
-            self.assertEqual(repr(item), '{0}<{1}>'.format(SimpleUserModel.table_name, item.user_name))
+            self.assertEqual(repr(item), '{0}<{1}>'.format(SimpleUserModel.Meta.table_name, item.user_name))
             self.assertRaises(ValueError, item.save)
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
@@ -507,13 +557,13 @@ class ModelTestCase(TestCase):
             start_key = kwargs.get(pythonic(EXCLUSIVE_START_KEY), None)
             if start_key:
                 item_idx = 0
-                for query_item in BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name):
+                for query_item in BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name):
                     item_idx += 1
                     if query_item == start_key:
                         break
-                query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[item_idx:item_idx+1]
+                query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[item_idx:item_idx+1]
             else:
-                query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.table_name)[:1]
+                query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[:1]
             data = {
                 ITEMS: query_items,
                 LAST_EVALUATED_KEY: query_items[-1] if len(query_items) else None
@@ -550,12 +600,36 @@ class ModelTestCase(TestCase):
                 scanned_items
             )
 
+        def fake_scan(*args, **kwargs):
+            start_key = kwargs.get(pythonic(EXCLUSIVE_START_KEY), None)
+            if start_key:
+                item_idx = 0
+                for scan_item in BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name):
+                    item_idx += 1
+                    if scan_item == start_key:
+                        break
+                scan_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[item_idx:item_idx+1]
+            else:
+                scan_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[:1]
+            data = {
+                ITEMS: scan_items,
+                LAST_EVALUATED_KEY: scan_items[-1] if len(scan_items) else None
+            }
+            return HttpOK(data), data
+
+        mock_scan = MagicMock()
+        mock_scan.side_effect = fake_scan
+
+        with patch(PATCH_METHOD, new=mock_scan) as req:
+            for item in UserModel.scan():
+                self.assertIsNotNone(item)
+
     def test_get(self):
         """
         Model.get
         """
         def fake_dynamodb(*args, **kwargs):
-            if kwargs == {'table_name': UserModel.table_name}:
+            if kwargs == {'table_name': UserModel.Meta.table_name}:
                 return HttpOK(MODEL_TABLE_DATA), MODEL_TABLE_DATA
             elif kwargs == {
                 'return_consumed_capacity': 'TOTAL',
@@ -667,16 +741,16 @@ class ModelTestCase(TestCase):
 
         def fake_batch_get(*batch_args, **kwargs):
             if pythonic(REQUEST_ITEMS) in kwargs:
-                batch_item = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[0]
-                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name).get(KEYS)[1:]
+                batch_item = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.Meta.table_name).get(KEYS)[0]
+                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.Meta.table_name).get(KEYS)[1:]
                 response = {
                     UNPROCESSED_KEYS: {
-                        UserModel.table_name: {
+                        UserModel.Meta.table_name: {
                             KEYS: batch_items
                         }
                     },
                     RESPONSES: {
-                        UserModel.table_name: [batch_item]
+                        UserModel.Meta.table_name: [batch_item]
                     }
                 }
                 return HttpOK(response), response
@@ -686,7 +760,7 @@ class ModelTestCase(TestCase):
         batch_get_mock.side_effect = fake_batch_get
 
         with patch(PATCH_METHOD, new=batch_get_mock) as req:
-            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(1000)]
+            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(200)]
             for item in UserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
 
@@ -700,6 +774,19 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
+
+            with UserModel.batch_write(auto_commit=False) as batch:
+                pass
+
+            with UserModel.batch_write() as batch:
+                self.assertIsNone(batch.commit())
+
+            with self.assertRaises(ValueError):
+                with UserModel.batch_write(auto_commit=False) as batch:
+                    items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(26)]
+                    for item in items:
+                        batch.delete(item)
+                    self.assertRaises(ValueError, batch.save, UserModel('asdf', '1234'))
 
             with UserModel.batch_write(auto_commit=False) as batch:
                 items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(25)]
@@ -725,10 +812,10 @@ class ModelTestCase(TestCase):
 
         def fake_unprocessed_keys(*args, **kwargs):
             if pythonic(REQUEST_ITEMS) in kwargs:
-                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.table_name)[1:]
+                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.Meta.table_name)[1:]
                 unprocessed = {
                     UNPROCESSED_KEYS: {
-                        UserModel.table_name: batch_items
+                        UserModel.Meta.table_name: batch_items
                     }
                 }
                 return HttpOK(unprocessed), unprocessed
@@ -742,20 +829,126 @@ class ModelTestCase(TestCase):
             for item in items:
                 batch.save(item)
 
+    def test_index_queries(self):
+        """
+        Models.Index.Query
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), INDEX_TABLE_DATA
+            IndexedModel.get_connection().describe_table()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
+            LocalIndexedModel.get_meta_data()
+
+        queried = []
+        # user_id not valid
+        with self.assertRaises(ValueError):
+            for item in IndexedModel.email_index.query('foo', user_id__between=['id-1', 'id-3']):
+                queried.append(item.serialize().get(RANGE))
+
+        # startswith not valid
+        with self.assertRaises(ValueError):
+            for item in IndexedModel.email_index.query('foo', user_name__startswith='foo'):
+                queried.append(item.serialize().get(RANGE))
+
+        # name not valid
+        with self.assertRaises(ValueError):
+            for item in IndexedModel.email_index.query('foo', name='foo'):
+                queried.append(item.serialize().get(RANGE))
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = HttpOK({'Items': items}), {'Items': items}
+            queried = []
+
+            for item in IndexedModel.email_index.query('foo', user_name__begins_with='bar'):
+                queried.append(item.serialize())
+
+            params = {
+                'key_conditions': {
+                    'user_name': {
+                        'ComparisonOperator': 'BEGINS_WITH',
+                        'AttributeValueList': [
+                            {
+                                'S': u'bar'
+                            }
+                        ]
+                    },
+                    'email': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [
+                            {
+                                'S': u'foo'
+                            }
+                        ]
+                    }
+                },
+                'index_name': 'email_index',
+                'table_name': 'IndexedModel',
+                'return_consumed_capacity': 'TOTAL'
+            }
+            self.assertEqual(req.call_args[1], params)
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = HttpOK({'Items': items}), {'Items': items}
+            queried = []
+
+            for item in LocalIndexedModel.email_index.query('foo', user_name__begins_with='bar'):
+                queried.append(item.serialize())
+
+            params = {
+                'key_conditions': {
+                    'user_name': {
+                        'ComparisonOperator': 'BEGINS_WITH',
+                        'AttributeValueList': [
+                            {
+                                'S': u'bar'
+                            }
+                        ]
+                    },
+                    'email': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [
+                            {
+                                'S': u'foo'
+                            }
+                        ]
+                    }
+                },
+                'index_name': 'email_index',
+                'table_name': 'LocalIndexedModel',
+                'return_consumed_capacity': 'TOTAL'
+            }
+            self.assertEqual(req.call_args[1], params)
+
     def test_global_index(self):
         """
         Models.GlobalSecondaryIndex
         """
         self.assertIsNotNone(IndexedModel.email_index.hash_key_attribute())
-
+        self.assertEqual(IndexedModel.email_index.Meta.projection.projection_type, AllProjection.projection_type)
         with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK(), MODEL_TABLE_DATA
-            IndexedModel('foo', 'bar')
+            req.return_value = HttpOK(), INDEX_TABLE_DATA
+            with self.assertRaises(ValueError):
+                IndexedModel('foo', 'bar')
+            IndexedModel.get_meta_data()
 
         scope_args = {'count': 0}
 
         def fake_dynamodb(obj, **kwargs):
-            if kwargs == {'table_name': UserModel.table_name}:
+            if kwargs == {'table_name': UserModel.Meta.table_name}:
                 if scope_args['count'] == 0:
                     return HttpBadRequest(), {}
                 elif scope_args['count'] == 1:
@@ -783,7 +976,7 @@ class ModelTestCase(TestCase):
                     {'AttributeName': 'email', 'KeyType': 'HASH'}
                 ]
             }
-            schema = IndexedModel.email_index.schema()
+            schema = IndexedModel.email_index.get_schema()
             args = req.call_args[1]
             self.assertEqual(
                 args['global_secondary_indexes'][0]['ProvisionedThroughput'],
@@ -799,14 +992,64 @@ class ModelTestCase(TestCase):
         """
         Models.LocalSecondaryIndex
         """
+        with self.assertRaises(ValueError):
+            with patch(PATCH_METHOD) as req:
+                req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
+                # This table has no range key
+                LocalIndexedModel('foo', 'bar')
+
         with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK(), MODEL_TABLE_DATA
-            LocalIndexedModel('foo', 'bar')
+            req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
+            LocalIndexedModel('foo')
 
         scope_args = {'count': 0}
 
+        schema = IndexedModel.get_indexes()
+
+        expected = {
+            'local_secondary_indexes': [
+                {
+                    'key_schema': [
+                        {'KeyType': 'HASH', 'AttributeName': 'email'},
+                        {'KeyType': 'RANGE', 'AttributeName': 'numbers'}
+                    ],
+                    'index_name': 'include_index',
+                    'projection': {
+                        'ProjectionType': 'INCLUDE',
+                        'NonKeyAttributes': ['numbers']
+                    }
+                }
+            ],
+            'global_secondary_indexes': [
+                {
+                    'key_schema': [
+                        {'KeyType': 'HASH', 'AttributeName': 'email'},
+                        {'KeyType': 'RANGE', 'AttributeName': 'numbers'}
+                    ],
+                    'index_name': 'email_index',
+                    'projection': {'ProjectionType': 'ALL'},
+                    'provisioned_throughput': {
+                        'WriteCapacityUnits': 1,
+                        'ReadCapacityUnits': 2
+                    }
+                }
+            ],
+            'attribute_definitions': [
+                {'attribute_type': 'S', 'attribute_name': 'email'},
+                {'attribute_type': 'NS', 'attribute_name': 'numbers'},
+                {'attribute_type': 'S', 'attribute_name': 'email'},
+                {'attribute_type': 'NS', 'attribute_name': 'numbers'}
+            ]
+        }
+        self.assert_dict_lists_equal(
+            schema['attribute_definitions'],
+            expected['attribute_definitions']
+        )
+        self.assertEqual(schema['local_secondary_indexes'][0]['projection']['ProjectionType'], 'INCLUDE')
+        self.assertEqual(schema['local_secondary_indexes'][0]['projection']['NonKeyAttributes'], ['numbers'])
+
         def fake_dynamodb(obj, **kwargs):
-            if kwargs == {'table_name': UserModel.table_name}:
+            if kwargs == {'table_name': UserModel.Meta.table_name}:
                 if scope_args['count'] == 0:
                     return HttpBadRequest(), {}
                 elif scope_args['count'] == 1:
@@ -843,7 +1086,7 @@ class ModelTestCase(TestCase):
                     }
                 ]
             }
-            schema = LocalIndexedModel.email_index.schema()
+            schema = LocalIndexedModel.email_index.get_schema()
             args = req.call_args[1]
             self.assertTrue('ProvisionedThroughput' not in args['local_secondary_indexes'][0])
             self.assert_dict_lists_equal(schema['key_schema'], params['key_schema'])
@@ -865,10 +1108,17 @@ class ModelTestCase(TestCase):
 
         self.assertRaises(ValueError, IncludeProjection, None)
 
-        class BadIndex(Index):
-            pass
+        with self.assertRaises(ValueError):
+            class BadIndex(Index):
+                pass
+            BadIndex()
 
-        self.assertRaises(ValueError, BadIndex)
+        with self.assertRaises(ValueError):
+            class BadIndex(Index):
+                class Meta:
+                    pass
+                pass
+            BadIndex()
 
     def test_throttle(self):
         """
@@ -882,3 +1132,13 @@ class ModelTestCase(TestCase):
         for i in range(2):
             throt.add_record(50)
             throt.throttle()
+
+    def test_old_style_model_exception(self):
+        """
+        Display warning for pre v1.0 Models
+        """
+        with self.assertRaises(AttributeError):
+            OldStyleModel.get_meta_data()
+
+        with self.assertRaises(AttributeError):
+            OldStyleModel.exists()

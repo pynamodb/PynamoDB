@@ -3,27 +3,38 @@ PynamoDB Indexes
 """
 from pynamodb.constants import (
     INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, ATTR_TYPE_MAP, KEY_SCHEMA,
-    ATTR_DEFINITIONS, GLOBAL_SECONDARY_INDEX, LOCAL_SECONDARY_INDEX
+    ATTR_DEFINITIONS, META_CLASS_NAME
 )
 from pynamodb.attributes import Attribute
 from pynamodb.types import HASH, RANGE
 from pynamodb.connection.util import pythonic
+from six import with_metaclass
 
 
-class Index(object):
+class IndexMeta(type):
+    """
+    Index meta class
+
+    This class is here to allow for an index `Meta` class
+    that contains the index settings
+    """
+    def __init__(cls, name, bases, attrs):
+        if META_CLASS_NAME in attrs:
+            meta_cls = attrs.get(META_CLASS_NAME)
+            if meta_cls is not None:
+                meta_cls.attributes = None
+
+
+class Index(with_metaclass(IndexMeta)):
     """
     Base class for secondary indexes
     """
-    projection = None
-    attributes = None
-    read_capacity_units = None
-    write_capacity_units = None
-    index_type = None
-    model = None
-    index_name = None
+    Meta = None
 
     def __init__(self):
-        if not self.projection:
+        if self.Meta is None:
+            raise ValueError("Indexes require a Meta class for settings")
+        if not hasattr(self.Meta, "projection"):
             raise ValueError("No projection defined, define a projection for this class")
 
     @classmethod
@@ -43,7 +54,7 @@ class Index(object):
                 return attr_cls
 
     @classmethod
-    def schema(cls):
+    def get_schema(cls):
         """
         Returns the schema for this index
         """
@@ -74,21 +85,19 @@ class Index(object):
         """
         Returns the list of attributes for this class
         """
-        if cls.attributes is None:
-            cls.attributes = {}
+        if cls.Meta.attributes is None:
+            cls.Meta.attributes = {}
             for item in dir(cls):
-                item_cls = getattr(cls, item).__class__
-                if issubclass(item_cls, (Attribute, )):
-                    cls.attributes[item] = getattr(cls, item)
-        return cls.attributes
+                item_cls = getattr(getattr(cls, item), "__class__", None)
+                if item_cls and issubclass(item_cls, (Attribute, )):
+                    cls.Meta.attributes[item] = getattr(cls, item)
+        return cls.Meta.attributes
 
 
 class GlobalSecondaryIndex(Index):
     """
     A global secondary index
     """
-    index_type = GLOBAL_SECONDARY_INDEX
-
     def query(self,
               hash_key,
               scan_index_forward=None,
@@ -97,9 +106,9 @@ class GlobalSecondaryIndex(Index):
         """
         Queries an index
         """
-        return self.model.query(
+        return self.Meta.model.query(
             hash_key,
-            index_name=self.index_name,
+            index_name=self.Meta.index_name,
             scan_index_forward=scan_index_forward,
             consistent_read=consistent_read,
             **filters
@@ -110,8 +119,6 @@ class LocalSecondaryIndex(Index):
     """
     A local secondary index
     """
-    index_type = LOCAL_SECONDARY_INDEX
-
     @classmethod
     def query(cls,
               hash_key,
@@ -121,9 +128,9 @@ class LocalSecondaryIndex(Index):
         """
         Queries an index
         """
-        return cls.model.query(
+        return cls.Meta.model.query(
             hash_key,
-            index_name=cls.index_name,
+            index_name=cls.Meta.index_name,
             scan_index_forward=scan_index_forward,
             consistent_read=consistent_read,
             **filters

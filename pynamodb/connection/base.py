@@ -417,7 +417,10 @@ class Connection(object):
         """
         Builds up a dynamodb compatible AttributeValue map
         """
-        return self.get_meta_table(table_name).get_item_attribute_map(
+        tbl = self.get_meta_table(table_name)
+        if tbl is None:
+            raise TableError("No such table {0}".format(table_name))
+        return tbl.get_item_attribute_map(
             attributes,
             item_key=item_key,
             pythonic_key=pythonic_key)
@@ -426,19 +429,28 @@ class Connection(object):
         """
         Returns the proper attribute type for a given attribute name
         """
-        return self.get_meta_table(table_name).get_attribute_type(attribute_name)
+        tbl = self.get_meta_table(table_name)
+        if tbl is None:
+            raise TableError("No such table {0}".format(table_name))
+        return tbl.get_attribute_type(attribute_name)
 
     def get_identifier_map(self, table_name, hash_key, range_key=None, key=KEY):
         """
         Builds the identifier map that is common to several operations
         """
-        return self.get_meta_table(table_name).get_identifier_map(hash_key, range_key=range_key, key=key)
+        tbl = self.get_meta_table(table_name)
+        if tbl is None:
+            raise TableError("No such table {0}".format(table_name))
+        return tbl.get_identifier_map(hash_key, range_key=range_key, key=key)
 
     def get_expected_map(self, table_name, expected):
         """
         Builds the expected map that is common to several operations
         """
-        return self.get_meta_table(table_name).get_expected_map(expected)
+        tbl = self.get_meta_table(table_name)
+        if tbl is None:
+            raise TableError("No such table {0}".format(table_name))
+        return tbl.get_expected_map(expected)
 
     def get_consumed_capacity_map(self, return_consumed_capacity):
         """
@@ -474,7 +486,10 @@ class Connection(object):
         """
         Builds the exclusive start key attribute map
         """
-        return self.get_meta_table(table_name).get_exclusive_start_key_map(exclusive_start_key)
+        tbl = self.get_meta_table(table_name)
+        if tbl is None:
+            raise TableError("No such table {0}".format(table_name))
+        return tbl.get_exclusive_start_key_map(exclusive_start_key)
 
     def delete_item(self,
                     table_name,
@@ -751,12 +766,15 @@ class Connection(object):
             operation_kwargs[pythonic(SELECT)] = str(select).upper()
         if scan_index_forward is not None:
             operation_kwargs[pythonic(SCAN_INDEX_FORWARD)] = scan_index_forward
+        tbl = self.get_meta_table(table_name)
+        if tbl is None:
+            raise TableError("No such table: {0}".format(table_name))
         if index_name:
-            hash_keyname = self.get_meta_table(table_name).get_index_hash_keyname(index_name)
+            hash_keyname = tbl.get_index_hash_keyname(index_name)
             if not hash_keyname:
                 raise ValueError("No hash key attribute for index: {0}".format(index_name))
         else:
-            hash_keyname = self.get_meta_table(table_name).hash_keyname
+            hash_keyname = tbl.hash_keyname
         operation_kwargs[pythonic(KEY_CONDITIONS)] = {
             hash_keyname: {
                 ATTR_VALUE_LIST: [

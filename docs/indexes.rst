@@ -53,7 +53,8 @@ a class attribute on the model, as in this example:
         """
         A test model that uses a global secondary index
         """
-        table_name = 'TestModel'
+        class Meta:
+            table_name = 'TestModel'
         forum = UnicodeAttribute(hash_key=True)
         thread = UnicodeAttribute(range_key=True)
         view_index = ViewIndex()

@@ -26,6 +26,15 @@ Useful links:
 * Ask questions at `Google group <https://groups.google.com/forum/#!forum/pynamodb>`_
 * See release notes at http://pynamodb.readthedocs.org/en/latest/release_notes.html
 
+Installation
+============
+From PyPi::
+
+    $ pip install pynamodb
+
+From GitHub::
+
+    $ pip install git+https://github.com/jlafon/PynamoDB#egg=pynamodb
 
 Basic Usage
 ^^^^^^^^^^^
@@ -41,7 +50,8 @@ Create a model that describes your DynamoDB table.
         """
         A DynamoDB User
         """
-        table_name = 'dynamodb-user'
+        class Meta:
+            table_name = "dynamodb-user"
         email = UnicodeAttribute(null=True)
         first_name = UnicodeAttribute(range_key=True)
         last_name = UnicodeAttribute(hash_key=True)
@@ -51,14 +61,14 @@ first name begins with 'J':
 
 .. code-block:: python
 
-    for user in UserModel.query('Smith', first_name__begins_with='J'):
+    for user in UserModel.query("Smith", first_name__begins_with="J"):
         print(user.first_name)
 
 Create a new user:
 
 .. code-block:: python
 
-    user = UserModel('John', 'Denver')
+    user = UserModel("John", "Denver")
     user.save()
 
 Retrieve an existing user:
@@ -66,7 +76,7 @@ Retrieve an existing user:
 .. code-block:: python
 
     try:
-        user = UserModel.get('John', 'Denver')
+        user = UserModel.get("John", "Denver")
         print(user)
     except UserModel.DoesNotExist:
         print("User does not exist")
@@ -83,13 +93,15 @@ Want to use indexes? No problem:
     from pynamodb.attributes import NumberAttribute, UnicodeAttribute
 
     class ViewIndex(GlobalSecondaryIndex):
-        read_capacity_units = 2
-        write_capacity_units = 1
-        projection = AllProjection()
+        class Meta:
+            read_capacity_units = 2
+            write_capacity_units = 1
+            projection = AllProjection()
         view = NumberAttribute(default=0, hash_key=True)
 
     class TestModel(Model):
-        table_name = 'TestModel'
+        class Meta:
+            table_name = "TestModel"
         forum = UnicodeAttribute(hash_key=True)
         thread = UnicodeAttribute(range_key=True)
         view = NumberAttribute(default=0)
@@ -104,13 +116,25 @@ Now query the index for all items with 0 views:
 
 It's really that simple.
 
-Installation::
 
-    $ pip install pynamodb
+Want to use DynamoDB local? Just add a ``host`` name attribute and specify your local server.
 
-or install the development version::
+.. code-block:: python
 
-    $ pip install git+https://github.com/jlafon/PynamoDB#egg=pynamodb
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+    class UserModel(Model):
+        """
+        A DynamoDB User
+        """
+        class Meta:
+            table_name = "dynamodb-user"
+            host = "http://localhost:8000"
+        email = UnicodeAttribute(null=True)
+        first_name = UnicodeAttribute(range_key=True)
+        last_name = UnicodeAttribute(hash_key=True)
+
 
 Features
 ========
@@ -118,6 +142,7 @@ Features
 * Python 3 support
 * Python 2 support
 * An ORM-like interface with query and scan filters
+* Compatible with DynamoDB Local
 * Includes the entire DynamoDB API
 * Supports both unicode and binary DynamoDB attributes
 * Support for global secondary indexes, local secondary indexes, and batch operations
