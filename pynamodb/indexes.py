@@ -34,7 +34,7 @@ class Index(with_metaclass(IndexMeta)):
     def __init__(self):
         if self.Meta is None:
             raise ValueError("Indexes require a Meta class for settings")
-        if not self.Meta.projection:
+        if not hasattr(self.Meta, "projection"):
             raise ValueError("No projection defined, define a projection for this class")
 
     @classmethod
