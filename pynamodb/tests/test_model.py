@@ -43,6 +43,11 @@ PATCH_METHOD = 'botocore.operation.Operation.call'
 SESSION_PATCH_METHODD = 'botocore.session.get_session'
 
 
+class OldStyleModel(Model):
+    table_name = 'IndexedModel'
+    user_name = UnicodeAttribute(hash_key=True)
+
+
 class EmailIndex(GlobalSecondaryIndex):
     """
     A global secondary index for email addresses
@@ -1127,3 +1132,13 @@ class ModelTestCase(TestCase):
         for i in range(2):
             throt.add_record(50)
             throt.throttle()
+
+    def test_old_style_model_exception(self):
+        """
+        Display warning for pre v1.0 Models
+        """
+        with self.assertRaises(AttributeError):
+            OldStyleModel.get_meta_data()
+
+        with self.assertRaises(AttributeError):
+            OldStyleModel.exists()
