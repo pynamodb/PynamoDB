@@ -27,7 +27,7 @@ from .response import HttpOK, HttpBadRequest
 from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
-    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA
+    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA
 )
 
 
@@ -96,7 +96,7 @@ class LocalIndexedModel(Model):
     A model with an index
     """
     class Meta:
-        table_name = 'SimpleModel'
+        table_name = 'LocalIndexedModel'
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     email_index = LocalEmailIndex()
@@ -773,6 +773,9 @@ class ModelTestCase(TestCase):
             with UserModel.batch_write(auto_commit=False) as batch:
                 pass
 
+            with UserModel.batch_write() as batch:
+                self.assertIsNone(batch.commit())
+
             with self.assertRaises(ValueError):
                 with UserModel.batch_write(auto_commit=False) as batch:
                     items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(26)]
@@ -829,6 +832,10 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK(), INDEX_TABLE_DATA
             IndexedModel.get_connection().describe_table()
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
+            LocalIndexedModel.get_meta_data()
+
         queried = []
         # user_id not valid
         with self.assertRaises(ValueError):
@@ -879,6 +886,44 @@ class ModelTestCase(TestCase):
                 },
                 'index_name': 'email_index',
                 'table_name': 'IndexedModel',
+                'return_consumed_capacity': 'TOTAL'
+            }
+            self.assertEqual(req.call_args[1], params)
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = HttpOK({'Items': items}), {'Items': items}
+            queried = []
+
+            for item in LocalIndexedModel.email_index.query('foo', user_name__begins_with='bar'):
+                queried.append(item.serialize())
+
+            params = {
+                'key_conditions': {
+                    'user_name': {
+                        'ComparisonOperator': 'BEGINS_WITH',
+                        'AttributeValueList': [
+                            {
+                                'S': u'bar'
+                            }
+                        ]
+                    },
+                    'email': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [
+                            {
+                                'S': u'foo'
+                            }
+                        ]
+                    }
+                },
+                'index_name': 'email_index',
+                'table_name': 'LocalIndexedModel',
                 'return_consumed_capacity': 'TOTAL'
             }
             self.assertEqual(req.call_args[1], params)
@@ -942,9 +987,15 @@ class ModelTestCase(TestCase):
         """
         Models.LocalSecondaryIndex
         """
+        with self.assertRaises(ValueError):
+            with patch(PATCH_METHOD) as req:
+                req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
+                # This table has no range key
+                LocalIndexedModel('foo', 'bar')
+
         with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK(), MODEL_TABLE_DATA
-            LocalIndexedModel('foo', 'bar')
+            req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
+            LocalIndexedModel('foo')
 
         scope_args = {'count': 0}
 
@@ -1052,10 +1103,17 @@ class ModelTestCase(TestCase):
 
         self.assertRaises(ValueError, IncludeProjection, None)
 
-        class BadIndex(Index):
-            pass
+        with self.assertRaises(ValueError):
+            class BadIndex(Index):
+                pass
+            BadIndex()
 
-        self.assertRaises(ValueError, BadIndex)
+        with self.assertRaises(ValueError):
+            class BadIndex(Index):
+                class Meta:
+                    pass
+                pass
+            BadIndex()
 
     def test_throttle(self):
         """
