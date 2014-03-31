@@ -38,8 +38,8 @@ The new way:
 Other, less important changes:
 
 * Added explicit support for specifying the server hostname in models
-* Added documentation for using DynamoDB Local
-* Made examples runnable with DynamoDB Local by default
+* Added documentation for using DynamoDB Local and dynalite
+* Made examples runnable with DynamoDB Local and dynalite by default
 * Added documentation for the use of ``default`` and ``null`` on model attributes
 * Improved testing for index queries
 
