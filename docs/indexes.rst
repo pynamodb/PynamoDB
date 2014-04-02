@@ -5,6 +5,13 @@ DynamoDB supports two types of indexes: global secondary indexes, and local seco
 Indexes can make accessing your data more efficient, and should be used when appropriate. See
 `the documentation for more information <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html>`__.
 
+Index Settings
+^^^^^^^^^^^^^^
+
+The ``Meta`` class is required with at least the ``projection`` class attribute to specify the projection type. For Global secondary indexes,
+the ``read_capacity_units`` and ``write_capacity_units`` also need to be provided.
+
+
 Global Secondary Indexes
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -20,10 +27,11 @@ Indexes are defined as classes, just like models. Here is a simple index class:
         """
         This class represents a global secondary index
         """
-        read_capacity_units = 2
-        write_capacity_units = 1
-        # All attributes are projected
-        projection = AllProjection()
+        class Meta
+            read_capacity_units = 2
+            write_capacity_units = 1
+            # All attributes are projected
+            projection = AllProjection()
 
         # This attribute is the hash key for the index
         # Note that this attribute must also exist
@@ -76,8 +84,9 @@ Local secondary indexes are defined just like global ones, but they inherit from
         """
         This class represents a local secondary index
         """
-        # All attributes are projected
-        projection = AllProjection()
+        class Meta:
+            # All attributes are projected
+            projection = AllProjection()
         forum = UnicodeAttribute(hash_key=True)
         view = NumberAttribute(range_key=True)
 
