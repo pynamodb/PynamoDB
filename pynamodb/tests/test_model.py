@@ -867,7 +867,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
 
-            for item in IndexedModel.email_index.query('foo', user_name__begins_with='bar'):
+            for item in IndexedModel.email_index.query('foo', limit=2, user_name__begins_with='bar'):
                 queried.append(item.serialize())
 
             params = {
@@ -891,7 +891,8 @@ class ModelTestCase(TestCase):
                 },
                 'index_name': 'email_index',
                 'table_name': 'IndexedModel',
-                'return_consumed_capacity': 'TOTAL'
+                'return_consumed_capacity': 'TOTAL',
+                'limit': 2
             }
             self.assertEqual(req.call_args[1], params)
 
@@ -905,7 +906,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
 
-            for item in LocalIndexedModel.email_index.query('foo', user_name__begins_with='bar'):
+            for item in LocalIndexedModel.email_index.query('foo', limit=1, user_name__begins_with='bar'):
                 queried.append(item.serialize())
 
             params = {
@@ -929,7 +930,8 @@ class ModelTestCase(TestCase):
                 },
                 'index_name': 'email_index',
                 'table_name': 'LocalIndexedModel',
-                'return_consumed_capacity': 'TOTAL'
+                'return_consumed_capacity': 'TOTAL',
+                'limit': 1
             }
             self.assertEqual(req.call_args[1], params)
 

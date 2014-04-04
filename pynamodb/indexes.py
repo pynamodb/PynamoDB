@@ -102,6 +102,7 @@ class GlobalSecondaryIndex(Index):
               hash_key,
               scan_index_forward=None,
               consistent_read=False,
+              limit=None,
               **filters):
         """
         Queries an index
@@ -111,6 +112,7 @@ class GlobalSecondaryIndex(Index):
             index_name=self.Meta.index_name,
             scan_index_forward=scan_index_forward,
             consistent_read=consistent_read,
+            limit=limit,
             **filters
         )
 
@@ -124,6 +126,7 @@ class LocalSecondaryIndex(Index):
               hash_key,
               scan_index_forward=None,
               consistent_read=False,
+              limit=None,
               **filters):
         """
         Queries an index
@@ -133,6 +136,7 @@ class LocalSecondaryIndex(Index):
             index_name=cls.Meta.index_name,
             scan_index_forward=scan_index_forward,
             consistent_read=consistent_read,
+            limit=limit,
             **filters
         )
 

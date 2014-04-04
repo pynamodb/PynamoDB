@@ -705,6 +705,7 @@ class Model(with_metaclass(MetaModel)):
               consistent_read=False,
               index_name=None,
               scan_index_forward=None,
+              limit=None,
               **filters):
         """
         Provides a high level query API
@@ -727,6 +728,7 @@ class Model(with_metaclass(MetaModel)):
             index_name=index_name,
             consistent_read=consistent_read,
             scan_index_forward=scan_index_forward,
+            limit=limit,
             key_conditions=key_conditions
         )
         cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
@@ -741,6 +743,7 @@ class Model(with_metaclass(MetaModel)):
                 index_name=index_name,
                 consistent_read=consistent_read,
                 scan_index_forward=scan_index_forward,
+                limit=limit,
                 key_conditions=key_conditions
             )
             cls.throttle.add_record(data.get(CONSUMED_CAPACITY))
