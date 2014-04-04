@@ -713,6 +713,7 @@ class Model(with_metaclass(MetaModel)):
         :param hash_key: The hash key to query
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
+        :param limit: Used to limit the number of results returned
         :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
             Controls descending or ascending results
         """
