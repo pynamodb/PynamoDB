@@ -195,6 +195,9 @@ class AttributeDict(collections.MutableMapping):
     def __len__(self):
         return len(self.values)
 
+    def aliased_attrs(self):
+        return self.alt_values.items()
+
 
 class Model(with_metaclass(MetaModel)):
     """
@@ -223,12 +226,12 @@ class Model(with_metaclass(MetaModel)):
         self.attribute_values = {}
         self.set_defaults()
         if hash_key:
-            setattr(self, self.get_meta_data().hash_keyname, hash_key)
+            attrs[self.get_meta_data().hash_keyname] = hash_key
         if range_key:
             range_keyname = self.get_meta_data().range_keyname
             if range_keyname is None:
                 raise ValueError("This table has no range key, but a range key value was provided: {0}".format(range_key))
-            setattr(self, range_keyname, range_key)
+            attrs[range_keyname] = range_key
         self.set_attributes(**attrs)
 
     @classmethod
@@ -332,18 +335,17 @@ class Model(with_metaclass(MetaModel)):
         """
         Sets the attributes for this object
         """
-
-        for key, value in attrs.items():
-            setattr(self, key, value)
+        for attr_name, attr in self.get_attributes().aliased_attrs():
+            if attr.attr_name in attrs:
+                setattr(self, attr_name, attrs.get(attr.attr_name))
 
     def __repr__(self):
-        hash_key = getattr(self, self.get_meta_data().hash_keyname, None)
-        if hash_key and self.Meta.table_name:
+        if self.Meta.table_name:
+            serialized = self.serialize(null_check=False)
             if self.get_meta_data().range_keyname:
-                range_key = getattr(self, self.get_meta_data().range_keyname, None)
-                msg = "{0}<{1}, {2}>".format(self.Meta.table_name, hash_key, range_key)
+                msg = "{0}<{1}, {2}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
             else:
-                msg = "{0}<{1}>".format(self.Meta.table_name, hash_key)
+                msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
     @classmethod
@@ -499,13 +501,13 @@ class Model(with_metaclass(MetaModel)):
         """
         attributes = pythonic(ATTRIBUTES)
         attrs = {attributes: {}}
-        for name, attr in self.get_attributes().items():
+        for name, attr in self.get_attributes().aliased_attrs():
             value = getattr(self, name, None)
             if value is None:
                 if attr.null:
                     continue
                 elif null_check:
-                    raise ValueError("Attribute '{0}' cannot be None".format(name))
+                    raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
             serialized = attr.serialize(value)
             if serialized is None:
                 continue

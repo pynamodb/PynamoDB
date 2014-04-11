@@ -6,6 +6,8 @@ LIST_TABLE_DATA = {
     "LastEvaluatedTableName": "Thread",
     "TableNames": ["Forum", "Reply", "Thread"]
 }
+
+
 SIMPLE_MODEL_TABLE_DATA = {
     "Table": {
         "AttributeDefinitions": [
@@ -36,6 +38,7 @@ SIMPLE_MODEL_TABLE_DATA = {
         "TableStatus": "ACTIVE"
     }
 }
+
 
 MODEL_TABLE_DATA = {
     "Table": {
@@ -141,6 +144,76 @@ INDEX_TABLE_DATA = {
 }
 
 
+CUSTOM_ATTR_NAME_ITEM_DATA = {
+    'Item': {
+        'user_name': {
+            'S': 'foo'
+        },
+        'user_id': {
+            'S': 'bar'
+        },
+        'foo_attr': {
+            'S': '2014-01-21T22:02:36.265046+0000'
+        }
+    }
+}
+
+CUSTOM_ATTR_NAME_INDEX_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "user_name",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "email",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "user_id",
+                "AttributeType": "S"
+            },
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 0,
+        "KeySchema": [
+            {
+                "AttributeName": "user_name",
+                "KeyType": "HASH"
+            },
+            {
+                "AttributeName": "user_id",
+                "KeyType": "RANGE"
+            }
+        ],
+        "LocalSecondaryIndexes": [
+            {
+                "IndexName": "uid_index",
+                "IndexSizeBytes": 0,
+                "ItemCount": 0,
+                "KeySchema": [
+                    {
+                        "AttributeName": "user_id",
+                        "KeyType": "HASH"
+                    },
+                ],
+                "Projection": {
+                    "ProjectionType": "KEYS_ONLY"
+                }
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "CustomAttrModel",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}
+
+
 LOCAL_INDEX_TABLE_DATA = {
     "Table": {
         "AttributeDefinitions": [
@@ -175,10 +248,6 @@ LOCAL_INDEX_TABLE_DATA = {
                         "AttributeName": "email",
                         "KeyType": "HASH"
                     },
-                    {
-                        "AttributeName": "numbers",
-                        "KeyType": "RANGE"
-                    }
                 ],
                 "Projection": {
                     "ProjectionType": "KEYS_ONLY"
@@ -307,6 +376,7 @@ COMPLEX_ITEM_DATA = {
     }
 }
 
+
 GET_ITEM_DATA = {
     "ConsumedCapacity": {
         "CapacityUnits": 1,
@@ -324,6 +394,8 @@ GET_ITEM_DATA = {
         }
     }
 }
+
+
 SIMPLE_BATCH_GET_ITEMS = {
     'UnprocessedKeys': {},
     'Responses': {
@@ -341,6 +413,8 @@ SIMPLE_BATCH_GET_ITEMS = {
         ]
     }
 }
+
+
 BATCH_GET_ITEMS = {
     'UnprocessedKeys': {},
     'Responses': {
@@ -358,6 +432,7 @@ BATCH_GET_ITEMS = {
         ]
     }
 }
+
 
 COMPLEX_TABLE_DATA = {
     'Table': {
