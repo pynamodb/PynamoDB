@@ -102,14 +102,14 @@ class BatchWrite(ModelContextManager):
         attrs_name = pythonic(ATTRIBUTES)
         for item in self.pending_operations:
             if item['action'] == PUT:
-                put_items.append(item['item'].serialize(attr_map=True)[attrs_name])
+                put_items.append(item['item']._serialize(attr_map=True)[attrs_name])
             elif item['action'] == DELETE:
                 delete_items.append(item['item']._get_keys())
         self.pending_operations = []
         if not len(put_items) and not len(delete_items):
             return
         self.model.get_throttle().throttle()
-        data = self.model.get_connection().batch_write_item(
+        data = self.model._get_connection().batch_write_item(
             put_items=put_items,
             delete_items=delete_items
         )
@@ -127,7 +127,7 @@ class BatchWrite(ModelContextManager):
                     delete_items.append(key.get(DELETE_REQUEST))
             self.model.get_throttle().throttle()
             log.debug("Resending {0} unprocessed keys for batch operation".format(len(unprocessed_keys)))
-            data = self.model.get_connection().batch_write_item(
+            data = self.model._get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items
             )
@@ -193,28 +193,13 @@ class Model(with_metaclass(MetaModel)):
         self.attribute_values = {}
         self._set_defaults()
         if hash_key:
-            setattr(self, self.get_meta_data().hash_keyname, hash_key)
+            setattr(self, self._get_meta_data().hash_keyname, hash_key)
         if range_key:
-            range_keyname = self.get_meta_data().range_keyname
+            range_keyname = self._get_meta_data().range_keyname
             if range_keyname is None:
                 raise ValueError("This table has no range key, but a range key value was provided: {0}".format(range_key))
             setattr(self, range_keyname, range_key)
         self._set_attributes(**attrs)
-
-    @classmethod
-    def add_throttle_record(cls, records):
-        """
-        (Experimental)
-        Pulls out the table name and capacity units from `records` and
-        puts it in `self.throttle`
-
-        :param records: A list of usage records
-        """
-        if records:
-            for record in records:
-                if record.get(TABLE_NAME) == cls.Meta.table_name:
-                    cls._throttle.add_record(record.get(CAPACITY_UNITS))
-                    break
 
     @classmethod
     def batch_get(cls, items):
@@ -224,8 +209,8 @@ class Model(with_metaclass(MetaModel)):
         :param items: Should be a list of hash keys to retrieve, or a list of
             tuples if range keys are used.
         """
-        hash_keyname = cls.get_meta_data().hash_keyname
-        range_keyname = cls.get_meta_data().range_keyname
+        hash_keyname = cls._get_meta_data().hash_keyname
+        range_keyname = cls._get_meta_data().range_keyname
         keys_to_get = []
         while items:
             if len(keys_to_get) == BATCH_GET_PAGE_LIMIT:
@@ -239,13 +224,13 @@ class Model(with_metaclass(MetaModel)):
                         keys_to_get = []
             item = items.pop()
             if range_keyname:
-                hash_key, range_key = cls.serialize_keys(item[0], item[1])
+                hash_key, range_key = cls._serialize_keys(item[0], item[1])
                 keys_to_get.append({
                     hash_keyname: hash_key,
                     range_keyname: range_key
                 })
             else:
-                hash_key = cls.serialize_keys(item)[0]
+                hash_key = cls._serialize_keys(item)[0]
                 keys_to_get.append({
                     hash_keyname: hash_key
                 })
@@ -260,23 +245,6 @@ class Model(with_metaclass(MetaModel)):
                 keys_to_get = []
 
     @classmethod
-    def _batch_get_page(cls, keys_to_get):
-        """
-        Returns a single page from BatchGetItem
-        Also returns any unprocessed items
-
-        :param keys_to_get: A list of keys
-        """
-        log.debug("Fetching a BatchGetItem page")
-        data = cls.get_connection().batch_get_item(
-            keys_to_get
-        )
-        cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
-        item_data = data.get(RESPONSES).get(cls.Meta.table_name)
-        unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.Meta.table_name, {}).get(KEYS, None)
-        return item_data, unprocessed_items
-
-    @classmethod
     def batch_write(cls, auto_commit=True):
         """
         Returns a context manager for a batch operation'
@@ -285,74 +253,22 @@ class Model(with_metaclass(MetaModel)):
         """
         return BatchWrite(cls, auto_commit=auto_commit)
 
-    def _set_defaults(self):
-        """
-        Sets and fields that provide a default value
-        """
-        for name, attr in self._get_attributes().items():
-            default = attr.default
-            if callable(default):
-                value = default()
-            else:
-                value = default
-            if value is not None:
-                setattr(self, name, value)
-
-    def _set_attributes(self, **attrs):
-        """
-        Sets the attributes for this object
-        """
-
-        for key, value in attrs.items():
-            setattr(self, key, value)
-
     def __repr__(self):
-        hash_key = getattr(self, self.get_meta_data().hash_keyname, None)
+        hash_key = getattr(self, self._get_meta_data().hash_keyname, None)
         if hash_key and self.Meta.table_name:
-            if self.get_meta_data().range_keyname:
-                range_key = getattr(self, self.get_meta_data().range_keyname, None)
+            if self._get_meta_data().range_keyname:
+                range_key = getattr(self, self._get_meta_data().range_keyname, None)
                 msg = "{0}<{1}, {2}>".format(self.Meta.table_name, hash_key, range_key)
             else:
                 msg = "{0}<{1}>".format(self.Meta.table_name, hash_key)
             return six.u(msg)
-
-    @classmethod
-    def get_throttle(cls):
-        """
-        Returns the throttle implementation for this Model
-        """
-        return cls._throttle
-
-    @classmethod
-    def get_meta_data(cls):
-        """
-        A helper object that contains meta data about this table
-        """
-        if cls._meta_table is None:
-            cls._meta_table = MetaTable(cls.get_connection().describe_table())
-        return cls._meta_table
-
-    @classmethod
-    def get_connection(cls):
-        """
-        Returns a (cached) connection
-        """
-        if not hasattr(cls, "Meta") or cls.Meta.table_name is None:
-            raise AttributeError(
-                """As of v1.0 PynamoDB Models require a `Meta` class.
-                See http://pynamodb.readthedocs.org/en/latest/release_notes.html"""
-            )
-
-        if cls._connection is None:
-            cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host)
-        return cls._connection
 
     def delete(self):
         """
         Deletes this object from dynamodb
         """
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
-        return self.get_connection().delete_item(*args, **kwargs)
+        return self._get_connection().delete_item(*args, **kwargs)
 
     def update_item(self, attribute, value, action=None):
         """
@@ -382,7 +298,7 @@ class Model(with_metaclass(MetaModel)):
             }
         }
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
-        data = self.get_connection().update_item(
+        data = self._get_connection().update_item(
             *args,
             **kwargs
         )
@@ -398,45 +314,10 @@ class Model(with_metaclass(MetaModel)):
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args()
-        data = self.get_connection().put_item(*args, **kwargs)
+        data = self._get_connection().put_item(*args, **kwargs)
         if isinstance(data, dict):
             self._throttle.add_record(data.get(CONSUMED_CAPACITY))
         return data
-
-    def _get_keys(self):
-        """
-        Returns the proper arguments for deleting
-        """
-        serialized = self.serialize()
-        hash_key = serialized.get(HASH)
-        range_key = serialized.get(RANGE, None)
-        hash_keyname = self.get_meta_data().hash_keyname
-        range_keyname = self.get_meta_data().range_keyname
-        attrs = {
-            hash_keyname: hash_key,
-            range_keyname: range_key
-        }
-        return attrs
-
-    def _get_save_args(self, attributes=True, null_check=True):
-        """
-        Gets the proper *args, **kwargs for saving and retrieving this object
-
-        This is used for serializing items to be saved, or for serializing just the keys.
-
-        :param attributes: If True, then attributes are included.
-        :param null_check: If True, then attributes are checked for null.
-        """
-        kwargs = {}
-        serialized = self.serialize(null_check=null_check)
-        hash_key = serialized.get(HASH)
-        range_key = serialized.get(RANGE, None)
-        args = (hash_key, )
-        if range_key:
-            kwargs[pythonic(RANGE_KEY)] = range_key
-        if attributes:
-            kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
-        return args, kwargs
 
     def refresh(self, consistent_read=False):
         """
@@ -446,95 +327,12 @@ class Model(with_metaclass(MetaModel)):
         """
         args, kwargs = self._get_save_args(attributes=False)
         kwargs.setdefault('consistent_read', consistent_read)
-        attrs = self.get_connection().get_item(*args, **kwargs)
+        attrs = self._get_connection().get_item(*args, **kwargs)
         self._throttle.add_record(attrs.get(CONSUMED_CAPACITY))
         item_data = attrs.get(ITEM, None)
         if item_data is None:
             raise self._DoesNotExist("This item does not exist in the table.")
-        self.deserialize(item_data)
-
-    def deserialize(self, attrs):
-        """
-        Sets attributes sent back from DynamoDB on this object
-
-        :param attrs: A dictionary of attributes to update this item with.
-        """
-        for name, attr in attrs.items():
-            attr_instance = self._get_attributes().get(name, None)
-            if attr_instance:
-                attr_type = ATTR_TYPE_MAP[attr_instance.attr_type]
-                value = attr.get(attr_type, None)
-                if value:
-                    setattr(self, name, attr_instance.deserialize(value))
-
-    def serialize(self, attr_map=False, null_check=True):
-        """
-        Serializes a value for use with DynamoDB
-
-        :param attr_map: If True, then attributes are returned
-        :param null_check: If True, then attributes are checked for null
-        """
-        attributes = pythonic(ATTRIBUTES)
-        attrs = {attributes: {}}
-        for name, attr in self._get_attributes().items():
-            value = getattr(self, name)
-            if value is None:
-                if attr.null:
-                    continue
-                elif null_check:
-                    raise ValueError("Attribute '{0}' cannot be None".format(name))
-            serialized = attr.serialize(value)
-            if serialized is None:
-                continue
-            if attr_map:
-                attrs[attributes][name] = {
-                    ATTR_TYPE_MAP[attr.attr_type]: serialized
-                }
-            else:
-                if attr.is_hash_key:
-                    attrs[HASH] = serialized
-                elif attr.is_range_key:
-                    attrs[RANGE] = serialized
-                else:
-                    attrs[attributes][name] = {
-                        ATTR_TYPE_MAP[attr.attr_type]: serialized
-                    }
-        return attrs
-
-    @classmethod
-    def serialize_keys(cls, hash_key, range_key=None):
-        """
-        Serializes the hash and range keys
-
-        :param hash_key: The hash key value
-        :param range_key: The range key value
-        """
-        hash_key = cls._hash_key_attribute().serialize(hash_key)
-        if range_key:
-            range_key = cls._range_key_attribute().serialize(range_key)
-        return hash_key, range_key
-
-    @classmethod
-    def _range_key_attribute(cls):
-        """
-        Returns the attribute class for the hash key
-        """
-        attributes = cls._get_attributes()
-        range_keyname = cls.get_meta_data().range_keyname
-        if range_keyname:
-            attr = attributes[range_keyname]
-        else:
-            attr = None
-        return attr
-
-    @classmethod
-    def _hash_key_attribute(cls):
-        """
-        Returns the attribute class for the hash key
-        """
-        attributes = cls._get_attributes()
-        hash_keyname = cls.get_meta_data().hash_keyname
-        return attributes[hash_keyname]
+        self._deserialize(item_data)
 
     @classmethod
     def get(cls,
@@ -547,8 +345,8 @@ class Model(with_metaclass(MetaModel)):
         :param hash_key: The hash key of the desired item
         :param range_key: The range key of the desired item, only used when appropriate.
         """
-        hash_key, range_key = cls.serialize_keys(hash_key, range_key)
-        data = cls.get_connection().get_item(
+        hash_key, range_key = cls._serialize_keys(hash_key, range_key)
+        data = cls._get_connection().get_item(
             hash_key,
             range_key=range_key,
             consistent_read=consistent_read
@@ -571,9 +369,9 @@ class Model(with_metaclass(MetaModel)):
         mutable_data = copy.copy(data)
         if mutable_data is None:
             raise ValueError("Received no mutable_data to construct object")
-        hash_keyname = cls.get_meta_data().hash_keyname
-        range_keyname = cls.get_meta_data().range_keyname
-        hash_key_type = cls.get_meta_data().get_attribute_type(hash_keyname)
+        hash_keyname = cls._get_meta_data().hash_keyname
+        range_keyname = cls._get_meta_data().range_keyname
+        hash_key_type = cls._get_meta_data().get_attribute_type(hash_keyname)
         hash_key = mutable_data.pop(hash_keyname).get(hash_key_type)
         hash_key_attr = cls._get_attributes().get(hash_keyname)
         hash_key = hash_key_attr.deserialize(hash_key)
@@ -581,7 +379,7 @@ class Model(with_metaclass(MetaModel)):
         kwargs = {}
         if range_keyname:
             range_key_attr = cls._get_attributes().get(range_keyname)
-            range_key_type = cls.get_meta_data().get_attribute_type(range_keyname)
+            range_key_type = cls._get_meta_data().get_attribute_type(range_keyname)
             range_key = mutable_data.pop(range_keyname).get(range_key_type)
             kwargs['range_key'] = range_key_attr.deserialize(range_key)
         for name, value in mutable_data.items():
@@ -589,6 +387,201 @@ class Model(with_metaclass(MetaModel)):
             if attr:
                 kwargs[name] = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
         return cls(*args, **kwargs)
+
+    @classmethod
+    def query(cls,
+              hash_key,
+              consistent_read=False,
+              index_name=None,
+              scan_index_forward=None,
+              limit=None,
+              **filters):
+        """
+        Provides a high level query API
+
+        :param hash_key: The hash key to query
+        :param consistent_read: If True, a consistent read is performed
+        :param index_name: If set, then this index is used
+        :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
+            Controls descending or ascending results
+        """
+        cls._get_indexes()
+        if index_name:
+            hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
+        else:
+            hash_key = cls._serialize_keys(hash_key)[0]
+        key_conditions = cls._build_filters(QUERY_OPERATOR_MAP, filters)
+        log.debug("Fetching first query page")
+        data = cls._get_connection().query(
+            hash_key,
+            index_name=index_name,
+            consistent_read=consistent_read,
+            scan_index_forward=scan_index_forward,
+            limit=limit,
+            key_conditions=key_conditions
+        )
+        cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
+        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        for item in data.get(ITEMS):
+            yield cls.from_raw_data(item)
+        while last_evaluated_key:
+            log.debug("Fetching query page with exclusive start key: {0}".format(last_evaluated_key))
+            data = cls._get_connection().query(
+                hash_key,
+                exclusive_start_key=last_evaluated_key,
+                index_name=index_name,
+                consistent_read=consistent_read,
+                scan_index_forward=scan_index_forward,
+                limit=limit,
+                key_conditions=key_conditions
+            )
+            cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
+            for item in data.get(ITEMS):
+                yield cls.from_raw_data(item)
+            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+
+    @classmethod
+    def scan(cls,
+             segment=None,
+             total_segments=None,
+             limit=None,
+             **filters):
+        """
+        Iterates through all items in the table
+
+        :param segment: If set, then scans the segment
+        :param total_segments: If set, then specifies total segments
+        :param limit: Used to limit the number of results returned
+        :param filters: A list of item filters
+        """
+        scan_filter = cls._build_filters(SCAN_OPERATOR_MAP, filters)
+        data = cls._get_connection().scan(
+            segment=segment,
+            limit=limit,
+            scan_filter=scan_filter,
+            total_segments=total_segments
+        )
+        log.debug("Fetching first scan page")
+        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
+        for item in data.get(ITEMS):
+            yield cls.from_raw_data(item)
+        while last_evaluated_key:
+            log.debug("Fetching scan page with exclusive start key: {0}".format(last_evaluated_key))
+            data = cls._get_connection().scan(
+                exclusive_start_key=last_evaluated_key,
+                limit=limit,
+                scan_filter=scan_filter,
+                segment=segment,
+                total_segments=total_segments
+            )
+            for item in data.get(ITEMS):
+                yield cls.from_raw_data(item)
+            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+
+    @classmethod
+    def exists(cls):
+        """
+        Returns True if this table exists, False otherwise
+        """
+        return cls._get_connection().describe_table() is not None
+
+    @classmethod
+    def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None):
+        """
+        Create the table for this model
+
+        :param wait: If set, then this call will block until the table is ready for use
+        :param read_capacity_units: Sets the read capacity units for this table
+        :param write_capacity_units: Sets the write capacity units for this table
+        """
+        if not cls.exists():
+            schema = cls._get_schema()
+            schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
+            schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+            index_data = cls._get_indexes()
+            schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
+            schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
+            index_attrs = index_data.get(pythonic(ATTR_DEFINITIONS))
+            attr_keys = [attr.get(pythonic(ATTR_NAME)) for attr in schema.get(pythonic(ATTR_DEFINITIONS))]
+            for attr in index_attrs:
+                attr_name = attr.get(pythonic(ATTR_NAME))
+                if not attr_name in attr_keys:
+                    schema[pythonic(ATTR_DEFINITIONS)].append(attr)
+            cls._get_connection().create_table(
+                **schema
+            )
+        if wait:
+            while True:
+                status = cls._get_connection().describe_table()
+                if status:
+                    data = status.get(TABLE_STATUS)
+                    if data == ACTIVE:
+                        return
+                    else:
+                        time.sleep(2)
+                else:
+                    raise ValueError("No TableStatus returned for table")
+
+    # Private API below
+    @classmethod
+    def _build_filters(cls, operator_map, filters):
+        """
+        Builds an appropriate condition map
+
+        :param operator_map: The mapping of operators used
+        :param filters: A list of item filters
+        """
+        key_conditions = {}
+        attribute_classes = cls._get_attributes()
+        for query, value in filters.items():
+            attribute = None
+            for token in query.split('__'):
+                if attribute is None:
+                    attribute = token
+                    attribute_class = attribute_classes.get(attribute)
+                    if attribute_class is None:
+                        raise ValueError("Attribute {0} specified for filter does not exist.".format(attribute))
+                    if not isinstance(value, list):
+                        value = [value]
+                    value = [attribute_class.serialize(val) for val in value]
+                elif token in operator_map:
+                    key_conditions[attribute] = {
+                        COMPARISON_OPERATOR: operator_map.get(token),
+                        ATTR_VALUE_LIST: value
+                    }
+                elif token not in operator_map:
+                    raise ValueError("{0} is not a valid filter. Must be one of {1}".format(token, operator_map.keys()))
+                else:
+                    raise ValueError("Could not parse filter: {0}".format(query))
+        return key_conditions
+
+    @classmethod
+    def _get_schema(cls):
+        """
+        Returns the schema for this table
+        """
+        schema = {
+            pythonic(ATTR_DEFINITIONS): [],
+            pythonic(KEY_SCHEMA): []
+        }
+        for attr_name, attr_cls in cls._get_attributes().items():
+            if attr_cls.is_hash_key or attr_cls.is_range_key:
+                schema[pythonic(ATTR_DEFINITIONS)].append({
+                    pythonic(ATTR_NAME): attr_name,
+                    pythonic(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
+                })
+            if attr_cls.is_hash_key:
+                schema[pythonic(KEY_SCHEMA)].append({
+                    pythonic(KEY_TYPE): HASH,
+                    pythonic(ATTR_NAME): attr_name
+                })
+            elif attr_cls.is_range_key:
+                schema[pythonic(KEY_SCHEMA)].append({
+                    pythonic(KEY_TYPE): RANGE,
+                    pythonic(ATTR_NAME): attr_name
+                })
+        return schema
 
     @classmethod
     def _get_indexes(cls):
@@ -647,196 +640,203 @@ class Model(with_metaclass(MetaModel)):
                     cls._attributes[item] = getattr(cls, item)
         return cls._attributes
 
-    @classmethod
-    def _get_schema(cls):
+    def _get_save_args(self, attributes=True, null_check=True):
         """
-        Returns the schema for this table
+        Gets the proper *args, **kwargs for saving and retrieving this object
+
+        This is used for serializing items to be saved, or for serializing just the keys.
+
+        :param attributes: If True, then attributes are included.
+        :param null_check: If True, then attributes are checked for null.
         """
-        schema = {
-            pythonic(ATTR_DEFINITIONS): [],
-            pythonic(KEY_SCHEMA): []
-        }
-        for attr_name, attr_cls in cls._get_attributes().items():
-            if attr_cls.is_hash_key or attr_cls.is_range_key:
-                schema[pythonic(ATTR_DEFINITIONS)].append({
-                    pythonic(ATTR_NAME): attr_name,
-                    pythonic(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
-                })
-            if attr_cls.is_hash_key:
-                schema[pythonic(KEY_SCHEMA)].append({
-                    pythonic(KEY_TYPE): HASH,
-                    pythonic(ATTR_NAME): attr_name
-                })
-            elif attr_cls.is_range_key:
-                schema[pythonic(KEY_SCHEMA)].append({
-                    pythonic(KEY_TYPE): RANGE,
-                    pythonic(ATTR_NAME): attr_name
-                })
-        return schema
+        kwargs = {}
+        serialized = self._serialize(null_check=null_check)
+        hash_key = serialized.get(HASH)
+        range_key = serialized.get(RANGE, None)
+        args = (hash_key, )
+        if range_key:
+            kwargs[pythonic(RANGE_KEY)] = range_key
+        if attributes:
+            kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
+        return args, kwargs
 
     @classmethod
-    def _build_filters(cls, operator_map, filters):
+    def _range_key_attribute(cls):
         """
-        Builds an appropriate condition map
-
-        :param operator_map: The mapping of operators used
-        :param filters: A list of item filters
+        Returns the attribute class for the hash key
         """
-        key_conditions = {}
-        attribute_classes = cls._get_attributes()
-        for query, value in filters.items():
-            attribute = None
-            for token in query.split('__'):
-                if attribute is None:
-                    attribute = token
-                    attribute_class = attribute_classes.get(attribute)
-                    if attribute_class is None:
-                        raise ValueError("Attribute {0} specified for filter does not exist.".format(attribute))
-                    if not isinstance(value, list):
-                        value = [value]
-                    value = [attribute_class.serialize(val) for val in value]
-                elif token in operator_map:
-                    key_conditions[attribute] = {
-                        COMPARISON_OPERATOR: operator_map.get(token),
-                        ATTR_VALUE_LIST: value
-                    }
-                elif token not in operator_map:
-                    raise ValueError("{0} is not a valid filter. Must be one of {1}".format(token, operator_map.keys()))
-                else:
-                    raise ValueError("Could not parse filter: {0}".format(query))
-        return key_conditions
-
-    @classmethod
-    def query(cls,
-              hash_key,
-              consistent_read=False,
-              index_name=None,
-              scan_index_forward=None,
-              limit=None,
-              **filters):
-        """
-        Provides a high level query API
-
-        :param hash_key: The hash key to query
-        :param consistent_read: If True, a consistent read is performed
-        :param index_name: If set, then this index is used
-        :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
-            Controls descending or ascending results
-        """
-        cls._get_indexes()
-        if index_name:
-            hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
+        attributes = cls._get_attributes()
+        range_keyname = cls._get_meta_data().range_keyname
+        if range_keyname:
+            attr = attributes[range_keyname]
         else:
-            hash_key = cls.serialize_keys(hash_key)[0]
-        key_conditions = cls._build_filters(QUERY_OPERATOR_MAP, filters)
-        log.debug("Fetching first query page")
-        data = cls.get_connection().query(
-            hash_key,
-            index_name=index_name,
-            consistent_read=consistent_read,
-            scan_index_forward=scan_index_forward,
-            limit=limit,
-            key_conditions=key_conditions
+            attr = None
+        return attr
+
+    @classmethod
+    def _hash_key_attribute(cls):
+        """
+        Returns the attribute class for the hash key
+        """
+        attributes = cls._get_attributes()
+        hash_keyname = cls._get_meta_data().hash_keyname
+        return attributes[hash_keyname]
+
+    def _get_keys(self):
+        """
+        Returns the proper arguments for deleting
+        """
+        serialized = self._serialize()
+        hash_key = serialized.get(HASH)
+        range_key = serialized.get(RANGE, None)
+        hash_keyname = self._get_meta_data().hash_keyname
+        range_keyname = self._get_meta_data().range_keyname
+        attrs = {
+            hash_keyname: hash_key,
+            range_keyname: range_key
+        }
+        return attrs
+
+    @classmethod
+    def _batch_get_page(cls, keys_to_get):
+        """
+        Returns a single page from BatchGetItem
+        Also returns any unprocessed items
+
+        :param keys_to_get: A list of keys
+        """
+        log.debug("Fetching a BatchGetItem page")
+        data = cls._get_connection().batch_get_item(
+            keys_to_get
         )
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
-        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
-        for item in data.get(ITEMS):
-            yield cls.from_raw_data(item)
-        while last_evaluated_key:
-            log.debug("Fetching query page with exclusive start key: {0}".format(last_evaluated_key))
-            data = cls.get_connection().query(
-                hash_key,
-                exclusive_start_key=last_evaluated_key,
-                index_name=index_name,
-                consistent_read=consistent_read,
-                scan_index_forward=scan_index_forward,
-                limit=limit,
-                key_conditions=key_conditions
-            )
-            cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
-            for item in data.get(ITEMS):
-                yield cls.from_raw_data(item)
-            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        item_data = data.get(RESPONSES).get(cls.Meta.table_name)
+        unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.Meta.table_name, {}).get(KEYS, None)
+        return item_data, unprocessed_items
+
+    def _set_defaults(self):
+        """
+        Sets and fields that provide a default value
+        """
+        for name, attr in self._get_attributes().items():
+            default = attr.default
+            if callable(default):
+                value = default()
+            else:
+                value = default
+            if value is not None:
+                setattr(self, name, value)
+
+    def _set_attributes(self, **attrs):
+        """
+        Sets the attributes for this object
+        """
+
+        for key, value in attrs.items():
+            setattr(self, key, value)
 
     @classmethod
-    def scan(cls,
-             segment=None,
-             total_segments=None,
-             limit=None,
-             **filters):
+    def add_throttle_record(cls, records):
         """
-        Iterates through all items in the table
+        (Experimental)
+        Pulls out the table name and capacity units from `records` and
+        puts it in `self.throttle`
 
-        :param segment: If set, then scans the segment
-        :param total_segments: If set, then specifies total segments
-        :param limit: Used to limit the number of results returned
-        :param filters: A list of item filters
+        :param records: A list of usage records
         """
-        scan_filter = cls._build_filters(SCAN_OPERATOR_MAP, filters)
-        data = cls.get_connection().scan(
-            segment=segment,
-            limit=limit,
-            scan_filter=scan_filter,
-            total_segments=total_segments
-        )
-        log.debug("Fetching first scan page")
-        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
-        cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
-        for item in data.get(ITEMS):
-            yield cls.from_raw_data(item)
-        while last_evaluated_key:
-            log.debug("Fetching scan page with exclusive start key: {0}".format(last_evaluated_key))
-            data = cls.get_connection().scan(
-                exclusive_start_key=last_evaluated_key,
-                limit=limit,
-                scan_filter=scan_filter,
-                segment=segment,
-                total_segments=total_segments
-            )
-            for item in data.get(ITEMS):
-                yield cls.from_raw_data(item)
-            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        if records:
+            for record in records:
+                if record.get(TABLE_NAME) == cls.Meta.table_name:
+                    cls._throttle.add_record(record.get(CAPACITY_UNITS))
+                    break
 
     @classmethod
-    def exists(cls):
+    def get_throttle(cls):
         """
-        Returns True if this table exists, False otherwise
+        Returns the throttle implementation for this Model
         """
-        return cls.get_connection().describe_table() is not None
+        return cls._throttle
 
     @classmethod
-    def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None):
+    def _get_meta_data(cls):
         """
-        Create the table for this model
+        A helper object that contains meta data about this table
+        """
+        if cls._meta_table is None:
+            cls._meta_table = MetaTable(cls._get_connection().describe_table())
+        return cls._meta_table
 
-        :param wait: If set, then this call will block until the table is ready for use
-        :param read_capacity_units: Sets the read capacity units for this table
-        :param write_capacity_units: Sets the write capacity units for this table
+    @classmethod
+    def _get_connection(cls):
         """
-        if not cls.exists():
-            schema = cls._get_schema()
-            schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
-            schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
-            index_data = cls._get_indexes()
-            schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
-            schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
-            index_attrs = index_data.get(pythonic(ATTR_DEFINITIONS))
-            attr_keys = [attr.get(pythonic(ATTR_NAME)) for attr in schema.get(pythonic(ATTR_DEFINITIONS))]
-            for attr in index_attrs:
-                attr_name = attr.get(pythonic(ATTR_NAME))
-                if not attr_name in attr_keys:
-                    schema[pythonic(ATTR_DEFINITIONS)].append(attr)
-            cls.get_connection().create_table(
-                **schema
+        Returns a (cached) connection
+        """
+        if not hasattr(cls, "Meta") or cls.Meta.table_name is None:
+            raise AttributeError(
+                """As of v1.0 PynamoDB Models require a `Meta` class.
+                See http://pynamodb.readthedocs.org/en/latest/release_notes.html"""
             )
-        if wait:
-            while True:
-                status = cls.get_connection().describe_table()
-                if status:
-                    data = status.get(TABLE_STATUS)
-                    if data == ACTIVE:
-                        return
-                    else:
-                        time.sleep(2)
+        if cls._connection is None:
+            cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host)
+        return cls._connection
+
+    def _deserialize(self, attrs):
+        """
+        Sets attributes sent back from DynamoDB on this object
+
+        :param attrs: A dictionary of attributes to update this item with.
+        """
+        for name, attr in attrs.items():
+            attr_instance = self._get_attributes().get(name, None)
+            if attr_instance:
+                attr_type = ATTR_TYPE_MAP[attr_instance.attr_type]
+                value = attr.get(attr_type, None)
+                if value:
+                    setattr(self, name, attr_instance.deserialize(value))
+
+    def _serialize(self, attr_map=False, null_check=True):
+        """
+        Serializes a value for use with DynamoDB
+
+        :param attr_map: If True, then attributes are returned
+        :param null_check: If True, then attributes are checked for null
+        """
+        attributes = pythonic(ATTRIBUTES)
+        attrs = {attributes: {}}
+        for name, attr in self._get_attributes().items():
+            value = getattr(self, name)
+            if value is None:
+                if attr.null:
+                    continue
+                elif null_check:
+                    raise ValueError("Attribute '{0}' cannot be None".format(name))
+            serialized = attr.serialize(value)
+            if serialized is None:
+                continue
+            if attr_map:
+                attrs[attributes][name] = {
+                    ATTR_TYPE_MAP[attr.attr_type]: serialized
+                }
+            else:
+                if attr.is_hash_key:
+                    attrs[HASH] = serialized
+                elif attr.is_range_key:
+                    attrs[RANGE] = serialized
                 else:
-                    raise ValueError("No TableStatus returned for table")
+                    attrs[attributes][name] = {
+                        ATTR_TYPE_MAP[attr.attr_type]: serialized
+                    }
+        return attrs
+
+    @classmethod
+    def _serialize_keys(cls, hash_key, range_key=None):
+        """
+        Serializes the hash and range keys
+
+        :param hash_key: The hash key value
+        :param range_key: The range key value
+        """
+        hash_key = cls._hash_key_attribute().serialize(hash_key)
+        if range_key:
+            range_key = cls._range_key_attribute().serialize(range_key)
+        return hash_key, range_key

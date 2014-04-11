@@ -304,7 +304,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(item.email, 'needs_email')
             self.assertEqual(item.callable_field, 42)
             self.assertEqual(repr(item), '{0}<{1}, {2}>'.format(UserModel.Meta.table_name, item.user_name, item.user_id))
-            self.assertEqual(repr(UserModel.get_meta_data()), 'MetaTable<{0}>'.format('Thread'))
+            self.assertEqual(repr(UserModel._get_meta_data()), 'MetaTable<{0}>'.format('Thread'))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(SIMPLE_MODEL_TABLE_DATA), SIMPLE_MODEL_TABLE_DATA
@@ -463,7 +463,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__between=['id-1', 'id-3']):
-                queried.append(item.serialize().get(RANGE))
+                queried.append(item._serialize().get(RANGE))
             self.assertListEqual(
                 [item.get('user_id').get(STRING_SHORT) for item in items],
                 queried
@@ -478,7 +478,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__gt='id-1', user_id__le='id-2'):
-                queried.append(item.serialize())
+                queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -490,7 +490,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__lt='id-1'):
-                queried.append(item.serialize())
+                queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -502,7 +502,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__ge='id-1'):
-                queried.append(item.serialize())
+                queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -514,7 +514,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__le='id-1'):
-                queried.append(item.serialize())
+                queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -526,7 +526,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__eq='id-1'):
-                queried.append(item.serialize())
+                queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -538,7 +538,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__begins_with='id'):
-                queried.append(item.serialize())
+                queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -550,7 +550,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
             for item in UserModel.query('foo'):
-                queried.append(item.serialize())
+                queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
         def fake_query(*args, **kwargs):
@@ -594,7 +594,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             scanned_items = []
             for item in UserModel.scan():
-                scanned_items.append(item.serialize().get(RANGE))
+                scanned_items.append(item._serialize().get(RANGE))
             self.assertListEqual(
                 [item.get('user_id').get(STRING_SHORT) for item in items],
                 scanned_items
@@ -835,27 +835,27 @@ class ModelTestCase(TestCase):
         """
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), INDEX_TABLE_DATA
-            IndexedModel.get_connection().describe_table()
+            IndexedModel._get_connection().describe_table()
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
-            LocalIndexedModel.get_meta_data()
+            LocalIndexedModel._get_meta_data()
 
         queried = []
         # user_id not valid
         with self.assertRaises(ValueError):
             for item in IndexedModel.email_index.query('foo', user_id__between=['id-1', 'id-3']):
-                queried.append(item.serialize().get(RANGE))
+                queried.append(item._serialize().get(RANGE))
 
         # startswith not valid
         with self.assertRaises(ValueError):
             for item in IndexedModel.email_index.query('foo', user_name__startswith='foo'):
-                queried.append(item.serialize().get(RANGE))
+                queried.append(item._serialize().get(RANGE))
 
         # name not valid
         with self.assertRaises(ValueError):
             for item in IndexedModel.email_index.query('foo', name='foo'):
-                queried.append(item.serialize().get(RANGE))
+                queried.append(item._serialize().get(RANGE))
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -868,7 +868,7 @@ class ModelTestCase(TestCase):
             queried = []
 
             for item in IndexedModel.email_index.query('foo', limit=2, user_name__begins_with='bar'):
-                queried.append(item.serialize())
+                queried.append(item._serialize())
 
             params = {
                 'key_conditions': {
@@ -907,7 +907,7 @@ class ModelTestCase(TestCase):
             queried = []
 
             for item in LocalIndexedModel.email_index.query('foo', limit=1, user_name__begins_with='bar'):
-                queried.append(item.serialize())
+                queried.append(item._serialize())
 
             params = {
                 'key_conditions': {
@@ -945,7 +945,7 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK(), INDEX_TABLE_DATA
             with self.assertRaises(ValueError):
                 IndexedModel('foo', 'bar')
-            IndexedModel.get_meta_data()
+            IndexedModel._get_meta_data()
 
         scope_args = {'count': 0}
 
@@ -1140,7 +1140,7 @@ class ModelTestCase(TestCase):
         Display warning for pre v1.0 Models
         """
         with self.assertRaises(AttributeError):
-            OldStyleModel.get_meta_data()
+            OldStyleModel._get_meta_data()
 
         with self.assertRaises(AttributeError):
             OldStyleModel.exists()
