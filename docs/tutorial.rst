@@ -163,6 +163,28 @@ Here is an example of an attribute that can be empty:
         forum_name = UnicodeAttribute(hash_key=True)
         my_nullable_attribute = UnicodeAttribute(null=True)
 
+By default, PynamoDB assumes that the attribute name used on a Model has the same
+name in DynamoDB. For example, if you define a `UnicodeAttribute` called 'username' then
+PynamoDB will use 'username' as the field name for that attribute when interacting with DynamoDB.
+If you wish to have custom attribute names, they can be overidden. One such use case is the ability to
+use human readable attribute names in PynamoDB that are stored in DynamoDB using shorter, terse attribute
+to save space.
+
+Here is an example of customizing an attribute name:
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+    class Thread(Model):
+        class Meta:
+            table_name = 'Thread'
+        forum_name = UnicodeAttribute(hash_key=True)
+        # This attribute will be called 'tn' in DynamoDB
+        thread_name = UnicodeAttribute(null=True, attr_name='tn')
+
+
 PynamoDB comes with several built in attribute types for convenience, which include the following:
 
 * :py:class:`UnicodeAttribute <pynamodb.attributes.UnicodeAttribute>`
