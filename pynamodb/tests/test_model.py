@@ -45,7 +45,7 @@ SESSION_PATCH_METHODD = 'botocore.session.get_session'
 
 
 class OldStyleModel(Model):
-    table_name = 'IndexedModel'
+    _table_name = 'IndexedModel'
     user_name = UnicodeAttribute(hash_key=True)
 
 
@@ -365,7 +365,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), {}
-            self.assertRaises(item.DoesNotExist, item.refresh)
+            self.assertRaises(item._DoesNotExist, item.refresh)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(GET_MODEL_ITEM_DATA), GET_MODEL_ITEM_DATA
@@ -688,7 +688,7 @@ class ModelTestCase(TestCase):
                 'foo',
                 'bar'
             )
-            self.assertEqual(item.get_keys(), {'user_id': 'bar', 'user_name': 'foo'})
+            self.assertEqual(item._get_keys(), {'user_id': 'bar', 'user_name': 'foo'})
             params = {
                 'consistent_read': False,
                 'key': {
@@ -708,7 +708,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
-            self.assertRaises(UserModel.DoesNotExist, UserModel.get, 'foo', 'bar')
+            self.assertRaises(UserModel._DoesNotExist, UserModel.get, 'foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
@@ -1037,7 +1037,7 @@ class ModelTestCase(TestCase):
         """
         Models.GlobalSecondaryIndex
         """
-        self.assertIsNotNone(IndexedModel.email_index.hash_key_attribute())
+        self.assertIsNotNone(IndexedModel.email_index._hash_key_attribute())
         self.assertEqual(IndexedModel.email_index.Meta.projection.projection_type, AllProjection.projection_type)
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), INDEX_TABLE_DATA
@@ -1104,7 +1104,7 @@ class ModelTestCase(TestCase):
 
         scope_args = {'count': 0}
 
-        schema = IndexedModel.get_indexes()
+        schema = IndexedModel._get_indexes()
 
         expected = {
             'local_secondary_indexes': [
