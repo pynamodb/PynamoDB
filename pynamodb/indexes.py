@@ -45,7 +45,7 @@ class Index(with_metaclass(IndexMeta)):
         pass
 
     @classmethod
-    def hash_key_attribute(cls):
+    def _hash_key_attribute(cls):
         """
         Returns the attribute class for the hash key
         """
