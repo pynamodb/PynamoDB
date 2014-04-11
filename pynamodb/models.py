@@ -751,7 +751,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Sets and fields that provide a default value
         """
-        for name, attr in self._get_attributes().items():
+        for name, attr in self._get_attributes().aliased_attrs():
             default = attr.default
             if callable(default):
                 value = default()
@@ -767,6 +767,8 @@ class Model(with_metaclass(MetaModel)):
         for attr_name, attr in self._get_attributes().aliased_attrs():
             if attr.attr_name in attrs:
                 setattr(self, attr_name, attrs.get(attr.attr_name))
+            elif attr_name in attrs:
+                setattr(self, attr_name, attrs.get(attr_name))
 
     @classmethod
     def add_throttle_record(cls, records):
@@ -842,12 +844,12 @@ class Model(with_metaclass(MetaModel)):
                 if attr.null:
                     continue
                 elif null_check:
-                    raise ValueError("Attribute '{0}' cannot be None".format(name))
+                    raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
             serialized = attr.serialize(value)
             if serialized is None:
                 continue
             if attr_map:
-                attrs[attributes][name] = {
+                attrs[attributes][attr.attr_name] = {
                     ATTR_TYPE_MAP[attr.attr_type]: serialized
                 }
             else:
@@ -856,7 +858,7 @@ class Model(with_metaclass(MetaModel)):
                 elif attr.is_range_key:
                     attrs[RANGE] = serialized
                 else:
-                    attrs[attributes][name] = {
+                    attrs[attributes][attr.attr_name] = {
                         ATTR_TYPE_MAP[attr.attr_type]: serialized
                     }
         return attrs

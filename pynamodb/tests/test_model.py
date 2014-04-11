@@ -335,6 +335,11 @@ class ModelTestCase(TestCase):
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
+            item = CustomAttrNameModel('foo', 'bar', overidden_attr='test')
+            self.assertEqual(item.overidden_attr, 'test')
+            self.assertTrue(not hasattr(item, 'foo_attr'))
 
     def test_overidden_defaults(self):
         """
@@ -353,7 +358,6 @@ class ModelTestCase(TestCase):
         }
         self.assert_dict_lists_equal(correct_schema['key_schema'], schema['key_schema'])
         self.assert_dict_lists_equal(correct_schema['attribute_definitions'], schema['attribute_definitions'])
-
 
     def test_refresh(self):
         """
