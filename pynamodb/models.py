@@ -5,6 +5,7 @@ DynamoDB Models for PynamoDB
 import time
 import six
 import copy
+import collections
 import logging
 from six import with_metaclass
 from .exceptions import DoesNotExist
@@ -160,10 +161,39 @@ class MetaModel(type):
                     attr_obj.Meta.model = cls
                     attr_obj.Meta.index_name = attr_name
                 elif issubclass(attr_obj.__class__, (Attribute, )):
-                    attr_obj.attr_name = attr_name
+                    if attr_obj.attr_name is None:
+                        attr_obj.attr_name = attr_name
 
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
+
+
+class AttributeDict(collections.MutableMapping):
+    """
+    A dictionary that stores attributes by two keys
+    """
+    def __init__(self, *args, **kwargs):
+        self.values = dict()
+        self.alt_values = dict()
+        self.update(dict(*args, **kwargs))
+
+    def __getitem__(self, key):
+        if key in self.alt_values:
+            return self.alt_values[key]
+        return self.values[key]
+
+    def __setitem__(self, key, value):
+        self.values[value.attr_name] = value
+        self.alt_values[key] = value
+
+    def __delitem__(self, key):
+        del self.values[key]
+
+    def __iter__(self):
+        return iter(self.values)
+
+    def __len__(self):
+        return len(self.values)
 
 
 class Model(with_metaclass(MetaModel)):
@@ -470,7 +500,7 @@ class Model(with_metaclass(MetaModel)):
         attributes = pythonic(ATTRIBUTES)
         attrs = {attributes: {}}
         for name, attr in self.get_attributes().items():
-            value = getattr(self, name)
+            value = getattr(self, name, None)
             if value is None:
                 if attr.null:
                     continue
@@ -480,7 +510,7 @@ class Model(with_metaclass(MetaModel)):
             if serialized is None:
                 continue
             if attr_map:
-                attrs[attributes][name] = {
+                attrs[attributes][attr.attr_name] = {
                     ATTR_TYPE_MAP[attr.attr_type]: serialized
                 }
             else:
@@ -489,7 +519,7 @@ class Model(with_metaclass(MetaModel)):
                 elif attr.is_range_key:
                     attrs[RANGE] = serialized
                 else:
-                    attrs[attributes][name] = {
+                    attrs[attributes][attr.attr_name] = {
                         ATTR_TYPE_MAP[attr.attr_type]: serialized
                     }
         return attrs
@@ -631,13 +661,14 @@ class Model(with_metaclass(MetaModel)):
         Returns the list of attributes for this class
         """
         if cls.attributes is None:
-            cls.attributes = {}
+            cls.attributes = AttributeDict()
             for item in dir(cls):
                 item_cls = getattr(getattr(cls, item), "__class__", None)
                 if item_cls is None:
                     continue
                 if issubclass(item_cls, (Attribute, )):
-                    cls.attributes[item] = getattr(cls, item)
+                    instance = getattr(cls, item)
+                    cls.attributes[item] = instance
         return cls.attributes
 
     @classmethod
@@ -652,18 +683,18 @@ class Model(with_metaclass(MetaModel)):
         for attr_name, attr_cls in cls.get_attributes().items():
             if attr_cls.is_hash_key or attr_cls.is_range_key:
                 schema[pythonic(ATTR_DEFINITIONS)].append({
-                    pythonic(ATTR_NAME): attr_name,
+                    pythonic(ATTR_NAME): attr_cls.attr_name,
                     pythonic(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
                 })
             if attr_cls.is_hash_key:
                 schema[pythonic(KEY_SCHEMA)].append({
                     pythonic(KEY_TYPE): HASH,
-                    pythonic(ATTR_NAME): attr_name
+                    pythonic(ATTR_NAME): attr_cls.attr_name
                 })
             elif attr_cls.is_range_key:
                 schema[pythonic(KEY_SCHEMA)].append({
                     pythonic(KEY_TYPE): RANGE,
-                    pythonic(ATTR_NAME): attr_name
+                    pythonic(ATTR_NAME): attr_cls.attr_name
                 })
         return schema
 

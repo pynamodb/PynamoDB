@@ -119,7 +119,7 @@ class SimpleUserModel(Model):
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     numbers = NumberSetAttribute()
-    aliases = UnicodeSetAttribute()
+    custom_aliases = UnicodeSetAttribute(attr_name='aliases')
     icons = BinarySetAttribute()
     views = NumberAttribute(null=True)
 
@@ -135,13 +135,24 @@ class ThrottledUserModel(Model):
     throttle = Throttle('50')
 
 
+class CustomAttrNameModel(Model):
+    """
+    A testing model
+    """
+    class Meta:
+        table_name = 'CustomAttrModel'
+    user_name = UnicodeAttribute(hash_key=True)
+    overidden_user_id = UnicodeAttribute(range_key=True, attr_name='user_id')
+    overidden_attr = UnicodeAttribute(attr_name='foo_attr')
+
+
 class UserModel(Model):
     """
     A testing model
     """
     class Meta:
         table_name = 'UserModel'
-    user_name = UnicodeAttribute(hash_key=True)
+    custom_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
     user_id = UnicodeAttribute(range_key=True)
     picture = BinaryAttribute(null=True)
     zip_code = NumberAttribute(null=True)
@@ -313,6 +324,26 @@ class ModelTestCase(TestCase):
             self.assertRaises(ValueError, item.save)
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
+
+
+    def test_overidden_defaults(self):
+        """
+        Custom attribute names
+        """
+        schema = CustomAttrNameModel.get_schema()
+        correct_schema = {
+            'key_schema': [
+                {'key_type': 'HASH', 'attribute_name': 'user_name'},
+                {'key_type': 'RANGE', 'attribute_name': 'user_id'}
+            ],
+            'attribute_definitions': [
+                {'attribute_type': 'S', 'attribute_name': 'user_name'},
+                {'attribute_type': 'S', 'attribute_name': 'user_id'}
+            ]
+        }
+        self.assert_dict_lists_equal(correct_schema['key_schema'], schema['key_schema'])
+        self.assert_dict_lists_equal(correct_schema['attribute_definitions'], schema['attribute_definitions'])
+
 
     def test_refresh(self):
         """

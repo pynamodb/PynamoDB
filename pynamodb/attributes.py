@@ -22,7 +22,8 @@ class Attribute(object):
                  hash_key=False,
                  range_key=False,
                  null=False,
-                 default=None
+                 default=None,
+                 attr_name=None
                  ):
         self.value = None
         self.default = default
@@ -30,6 +31,8 @@ class Attribute(object):
         self.attr_type = attr_type
         self.is_hash_key = hash_key
         self.is_range_key = range_key
+        if attr_name is not None:
+            self.attr_name = attr_name
 
     def __set__(self, instance, value):
         if isinstance(value, Attribute):
