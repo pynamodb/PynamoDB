@@ -340,7 +340,7 @@ class ModelTestCase(TestCase):
         """
         Custom attribute names
         """
-        schema = CustomAttrNameModel.get_schema()
+        schema = CustomAttrNameModel._get_schema()
         correct_schema = {
             'key_schema': [
                 {'key_type': 'HASH', 'attribute_name': 'user_name'},
@@ -716,7 +716,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
-            self.assertRaises(CustomAttrNameModel.DoesNotExist, CustomAttrNameModel.get, 'foo', 'bar')
+            self.assertRaises(CustomAttrNameModel._DoesNotExist, CustomAttrNameModel.get, 'foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), CUSTOM_ATTR_NAME_ITEM_DATA

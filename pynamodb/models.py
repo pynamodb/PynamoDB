@@ -335,7 +335,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Sets the attributes for this object
         """
-        for attr_name, attr in self.get_attributes().aliased_attrs():
+        for attr_name, attr in self._get_attributes().aliased_attrs():
             if attr.attr_name in attrs:
                 setattr(self, attr_name, attrs.get(attr.attr_name))
 
