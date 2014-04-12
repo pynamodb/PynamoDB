@@ -578,7 +578,7 @@ class Model(with_metaclass(MetaModel)):
                         value = [value]
                     value = [attribute_class.serialize(val) for val in value]
                 elif token in operator_map:
-                    key_conditions[attribute] = {
+                    key_conditions[attribute_classes.get(attribute).attr_name] = {
                         COMPARISON_OPERATOR: operator_map.get(token),
                         ATTR_VALUE_LIST: value
                     }

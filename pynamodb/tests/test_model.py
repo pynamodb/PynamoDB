@@ -622,6 +622,15 @@ class ModelTestCase(TestCase):
             for item in UserModel.query('foo'):
                 self.assertIsNotNone(item)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
+            CustomAttrNameModel._get_meta_data()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {ITEMS: [CUSTOM_ATTR_NAME_ITEM_DATA.get(ITEM)]}
+            for item in CustomAttrNameModel.query('bar', overidden_user_name__eq='foo'):
+                self.assertIsNotNone(item)
+
     def test_scan(self):
         """
         Model.scan
