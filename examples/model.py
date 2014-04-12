@@ -107,13 +107,13 @@ with AliasedModel.batch_write() as batch:
 # Batch get
 item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(100)]
 for item in AliasedModel.batch_get(item_keys):
-    print(item)
+    print("Batch get item: {0}".format(item))
 
 # Scan
 for item in AliasedModel.scan():
-    print(item)
+    print("Scanned item: {0}".format(item))
 
 # Query
-for item in AliasedModel.query('forum-1', s__begins_with='subject'):
-    print(item)
+for item in AliasedModel.query('forum-1', subject__begins_with='subject'):
+    print("Query using aliased attribute: {0}".format(item))
 
