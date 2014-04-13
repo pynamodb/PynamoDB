@@ -1,12 +1,11 @@
 """
 Test model API
 """
+import six
 import copy
+import collections
 from datetime import datetime
 from unittest import TestCase
-
-import six
-
 from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import TableError
@@ -1180,7 +1179,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             LocalIndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
-            params = {
+            params = collections.OrderedDict({
                 'attribute_definitions': [
                     {
                         'attribute_name': 'email', 'attribute_type': 'S'
@@ -1198,12 +1197,11 @@ class ModelTestCase(TestCase):
                         'AttributeName': 'numbers', 'KeyType': 'RANGE'
                     }
                 ]
-            }
+            })
             schema = LocalIndexedModel.email_index.get_schema()
             args = req.call_args[1]
+            self.assertEqual(schema, collections.OrderedDict(params))
             self.assertTrue('ProvisionedThroughput' not in args['local_secondary_indexes'][0])
-            self.assert_dict_lists_equal(schema['key_schema'], params['key_schema'])
-            self.assert_dict_lists_equal(params['attribute_definitions'], schema['attribute_definitions'])
 
     def test_projections(self):
         """

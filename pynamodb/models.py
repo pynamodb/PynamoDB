@@ -172,8 +172,8 @@ class AttributeDict(collections.MutableMapping):
     A dictionary that stores attributes by two keys
     """
     def __init__(self, *args, **kwargs):
-        self.values = dict()
-        self.alt_values = dict()
+        self.values = collections.OrderedDict()
+        self.alt_values = collections.OrderedDict()
         self.update(dict(*args, **kwargs))
 
     def __getitem__(self, key):
@@ -222,7 +222,7 @@ class Model(with_metaclass(MetaModel)):
         :param range_key: Only required if the table has a range key attribute.
         :param attrs: A dictionary of attributes to set on this object.
         """
-        self.attribute_values = {}
+        self.attribute_values = collections.OrderedDict()
         self._set_defaults()
         if hash_key:
             attrs[self._get_meta_data().hash_keyname] = hash_key
@@ -407,7 +407,7 @@ class Model(with_metaclass(MetaModel)):
         hash_key_attr = cls._get_attributes().get(hash_keyname)
         hash_key = hash_key_attr.deserialize(hash_key)
         args = (hash_key,)
-        kwargs = {}
+        kwargs = collections.OrderedDict()
         if range_keyname:
             range_key_attr = cls._get_attributes().get(range_keyname)
             range_key_type = cls._get_meta_data().get_attribute_type(range_keyname)
@@ -564,7 +564,7 @@ class Model(with_metaclass(MetaModel)):
         :param operator_map: The mapping of operators used
         :param filters: A list of item filters
         """
-        key_conditions = {}
+        key_conditions = collections.OrderedDict()
         attribute_classes = cls._get_attributes()
         for query, value in filters.items():
             attribute = None
@@ -626,7 +626,7 @@ class Model(with_metaclass(MetaModel)):
                 pythonic(LOCAL_SECONDARY_INDEXES): [],
                 pythonic(ATTR_DEFINITIONS): []
             }
-            cls._index_classes = {}
+            cls._index_classes = collections.OrderedDict()
             for item in dir(cls):
                 item_cls = getattr(getattr(cls, item), "__class__", None)
                 if item_cls is None:
@@ -682,7 +682,7 @@ class Model(with_metaclass(MetaModel)):
         :param attributes: If True, then attributes are included.
         :param null_check: If True, then attributes are checked for null.
         """
-        kwargs = {}
+        kwargs = collections.OrderedDict()
         serialized = self._serialize(null_check=null_check)
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
@@ -837,7 +837,7 @@ class Model(with_metaclass(MetaModel)):
         :param null_check: If True, then attributes are checked for null
         """
         attributes = pythonic(ATTRIBUTES)
-        attrs = {attributes: {}}
+        attrs = collections.OrderedDict({attributes: collections.OrderedDict()})
         for name, attr in self._get_attributes().aliased_attrs():
             value = getattr(self, name)
             if value is None:
