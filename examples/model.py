@@ -34,6 +34,11 @@ thread_item = Thread(
     last_post_datetime=datetime.now()
 )
 
+try:
+    Thread.get('does not', 'exist')
+except Thread.DoesNotExist:
+    pass
+
 # Save the thread
 thread_item.save()
 
