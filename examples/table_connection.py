@@ -4,7 +4,7 @@ Example use of the TableConnection API
 from pynamodb.connection import TableConnection
 
 # Get a table connection
-table = TableConnection('table-name', host='http://localhost')
+table = TableConnection('Thread', host='http://localhost:8000')
 
 # If the table doesn't already exist, the rest of this example will not work.
 
