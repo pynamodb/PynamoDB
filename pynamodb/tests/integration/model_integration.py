@@ -96,3 +96,5 @@ for item in TestModel.epoch_index.query(tstamp):
 
 for item in TestModel.view_index.query('foo', view__gt=0):
     print("Item queried from index: {0}".format(item.view))
+
+query_obj.update_item('view', 1, action='add', view=1)
