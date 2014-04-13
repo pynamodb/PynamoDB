@@ -3,19 +3,20 @@ Runs tests against dynamodb
 """
 from __future__ import print_function
 import time
+import config as cfg
 from pynamodb.connection import Connection
-from pynamodb.types import STRING, HASH, RANGE
+from pynamodb.constants import PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
+from pynamodb.types import STRING, HASH, RANGE, NUMBER
 
 table_name = 'pynamodb-ci'
-conn = Connection()
 
 # For use with a fake dynamodb connection
 # See: http://aws.amazon.com/dynamodb/developer-resources/
-#conn = Connection(host='http://localhost:8000')
+conn = Connection(host=cfg.DYNAMODB_HOST)
 
+print(conn)
 print("conn.describe_table...")
 table = conn.describe_table(table_name)
-
 if table is None:
     params = {
         'read_capacity_units': 1,
@@ -32,6 +33,10 @@ if table is None:
             {
                 'attribute_type': STRING,
                 'attribute_name': 'AltKey'
+            },
+            {
+                'attribute_type': NUMBER,
+                'attribute_name': 'number'
             }
         ],
         'key_schema': [
@@ -68,7 +73,11 @@ if table is None:
                 'key_schema': [
                     {
                         'KeyType': 'HASH',
-                        'AttributeName': 'number'
+                        'AttributeName': 'Forum'
+                    },
+                    {
+                        'KeyType': 'RANGE',
+                        'AttributeName': 'AltKey'
                     }
                 ],
                 'projection': {
@@ -83,6 +92,7 @@ if table is None:
 while table is None:
     time.sleep(2)
     table = conn.describe_table(table_name)
+
 while table['TableStatus'] == 'CREATING':
     time.sleep(2)
     table = conn.describe_table(table_name)
@@ -90,8 +100,14 @@ print("conn.list_tables")
 conn.list_tables()
 print("conn.update_table...")
 
-#conn.update_table(table_name, read_capacity_units=2, write_capacity_units=2)
+conn.update_table(
+    table_name,
+    read_capacity_units=table.get(PROVISIONED_THROUGHPUT).get(READ_CAPACITY_UNITS) + 1,
+    write_capacity_units=2
+)
+
 table = conn.describe_table(table_name)
+
 while table['TableStatus'] != 'ACTIVE':
     time.sleep(2)
     table = conn.describe_table(table_name)
@@ -141,4 +157,4 @@ conn.scan(
     table_name,
 )
 print("conn.delete_table...")
-#conn.delete_table(table_name)
+conn.delete_table(table_name)

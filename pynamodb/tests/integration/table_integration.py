@@ -2,18 +2,20 @@
 Run tests against dynamodb using the table abstraction
 """
 import time
+import config as cfg
+from pynamodb.constants import PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
 from pynamodb.connection import TableConnection
-from pynamodb.types import STRING, HASH, RANGE
+from pynamodb.types import STRING, HASH, RANGE, NUMBER
 
-conn = TableConnection('pynamodb')
 table_name = 'pynamodb-ci'
+
 # For use with a fake dynamodb connection
 # See: http://aws.amazon.com/dynamodb/developer-resources/
-#conn = Connection(host='http://localhost:8000')
+conn = TableConnection('pynamodb', host=cfg.DYNAMODB_HOST)
+print(conn)
 
 print("conn.describe_table...")
 table = conn.describe_table()
-
 if table is None:
     params = {
         'read_capacity_units': 1,
@@ -30,6 +32,10 @@ if table is None:
             {
                 'attribute_type': STRING,
                 'attribute_name': 'AltKey'
+            },
+            {
+                'attribute_type': NUMBER,
+                'attribute_name': 'number'
             }
         ],
         'key_schema': [
@@ -66,7 +72,11 @@ if table is None:
                 'key_schema': [
                     {
                         'KeyType': 'HASH',
-                        'AttributeName': 'number'
+                        'AttributeName': 'Forum'
+                    },
+                    {
+                        'KeyType': 'RANGE',
+                        'AttributeName': 'AltKey'
                     }
                 ],
                 'projection': {
@@ -87,7 +97,11 @@ while table['TableStatus'] == 'CREATING':
     table = conn.describe_table()
 print("conn.update_table...")
 
-#conn.update_table(table_name, read_capacity_units=2, write_capacity_units=2)
+conn.update_table(
+    read_capacity_units=table.get(PROVISIONED_THROUGHPUT).get(READ_CAPACITY_UNITS) + 1,
+    write_capacity_units=2
+)
+
 table = conn.describe_table()
 while table['TableStatus'] != 'ACTIVE':
     time.sleep(2)
@@ -130,4 +144,4 @@ conn.query(
 print("conn.scan...")
 conn.scan()
 print("conn.delete_table...")
-#conn.delete_table(table_name)
+conn.delete_table()
