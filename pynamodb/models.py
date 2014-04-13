@@ -26,7 +26,7 @@ from pynamodb.constants import (
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST)
+    CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS)
 
 
 log = logging.getLogger(__name__)
@@ -294,14 +294,16 @@ class Model(with_metaclass(MetaModel)):
                 msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
-    def delete(self):
+    def delete(self, **expected_values):
         """
         Deletes this object from dynamodb
         """
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
+        if len(expected_values):
+            kwargs.update(expected=self._build_expected_values(expected_values))
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update_item(self, attribute, value, action=None):
+    def update_item(self, attribute, value, action=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -313,6 +315,8 @@ class Model(with_metaclass(MetaModel)):
             See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html#DDB-UpdateItem-request-AttributeUpdate
         """
         args, kwargs = self._get_save_args()
+        if len(expected_values):
+            kwargs.update(expected=self._build_expected_values(expected_values))
         attribute_cls = None
         for attr_name, attr_cls in self._get_attributes().items():
             if attr_name == attribute:
@@ -340,11 +344,13 @@ class Model(with_metaclass(MetaModel)):
                 setattr(self, name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
-    def save(self):
+    def save(self, **expected_values):
         """
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args()
+        if len(expected_values):
+            kwargs.update(expected=self._build_expected_values(expected_values))
         data = self._get_connection().put_item(*args, **kwargs)
         if isinstance(data, dict):
             self._throttle.add_record(data.get(CONSUMED_CAPACITY))
@@ -556,6 +562,31 @@ class Model(with_metaclass(MetaModel)):
                     raise ValueError("No TableStatus returned for table")
 
     # Private API below
+    @classmethod
+    def _build_expected_values(cls, expected_values):
+        """
+        Builds an appropriate expected value map
+
+        :param expected_values: A list of expected values
+        """
+        expected_values_result = collections.OrderedDict()
+        attributes = cls._get_attributes()
+        for attr_name, attr_value in expected_values.items():
+            attr_cond = VALUE
+            if attr_name.endswith("__exists"):
+                attr_cond = EXISTS
+                attr_name = attr_name[:-8]
+            attr_cls = attributes.get(attr_name, None)
+            if attr_cls is not None:
+                if attr_cond == VALUE:
+                    attr_value = attr_cls.serialize(attr_value)
+                expected_values_result[attr_cls.attr_name] = {
+                    attr_cond: attr_value
+                }
+            else:
+                raise ValueError("Attribute {0} specified for condition does not exist.".format(attr_name))
+        return expected_values_result
+
     @classmethod
     def _build_filters(cls, operator_map, filters):
         """

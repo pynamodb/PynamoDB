@@ -415,6 +415,52 @@ class ModelTestCase(TestCase):
             args = req.call_args[1]
             self.assertEqual(args, params)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), None
+            item.delete(user_id='bar')
+            params = {
+                'key': {
+                    'user_id': {
+                        'S': 'bar'
+                    },
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'expected': {
+                    'user_id': {
+                        'Value': {'S': 'bar'},
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'UserModel'
+            }
+            args = req.call_args[1]
+            self.assertEqual(args, params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), None
+            item.delete(user_id='bar')
+            params = {
+                'key': {
+                    'user_id': {
+                        'S': 'bar'
+                    },
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'expected': {
+                    'user_id': {
+                        'Value': {'S': 'bar'},
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'UserModel'
+            }
+            args = req.call_args[1]
+            self.assertEqual(args, params)
+
     def test_update_item(self):
         """
         Model.update_item
@@ -444,6 +490,74 @@ class ModelTestCase(TestCase):
                     'user_name': {
                         'S': 'foo'
                     }
+                },
+                'attribute_updates': {
+                    'views': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'N': '10'
+                        }
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL'
+            }
+            self.assertEqual(args, params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
+            item.update_item('views', 10, action='add', user_name='foo')
+            args = req.call_args[1]
+            params = {
+                'table_name': 'SimpleModel',
+                'return_values': 'ALL_NEW',
+                'key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'expected': {
+                    'user_name': {
+                        'Value': {'S': 'foo'}
+                    }
+                },
+                'attribute_updates': {
+                    'views': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'N': '10'
+                        }
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL'
+            }
+            self.assertEqual(args, params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
+            item.update_item('views', 10, action='add', user_name__exists=False)
+            args = req.call_args[1]
+            params = {
+                'table_name': 'SimpleModel',
+                'return_values': 'ALL_NEW',
+                'key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'expected': {
+                    'user_name': {'Exists': False}
                 },
                 'attribute_updates': {
                     'views': {
@@ -488,6 +602,93 @@ class ModelTestCase(TestCase):
                 'table_name': 'UserModel'
             }
 
+            self.assertEqual(args, params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {}
+            item.save(email__exists=False)
+            args = req.call_args[1]
+            params = {
+                'item': {
+                    'callable_field': {
+                        'N': '42'
+                    },
+                    'email': {
+                        'S': u'needs_email'
+                    },
+                    'user_id': {
+                        'S': u'bar'
+                    },
+                    'user_name': {
+                        'S': u'foo'
+                    },
+                },
+                'expected': {
+                    'email': {
+                        'Exists': False
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'UserModel'
+            }
+            self.assertEqual(args, params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {}
+            item.save(user_name='bar')
+            args = req.call_args[1]
+            params = {
+                'item': {
+                    'callable_field': {
+                        'N': '42'
+                    },
+                    'email': {
+                        'S': u'needs_email'
+                    },
+                    'user_id': {
+                        'S': u'bar'
+                    },
+                    'user_name': {
+                        'S': u'foo'
+                    },
+                },
+                'expected': {
+                    'user_name': {
+                        'Value': {'S': 'bar'}
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'UserModel'
+            }
+            self.assertEqual(args, params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {}
+            item.save(custom_user_name='foo')
+            args = req.call_args[1]
+            params = {
+                'item': {
+                    'callable_field': {
+                        'N': '42'
+                    },
+                    'email': {
+                        'S': u'needs_email'
+                    },
+                    'user_id': {
+                        'S': u'bar'
+                    },
+                    'user_name': {
+                        'S': u'foo'
+                    },
+                },
+                'expected': {
+                    'user_name': {
+                        'Value': {'S': 'foo'}
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'UserModel'
+            }
             self.assertEqual(args, params)
 
     def test_query(self):
