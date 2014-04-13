@@ -27,7 +27,8 @@ from .response import HttpOK, HttpBadRequest
 from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
-    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA
+    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
+    CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA
 )
 
 
@@ -119,7 +120,7 @@ class SimpleUserModel(Model):
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     numbers = NumberSetAttribute()
-    aliases = UnicodeSetAttribute()
+    custom_aliases = UnicodeSetAttribute(attr_name='aliases')
     icons = BinarySetAttribute()
     views = NumberAttribute(null=True)
 
@@ -135,13 +136,33 @@ class ThrottledUserModel(Model):
     throttle = Throttle('50')
 
 
+class CustomAttrIndex(LocalSecondaryIndex):
+    class Meta:
+        read_capacity_units = 2
+        write_capacity_units = 1
+        projection = AllProjection()
+    overidden_uid = UnicodeAttribute(hash_key=True, attr_name='user_id')
+
+
+class CustomAttrNameModel(Model):
+    """
+    A testing model
+    """
+    class Meta:
+        table_name = 'CustomAttrModel'
+    overidden_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
+    overidden_user_id = UnicodeAttribute(range_key=True, attr_name='user_id')
+    overidden_attr = UnicodeAttribute(attr_name='foo_attr', null=True)
+    uid_index = CustomAttrIndex()
+
+
 class UserModel(Model):
     """
     A testing model
     """
     class Meta:
         table_name = 'UserModel'
-    user_name = UnicodeAttribute(hash_key=True)
+    custom_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
     user_id = UnicodeAttribute(range_key=True)
     picture = BinaryAttribute(null=True)
     zip_code = NumberAttribute(null=True)
@@ -303,7 +324,7 @@ class ModelTestCase(TestCase):
             item = UserModel('foo', 'bar')
             self.assertEqual(item.email, 'needs_email')
             self.assertEqual(item.callable_field, 42)
-            self.assertEqual(repr(item), '{0}<{1}, {2}>'.format(UserModel.Meta.table_name, item.user_name, item.user_id))
+            self.assertEqual(repr(item), '{0}<{1}, {2}>'.format(UserModel.Meta.table_name, item.custom_user_name, item.user_id))
             self.assertEqual(repr(UserModel._get_meta_data()), 'MetaTable<{0}>'.format('Thread'))
 
         with patch(PATCH_METHOD) as req:
@@ -313,6 +334,30 @@ class ModelTestCase(TestCase):
             self.assertRaises(ValueError, item.save)
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
+            item = CustomAttrNameModel('foo', 'bar', overidden_attr='test')
+            self.assertEqual(item.overidden_attr, 'test')
+            self.assertTrue(not hasattr(item, 'foo_attr'))
+
+    def test_overidden_defaults(self):
+        """
+        Custom attribute names
+        """
+        schema = CustomAttrNameModel._get_schema()
+        correct_schema = {
+            'key_schema': [
+                {'key_type': 'HASH', 'attribute_name': 'user_name'},
+                {'key_type': 'RANGE', 'attribute_name': 'user_id'}
+            ],
+            'attribute_definitions': [
+                {'attribute_type': 'S', 'attribute_name': 'user_name'},
+                {'attribute_type': 'S', 'attribute_name': 'user_id'}
+            ]
+        }
+        self.assert_dict_lists_equal(correct_schema['key_schema'], schema['key_schema'])
+        self.assert_dict_lists_equal(correct_schema['attribute_definitions'], schema['attribute_definitions'])
 
     def test_refresh(self):
         """
@@ -577,6 +622,15 @@ class ModelTestCase(TestCase):
             for item in UserModel.query('foo'):
                 self.assertIsNotNone(item)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
+            CustomAttrNameModel._get_meta_data()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {ITEMS: [CUSTOM_ATTR_NAME_ITEM_DATA.get(ITEM)]}
+            for item in CustomAttrNameModel.query('bar', overidden_user_name__eq='foo'):
+                self.assertIsNotNone(item)
+
     def test_scan(self):
         """
         Model.scan
@@ -668,6 +722,21 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
             self.assertRaises(UserModel._DoesNotExist, UserModel.get, 'foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
+            CustomAttrNameModel._get_meta_data()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {}
+            self.assertRaises(CustomAttrNameModel._DoesNotExist, CustomAttrNameModel.get, 'foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), CUSTOM_ATTR_NAME_ITEM_DATA
+            item = CustomAttrNameModel.get('foo', 'bar')
+            self.assertEqual(item.overidden_attr, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['foo_attr']['S'])
+            self.assertEqual(item.overidden_user_name, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_name']['S'])
+            self.assertEqual(item.overidden_user_id, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_id']['S'])
 
     def test_batch_get(self):
         """
@@ -834,6 +903,10 @@ class ModelTestCase(TestCase):
         Models.Index.Query
         """
         with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
+            CustomAttrNameModel._get_meta_data()
+
+        with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), INDEX_TABLE_DATA
             IndexedModel._get_connection().describe_table()
 
@@ -932,6 +1005,44 @@ class ModelTestCase(TestCase):
                 'table_name': 'LocalIndexedModel',
                 'return_consumed_capacity': 'TOTAL',
                 'limit': 1
+            }
+            self.assertEqual(req.call_args[1], params)
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = HttpOK({'Items': items}), {'Items': items}
+            queried = []
+
+            for item in CustomAttrNameModel.uid_index.query('foo', limit=2, user_name__begins_with='bar'):
+                queried.append(item._serialize())
+
+            params = {
+                'key_conditions': {
+                    'user_name': {
+                        'ComparisonOperator': 'BEGINS_WITH',
+                        'AttributeValueList': [
+                            {
+                                'S': u'bar'
+                            }
+                        ]
+                    },
+                    'user_id': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [
+                            {
+                                'S': u'foo'
+                            }
+                        ]
+                    }
+                },
+                'index_name': 'uid_index',
+                'table_name': 'CustomAttrModel',
+                'return_consumed_capacity': 'TOTAL',
+                'limit': 2
             }
             self.assertEqual(req.call_args[1], params)
 

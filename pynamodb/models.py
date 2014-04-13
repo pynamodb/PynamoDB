@@ -5,6 +5,7 @@ DynamoDB Models for PynamoDB
 import time
 import six
 import copy
+import collections
 import logging
 from six import with_metaclass
 from .exceptions import DoesNotExist
@@ -55,7 +56,6 @@ class BatchWrite(ModelContextManager):
     """
     A class for batch writes
     """
-
     def save(self, put_item):
         """
         This adds `put_item` to the list of pending writes to be performed.
@@ -160,10 +160,42 @@ class MetaModel(type):
                     attr_obj.Meta.model = cls
                     attr_obj.Meta.index_name = attr_name
                 elif issubclass(attr_obj.__class__, (Attribute, )):
-                    attr_obj.attr_name = attr_name
+                    if attr_obj.attr_name is None:
+                        attr_obj.attr_name = attr_name
 
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
+
+
+class AttributeDict(collections.MutableMapping):
+    """
+    A dictionary that stores attributes by two keys
+    """
+    def __init__(self, *args, **kwargs):
+        self.values = dict()
+        self.alt_values = dict()
+        self.update(dict(*args, **kwargs))
+
+    def __getitem__(self, key):
+        if key in self.alt_values:
+            return self.alt_values[key]
+        return self.values[key]
+
+    def __setitem__(self, key, value):
+        self.values[value.attr_name] = value
+        self.alt_values[key] = value
+
+    def __delitem__(self, key):
+        del self.values[key]
+
+    def __iter__(self):
+        return iter(self.values)
+
+    def __len__(self):
+        return len(self.values)
+
+    def aliased_attrs(self):
+        return self.alt_values.items()
 
 
 class Model(with_metaclass(MetaModel)):
@@ -193,12 +225,12 @@ class Model(with_metaclass(MetaModel)):
         self.attribute_values = {}
         self._set_defaults()
         if hash_key:
-            setattr(self, self._get_meta_data().hash_keyname, hash_key)
+            attrs[self._get_meta_data().hash_keyname] = hash_key
         if range_key:
             range_keyname = self._get_meta_data().range_keyname
             if range_keyname is None:
                 raise ValueError("This table has no range key, but a range key value was provided: {0}".format(range_key))
-            setattr(self, range_keyname, range_key)
+            attrs[range_keyname] = range_key
         self._set_attributes(**attrs)
 
     @classmethod
@@ -254,13 +286,12 @@ class Model(with_metaclass(MetaModel)):
         return BatchWrite(cls, auto_commit=auto_commit)
 
     def __repr__(self):
-        hash_key = getattr(self, self._get_meta_data().hash_keyname, None)
-        if hash_key and self.Meta.table_name:
+        if self.Meta.table_name:
+            serialized = self._serialize(null_check=False)
             if self._get_meta_data().range_keyname:
-                range_key = getattr(self, self._get_meta_data().range_keyname, None)
-                msg = "{0}<{1}, {2}>".format(self.Meta.table_name, hash_key, range_key)
+                msg = "{0}<{1}, {2}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
             else:
-                msg = "{0}<{1}>".format(self.Meta.table_name, hash_key)
+                msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
     def delete(self):
@@ -402,6 +433,7 @@ class Model(with_metaclass(MetaModel)):
         :param hash_key: The hash key to query
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
+        :param limit: Used to limit the number of results returned
         :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
             Controls descending or ascending results
         """
@@ -546,7 +578,7 @@ class Model(with_metaclass(MetaModel)):
                         value = [value]
                     value = [attribute_class.serialize(val) for val in value]
                 elif token in operator_map:
-                    key_conditions[attribute] = {
+                    key_conditions[attribute_classes.get(attribute).attr_name] = {
                         COMPARISON_OPERATOR: operator_map.get(token),
                         ATTR_VALUE_LIST: value
                     }
@@ -568,18 +600,18 @@ class Model(with_metaclass(MetaModel)):
         for attr_name, attr_cls in cls._get_attributes().items():
             if attr_cls.is_hash_key or attr_cls.is_range_key:
                 schema[pythonic(ATTR_DEFINITIONS)].append({
-                    pythonic(ATTR_NAME): attr_name,
+                    pythonic(ATTR_NAME): attr_cls.attr_name,
                     pythonic(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
                 })
             if attr_cls.is_hash_key:
                 schema[pythonic(KEY_SCHEMA)].append({
                     pythonic(KEY_TYPE): HASH,
-                    pythonic(ATTR_NAME): attr_name
+                    pythonic(ATTR_NAME): attr_cls.attr_name
                 })
             elif attr_cls.is_range_key:
                 schema[pythonic(KEY_SCHEMA)].append({
                     pythonic(KEY_TYPE): RANGE,
-                    pythonic(ATTR_NAME): attr_name
+                    pythonic(ATTR_NAME): attr_cls.attr_name
                 })
         return schema
 
@@ -631,13 +663,14 @@ class Model(with_metaclass(MetaModel)):
         Returns the list of attributes for this class
         """
         if cls._attributes is None:
-            cls._attributes = {}
+            cls._attributes = AttributeDict()
             for item in dir(cls):
                 item_cls = getattr(getattr(cls, item), "__class__", None)
                 if item_cls is None:
                     continue
                 if issubclass(item_cls, (Attribute, )):
-                    cls._attributes[item] = getattr(cls, item)
+                    instance = getattr(cls, item)
+                    cls._attributes[item] = instance
         return cls._attributes
 
     def _get_save_args(self, attributes=True, null_check=True):
@@ -718,7 +751,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Sets and fields that provide a default value
         """
-        for name, attr in self._get_attributes().items():
+        for name, attr in self._get_attributes().aliased_attrs():
             default = attr.default
             if callable(default):
                 value = default()
@@ -731,9 +764,11 @@ class Model(with_metaclass(MetaModel)):
         """
         Sets the attributes for this object
         """
-
-        for key, value in attrs.items():
-            setattr(self, key, value)
+        for attr_name, attr in self._get_attributes().aliased_attrs():
+            if attr.attr_name in attrs:
+                setattr(self, attr_name, attrs.get(attr.attr_name))
+            elif attr_name in attrs:
+                setattr(self, attr_name, attrs.get(attr_name))
 
     @classmethod
     def add_throttle_record(cls, records):
@@ -803,18 +838,18 @@ class Model(with_metaclass(MetaModel)):
         """
         attributes = pythonic(ATTRIBUTES)
         attrs = {attributes: {}}
-        for name, attr in self._get_attributes().items():
+        for name, attr in self._get_attributes().aliased_attrs():
             value = getattr(self, name)
             if value is None:
                 if attr.null:
                     continue
                 elif null_check:
-                    raise ValueError("Attribute '{0}' cannot be None".format(name))
+                    raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
             serialized = attr.serialize(value)
             if serialized is None:
                 continue
             if attr_map:
-                attrs[attributes][name] = {
+                attrs[attributes][attr.attr_name] = {
                     ATTR_TYPE_MAP[attr.attr_type]: serialized
                 }
             else:
@@ -823,7 +858,7 @@ class Model(with_metaclass(MetaModel)):
                 elif attr.is_range_key:
                     attrs[RANGE] = serialized
                 else:
-                    attrs[attributes][name] = {
+                    attrs[attributes][attr.attr_name] = {
                         ATTR_TYPE_MAP[attr.attr_type]: serialized
                     }
         return attrs

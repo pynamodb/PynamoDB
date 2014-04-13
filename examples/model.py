@@ -61,3 +61,59 @@ for item in Thread.scan():
 # Query
 for item in Thread.query('forum-1', subject__begins_with='subject'):
     print(item)
+
+
+print("-"*80)
+
+# A model that uses aliased attribute names
+class AliasedModel(Model):
+    class Meta:
+        table_name = "AliasedModel"
+        host = "http://localhost:8000"
+    forum_name = UnicodeAttribute(hash_key=True, attr_name='fn')
+    subject = UnicodeAttribute(range_key=True, attr_name='s')
+    views = NumberAttribute(default=0, attr_name='v')
+    replies = NumberAttribute(default=0, attr_name='rp')
+    answered = NumberAttribute(default=0, attr_name='an')
+    tags = UnicodeSetAttribute(attr_name='t')
+    last_post_datetime = UTCDateTimeAttribute(attr_name='lp')
+
+if not AliasedModel.exists():
+    AliasedModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+
+# Create a thread
+thread_item = AliasedModel(
+    'Some Forum',
+    'Some Subject',
+    tags=['foo', 'bar'],
+    last_post_datetime=datetime.now()
+)
+
+# Save the thread
+thread_item.save()
+
+# Batch write operation
+with AliasedModel.batch_write() as batch:
+    threads = []
+    for x in range(100):
+        thread = AliasedModel('forum-{0}'.format(x), 'subject-{0}'.format(x))
+        thread.tags = ['tag1', 'tag2']
+        thread.last_post_datetime = datetime.now()
+        threads.append(thread)
+
+    for thread in threads:
+        batch.save(thread)
+
+# Batch get
+item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(100)]
+for item in AliasedModel.batch_get(item_keys):
+    print("Batch get item: {0}".format(item))
+
+# Scan
+for item in AliasedModel.scan():
+    print("Scanned item: {0}".format(item))
+
+# Query
+for item in AliasedModel.query('forum-1', subject__begins_with='subject'):
+    print("Query using aliased attribute: {0}".format(item))
+
