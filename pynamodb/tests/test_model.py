@@ -368,7 +368,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), {}
-            self.assertRaises(item._DoesNotExist, item.refresh)
+            self.assertRaises(item.DoesNotExist, item.refresh)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(GET_MODEL_ITEM_DATA), GET_MODEL_ITEM_DATA
@@ -720,7 +720,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
-            self.assertRaises(UserModel._DoesNotExist, UserModel.get, 'foo', 'bar')
+            self.assertRaises(UserModel.DoesNotExist, UserModel.get, 'foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
@@ -728,7 +728,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
-            self.assertRaises(CustomAttrNameModel._DoesNotExist, CustomAttrNameModel.get, 'foo', 'bar')
+            self.assertRaises(CustomAttrNameModel.DoesNotExist, CustomAttrNameModel.get, 'foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), CUSTOM_ATTR_NAME_ITEM_DATA

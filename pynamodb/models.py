@@ -214,7 +214,7 @@ class Model(with_metaclass(MetaModel)):
     _connection = None
     _index_classes = None
     _throttle = NoThrottle()
-    _DoesNotExist = DoesNotExist
+    DoesNotExist = DoesNotExist
 
     def __init__(self, hash_key=None, range_key=None, **attrs):
         """
@@ -362,7 +362,7 @@ class Model(with_metaclass(MetaModel)):
         self._throttle.add_record(attrs.get(CONSUMED_CAPACITY))
         item_data = attrs.get(ITEM, None)
         if item_data is None:
-            raise self._DoesNotExist("This item does not exist in the table.")
+            raise self.DoesNotExist("This item does not exist in the table.")
         self._deserialize(item_data)
 
     @classmethod
@@ -387,7 +387,7 @@ class Model(with_metaclass(MetaModel)):
         if item_data:
             return cls.from_raw_data(item_data)
         else:
-            raise cls._DoesNotExist()
+            raise cls.DoesNotExist()
 
     @classmethod
     def from_raw_data(cls, data):
