@@ -139,17 +139,19 @@ Want to use DynamoDB local? Just add a ``host`` name attribute and specify your 
 Features
 ========
 
-* Python 3 support
-* Python 2 support
+* Python 3.3, 3.4, 2.6, and 2.7 support
 * An ORM-like interface with query and scan filters
 * Compatible with DynamoDB Local
-* Includes the entire DynamoDB API
-* Supports both unicode and binary DynamoDB attributes
-* Support for global secondary indexes, local secondary indexes, and batch operations
+* Supports the entire DynamoDB API
+* Support for Unicode, Binary, JSON, Number, Set, and UTC Datetime attributes
+* Support for Global and Local Secondary Indexes
 * Provides iterators for working with queries, scans, that are automatically paginated
 * Automatic pagination for bulk operations
 * Complex queries
 
+* Support for Global and Local Secondary Indexes
+* Batch operations with automatic pagination
+* Iterators for working with Query and Scan operations
 
 .. image:: https://d2weczhvl823v0.cloudfront.net/jlafon/pynamodb/trend.png
    :alt: Bitdeli badge
