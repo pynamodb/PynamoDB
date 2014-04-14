@@ -231,11 +231,6 @@ class ModelTestCase(TestCase):
             if kwargs == {'table_name': UserModel.Meta.table_name}:
                 if scope_args['count'] == 0:
                     return HttpBadRequest(), {}
-                elif scope_args['count'] == 1:
-                    data = copy.copy(MODEL_TABLE_DATA)
-                    data['TableStatus'] = 'Creating'
-                    scope_args['count'] += 1
-                    return HttpOK(content=data), data
                 else:
                     return MODEL_TABLE_DATA
             else:
@@ -1261,18 +1256,7 @@ class ModelTestCase(TestCase):
         scope_args = {'count': 0}
 
         def fake_dynamodb(obj, **kwargs):
-            if kwargs == {'table_name': UserModel.Meta.table_name}:
-                if scope_args['count'] == 0:
-                    return HttpBadRequest(), {}
-                elif scope_args['count'] == 1:
-                    data = copy.copy(MODEL_TABLE_DATA)
-                    data['TableStatus'] = 'Creating'
-                    scope_args['count'] += 1
-                    return HttpOK(content=data), data
-                else:
-                    return MODEL_TABLE_DATA
-            else:
-                return HttpOK(content={}), {}
+            return HttpOK(content={}), {}
 
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
@@ -1362,18 +1346,7 @@ class ModelTestCase(TestCase):
         self.assertEqual(schema['local_secondary_indexes'][0]['projection']['NonKeyAttributes'], ['numbers'])
 
         def fake_dynamodb(obj, **kwargs):
-            if kwargs == {'table_name': UserModel.Meta.table_name}:
-                if scope_args['count'] == 0:
-                    return HttpBadRequest(), {}
-                elif scope_args['count'] == 1:
-                    data = copy.copy(MODEL_TABLE_DATA)
-                    data['TableStatus'] = 'Creating'
-                    scope_args['count'] += 1
-                    return HttpOK(content=data), data
-                else:
-                    return MODEL_TABLE_DATA
-            else:
-                return HttpOK(content={}), {}
+            return HttpOK(content={}), {}
 
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
