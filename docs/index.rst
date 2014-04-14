@@ -12,12 +12,13 @@ Features
 
 * Python 3 support
 * Python 2 support
-* Support for unicode and binary attributes in Python 2 and Python 3
-* Fully tested
-* All DynamoDB operations are supported
-* Support for Global Secondary Indexes, Batch operations
-* Iterators for working with queries, scans, that are automatically paginated
-* Flexible
+* Support for Unicode, Binary, JSON, Number, Set, and UTC Datetime attributes
+* Support for DynamoDB Local
+* Support for all of the DynamoDB API
+* Support for Global and Local Secondary Indexes
+* Batch operations with automatic pagination
+* Iterators for working with Query and Scan operations
+* `Fully tested <https://coveralls.io/r/jlafon/PynamoDB>`_
 
 Topics
 ======

@@ -102,7 +102,7 @@ Let's create a whole bunch of users:
 
     with UserModel.batch_write() as batch:
         for i in range(100):
-            batch.save(UserModel('user-{0}@example.com', first_name='Samuel', last_name='Adams'))
+            batch.save(UserModel('user-{0}@example.com'.format(i), first_name='Samuel', last_name='Adams'))
 
 Now, suppose you want to retrieve all those users:
 
