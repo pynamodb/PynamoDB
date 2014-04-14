@@ -10,6 +10,8 @@ v1.1.0
 * Support for limit argument to queries
 * Support for aliased attribute names
 
+Example of using aliased attribute names:
+
 .. code-block:: python
 
     class AliasedModel(Model):
