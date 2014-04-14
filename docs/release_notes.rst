@@ -5,10 +5,18 @@ v1.1.0
 
 :date: 2014-04-14
 
+* Minor bug fixes
 * Support for expected value conditions in item delete, update, and save
 * Support for limit argument to queries
 * Support for aliased attribute names
-* Minor bug fixes
+
+.. code-block:: python
+
+    class AliasedModel(Model):
+        class Meta:
+            table_name = "AliasedModel"
+        forum_name = UnicodeAttribute(hash_key=True, attr_name='fn')
+        subject = UnicodeAttribute(range_key=True, attr_name='s')
 
 v1.0.0
 ------
