@@ -184,7 +184,7 @@ class JSONAttribute(Attribute):
         """
         Deserializes JSON
         """
-        return json.loads(value)
+        return json.loads(value, strict=False)
 
 
 class BooleanAttribute(Attribute):
