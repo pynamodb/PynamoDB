@@ -321,3 +321,12 @@ class JSONAttributeTestCase(TestCase):
         item = {'foo': 'bar', 'bool': True, 'number': 3.141}
         encoded = six.u(json.dumps(item))
         self.assertEqual(attr.deserialize(encoded), item)
+
+    def test_control_chars(self):
+        """
+        JSONAttribute with control chars
+        """
+        attr = JSONAttribute()
+        item = {'foo\t': 'bar\n', 'bool': True, 'number': 3.141}
+        encoded = six.u(json.dumps(item))
+        self.assertEqual(attr.deserialize(encoded), item)
