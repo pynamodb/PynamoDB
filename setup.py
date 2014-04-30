@@ -26,7 +26,7 @@ setup(
     install_requires=[
         'Delorean',
         'six',
-        'botocore',
+        'botocore>=0.42.0',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
