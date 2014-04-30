@@ -21,7 +21,7 @@ from pynamodb.constants import (
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST,
-    CONSUMED_CAPACITY, CAPACITY_UNITS
+    CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES
 )
 
 
@@ -127,6 +127,24 @@ class MetaTable(object):
         if range_key:
             kwargs[pythonic(key)][self.range_keyname] = {
                 self.get_attribute_type(self.range_keyname): range_key
+            }
+        return kwargs
+
+    def get_query_filter_map(self, query_filters):
+        """
+        Builds the QueryFilter object needed for the Query operation
+        """
+        kwargs = {
+            pythonic(QUERY_FILTER): {}
+        }
+        for key, condition in query_filters.items():
+            attr_type = self.get_attribute_type(key)
+            operator = condition.get(COMPARISON_OPERATOR)
+            if operator not in QUERY_FILTER_VALUES:
+                raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, QUERY_FILTER_VALUES))
+            kwargs[pythonic(QUERY_FILTER)][key] = {
+                ATTR_VALUE_LIST: [{attr_type: value for value in condition.get(ATTR_VALUE_LIST)}],
+                COMPARISON_OPERATOR: operator
             }
         return kwargs
 
@@ -443,6 +461,15 @@ class Connection(object):
             raise TableError("No such table {0}".format(table_name))
         return tbl.get_identifier_map(hash_key, range_key=range_key, key=key)
 
+    def get_query_filter_map(self, table_name, query_filters):
+        """
+        Builds the correct query filter map
+        """
+        tbl = self.get_meta_table(table_name)
+        if tbl is None:
+            raise TableError("No such table {0}".format(table_name))
+        return tbl.get_query_filter_map(query_filters)
+
     def get_expected_map(self, table_name, expected):
         """
         Builds the expected map that is common to several operations
@@ -740,6 +767,7 @@ class Connection(object):
               exclusive_start_key=None,
               index_name=None,
               key_conditions=None,
+              query_filters=None,
               limit=None,
               return_consumed_capacity=None,
               scan_index_forward=None,
@@ -760,6 +788,8 @@ class Connection(object):
             operation_kwargs[pythonic(LIMIT)] = limit
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
+        if query_filters:
+            operation_kwargs.update(self.get_query_filter_map(table_name, query_filters))
         if select:
             if select.upper() not in SELECT_VALUES:
                 raise ValueError("{0} must be one of {1}".format(SELECT, SELECT_VALUES))

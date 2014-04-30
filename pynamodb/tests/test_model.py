@@ -40,7 +40,6 @@ else:
     from mock import MagicMock
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
-SESSION_PATCH_METHODD = 'botocore.session.get_session'
 
 
 class OldStyleModel(Model):

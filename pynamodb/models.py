@@ -442,13 +442,14 @@ class Model(with_metaclass(MetaModel)):
         :param limit: Used to limit the number of results returned
         :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
             Controls descending or ascending results
+        :param filters: A dictionary of filters to be used in the query
         """
         cls._get_indexes()
         if index_name:
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
-        key_conditions = cls._build_filters(QUERY_OPERATOR_MAP, filters)
+        key_conditions, query_filters = cls._build_filters(QUERY_OPERATOR_MAP, filters)
         log.debug("Fetching first query page")
         data = cls._get_connection().query(
             hash_key,
@@ -456,7 +457,8 @@ class Model(with_metaclass(MetaModel)):
             consistent_read=consistent_read,
             scan_index_forward=scan_index_forward,
             limit=limit,
-            key_conditions=key_conditions
+            key_conditions=key_conditions,
+            query_filters=query_filters
         )
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
@@ -492,7 +494,7 @@ class Model(with_metaclass(MetaModel)):
         :param limit: Used to limit the number of results returned
         :param filters: A list of item filters
         """
-        scan_filter = cls._build_filters(SCAN_OPERATOR_MAP, filters)
+        scan_filter, _ = cls._build_filters(SCAN_OPERATOR_MAP, filters)
         data = cls._get_connection().scan(
             segment=segment,
             limit=limit,
@@ -596,6 +598,7 @@ class Model(with_metaclass(MetaModel)):
         :param filters: A list of item filters
         """
         key_conditions = collections.OrderedDict()
+        query_conditions = collections.OrderedDict()
         attribute_classes = cls._get_attributes()
         for query, value in filters.items():
             attribute = None
@@ -609,15 +612,19 @@ class Model(with_metaclass(MetaModel)):
                         value = [value]
                     value = [attribute_class.serialize(val) for val in value]
                 elif token in operator_map:
-                    key_conditions[attribute_classes.get(attribute).attr_name] = {
+                    condition = {
                         COMPARISON_OPERATOR: operator_map.get(token),
                         ATTR_VALUE_LIST: value
                     }
+                    if attribute_class.is_hash_key or attribute_class.is_range_key:
+                        key_conditions[attribute_classes.get(attribute).attr_name] = condition
+                    else:
+                        query_conditions[attribute_classes.get(attribute).attr_name] = condition
                 elif token not in operator_map:
                     raise ValueError("{0} is not a valid filter. Must be one of {1}".format(token, operator_map.keys()))
                 else:
                     raise ValueError("Could not parse filter: {0}".format(query))
-        return key_conditions
+        return key_conditions, query_conditions
 
     @classmethod
     def _get_schema(cls):

@@ -114,6 +114,7 @@ INCLUDE = 'INCLUDE'
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditions
 EXCLUSIVE_START_KEY = 'ExclusiveStartKey'
 LAST_EVALUATED_KEY = 'LastEvaluatedKey'
+QUERY_FILTER = 'QueryFilter'
 BEGINS_WITH = 'BEGINS_WITH'
 BETWEEN = 'BETWEEN'
 EQ = 'EQ'
@@ -166,6 +167,8 @@ SCAN_OPERATOR_MAP = {
 SEGMENT = 'Segment'
 TOTAL_SEGMENTS = 'TotalSegments'
 SCAN_FILTER_VALUES = [EQ, NE, LE, LT, GE, GT, NOT_NULL, NULL, CONTAINS, NOT_CONTAINS, BEGINS_WITH, IN, BETWEEN]
+QUERY_FILTER_VALUES = SCAN_FILTER_VALUES
+
 
 # These are constants used in the expected condition for PutItem
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html#DDB-PutItem-request-Expected
