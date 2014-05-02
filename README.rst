@@ -153,7 +153,3 @@ Features
 * Batch operations with automatic pagination
 * Iterators for working with Query and Scan operations
 
-.. image:: https://d2weczhvl823v0.cloudfront.net/jlafon/pynamodb/trend.png
-   :alt: Bitdeli badge
-   :target: https://bitdeli.com/free
-
