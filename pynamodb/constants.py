@@ -152,7 +152,8 @@ SCAN_OPERATOR_MAP = {
     'ne': NE,
     'le': LE,
     'lt': LT,
-    'ge': GT,
+    'ge': GE,
+    'gt': GT,
     'not_null': NOT_NULL,
     'null': NULL,
     'contains': CONTAINS,
@@ -161,6 +162,7 @@ SCAN_OPERATOR_MAP = {
     'in': IN,
     'between': BETWEEN
 }
+QUERY_FILTER_OPERATOR_MAP = SCAN_OPERATOR_MAP
 
 # These are the valid comparison operators for the Scan operation
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html#DDB-Scan-request-ScanFilter

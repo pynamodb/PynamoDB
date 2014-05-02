@@ -825,6 +825,45 @@ class ModelTestCase(TestCase):
             for item in CustomAttrNameModel.query('bar', overidden_user_name__eq='foo'):
                 self.assertIsNotNone(item)
 
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = HttpOK({'Items': items}), {'Items': items}
+            queried = []
+            for item in UserModel.query('foo', user_id__begins_with='id', email__contains='@'):
+                queried.append(item._serialize())
+            params = {
+                'key_conditions': {
+                    'user_id': {
+                        'AttributeValueList': [
+                            {'S': 'id'}
+                        ],
+                        'ComparisonOperator': 'BEGINS_WITH'
+                    },
+                    'user_name': {
+                        'AttributeValueList': [
+                            {'S': 'foo'}
+                        ],
+                        'ComparisonOperator': 'EQ'
+                    }
+                },
+                'query_filter': {
+                    'email': {
+                        'AttributeValueList': [
+                            {'S': '@'}
+                        ],
+                        'ComparisonOperator': 'CONTAINS'
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'UserModel'
+            }
+            self.assertEqual(params, req.call_args[1])
+            self.assertTrue(len(queried) == len(items))
+
     def test_scan(self):
         """
         Model.scan
@@ -871,6 +910,29 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=mock_scan) as req:
             for item in UserModel.scan():
                 self.assertIsNotNone(item)
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = HttpOK({'Items': items}), {'Items': items}
+            for item in UserModel.scan(user_id__contains='tux'):
+                self.assertIsNotNone(item)
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'scan_filter': {
+                    'user_id': {
+                        'AttributeValueList': [
+                            {'S': 'tux'}
+                        ],
+                        'ComparisonOperator': 'CONTAINS'
+                    }
+                },
+                'table_name': 'UserModel'
+            }
+            self.assertEquals(params, req.call_args[1])
 
     def test_get(self):
         """
@@ -1109,20 +1171,20 @@ class ModelTestCase(TestCase):
             LocalIndexedModel._get_meta_data()
 
         queried = []
-        # user_id not valid
-        with self.assertRaises(ValueError):
-            for item in IndexedModel.email_index.query('foo', user_id__between=['id-1', 'id-3']):
-                queried.append(item._serialize().get(RANGE))
+        with patch(PATCH_METHOD) as req:
+            with self.assertRaises(ValueError):
+                for item in IndexedModel.email_index.query('foo', user_id__between=['id-1', 'id-3']):
+                    queried.append(item._serialize().get(RANGE))
 
-        # startswith not valid
-        with self.assertRaises(ValueError):
-            for item in IndexedModel.email_index.query('foo', user_name__startswith='foo'):
-                queried.append(item._serialize().get(RANGE))
+        with patch(PATCH_METHOD) as req:
+            with self.assertRaises(ValueError):
+                for item in IndexedModel.email_index.query('foo', user_name__startswith='foo'):
+                    queried.append(item._serialize().get(RANGE))
 
-        # name not valid
-        with self.assertRaises(ValueError):
-            for item in IndexedModel.email_index.query('foo', name='foo'):
-                queried.append(item._serialize().get(RANGE))
+        with patch(PATCH_METHOD) as req:
+            with self.assertRaises(ValueError):
+                for item in IndexedModel.email_index.query('foo', name='foo'):
+                    queried.append(item._serialize().get(RANGE))
 
         with patch(PATCH_METHOD) as req:
             items = []

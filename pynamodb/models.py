@@ -19,7 +19,7 @@ from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
-    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES,
+    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, QUERY_FILTER_OPERATOR_MAP,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ATTR_UPDATES, ALL_NEW,
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, COMPARISON_OPERATOR, ATTR_VALUE_LIST,
@@ -449,7 +449,10 @@ class Model(with_metaclass(MetaModel)):
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
-        key_conditions, query_filters = cls._build_filters(QUERY_OPERATOR_MAP, filters)
+        key_conditions, query_filters = cls._build_filters(
+            QUERY_OPERATOR_MAP,
+            non_key_operator_map=QUERY_FILTER_OPERATOR_MAP,
+            **filters)
         log.debug("Fetching first query page")
         data = cls._get_connection().query(
             hash_key,
@@ -494,7 +497,11 @@ class Model(with_metaclass(MetaModel)):
         :param limit: Used to limit the number of results returned
         :param filters: A list of item filters
         """
-        scan_filter, _ = cls._build_filters(SCAN_OPERATOR_MAP, filters)
+        scan_filter, _ = cls._build_filters(
+            SCAN_OPERATOR_MAP,
+            non_key_operator_map=QUERY_OPERATOR_MAP,
+            **filters
+        )
         data = cls._get_connection().scan(
             segment=segment,
             limit=limit,
@@ -590,16 +597,19 @@ class Model(with_metaclass(MetaModel)):
         return expected_values_result
 
     @classmethod
-    def _build_filters(cls, operator_map, filters):
+    def _build_filters(cls, key_operator_map, non_key_operator_map=None, **filters):
         """
         Builds an appropriate condition map
 
-        :param operator_map: The mapping of operators used
+        :param operator_map: The mapping of operators used for key attributes
+        :param non_key_operator_map: The mapping of operators used for non key attributes
         :param filters: A list of item filters
         """
         key_conditions = collections.OrderedDict()
         query_conditions = collections.OrderedDict()
         attribute_classes = cls._get_attributes()
+        if non_key_operator_map is None:
+            non_key_operator_map = {}
         for query, value in filters.items():
             attribute = None
             for token in query.split('__'):
@@ -611,17 +621,25 @@ class Model(with_metaclass(MetaModel)):
                     if not isinstance(value, list):
                         value = [value]
                     value = [attribute_class.serialize(val) for val in value]
-                elif token in operator_map:
-                    condition = {
-                        COMPARISON_OPERATOR: operator_map.get(token),
-                        ATTR_VALUE_LIST: value
-                    }
-                    if attribute_class.is_hash_key or attribute_class.is_range_key:
+                elif token in key_operator_map and (attribute_class.is_hash_key or attribute_class.is_range_key):
+                        condition = {
+                            COMPARISON_OPERATOR: key_operator_map.get(token),
+                            ATTR_VALUE_LIST: value
+                        }
                         key_conditions[attribute_classes.get(attribute).attr_name] = condition
-                    else:
+                elif token in non_key_operator_map and not (attribute_class.is_hash_key or attribute_class.is_range_key):
+                        condition = {
+                            COMPARISON_OPERATOR: non_key_operator_map.get(token),
+                            ATTR_VALUE_LIST: value
+                        }
                         query_conditions[attribute_classes.get(attribute).attr_name] = condition
-                elif token not in operator_map:
-                    raise ValueError("{0} is not a valid filter. Must be one of {1}".format(token, operator_map.keys()))
+                elif token not in key_operator_map and token not in non_key_operator_map:
+                    raise ValueError(
+                        "{0} is not a valid filter. Must be one of {1} {2}".format(
+                            token,
+                            key_operator_map.keys(), non_key_operator_map.keys()
+                        )
+                    )
                 else:
                     raise ValueError("Could not parse filter: {0}".format(query))
         return key_conditions, query_conditions

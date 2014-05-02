@@ -122,3 +122,10 @@ for item in AliasedModel.scan():
 for item in AliasedModel.query('forum-1', subject__begins_with='subject'):
     print("Query using aliased attribute: {0}".format(item))
 
+# Query on non key attributes
+for item in Thread.query('forum-1', views__eq=0):
+    print("Query result: {0}".format(item))
+
+# Scan with filter
+for item in Thread.scan(subject__begins_with='subject'):
+    print("Scanned item: {0}".format(item))
