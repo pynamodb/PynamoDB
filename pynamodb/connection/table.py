@@ -19,6 +19,7 @@ class TableConnection(object):
     def delete_item(self, hash_key,
                     range_key=None,
                     expected=None,
+                    conditional_operator=None,
                     return_values=None,
                     return_consumed_capacity=None,
                     return_item_collection_metrics=None):
@@ -30,6 +31,7 @@ class TableConnection(object):
             hash_key,
             range_key=range_key,
             expected=expected,
+            conditional_operator=conditional_operator,
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics)
@@ -39,6 +41,7 @@ class TableConnection(object):
                     range_key=None,
                     attribute_updates=None,
                     expected=None,
+                    conditional_operator=None,
                     return_consumed_capacity=None,
                     return_item_collection_metrics=None,
                     return_values=None
@@ -52,6 +55,7 @@ class TableConnection(object):
             range_key=range_key,
             attribute_updates=attribute_updates,
             expected=expected,
+            conditional_operator=conditional_operator,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
             return_values=return_values)
@@ -60,6 +64,7 @@ class TableConnection(object):
                  range_key=None,
                  attributes=None,
                  expected=None,
+                 conditional_operator=None,
                  return_values=None,
                  return_consumed_capacity=None,
                  return_item_collection_metrics=None):
@@ -72,6 +77,7 @@ class TableConnection(object):
             range_key=range_key,
             attributes=attributes,
             expected=expected,
+            conditional_operator=conditional_operator,
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics)

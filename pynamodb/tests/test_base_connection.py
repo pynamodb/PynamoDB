@@ -398,6 +398,14 @@ class ConnectionTestCase(TestCase):
             "bar",
             return_item_collection_metrics='badvalue')
 
+        self.assertRaises(
+            ValueError,
+            conn.delete_item,
+            self.test_table_name,
+            "foo",
+            "bar",
+            conditional_operator='notone')
+
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), {}
             conn.delete_item(
@@ -475,6 +483,37 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'table_name': self.test_table_name,
+                'return_consumed_capacity': 'TOTAL',
+                'return_item_collection_metrics': 'SIZE'
+            }
+            self.assertEqual(req.call_args[1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.delete_item(
+                self.test_table_name,
+                "Amazon DynamoDB",
+                "How do I update multiple items?",
+                conditional_operator='and',
+                expected={'ForumName': {'Exists': False}},
+                return_item_collection_metrics='SIZE'
+            )
+            params = {
+                'key': {
+                    'ForumName': {
+                        'S': 'Amazon DynamoDB'
+                    },
+                    'Subject': {
+                        'S': 'How do I update multiple items?'
+                    }
+                },
+                'expected': {
+                    'ForumName': {
+                        'Exists': False
+                    }
+                },
+                'table_name': self.test_table_name,
+                'conditional_operator': 'AND',
                 'return_consumed_capacity': 'TOTAL',
                 'return_item_collection_metrics': 'SIZE'
             }
@@ -684,8 +723,8 @@ class ConnectionTestCase(TestCase):
 
         attr_updates = {
             'Subject': {
-                'Value': {'N': '1'},
-                'Action': 'ADD'
+                'Value': {'S': 'Foo'},
+                'Action': 'PUT'
             },
         }
         with patch(PATCH_METHOD) as req:
@@ -708,11 +747,92 @@ class ConnectionTestCase(TestCase):
                 'attribute_updates': {
                     'Subject': {
                         'Value': {
-                            'N': '1'
+                            'S': 'Foo'
                         },
-                        'Action': 'ADD'
+                        'Action': 'PUT'
                     }
                 },
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'ci-table'
+            }
+            self.assertEqual(req.call_args[1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            # Invalid conditional operator
+            with self.assertRaises(ValueError):
+                conn.update_item(
+                    self.test_table_name,
+                    'foo-key',
+                    attribute_updates={
+                        'Subject': {
+                            'Value': {'N': '1'},
+                            'Action': 'ADD'
+                        },
+                    },
+                    conditional_operator='foobar',
+                    range_key='foo-range-key',
+                )
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            # attributes are missing
+            with self.assertRaises(ValueError):
+                conn.update_item(
+                    self.test_table_name,
+                    'foo-key',
+                    range_key='foo-range-key',
+                )
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.update_item(
+                self.test_table_name,
+                'foo-key',
+                attribute_updates={
+                    'Subject': {
+                        'Value': {'S': 'Bar'},
+                        'Action': 'PUT'
+                    },
+                },
+                expected={
+                    'ForumName': {'Exists': False},
+                    'Subject': {
+                        'ComparisonOperator': 'NE',
+                        'Value': 'Foo'
+                    }
+                },
+                conditional_operator='and',
+                range_key='foo-range-key',
+            )
+            params = {
+                'key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'attribute_updates': {
+                    'Subject': {
+                        'Value': {
+                            'S': 'Bar'
+                        },
+                        'Action': 'PUT'
+                    }
+                },
+                'expected': {
+                    'ForumName': {
+                        'Exists': False
+                    },
+                    'Subject': {
+                        'Value': {
+                            'S': 'Foo'
+                        }
+                    }
+                },
+                'conditional_operator': 'AND',
                 'return_consumed_capacity': 'TOTAL',
                 'table_name': 'ci-table'
             }
@@ -807,7 +927,13 @@ class ConnectionTestCase(TestCase):
                 'item1-hash',
                 range_key='item1-range',
                 attributes={'foo': {'S': 'bar'}},
-                expected={'Forum': {'Exists': False}}
+                expected={
+                    'Forum': {'Exists': False},
+                    'Subject': {
+                        'ComparisonOperator': 'NE',
+                        'Value': 'Foo'
+                    }
+                }
             )
             params = {
                 'return_consumed_capacity': 'TOTAL',
@@ -815,6 +941,9 @@ class ConnectionTestCase(TestCase):
                 'expected': {
                     'Forum': {
                         'Exists': False
+                    },
+                    'Subject': {
+                        'Value': {'S': 'Foo'}
                     }
                 },
                 'item': {

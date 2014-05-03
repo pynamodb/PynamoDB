@@ -84,6 +84,7 @@ NUMBER = 'Number'
 NUMBER_SET = 'NumberSet'
 BINARY = 'Binary'
 BINARY_SET = 'BinarySet'
+SHORT_ATTR_TYPES = [STRING_SHORT, STRING_SET_SHORT, NUMBER_SHORT, NUMBER_SET_SHORT, BINARY_SHORT, BINARY_SET_SHORT]
 ATTR_TYPE_MAP = {
     STRING: STRING_SHORT,
     STRING_SET: STRING_SET_SHORT,
@@ -163,6 +164,10 @@ SCAN_OPERATOR_MAP = {
     'between': BETWEEN
 }
 QUERY_FILTER_OPERATOR_MAP = SCAN_OPERATOR_MAP
+DELETE_FILTER_OPERATOR_MAP = SCAN_OPERATOR_MAP
+UPDATE_FILTER_OPERATOR_MAP = SCAN_OPERATOR_MAP
+PUT_FILTER_OPERATOR_MAP = SCAN_OPERATOR_MAP
+
 
 # These are the valid comparison operators for the Scan operation
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html#DDB-Scan-request-ScanFilter
@@ -170,6 +175,7 @@ SEGMENT = 'Segment'
 TOTAL_SEGMENTS = 'TotalSegments'
 SCAN_FILTER_VALUES = [EQ, NE, LE, LT, GE, GT, NOT_NULL, NULL, CONTAINS, NOT_CONTAINS, BEGINS_WITH, IN, BETWEEN]
 QUERY_FILTER_VALUES = SCAN_FILTER_VALUES
+DELETE_FILTER_VALUES = SCAN_FILTER_VALUES
 
 
 # These are constants used in the expected condition for PutItem
@@ -211,3 +217,10 @@ BATCH_WRITE_PAGE_LIMIT = 25
 META_CLASS_NAME = "Meta"
 REGION = "region"
 HOST = "host"
+
+# The constants are needed for the ConditionalOperator argument used
+# UpdateItem, PutItem and DeleteItem
+CONDITIONAL_OPERATOR = 'ConditionalOperator'
+AND = 'AND'
+OR = 'OR'
+CONDITIONAL_OPERATORS = [AND, OR]

@@ -21,7 +21,8 @@ from pynamodb.constants import (
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, HTTP_BAD_REQUEST,
-    CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES
+    CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
+    CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES
 )
 
 
@@ -103,7 +104,7 @@ class MetaTable(object):
                 }
         return attr_map
 
-    def get_attribute_type(self, attribute_name):
+    def get_attribute_type(self, attribute_name, value=None):
         """
         Returns the proper attribute type for a given attribute name
         """
@@ -111,6 +112,10 @@ class MetaTable(object):
             if attr.get(ATTR_NAME) == attribute_name:
                 return attr.get(ATTR_TYPE)
         attr_names = [attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS)]
+        if value is not None and isinstance(value, dict):
+            for key in SHORT_ATTR_TYPES:
+                if key in value:
+                    return key
         raise ValueError("No attribute {0} in {1}".format(attribute_name, attr_names))
 
     def get_identifier_map(self, hash_key, range_key=None, key=KEY):
@@ -128,42 +133,6 @@ class MetaTable(object):
             kwargs[pythonic(key)][self.range_keyname] = {
                 self.get_attribute_type(self.range_keyname): range_key
             }
-        return kwargs
-
-    def get_query_filter_map(self, query_filters):
-        """
-        Builds the QueryFilter object needed for the Query operation
-        """
-        kwargs = {
-            pythonic(QUERY_FILTER): {}
-        }
-        for key, condition in query_filters.items():
-            attr_type = self.get_attribute_type(key)
-            operator = condition.get(COMPARISON_OPERATOR)
-            if operator not in QUERY_FILTER_VALUES:
-                raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, QUERY_FILTER_VALUES))
-            kwargs[pythonic(QUERY_FILTER)][key] = {
-                ATTR_VALUE_LIST: [{attr_type: value for value in condition.get(ATTR_VALUE_LIST)}],
-                COMPARISON_OPERATOR: operator
-            }
-        return kwargs
-
-    def get_expected_map(self, expected):
-        """
-        Builds the expected map that is common to several operations
-        """
-        kwargs = {pythonic(EXPECTED): {}}
-        for key, condition in expected.items():
-            if EXISTS in condition:
-                kwargs[pythonic(EXPECTED)][key] = {
-                    EXISTS: condition.get(EXISTS)
-                }
-            elif VALUE in condition:
-                kwargs[pythonic(EXPECTED)][key] = {
-                    VALUE: {
-                        self.get_attribute_type(key): condition.get(VALUE)
-                    }
-                }
         return kwargs
 
     def get_exclusive_start_key_map(self, exclusive_start_key):
@@ -194,6 +163,7 @@ class Connection(object):
     def __init__(self, region=None, host=None):
         self._tables = {}
         self.host = host
+        self._session = None
         if region:
             self.region = region
         else:
@@ -257,7 +227,9 @@ class Connection(object):
         """
         Returns a valid botocore session
         """
-        return get_session()
+        if self._session is None:
+            self._session = get_session()
+        return self._session
 
     @property
     def service(self):
@@ -367,6 +339,7 @@ class Connection(object):
         response, data = self.dispatch(DELETE_TABLE, operation_kwargs)
         if response.status_code != HTTP_OK:
             raise TableError("Failed to delete table: {0}".format(response.content))
+        return data
 
     def update_table(self,
                      table_name,
@@ -431,6 +404,23 @@ class Connection(object):
         else:
             return None
 
+    def get_conditional_operator(self, operator):
+        """
+        Returns a dictionary containing the correct conditional operator,
+        validating it first.
+        """
+        operator = operator.upper()
+        if operator not in CONDITIONAL_OPERATORS:
+            raise ValueError(
+                "The {0} must be one of {1}".format(
+                    pythonic(CONDITIONAL_OPERATOR),
+                    CONDITIONAL_OPERATORS
+                )
+            )
+        return {
+            pythonic(CONDITIONAL_OPERATOR): operator
+        }
+
     def get_item_attribute_map(self, table_name, attributes, item_key=ITEM, pythonic_key=True):
         """
         Builds up a dynamodb compatible AttributeValue map
@@ -443,14 +433,57 @@ class Connection(object):
             item_key=item_key,
             pythonic_key=pythonic_key)
 
-    def get_attribute_type(self, table_name, attribute_name):
+    def get_expected_map(self, table_name, expected):
+        """
+        Builds the expected map that is common to several operations
+        """
+        kwargs = {pythonic(EXPECTED): {}}
+        for key, condition in expected.items():
+            if EXISTS in condition:
+                kwargs[pythonic(EXPECTED)][key] = {
+                    EXISTS: condition.get(EXISTS)
+                }
+            elif VALUE in condition:
+                kwargs[pythonic(EXPECTED)][key] = {
+                    VALUE: {
+                        self.get_attribute_type(table_name, key): condition.get(VALUE)
+                    }
+                }
+            elif COMPARISON_OPERATOR in condition:
+                kwargs[pythonic(EXPECTED)][key] = {
+                    COMPARISON_OPERATOR: condition.get(COMPARISON_OPERATOR),
+                }
+                values = []
+                for value in condition.get(ATTR_VALUE_LIST, []):
+                    attr_type = self.get_attribute_type(table_name, key, value)
+                    values.append({attr_type: self.parse_attribute(value)})
+                if condition.get(COMPARISON_OPERATOR) not in [NULL, NOT_NULL]:
+                    kwargs[pythonic(EXPECTED)][key][ATTR_VALUE_LIST] = values
+        return kwargs
+
+    def parse_attribute(self, attribute):
+        """
+        Returns the attribute value, where the attribute can be
+        a raw attribute value, or a dictionary containing the type:
+        {'S': 'String value'}
+        """
+        if isinstance(attribute, dict):
+            for key in SHORT_ATTR_TYPES:
+                if key in attribute:
+                    return attribute.get(key)
+            raise ValueError("Invalid attribute supplied: {0}".format(attribute))
+        else:
+            return attribute
+
+    def get_attribute_type(self, table_name, attribute_name, value=None):
         """
         Returns the proper attribute type for a given attribute name
+        :param value: The attribute value an be supplied just in case the type is already included
         """
         tbl = self.get_meta_table(table_name)
         if tbl is None:
             raise TableError("No such table {0}".format(table_name))
-        return tbl.get_attribute_type(attribute_name)
+        return tbl.get_attribute_type(attribute_name, value=value)
 
     def get_identifier_map(self, table_name, hash_key, range_key=None, key=KEY):
         """
@@ -463,21 +496,26 @@ class Connection(object):
 
     def get_query_filter_map(self, table_name, query_filters):
         """
-        Builds the correct query filter map
+        Builds the QueryFilter object needed for the Query operation
         """
-        tbl = self.get_meta_table(table_name)
-        if tbl is None:
-            raise TableError("No such table {0}".format(table_name))
-        return tbl.get_query_filter_map(query_filters)
-
-    def get_expected_map(self, table_name, expected):
-        """
-        Builds the expected map that is common to several operations
-        """
-        tbl = self.get_meta_table(table_name)
-        if tbl is None:
-            raise TableError("No such table {0}".format(table_name))
-        return tbl.get_expected_map(expected)
+        kwargs = {
+            pythonic(QUERY_FILTER): {}
+        }
+        for key, condition in query_filters.items():
+            operator = condition.get(COMPARISON_OPERATOR)
+            if operator not in QUERY_FILTER_VALUES:
+                raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, QUERY_FILTER_VALUES))
+            attr_value_list = []
+            for value in condition.get(ATTR_VALUE_LIST, []):
+                attr_value_list.append({
+                    self.get_attribute_type(table_name, key, value): self.parse_attribute(value)
+                })
+            kwargs[pythonic(QUERY_FILTER)][key] = {
+                COMPARISON_OPERATOR: operator
+            }
+            if len(attr_value_list):
+                kwargs[pythonic(QUERY_FILTER)][key][ATTR_VALUE_LIST] = attr_value_list
+        return kwargs
 
     def get_consumed_capacity_map(self, return_consumed_capacity):
         """
@@ -523,6 +561,7 @@ class Connection(object):
                     hash_key,
                     range_key=None,
                     expected=None,
+                    conditional_operator=None,
                     return_values=None,
                     return_consumed_capacity=None,
                     return_item_collection_metrics=None):
@@ -540,6 +579,8 @@ class Connection(object):
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics:
             operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
+        if conditional_operator:
+            operation_kwargs.update(self.get_conditional_operator(conditional_operator))
         response, data = self.dispatch(DELETE_ITEM, operation_kwargs)
         if not response.ok:
             raise DeleteError("Failed to delete item: {0}".format(response.content))
@@ -552,6 +593,7 @@ class Connection(object):
                     attribute_updates=None,
                     expected=None,
                     return_consumed_capacity=None,
+                    conditional_operator=None,
                     return_item_collection_metrics=None,
                     return_values=None):
         """
@@ -567,6 +609,8 @@ class Connection(object):
             operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
         if return_values:
             operation_kwargs.update(self.get_return_values_map(return_values))
+        if conditional_operator:
+            operation_kwargs.update(self.get_conditional_operator(conditional_operator))
         if not attribute_updates:
             raise ValueError("{0} cannot be empty".format(ATTR_UPDATES))
         # {"path": {"Action": "PUT", "Value": "Foo"}}
@@ -574,13 +618,8 @@ class Connection(object):
         operation_kwargs[pythonic(ATTR_UPDATES)] = {}
         for key, update in attribute_updates.items():
             value = update.get(VALUE)
-            if isinstance(value, six.string_types):
-                attr_type = self.get_attribute_type(table_name, key)
-                value = update.get(VALUE)
-            elif isinstance(value, dict):
-                attr_type, value = value.popitem()
-            else:
-                raise ValueError("Invalid attribute update: {0}".format(value))
+            attr_type = self.get_attribute_type(table_name, key, value)
+            value = self.parse_attribute(value)
             action = update.get(ACTION)
             if action not in ATTR_UPDATE_ACTIONS:
                 raise ValueError("{0} must be one of {1}".format(ACTION, ATTR_UPDATE_ACTIONS))
@@ -601,6 +640,7 @@ class Connection(object):
                  range_key=None,
                  attributes=None,
                  expected=None,
+                 conditional_operator=None,
                  return_values=None,
                  return_consumed_capacity=None,
                  return_item_collection_metrics=None):
@@ -620,6 +660,8 @@ class Connection(object):
             operation_kwargs.update(self.get_return_values_map(return_values))
         if expected:
             operation_kwargs.update(self.get_expected_map(table_name, expected))
+        if conditional_operator:
+            operation_kwargs.update(self.get_conditional_operator(conditional_operator))
         response, data = self.dispatch(PUT_ITEM, operation_kwargs)
         if not response.ok:
             raise PutError("Failed to put item: {0}".format(response.content))
@@ -746,12 +788,15 @@ class Connection(object):
         if scan_filter:
             operation_kwargs[pythonic(SCAN_FILTER)] = {}
             for key, condition in scan_filter.items():
-                attr_type = self.get_attribute_type(table_name, key)
                 operator = condition.get(COMPARISON_OPERATOR)
                 if operator not in SCAN_FILTER_VALUES:
                     raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, SCAN_FILTER_VALUES))
+                values = []
+                for value in condition.get(ATTR_VALUE_LIST):
+                    attr_type = self.get_attribute_type(table_name, key, value)
+                    values.append({attr_type: self.parse_attribute(value)})
                 operation_kwargs[pythonic(SCAN_FILTER)][key] = {
-                    ATTR_VALUE_LIST: [{attr_type: value for value in condition.get(ATTR_VALUE_LIST)}],
+                    ATTR_VALUE_LIST: values,
                     COMPARISON_OPERATOR: operator
                 }
         response, data = self.dispatch(SCAN, operation_kwargs)
@@ -823,7 +868,11 @@ class Connection(object):
                 if operator not in COMPARISON_OPERATOR_VALUES:
                     raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, COMPARISON_OPERATOR_VALUES))
                 operation_kwargs[pythonic(KEY_CONDITIONS)][key] = {
-                    ATTR_VALUE_LIST: [{attr_type: value for value in condition.get(ATTR_VALUE_LIST)}],
+                    ATTR_VALUE_LIST: [
+                        {
+                            attr_type: self.parse_attribute(value) for value in condition.get(ATTR_VALUE_LIST)
+                        }
+                    ],
                     COMPARISON_OPERATOR: operator
                 }
 

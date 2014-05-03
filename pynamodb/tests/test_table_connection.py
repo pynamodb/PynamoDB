@@ -313,6 +313,39 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[1], params)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.put_item(
+                'foo-key',
+                range_key='foo-range-key',
+                attributes={'ForumName': 'foo-value'},
+                conditional_operator='and',
+                expected={
+                    'ForumName': {
+                        'Exists': False
+                    }
+                }
+            )
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'item': {
+                    'ForumName': {
+                        'S': 'foo-value'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'table_name': self.test_table_name,
+                'conditional_operator': 'AND',
+                'expected': {
+                    'ForumName': {
+                        'Exists': False
+                    }
+                }
+            }
+            self.assertEqual(req.call_args[1], params)
+
     def test_batch_write_item(self):
         """
         TableConnection.batch_write_item

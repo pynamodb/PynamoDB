@@ -1,5 +1,14 @@
 Release Notes
 =============
+v1.2.0
+------
+
+:date: 2014-05-02
+
+* Added support for filtering queries on non key attributes (http://aws.amazon.com/blogs/aws/improved-queries-and-updates-for-dynamodb/)
+* Fixed issue with JSON loading where escaped characters caused an error (#17)
+* Minor bug fixes
+
 v1.1.0
 ------
 

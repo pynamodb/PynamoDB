@@ -455,6 +455,38 @@ class ModelTestCase(TestCase):
             args = req.call_args[1]
             self.assertEqual(args, params)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), None
+            item.delete(user_id='bar', email__contains='@', conditional_operator='AND')
+            params = {
+                'key': {
+                    'user_id': {
+                        'S': 'bar'
+                    },
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'expected': {
+                    'email': {
+                        'AttributeValueList': [
+                            {'S': '@'}
+                        ],
+                        'ComparisonOperator': 'CONTAINS'
+                    },
+                    'user_id': {
+                        'Value': {
+                            'S': 'bar'
+                        }
+                    }
+                },
+                'conditional_operator': 'AND',
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'UserModel'
+            }
+            args = req.call_args[1]
+            self.assertEqual(args, params)
+
     def test_update_item(self):
         """
         Model.update_item
@@ -505,7 +537,7 @@ class ModelTestCase(TestCase):
                     }
                 }
             }
-            item.update_item('views', 10, action='add', user_name='foo')
+            item.update_item('views', 10, action='add', user_name='foo', email__not_contains='@')
             args = req.call_args[1]
             params = {
                 'table_name': 'SimpleModel',
@@ -518,7 +550,13 @@ class ModelTestCase(TestCase):
                 'expected': {
                     'user_name': {
                         'Value': {'S': 'foo'}
-                    }
+                    },
+                    'email': {
+                        'AttributeValueList': [
+                            {'S': '@'}
+                        ],
+                        'ComparisonOperator': 'NOT_CONTAINS'
+                    },
                 },
                 'attribute_updates': {
                     'views': {
@@ -629,7 +667,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
-            item.save(user_name='bar')
+            item.save(email__exists=False, zip_code__null=False)
             args = req.call_args[1]
             params = {
                 'item': {
@@ -647,8 +685,50 @@ class ModelTestCase(TestCase):
                     },
                 },
                 'expected': {
+                    'email': {
+                        'Exists': False
+                    },
+                    'zip_code': {
+                        'ComparisonOperator': 'NOT_NULL'
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'UserModel'
+            }
+            self.assertEqual(args, params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {}
+            item.save(user_name='bar', zip_code__null=True, email__contains='@', conditional_operator='OR')
+            args = req.call_args[1]
+            params = {
+                'item': {
+                    'callable_field': {
+                        'N': '42'
+                    },
+                    'email': {
+                        'S': u'needs_email'
+                    },
+                    'user_id': {
+                        'S': u'bar'
+                    },
+                    'user_name': {
+                        'S': u'foo'
+                    },
+                },
+                'conditional_operator': 'OR',
+                'expected': {
                     'user_name': {
                         'Value': {'S': 'bar'}
+                    },
+                    'zip_code': {
+                        'ComparisonOperator': 'NULL'
+                    },
+                    'email': {
+                        'ComparisonOperator': 'CONTAINS',
+                        'AttributeValueList': [
+                            {'S': '@'}
+                        ]
                     }
                 },
                 'return_consumed_capacity': 'TOTAL',
@@ -833,7 +913,11 @@ class ModelTestCase(TestCase):
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
-            for item in UserModel.query('foo', user_id__begins_with='id', email__contains='@'):
+            for item in UserModel.query(
+                    'foo',
+                    user_id__begins_with='id',
+                    email__contains='@',
+                    picture__null=False):
                 queried.append(item._serialize())
             params = {
                 'key_conditions': {
@@ -856,6 +940,9 @@ class ModelTestCase(TestCase):
                             {'S': '@'}
                         ],
                         'ComparisonOperator': 'CONTAINS'
+                    },
+                    'picture': {
+                        'ComparisonOperator': 'NULL'
                     }
                 },
                 'return_consumed_capacity': 'TOTAL',

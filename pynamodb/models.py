@@ -24,9 +24,10 @@ from pynamodb.constants import (
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, COMPARISON_OPERATOR, ATTR_VALUE_LIST,
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
-    PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP,
+    PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP, NOT_NULL,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS)
+    CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
+    DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP)
 
 
 log = logging.getLogger(__name__)
@@ -229,7 +230,9 @@ class Model(with_metaclass(MetaModel)):
         if range_key:
             range_keyname = self._get_meta_data().range_keyname
             if range_keyname is None:
-                raise ValueError("This table has no range key, but a range key value was provided: {0}".format(range_key))
+                raise ValueError(
+                    "This table has no range key, but a range key value was provided: {0}".format(range_key)
+                )
             attrs[range_keyname] = range_key
         self._set_attributes(**attrs)
 
@@ -294,16 +297,17 @@ class Model(with_metaclass(MetaModel)):
                 msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
-    def delete(self, **expected_values):
+    def delete(self, conditional_operator=None, **expected_values):
         """
         Deletes this object from dynamodb
         """
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
         if len(expected_values):
-            kwargs.update(expected=self._build_expected_values(expected_values))
+            kwargs.update(expected=self._build_expected_values(expected_values, DELETE_FILTER_OPERATOR_MAP))
+        kwargs.update(conditional_operator=conditional_operator)
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update_item(self, attribute, value, action=None, **expected_values):
+    def update_item(self, attribute, value, action=None, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -316,7 +320,7 @@ class Model(with_metaclass(MetaModel)):
         """
         args, kwargs = self._get_save_args()
         if len(expected_values):
-            kwargs.update(expected=self._build_expected_values(expected_values))
+            kwargs.update(expected=self._build_expected_values(expected_values, UPDATE_FILTER_OPERATOR_MAP))
         attribute_cls = None
         for attr_name, attr_cls in self._get_attributes().items():
             if attr_name == attribute:
@@ -333,6 +337,7 @@ class Model(with_metaclass(MetaModel)):
             }
         }
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
+        kwargs.update(conditional_operator=conditional_operator)
         data = self._get_connection().update_item(
             *args,
             **kwargs
@@ -344,13 +349,14 @@ class Model(with_metaclass(MetaModel)):
                 setattr(self, name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
-    def save(self, **expected_values):
+    def save(self, conditional_operator=None, **expected_values):
         """
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args()
         if len(expected_values):
-            kwargs.update(expected=self._build_expected_values(expected_values))
+            kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
+        kwargs.update(conditional_operator=conditional_operator)
         data = self._get_connection().put_item(*args, **kwargs)
         if isinstance(data, dict):
             self._throttle.add_record(data.get(CONSUMED_CAPACITY))
@@ -388,10 +394,11 @@ class Model(with_metaclass(MetaModel)):
             range_key=range_key,
             consistent_read=consistent_read
         )
-        cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
-        item_data = data.get(ITEM)
-        if item_data:
-            return cls.from_raw_data(item_data)
+        if data:
+            item_data = data.get(ITEM)
+            if item_data:
+                cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
+                return cls.from_raw_data(item_data)
         else:
             raise cls.DoesNotExist()
 
@@ -497,15 +504,16 @@ class Model(with_metaclass(MetaModel)):
         :param limit: Used to limit the number of results returned
         :param filters: A list of item filters
         """
-        scan_filter, _ = cls._build_filters(
+        key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
-            non_key_operator_map=QUERY_OPERATOR_MAP,
+            non_key_operator_map=SCAN_OPERATOR_MAP,
             **filters
         )
+        key_filter.update(scan_filter)
         data = cls._get_connection().scan(
             segment=segment,
             limit=limit,
-            scan_filter=scan_filter,
+            scan_filter=key_filter,
             total_segments=total_segments
         )
         log.debug("Fetching first scan page")
@@ -532,6 +540,13 @@ class Model(with_metaclass(MetaModel)):
         Returns True if this table exists, False otherwise
         """
         return cls._get_connection().describe_table() is not None
+
+    @classmethod
+    def delete_table(cls):
+        """
+        Delete the table for this model
+        """
+        return cls._get_connection().delete_table()
 
     @classmethod
     def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None):
@@ -572,7 +587,7 @@ class Model(with_metaclass(MetaModel)):
 
     # Private API below
     @classmethod
-    def _build_expected_values(cls, expected_values):
+    def _build_expected_values(cls, expected_values, operator_map=None):
         """
         Builds an appropriate expected value map
 
@@ -580,20 +595,53 @@ class Model(with_metaclass(MetaModel)):
         """
         expected_values_result = collections.OrderedDict()
         attributes = cls._get_attributes()
+        filters = {}
         for attr_name, attr_value in expected_values.items():
             attr_cond = VALUE
             if attr_name.endswith("__exists"):
                 attr_cond = EXISTS
                 attr_name = attr_name[:-8]
             attr_cls = attributes.get(attr_name, None)
-            if attr_cls is not None:
+            if attr_cls is None:
+                filters[attr_name] = attr_value
+            else:
                 if attr_cond == VALUE:
                     attr_value = attr_cls.serialize(attr_value)
                 expected_values_result[attr_cls.attr_name] = {
                     attr_cond: attr_value
                 }
-            else:
-                raise ValueError("Attribute {0} specified for condition does not exist.".format(attr_name))
+        for cond, value in filters.items():
+            attribute = None
+            attribute_class = None
+            for token in cond.split('__'):
+                if attribute is None:
+                    attribute = token
+                    attribute_class = attributes.get(attribute)
+                    if attribute_class is None:
+                        raise ValueError("Attribute {0} specified for expected value does not exist".format(attribute))
+                elif token in operator_map:
+                    if operator_map.get(token) == NULL:
+                        if value:
+                            value = NULL
+                        else:
+                            value = NOT_NULL
+                        condition = {
+                            COMPARISON_OPERATOR: value,
+                        }
+                    else:
+                        if not isinstance(value, list):
+                            value = [value]
+                        condition = {
+                            COMPARISON_OPERATOR: operator_map.get(token),
+                            ATTR_VALUE_LIST: [
+                                {
+                                    ATTR_TYPE_MAP[attribute_class.attr_type]: attribute_class.serialize(val) for val in value
+                                }
+                            ]
+                        }
+                    expected_values_result[attributes.get(attribute).attr_name] = condition
+                else:
+                    raise ValueError("Could not parse expected condition: {0}".format(cond))
         return expected_values_result
 
     @classmethod
@@ -618,20 +666,23 @@ class Model(with_metaclass(MetaModel)):
                     attribute_class = attribute_classes.get(attribute)
                     if attribute_class is None:
                         raise ValueError("Attribute {0} specified for filter does not exist.".format(attribute))
-                    if not isinstance(value, list):
-                        value = [value]
-                    value = [attribute_class.serialize(val) for val in value]
-                elif token in key_operator_map and (attribute_class.is_hash_key or attribute_class.is_range_key):
+                elif token in key_operator_map or token in non_key_operator_map:
+                    if key_operator_map.get(token, '') == NULL or non_key_operator_map.get(token, '') == NULL:
+                        condition = {}
+                    else:
+                        if not isinstance(value, list):
+                            value = [value]
+                        value = [
+                            {ATTR_TYPE_MAP[attribute_class.attr_type]: attribute_class.serialize(val)} for val in value
+                        ]
                         condition = {
-                            COMPARISON_OPERATOR: key_operator_map.get(token),
                             ATTR_VALUE_LIST: value
                         }
+                    if token in key_operator_map and (attribute_class.is_hash_key or attribute_class.is_range_key):
+                        condition.update({COMPARISON_OPERATOR: key_operator_map.get(token)})
                         key_conditions[attribute_classes.get(attribute).attr_name] = condition
-                elif token in non_key_operator_map and not (attribute_class.is_hash_key or attribute_class.is_range_key):
-                        condition = {
-                            COMPARISON_OPERATOR: non_key_operator_map.get(token),
-                            ATTR_VALUE_LIST: value
-                        }
+                    elif token in non_key_operator_map and not (attribute_class.is_hash_key or attribute_class.is_range_key):
+                        condition.update({COMPARISON_OPERATOR: non_key_operator_map.get(token)})
                         query_conditions[attribute_classes.get(attribute).attr_name] = condition
                 elif token not in key_operator_map and token not in non_key_operator_map:
                     raise ValueError(
