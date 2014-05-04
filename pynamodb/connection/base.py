@@ -173,13 +173,14 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None):
+    def __init__(self, region=None, host=None, env=None):
         self._tables = {}
         self.host = host
         if region:
             self.region = region
         else:
             self.region = DEFAULT_REGION
+        self.env = env
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.endpoint.host))
@@ -239,7 +240,7 @@ class Connection(object):
         """
         Returns a valid botocore session
         """
-        return get_session()
+        return get_session(self.env)
 
     @property
     def service(self):
