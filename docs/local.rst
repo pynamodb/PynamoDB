@@ -1,3 +1,5 @@
+.. _local:
+
 Use PynamoDB Locally
 ====================
 
@@ -9,6 +11,13 @@ and `dynalite <https://github.com/mhart/dynalite>`_.
 
 All you need to do is set the ``host`` attribute on your ``Model``'s ``Meta`` class to the hostname and port
 that your server is listening on.
+
+.. note::
+
+    Local implementations of DynamoDB such as DynamoDB Local or dynalite may not be fully featured
+    (and I don't maintain either of those packages), so you may encounter errors or bugs with a
+    local implementation that you would not encounter using DynamoDB.
+
 
 .. code-block:: python
 

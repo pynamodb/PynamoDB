@@ -29,9 +29,13 @@ Topics
    quickstart
    tutorial
    indexes
+   batch
+   conditional
    local
+   examples
    low_level
    awsaccess
+   logging
    contributing
    release_notes
 

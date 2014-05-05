@@ -14,6 +14,8 @@ v1.1.0
 
 :date: 2014-04-14
 
+* PynamoDB now requires botocore version 0.42.0 or greater
+* Improved documentation
 * Minor bug fixes
 * New API endpoint for deleting model tables
 * Support for expected value conditions in item delete, update, and save
