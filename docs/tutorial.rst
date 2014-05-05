@@ -357,6 +357,9 @@ applied with logical OR (at least one must be true) or logical AND (all must be 
 for more details. PynamoDB supports conditionals through keyword arguments, using syntax that is similar to the filter syntax.
 Multiple conditions may be supplied, and each value provided will be serialized using the serializer defined for that attribute.
 
+Specifying that the conditions should be applied with AND or OR is achieved through the use of the `comparison_operator` keyword,
+which can be `and` or `or`.
+
 Conditional Model.save
 ----------------------
 
