@@ -15,6 +15,7 @@ v1.1.0
 :date: 2014-04-14
 
 * Minor bug fixes
+* New API endpoint for deleting model tables
 * Support for expected value conditions in item delete, update, and save
 * Support for limit argument to queries
 * Support for aliased attribute names
