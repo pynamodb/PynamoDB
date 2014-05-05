@@ -352,7 +352,7 @@ Conditional Operations
 ^^^^^^^^^^^^^^^^^^^^^^
 
 Some DynamoDB operations support the inclusion of conditions. The user can supply a list of conditions to be
-evaluated by DynamoDB before the operation is performed, as well as specifying where those conditions are
+evaluated by DynamoDB before the operation is performed, as well as specifying whether those conditions are
 applied with logical OR (at least one must be true) or logical AND (all must be true). See the `official documentation <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItems.html#ConditionalExpressions>`_
 for more details. PynamoDB supports conditionals through keyword arguments, using syntax that is similar to the filter syntax.
 Multiple conditions may be supplied, and each value provided will be serialized using the serializer defined for that attribute.
