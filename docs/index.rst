@@ -38,6 +38,7 @@ Topics
    logging
    contributing
    release_notes
+   versioning
 
 API docs
 ========
