@@ -848,6 +848,18 @@ class ConnectionTestCase(TestCase):
             conn.describe_table(self.test_table_name)
 
         with patch(PATCH_METHOD) as req:
+            req.return_value = HttpBadRequest(), {}
+            conn.describe_table(self.test_table_name)
+            self.assertRaises(
+                TableError,
+                conn.put_item,
+                'foo-key',
+                self.test_table_name,
+                return_values='ALL_NEW',
+                attributes={'ForumName': 'foo-value'}
+            )
+
+        with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), {}
             conn.put_item(
                 self.test_table_name,
