@@ -565,7 +565,7 @@ class Model(with_metaclass(MetaModel)):
             attr_keys = [attr.get(pythonic(ATTR_NAME)) for attr in schema.get(pythonic(ATTR_DEFINITIONS))]
             for attr in index_attrs:
                 attr_name = attr.get(pythonic(ATTR_NAME))
-                if not attr_name in attr_keys:
+                if attr_name not in attr_keys:
                     schema[pythonic(ATTR_DEFINITIONS)].append(attr)
             cls._get_connection().create_table(
                 **schema
