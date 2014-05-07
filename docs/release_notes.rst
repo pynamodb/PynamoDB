@@ -1,5 +1,11 @@
 Release Notes
 =============
+v1.2.1
+
+:date: 2014-05-07
+
+* This is a minor bug fix release, resolving #20.
+
 v1.2.0
 ------
 
