@@ -1071,6 +1071,10 @@ class ModelTestCase(TestCase):
             CustomAttrNameModel._get_meta_data()
 
         with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {"ConsumedCapacity": {"CapacityUnits": 0.5, "TableName": "UserModel"}}
+            self.assertRaises(CustomAttrNameModel.DoesNotExist, CustomAttrNameModel.get, 'foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
             self.assertRaises(CustomAttrNameModel.DoesNotExist, CustomAttrNameModel.get, 'foo', 'bar')
 

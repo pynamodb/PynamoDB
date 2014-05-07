@@ -396,8 +396,7 @@ class Model(with_metaclass(MetaModel)):
             if item_data:
                 cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
                 return cls.from_raw_data(item_data)
-        else:
-            raise cls.DoesNotExist()
+        raise cls.DoesNotExist()
 
     @classmethod
     def from_raw_data(cls, data):
