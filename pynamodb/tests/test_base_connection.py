@@ -140,6 +140,8 @@ class ConnectionTestCase(TestCase):
                 self.test_table_name,
                 **kwargs
             )
+            # Ensure that the hash key is first when creating indexes
+            self.assertEqual(req.call_args[1]['global_secondary_indexes'][0]['KeySchema'][0]['KeyType'], 'HASH')
             self.assertEqual(req.call_args[1], params)
         del(kwargs['global_secondary_indexes'])
         del(params['global_secondary_indexes'])
