@@ -1,6 +1,14 @@
 Release Notes
 =============
+v1.2.2
+------
+
+:date: 2014-05-14
+
+* This is a minor bug fix release, resolving #21 (key_schema ordering for create_table).
+
 v1.2.1
+------
 
 :date: 2014-05-07
 
