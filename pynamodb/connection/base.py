@@ -299,7 +299,7 @@ class Connection(object):
             for index in global_secondary_indexes:
                 global_secondary_indexes_list.append({
                     INDEX_NAME: index.get(pythonic(INDEX_NAME)),
-                    KEY_SCHEMA: index.get(pythonic(KEY_SCHEMA)),
+                    KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
                     PROJECTION: index.get(pythonic(PROJECTION)),
                     PROVISIONED_THROUGHPUT: index.get(pythonic(PROVISIONED_THROUGHPUT))
                 })
@@ -320,7 +320,7 @@ class Connection(object):
             for index in local_secondary_indexes:
                 local_secondary_indexes_list.append({
                     INDEX_NAME: index.get(pythonic(INDEX_NAME)),
-                    KEY_SCHEMA: index.get(pythonic(KEY_SCHEMA)),
+                    KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)), 
                     PROJECTION: index.get(pythonic(PROJECTION)),
                 })
             operation_kwargs[pythonic(LOCAL_SECONDARY_INDEXES)] = local_secondary_indexes_list
