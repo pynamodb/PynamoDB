@@ -52,6 +52,7 @@ class EmailIndex(GlobalSecondaryIndex):
     A global secondary index for email addresses
     """
     class Meta:
+        index_name = 'custom_idx_name'
         read_capacity_units = 2
         write_capacity_units = 1
         projection = AllProjection()
@@ -73,6 +74,7 @@ class LocalEmailIndex(LocalSecondaryIndex):
 
 class NonKeyAttrIndex(LocalSecondaryIndex):
     class Meta:
+        index_name = "non_key_idx"
         read_capacity_units = 2
         write_capacity_units = 1
         projection = IncludeProjection(non_attr_keys=['numbers'])
@@ -1261,6 +1263,8 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
             LocalIndexedModel._get_meta_data()
 
+        self.assertEqual(IndexedModel.include_index.Meta.index_name, "non_key_idx")
+
         queried = []
         with patch(PATCH_METHOD) as req:
             with self.assertRaises(ValueError):
@@ -1309,7 +1313,7 @@ class ModelTestCase(TestCase):
                         ]
                     }
                 },
-                'index_name': 'email_index',
+                'index_name': 'custom_idx_name',
                 'table_name': 'IndexedModel',
                 'return_consumed_capacity': 'TOTAL',
                 'limit': 2

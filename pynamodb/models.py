@@ -156,7 +156,8 @@ class MetaModel(type):
                         setattr(attr_obj, HOST, None)
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
-                    attr_obj.Meta.index_name = attr_name
+                    if not hasattr(attr_obj.Meta, "index_name"):
+                        attr_obj.Meta.index_name = attr_name
                 elif issubclass(attr_obj.__class__, (Attribute, )):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
@@ -736,7 +737,7 @@ class Model(with_metaclass(MetaModel)):
                     continue
                 if issubclass(item_cls, (Index, )):
                     item_cls = getattr(cls, item)
-                    cls._index_classes[item] = item_cls
+                    cls._index_classes[item_cls.Meta.index_name] = item_cls
                     schema = item_cls.get_schema()
                     idx = {
                         pythonic(INDEX_NAME): item,

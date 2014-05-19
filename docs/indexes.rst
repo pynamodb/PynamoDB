@@ -9,7 +9,9 @@ Index Settings
 ^^^^^^^^^^^^^^
 
 The ``Meta`` class is required with at least the ``projection`` class attribute to specify the projection type. For Global secondary indexes,
-the ``read_capacity_units`` and ``write_capacity_units`` also need to be provided.
+the ``read_capacity_units`` and ``write_capacity_units`` also need to be provided. By default, PynamoDB will use the class attribute
+name that you provide on the model as the ``index_name`` used when making requests to the DynamoDB API. You can override the default
+name by providing the ``index_name`` class attribute in the ``Meta`` class of the index.
 
 
 Global Secondary Indexes
@@ -28,6 +30,8 @@ Indexes are defined as classes, just like models. Here is a simple index class:
         This class represents a global secondary index
         """
         class Meta
+            # index_name is optional, but can be provided to override the default name
+            index_name = 'foo-index'
             read_capacity_units = 2
             write_capacity_units = 1
             # All attributes are projected
