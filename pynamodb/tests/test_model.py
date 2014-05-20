@@ -52,6 +52,7 @@ class EmailIndex(GlobalSecondaryIndex):
     A global secondary index for email addresses
     """
     class Meta:
+        index_name = 'custom_idx_name'
         read_capacity_units = 2
         write_capacity_units = 1
         projection = AllProjection()
@@ -73,6 +74,7 @@ class LocalEmailIndex(LocalSecondaryIndex):
 
 class NonKeyAttrIndex(LocalSecondaryIndex):
     class Meta:
+        index_name = "non_key_idx"
         read_capacity_units = 2
         write_capacity_units = 1
         projection = IncludeProjection(non_attr_keys=['numbers'])
@@ -160,6 +162,8 @@ class UserModel(Model):
     """
     class Meta:
         table_name = 'UserModel'
+        read_capacity_units = 25
+        write_capacity_units = 25
     custom_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
     user_id = UnicodeAttribute(range_key=True)
     picture = BinaryAttribute(null=True)
@@ -269,6 +273,10 @@ class ModelTestCase(TestCase):
             HostSpecificModel.create_table(read_capacity_units=2, write_capacity_units=2)
             self.assertEqual(req.call_args[0][0].host, 'http://localhost')
 
+        # A table with a specified capacity
+        self.assertEqual(UserModel.Meta.read_capacity_units, 25)
+        self.assertEqual(UserModel.Meta.write_capacity_units, 25)
+
         def fake_wait(obj, **kwargs):
             if scope_args['count'] == 0:
                 scope_args['count'] += 1
@@ -286,7 +294,35 @@ class ModelTestCase(TestCase):
 
         scope_args = {'count': 0}
         with patch(PATCH_METHOD, new=mock_wait) as req:
-            UserModel.create_table(read_capacity_units=2, write_capacity_units=2, wait=True)
+            UserModel.create_table(wait=True)
+            params = {
+                'attribute_definitions': [
+                    {
+                        'AttributeName': 'user_name',
+                        'AttributeType': 'S'
+                    },
+                    {
+                        'AttributeName': 'user_id',
+                        'AttributeType': 'S'
+                    }
+                ],
+                'key_schema': [
+                    {
+                        'AttributeName': 'user_name',
+                        'KeyType': 'HASH'
+                    },
+                    {
+                        'AttributeName': 'user_id',
+                        'KeyType': 'RANGE'
+                    }
+                ],
+                'provisioned_throughput': {
+                    'ReadCapacityUnits': 25, 'WriteCapacityUnits': 25
+                },
+                'table_name': 'UserModel'
+            }
+
+            self.assertEqual(req.call_args_list[1][1], params)
 
         def bad_server(obj, **kwargs):
             if scope_args['count'] == 0:
@@ -942,7 +978,7 @@ class ModelTestCase(TestCase):
                         'ComparisonOperator': 'CONTAINS'
                     },
                     'picture': {
-                        'ComparisonOperator': 'NULL'
+                        'ComparisonOperator': 'NOT_NULL'
                     }
                 },
                 'return_consumed_capacity': 'TOTAL',
@@ -1005,7 +1041,7 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item in UserModel.scan(user_id__contains='tux'):
+            for item in UserModel.scan(user_id__contains='tux', zip_code__null=False, email__null=True):
                 self.assertIsNotNone(item)
             params = {
                 'return_consumed_capacity': 'TOTAL',
@@ -1015,6 +1051,12 @@ class ModelTestCase(TestCase):
                             {'S': 'tux'}
                         ],
                         'ComparisonOperator': 'CONTAINS'
+                    },
+                    'zip_code': {
+                        'ComparisonOperator': 'NOT_NULL'
+                    },
+                    'email': {
+                        'ComparisonOperator': 'NULL'
                     }
                 },
                 'table_name': 'UserModel'
@@ -1261,6 +1303,8 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
             LocalIndexedModel._get_meta_data()
 
+        self.assertEqual(IndexedModel.include_index.Meta.index_name, "non_key_idx")
+
         queried = []
         with patch(PATCH_METHOD) as req:
             with self.assertRaises(ValueError):
@@ -1309,7 +1353,7 @@ class ModelTestCase(TestCase):
                         ]
                     }
                 },
-                'index_name': 'email_index',
+                'index_name': 'custom_idx_name',
                 'table_name': 'IndexedModel',
                 'return_consumed_capacity': 'TOTAL',
                 'limit': 2

@@ -11,6 +11,8 @@ class ViewIndex(GlobalSecondaryIndex):
     This class represents a global secondary index
     """
     class Meta:
+        # You can override the index name by setting it below
+        index_name = "viewIdx"
         read_capacity_units = 1
         write_capacity_units = 1
         # All attributes are projected

@@ -156,7 +156,8 @@ class MetaModel(type):
                         setattr(attr_obj, HOST, None)
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
-                    attr_obj.Meta.index_name = attr_name
+                    if not hasattr(attr_obj.Meta, "index_name"):
+                        attr_obj.Meta.index_name = attr_name
                 elif issubclass(attr_obj.__class__, (Attribute, )):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
@@ -555,8 +556,14 @@ class Model(with_metaclass(MetaModel)):
         """
         if not cls.exists():
             schema = cls._get_schema()
-            schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
-            schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+            if hasattr(cls.Meta, pythonic(READ_CAPACITY_UNITS)):
+                schema[pythonic(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
+            if hasattr(cls.Meta, pythonic(WRITE_CAPACITY_UNITS)):
+                schema[pythonic(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
+            if read_capacity_units is not None:
+                schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
+            if write_capacity_units is not None:
+                schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
             index_data = cls._get_indexes()
             schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
             schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
@@ -664,6 +671,10 @@ class Model(with_metaclass(MetaModel)):
                         raise ValueError("Attribute {0} specified for filter does not exist.".format(attribute))
                 elif token in key_operator_map or token in non_key_operator_map:
                     if key_operator_map.get(token, '') == NULL or non_key_operator_map.get(token, '') == NULL:
+                        if value:
+                            token = pythonic(NULL)
+                        else:
+                            token = pythonic(NOT_NULL)
                         condition = {}
                     else:
                         if not isinstance(value, list):
@@ -736,7 +747,7 @@ class Model(with_metaclass(MetaModel)):
                     continue
                 if issubclass(item_cls, (Index, )):
                     item_cls = getattr(cls, item)
-                    cls._index_classes[item] = item_cls
+                    cls._index_classes[item_cls.Meta.index_name] = item_cls
                     schema = item_cls.get_schema()
                     idx = {
                         pythonic(INDEX_NAME): item,

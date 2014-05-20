@@ -114,7 +114,7 @@ INDEX_TABLE_DATA = {
         ],
         "LocalSecondaryIndexes": [
             {
-                "IndexName": "email_index",
+                "IndexName": "custom_idx_name",
                 "IndexSizeBytes": 0,
                 "ItemCount": 0,
                 "KeySchema": [
