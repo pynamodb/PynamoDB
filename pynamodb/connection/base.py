@@ -792,13 +792,14 @@ class Connection(object):
                 if operator not in SCAN_FILTER_VALUES:
                     raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, SCAN_FILTER_VALUES))
                 values = []
-                for value in condition.get(ATTR_VALUE_LIST):
+                for value in condition.get(ATTR_VALUE_LIST, []):
                     attr_type = self.get_attribute_type(table_name, key, value)
                     values.append({attr_type: self.parse_attribute(value)})
                 operation_kwargs[pythonic(SCAN_FILTER)][key] = {
-                    ATTR_VALUE_LIST: values,
                     COMPARISON_OPERATOR: operator
                 }
+                if len(values):
+                    operation_kwargs[pythonic(SCAN_FILTER)][key][ATTR_VALUE_LIST] = values
         response, data = self.dispatch(SCAN, operation_kwargs)
         if not response.ok:
             raise ScanError("Failed to scan table: {0}".format(response.content))

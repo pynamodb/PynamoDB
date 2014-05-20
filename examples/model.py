@@ -29,7 +29,7 @@ class Thread(Model):
     replies = NumberAttribute(default=0)
     answered = NumberAttribute(default=0)
     tags = UnicodeSetAttribute()
-    last_post_datetime = UTCDateTimeAttribute()
+    last_post_datetime = UTCDateTimeAttribute(null=True)
 
 # Delete the table
 # print(Thread.delete_table())
@@ -141,6 +141,10 @@ for item in Thread.query('forum-1', views__eq=0):
 
 # Scan with filters
 for item in Thread.scan(subject__begins_with='subject', views__ge=0):
+    print("Scanned item: {0} {1}".format(item.subject, item.views))
+
+# Scan with null filter
+for item in Thread.scan(subject__begins_with='subject', last_post_datetime__null=True):
     print("Scanned item: {0} {1}".format(item.subject, item.views))
 
 # Conditionally save an item

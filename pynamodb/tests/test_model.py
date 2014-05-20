@@ -1041,7 +1041,7 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            for item in UserModel.scan(user_id__contains='tux'):
+            for item in UserModel.scan(user_id__contains='tux', zip_code__null=False, email__null=True):
                 self.assertIsNotNone(item)
             params = {
                 'return_consumed_capacity': 'TOTAL',
@@ -1051,6 +1051,12 @@ class ModelTestCase(TestCase):
                             {'S': 'tux'}
                         ],
                         'ComparisonOperator': 'CONTAINS'
+                    },
+                    'zip_code': {
+                        'ComparisonOperator': 'NULL'
+                    },
+                    'email': {
+                        'ComparisonOperator': 'NULL'
                     }
                 },
                 'table_name': 'UserModel'
