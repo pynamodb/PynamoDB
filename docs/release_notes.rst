@@ -1,5 +1,16 @@
 Release Notes
 =============
+v1.3.0
+------
+
+:date: 2014-05-20
+
+* This is a minor release, with new backward compatible features and bug fixes.
+* Fixed bug where NULL and NOT_NULL were not set properly in query and scan operations (#24)
+* Support for specifying the index_name as a Index.Meta attribute (#23)
+* Support for specifying read and write capacity in Model.Meta (#22)
+
+
 v1.2.2
 ------
 
