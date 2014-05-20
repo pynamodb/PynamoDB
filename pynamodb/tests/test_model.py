@@ -978,7 +978,7 @@ class ModelTestCase(TestCase):
                         'ComparisonOperator': 'CONTAINS'
                     },
                     'picture': {
-                        'ComparisonOperator': 'NULL'
+                        'ComparisonOperator': 'NOT_NULL'
                     }
                 },
                 'return_consumed_capacity': 'TOTAL',
@@ -1053,7 +1053,7 @@ class ModelTestCase(TestCase):
                         'ComparisonOperator': 'CONTAINS'
                     },
                     'zip_code': {
-                        'ComparisonOperator': 'NULL'
+                        'ComparisonOperator': 'NOT_NULL'
                     },
                     'email': {
                         'ComparisonOperator': 'NULL'

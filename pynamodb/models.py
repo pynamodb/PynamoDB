@@ -671,6 +671,10 @@ class Model(with_metaclass(MetaModel)):
                         raise ValueError("Attribute {0} specified for filter does not exist.".format(attribute))
                 elif token in key_operator_map or token in non_key_operator_map:
                     if key_operator_map.get(token, '') == NULL or non_key_operator_map.get(token, '') == NULL:
+                        if value:
+                            token = pythonic(NULL)
+                        else:
+                            token = pythonic(NOT_NULL)
                         condition = {}
                     else:
                         if not isinstance(value, list):
