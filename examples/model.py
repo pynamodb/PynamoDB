@@ -19,6 +19,8 @@ log.propagate = True
 
 class Thread(Model):
     class Meta:
+        read_capacity_units = 1
+        write_capacity_units = 1
         table_name = "Thread"
         host = "http://localhost:8000"
     forum_name = UnicodeAttribute(hash_key=True)
@@ -34,7 +36,7 @@ class Thread(Model):
 
 # Create the table
 if not Thread.exists():
-    Thread.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+    Thread.create_table(wait=True)
 
 # Create a thread
 thread_item = Thread(

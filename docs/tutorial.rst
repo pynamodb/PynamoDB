@@ -80,7 +80,8 @@ Model Settings
 
 The ``Meta`` class is required with at least the ``table_name`` class attribute to tell the model which DynamoDB table to use -
 ``Meta`` can be used to configure the model in other ways too. You can specify which DynamoDB region to use with the  ``region``,
-and the URL endpoint for DynamoDB can be specified using the  ``host`` attribute.
+and the URL endpoint for DynamoDB can be specified using the  ``host`` attribute. You can also specify the table's read and write
+capacity by adding ``read_capacity_units`` and ``write_capacity_units`` attributes.
 
 Here is an example that specifies both the ``host`` and the ``region`` to use:
 
@@ -97,6 +98,10 @@ Here is an example that specifies both the ``host`` and the ``region`` to use:
             region = 'us-west-1'
             # Specifies the hostname
             host = 'http://localhost'
+            # Specifies the write capacity
+            write_capacity_units = 10
+            # Specifies the read capacity
+            read_capacity_units = 10
         forum_name = UnicodeAttribute(hash_key=True)
 
 Defining Model Attributes

@@ -162,6 +162,8 @@ class UserModel(Model):
     """
     class Meta:
         table_name = 'UserModel'
+        read_capacity_units = 25
+        write_capacity_units = 25
     custom_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
     user_id = UnicodeAttribute(range_key=True)
     picture = BinaryAttribute(null=True)
@@ -271,6 +273,10 @@ class ModelTestCase(TestCase):
             HostSpecificModel.create_table(read_capacity_units=2, write_capacity_units=2)
             self.assertEqual(req.call_args[0][0].host, 'http://localhost')
 
+        # A table with a specified capacity
+        self.assertEqual(UserModel.Meta.read_capacity_units, 25)
+        self.assertEqual(UserModel.Meta.write_capacity_units, 25)
+
         def fake_wait(obj, **kwargs):
             if scope_args['count'] == 0:
                 scope_args['count'] += 1
@@ -288,7 +294,35 @@ class ModelTestCase(TestCase):
 
         scope_args = {'count': 0}
         with patch(PATCH_METHOD, new=mock_wait) as req:
-            UserModel.create_table(read_capacity_units=2, write_capacity_units=2, wait=True)
+            UserModel.create_table(wait=True)
+            params = {
+                'attribute_definitions': [
+                    {
+                        'AttributeName': 'user_name',
+                        'AttributeType': 'S'
+                    },
+                    {
+                        'AttributeName': 'user_id',
+                        'AttributeType': 'S'
+                    }
+                ],
+                'key_schema': [
+                    {
+                        'AttributeName': 'user_name',
+                        'KeyType': 'HASH'
+                    },
+                    {
+                        'AttributeName': 'user_id',
+                        'KeyType': 'RANGE'
+                    }
+                ],
+                'provisioned_throughput': {
+                    'ReadCapacityUnits': 25, 'WriteCapacityUnits': 25
+                },
+                'table_name': 'UserModel'
+            }
+
+            self.assertEqual(req.call_args_list[1][1], params)
 
         def bad_server(obj, **kwargs):
             if scope_args['count'] == 0:

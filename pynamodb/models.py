@@ -556,8 +556,14 @@ class Model(with_metaclass(MetaModel)):
         """
         if not cls.exists():
             schema = cls._get_schema()
-            schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
-            schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+            if hasattr(cls.Meta, pythonic(READ_CAPACITY_UNITS)):
+                schema[pythonic(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
+            if hasattr(cls.Meta, pythonic(WRITE_CAPACITY_UNITS)):
+                schema[pythonic(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
+            if read_capacity_units is not None:
+                schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
+            if write_capacity_units is not None:
+                schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
             index_data = cls._get_indexes()
             schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
             schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
