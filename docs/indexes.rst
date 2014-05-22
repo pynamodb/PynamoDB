@@ -29,7 +29,7 @@ Indexes are defined as classes, just like models. Here is a simple index class:
         """
         This class represents a global secondary index
         """
-        class Meta
+        class Meta:
             # index_name is optional, but can be provided to override the default name
             index_name = 'foo-index'
             read_capacity_units = 2
