@@ -171,30 +171,31 @@ class AttributeDict(collections.MutableMapping):
     A dictionary that stores attributes by two keys
     """
     def __init__(self, *args, **kwargs):
-        self.values = collections.OrderedDict()
-        self.alt_values = collections.OrderedDict()
+        self._values = collections.OrderedDict()
+        self._alt_values = collections.OrderedDict()
         self.update(dict(*args, **kwargs))
 
     def __getitem__(self, key):
-        if key in self.alt_values:
-            return self.alt_values[key]
-        return self.values[key]
+        if key in self._alt_values:
+            return self._alt_values[key]
+        return self._values[key]
 
     def __setitem__(self, key, value):
-        self.values[value.attr_name] = value
-        self.alt_values[key] = value
+        if value.attr_name is not None:
+            self._values[value.attr_name] = value
+        self._alt_values[key] = value
 
     def __delitem__(self, key):
-        del self.values[key]
+        del self._values[key]
 
     def __iter__(self):
-        return iter(self.values)
+        return iter(self._alt_values)
 
     def __len__(self):
-        return len(self.values)
+        return len(self._values)
 
     def aliased_attrs(self):
-        return self.alt_values.items()
+        return self._alt_values.items()
 
 
 class Model(with_metaclass(MetaModel)):
@@ -451,12 +452,23 @@ class Model(with_metaclass(MetaModel)):
         cls._get_indexes()
         if index_name:
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
+            key_attribute_classes = cls._index_classes[index_name]._get_attributes()
+            non_key_attribute_classes = cls._get_attributes()
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
+            non_key_attribute_classes = AttributeDict()
+            key_attribute_classes = AttributeDict()
+            for name, attr in cls._get_attributes().items():
+                if attr.is_range_key or attr.is_hash_key:
+                    key_attribute_classes[name] = attr
+                else:
+                    non_key_attribute_classes[name] = attr
         key_conditions, query_filters = cls._build_filters(
             QUERY_OPERATOR_MAP,
             non_key_operator_map=QUERY_FILTER_OPERATOR_MAP,
-            **filters)
+            key_attribute_classes=key_attribute_classes,
+            non_key_attribute_classes=non_key_attribute_classes,
+            filters=filters)
         log.debug("Fetching first query page")
         data = cls._get_connection().query(
             hash_key,
@@ -504,7 +516,8 @@ class Model(with_metaclass(MetaModel)):
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
             non_key_operator_map=SCAN_OPERATOR_MAP,
-            **filters
+            key_attribute_classes=cls._get_attributes(),
+            filters=filters
         )
         key_filter.update(scan_filter)
         data = cls._get_connection().scan(
@@ -648,7 +661,26 @@ class Model(with_metaclass(MetaModel)):
         return expected_values_result
 
     @classmethod
-    def _build_filters(cls, key_operator_map, non_key_operator_map=None, **filters):
+    def _tokenize_filters(cls, filters):
+        """
+        Tokenizes filters in the attribute name, operator, and value
+        """
+        filters = filters or {}
+        for query, value in filters.items():
+            attribute = None
+            for token in query.split('__'):
+                if attribute is None:
+                    attribute = token
+                else:
+                    yield attribute, token, value
+
+    @classmethod
+    def _build_filters(cls,
+                       key_operator_map,
+                       non_key_operator_map=None,
+                       key_attribute_classes=None,
+                       non_key_attribute_classes=None,
+                       filters=None):
         """
         Builds an appropriate condition map
 
@@ -658,48 +690,45 @@ class Model(with_metaclass(MetaModel)):
         """
         key_conditions = collections.OrderedDict()
         query_conditions = collections.OrderedDict()
-        attribute_classes = cls._get_attributes()
-        if non_key_operator_map is None:
-            non_key_operator_map = {}
-        for query, value in filters.items():
-            attribute = None
-            for token in query.split('__'):
-                if attribute is None:
-                    attribute = token
-                    attribute_class = attribute_classes.get(attribute)
-                    if attribute_class is None:
-                        raise ValueError("Attribute {0} specified for filter does not exist.".format(attribute))
-                elif token in key_operator_map or token in non_key_operator_map:
-                    if key_operator_map.get(token, '') == NULL or non_key_operator_map.get(token, '') == NULL:
-                        if value:
-                            token = pythonic(NULL)
-                        else:
-                            token = pythonic(NOT_NULL)
-                        condition = {}
-                    else:
-                        if not isinstance(value, list):
-                            value = [value]
-                        value = [
-                            {ATTR_TYPE_MAP[attribute_class.attr_type]: attribute_class.serialize(val)} for val in value
-                        ]
-                        condition = {
-                            ATTR_VALUE_LIST: value
-                        }
-                    if token in key_operator_map and (attribute_class.is_hash_key or attribute_class.is_range_key):
-                        condition.update({COMPARISON_OPERATOR: key_operator_map.get(token)})
-                        key_conditions[attribute_classes.get(attribute).attr_name] = condition
-                    elif token in non_key_operator_map and not (attribute_class.is_hash_key or attribute_class.is_range_key):
-                        condition.update({COMPARISON_OPERATOR: non_key_operator_map.get(token)})
-                        query_conditions[attribute_classes.get(attribute).attr_name] = condition
-                elif token not in key_operator_map and token not in non_key_operator_map:
-                    raise ValueError(
-                        "{0} is not a valid filter. Must be one of {1} {2}".format(
-                            token,
-                            key_operator_map.keys(), non_key_operator_map.keys()
-                        )
+        non_key_operator_map = non_key_operator_map or {}
+        key_attribute_classes = key_attribute_classes or {}
+        for attr_name, operator, value in cls._tokenize_filters(filters):
+            attribute_class = key_attribute_classes.get(attr_name, None)
+            if attribute_class is None:
+                attribute_class = non_key_attribute_classes.get(attr_name, None)
+            if attribute_class is None:
+                raise ValueError("Attribute {0} specified for filter does not exist.".format(attr_name))
+            attribute_name = attribute_class.attr_name
+            if operator not in key_operator_map and operator not in non_key_operator_map:
+                raise ValueError(
+                    "{0} is not a valid filter. Must be one of {1} {2}".format(
+                        operator,
+                        key_operator_map.keys(), non_key_operator_map.keys()
                     )
+                )
+            if key_operator_map.get(operator, '') == NULL or non_key_operator_map.get(operator, '') == NULL:
+                if value:
+                    operator = pythonic(NULL)
                 else:
-                    raise ValueError("Could not parse filter: {0}".format(query))
+                    operator = pythonic(NOT_NULL)
+                condition = {}
+            else:
+                if not isinstance(value, list):
+                    value = [value]
+                value = [
+                    {ATTR_TYPE_MAP[attribute_class.attr_type]: attribute_class.serialize(val)} for val in value
+                ]
+                condition = {
+                    ATTR_VALUE_LIST: value
+                }
+            if operator in key_operator_map and (attribute_class.is_hash_key or attribute_class.is_range_key):
+                condition.update({COMPARISON_OPERATOR: key_operator_map.get(operator)})
+                key_conditions[attribute_name] = condition
+            elif operator in non_key_operator_map and not (attribute_class.is_hash_key or attribute_class.is_range_key):
+                condition.update({COMPARISON_OPERATOR: non_key_operator_map.get(operator)})
+                query_conditions[attribute_name] = condition
+            else:
+                raise ValueError("Invalid filter specified: {0} {1} {2}".format(attribute_name, operator, value))
         return key_conditions, query_conditions
 
     @classmethod
@@ -748,9 +777,9 @@ class Model(with_metaclass(MetaModel)):
                 if issubclass(item_cls, (Index, )):
                     item_cls = getattr(cls, item)
                     cls._index_classes[item_cls.Meta.index_name] = item_cls
-                    schema = item_cls.get_schema()
+                    schema = item_cls._get_schema()
                     idx = {
-                        pythonic(INDEX_NAME): item,
+                        pythonic(INDEX_NAME): item_cls.Meta.index_name,
                         pythonic(KEY_SCHEMA): schema.get(pythonic(KEY_SCHEMA)),
                         pythonic(PROJECTION): {
                             PROJECTION_TYPE: item_cls.Meta.projection.projection_type,

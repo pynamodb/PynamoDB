@@ -57,7 +57,7 @@ class EmailIndex(GlobalSecondaryIndex):
         write_capacity_units = 1
         projection = AllProjection()
     email = UnicodeAttribute(hash_key=True)
-    numbers = NumberSetAttribute(range_key=True)
+    alt_numbers = NumberSetAttribute(range_key=True, attr_name='numbers')
 
 
 class LocalEmailIndex(LocalSecondaryIndex):
@@ -1370,7 +1370,11 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK({'Items': items}), {'Items': items}
             queried = []
 
-            for item in LocalIndexedModel.email_index.query('foo', limit=1, user_name__begins_with='bar'):
+            for item in LocalIndexedModel.email_index.query(
+                    'foo',
+                    limit=1,
+                    user_name__begins_with='bar',
+                    aliases__contains=1):
                 queried.append(item._serialize())
 
             params = {
@@ -1390,6 +1394,16 @@ class ModelTestCase(TestCase):
                                 'S': u'foo'
                             }
                         ]
+                    }
+                },
+                'query_filter': {
+                    'aliases': {
+                        'AttributeValueList': [
+                            {
+                                'SS': ['1']
+                            }
+                        ],
+                        'ComparisonOperator': 'CONTAINS'
                     }
                 },
                 'index_name': 'email_index',
@@ -1469,7 +1483,7 @@ class ModelTestCase(TestCase):
                     {'AttributeName': 'email', 'KeyType': 'HASH'}
                 ]
             }
-            schema = IndexedModel.email_index.get_schema()
+            schema = IndexedModel.email_index._get_schema()
             args = req.call_args[1]
             self.assertEqual(
                 args['global_secondary_indexes'][0]['ProvisionedThroughput'],
@@ -1568,7 +1582,7 @@ class ModelTestCase(TestCase):
                     }
                 ]
             })
-            schema = LocalIndexedModel.email_index.get_schema()
+            schema = LocalIndexedModel.email_index._get_schema()
             args = req.call_args[1]
             self.assert_dict_lists_equal(schema['attribute_definitions'], params['attribute_definitions'])
             self.assert_dict_lists_equal(schema['key_schema'], params['key_schema'])

@@ -19,10 +19,15 @@ class IndexMeta(type):
     that contains the index settings
     """
     def __init__(cls, name, bases, attrs):
-        if META_CLASS_NAME in attrs:
-            meta_cls = attrs.get(META_CLASS_NAME)
-            if meta_cls is not None:
-                meta_cls.attributes = None
+        if isinstance(attrs, dict):
+            for attr_name, attr_obj in attrs.items():
+                if attr_name == META_CLASS_NAME:
+                    meta_cls = attrs.get(META_CLASS_NAME)
+                    if meta_cls is not None:
+                        meta_cls.attributes = None
+                elif issubclass(attr_obj.__class__, (Attribute, )):
+                    if attr_obj.attr_name is None:
+                        attr_obj.attr_name = attr_name
 
 
 class Index(with_metaclass(IndexMeta)):
@@ -49,30 +54,30 @@ class Index(with_metaclass(IndexMeta)):
         """
         Returns the attribute class for the hash key
         """
-        for attr_cls in cls.get_attributes().values():
+        for attr_cls in cls._get_attributes().values():
             if attr_cls.is_hash_key:
                 return attr_cls
 
     @classmethod
-    def get_schema(cls):
+    def _get_schema(cls):
         """
         Returns the schema for this index
         """
         attr_definitions = []
         schema = []
-        for attr_name, attr_cls in cls.get_attributes().items():
+        for attr_name, attr_cls in cls._get_attributes().items():
             attr_definitions.append({
-                pythonic(ATTR_NAME): attr_name,
+                pythonic(ATTR_NAME): attr_cls.attr_name,
                 pythonic(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
             })
             if attr_cls.is_hash_key:
                 schema.append({
-                    ATTR_NAME: attr_name,
+                    ATTR_NAME: attr_cls.attr_name,
                     KEY_TYPE: HASH
                 })
             elif attr_cls.is_range_key:
                 schema.append({
-                    ATTR_NAME: attr_name,
+                    ATTR_NAME: attr_cls.attr_name,
                     KEY_TYPE: RANGE
                 })
         return {
@@ -81,7 +86,7 @@ class Index(with_metaclass(IndexMeta)):
         }
 
     @classmethod
-    def get_attributes(cls):
+    def _get_attributes(cls):
         """
         Returns the list of attributes for this class
         """
