@@ -39,8 +39,8 @@ Each example is configured to use ``http://localhost:8000`` as the DynamoDB endp
 to edit an example and either remove the ``host`` setting (causing PynamoDB to use a default), or
 specify your own.
 
-Running the examples
-^^^^^^^^^^^^^^^^^^^^
+Running an example
+^^^^^^^^^^^^^^^^^^
 
 Each example file can be executed as a script by a Python interpreter::
 
