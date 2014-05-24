@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>A DynamoDB Powered URL Shortener</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    </head>
+    <body style="margin-top: 30px;">
+        <!--[if lt IE 7]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+    <div class="container">
+        <div id="main" class="jumbotron">
+            <h3 class="text-center">A URL shortener, powered by Python & DynamoDB</h3>
+            <div class="form-group">
+                <input id="url" type="text" class="form-control" placeholder="Enter a URL to shorten">
+            </div>
+            <div class="form-group text-center">
+                <button id="shorten" type="submit" class="btn btn-lg btn-primary text-center">Shorten</button>
+            </div>
+        </div>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script type="text/javascript">
+            $("#shorten").click(function () {
+                console.log($("#url").val());
+                $.ajax({
+                    url: '/shorten/' + $("#url").val(),
+                    success: function(data){
+                        $("#main").append(
+                                "<div class='alert alert-info'><h3><a href='/" + data + "'>http://localhost:5000/" + data + "</a></h3></div>"
+                        );
+                    }
+                });
+            });
+        </script>
+    </div>
+    </body>
+</html>
