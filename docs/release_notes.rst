@@ -3,9 +3,11 @@ Release Notes
 v1.3.1
 ------
 
-:date: 2014-05-24
+:date: 2014-05-26
 
 * This is a bug fix release, ensuring that KeyCondition and QueryFilter arguments are constructed correctly (#25).
+* Added an example URL shortener to the examples.
+* Minor documentation fixes.
 
 
 v1.3.0
