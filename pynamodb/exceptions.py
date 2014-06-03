@@ -1,5 +1,5 @@
 """
-Pynamodb exceptions
+PynamoDB exceptions
 """
 
 
@@ -7,18 +7,16 @@ class PynamoDBException(Exception):
     """
     A common exception class
     """
-    pass
+    def __init__(self, msg=None):
+        self.msg = msg or self.msg
+        super(PynamoDBException, self).__init__(self.msg)
 
 
 class PynamoDBConnectionError(PynamoDBException):
     """
     A base class for connection errors
     """
-
     msg = "Connection Error"
-
-    def __init__(self, msg=None):
-        super(PynamoDBConnectionError, self).__init__(msg)
 
 
 class DeleteError(PynamoDBConnectionError):
@@ -75,3 +73,12 @@ class DoesNotExist(PynamoDBException):
     Raised when an item queried does not exist
     """
     msg = "Item does not exist"
+
+
+class TableDoesNotExist(PynamoDBException):
+    """
+    Raised when an operation is attempted on a table that doesn't exist
+    """
+    def __init__(self, table_name):
+        msg = "Table does not exist: `{0}`".format(table_name)
+        super(TableDoesNotExist, self).__init__(msg)

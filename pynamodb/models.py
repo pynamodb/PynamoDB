@@ -8,7 +8,7 @@ import copy
 import collections
 import logging
 from six import with_metaclass
-from .exceptions import DoesNotExist
+from .exceptions import DoesNotExist, TableDoesNotExist
 from .throttle import NoThrottle
 from .attributes import Attribute
 from .connection.base import MetaTable
@@ -549,7 +549,11 @@ class Model(with_metaclass(MetaModel)):
         """
         Returns True if this table exists, False otherwise
         """
-        return cls._get_connection().describe_table() is not None
+        try:
+            cls._get_connection().describe_table()
+            return True
+        except TableDoesNotExist:
+            return False
 
     @classmethod
     def delete_table(cls):

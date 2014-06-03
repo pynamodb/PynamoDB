@@ -30,4 +30,5 @@ Exceptions
 .. autoexception:: pynamodb.exceptions.UpdateError
 .. autoexception:: pynamodb.exceptions.GetError
 .. autoexception:: pynamodb.exceptions.TableError
+.. autoexception:: pynamodb.exceptions.TableDoesNotExist
 .. autoexception:: pynamodb.exceptions.DoesNotExist

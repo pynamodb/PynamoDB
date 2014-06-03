@@ -7,7 +7,7 @@ import six
 
 from pynamodb.connection import Connection
 from pynamodb.exceptions import (
-    TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError)
+    TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
 from pynamodb.constants import DEFAULT_REGION
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 
@@ -283,11 +283,11 @@ class ConnectionTestCase(TestCase):
             conn.describe_table(self.test_table_name)
             self.assertEqual(req.call_args[1], {'table_name': 'ci-table'})
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = HttpBadRequest(), DESCRIBE_TABLE_DATA
-            conn = Connection(self.region)
-            table = conn.describe_table(self.test_table_name)
-            self.assertIsNone(table)
+        with self.assertRaises(TableDoesNotExist):
+            with patch(PATCH_METHOD) as req:
+                req.return_value = HttpBadRequest(), DESCRIBE_TABLE_DATA
+                conn = Connection(self.region)
+                table = conn.describe_table(self.test_table_name)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpUnavailable(), None
@@ -850,8 +850,7 @@ class ConnectionTestCase(TestCase):
             conn.describe_table(self.test_table_name)
 
         with patch(PATCH_METHOD) as req:
-            req.return_value = HttpBadRequest(), {}
-            conn.describe_table(self.test_table_name)
+            req.return_value = HttpBadRequest(), None
             self.assertRaises(
                 TableError,
                 conn.put_item,

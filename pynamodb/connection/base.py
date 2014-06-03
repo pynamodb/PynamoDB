@@ -8,7 +8,9 @@ from botocore.session import get_session
 
 from .util import pythonic
 from ..types import HASH, RANGE
-from pynamodb.exceptions import TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError
+from pynamodb.exceptions import (
+    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist
+)
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -36,7 +38,7 @@ class MetaTable(object):
     """
 
     def __init__(self, data):
-        self.data = data
+        self.data = data or {}
         self._range_keyname = None
         self._hash_keyname = None
 
@@ -200,6 +202,8 @@ class Connection(object):
     def dispatch(self, operation_name, operation_kwargs):
         """
         Dispatches `operation_name` with arguments `operation_kwargs`
+
+        Raises TableDoesNotExist if the specified table does not exist
         """
         if operation_name not in [DESCRIBE_TABLE, LIST_TABLES, UPDATE_TABLE, DELETE_TABLE, CREATE_TABLE]:
             if pythonic(RETURN_CONSUMED_CAPACITY) not in operation_kwargs:
@@ -402,7 +406,7 @@ class Connection(object):
         if tbl:
             return tbl.data
         else:
-            return None
+            raise TableDoesNotExist(table_name)
 
     def get_conditional_operator(self, operator):
         """

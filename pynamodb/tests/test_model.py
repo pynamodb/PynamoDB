@@ -1466,7 +1466,11 @@ class ModelTestCase(TestCase):
         scope_args = {'count': 0}
 
         def fake_dynamodb(obj, **kwargs):
-            return HttpOK(content={}), {}
+            if scope_args['count'] == 0:
+                scope_args['count'] += 1
+                return HttpBadRequest(), {}
+            else:
+                return HttpOK({}), {}
 
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
@@ -1509,7 +1513,6 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
             LocalIndexedModel('foo')
 
-        scope_args = {'count': 0}
 
         schema = IndexedModel._get_indexes()
 
@@ -1555,8 +1558,13 @@ class ModelTestCase(TestCase):
         self.assertEqual(schema['local_secondary_indexes'][0]['projection']['ProjectionType'], 'INCLUDE')
         self.assertEqual(schema['local_secondary_indexes'][0]['projection']['NonKeyAttributes'], ['numbers'])
 
+        scope_args = {'count': 0}
         def fake_dynamodb(obj, **kwargs):
-            return HttpOK(content={}), {}
+            if scope_args['count'] == 0:
+                scope_args['count'] += 1
+                return HttpBadRequest(), {}
+            else:
+                return HttpOK(content={}), {}
 
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb

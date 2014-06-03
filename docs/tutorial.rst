@@ -51,6 +51,12 @@ inherit from ``pynamodb.attributes.Attribute``. The most common attributes have 
 
 Here is an example, using the same table structure as shown in `Amazon's DynamoDB Thread example <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleTablesAndData.html>`__.
 
+.. note::
+
+    The table that your model represents must exist before you can use it. It can be created in this example
+    by calling `Thread.create_table(...)`. Any other operation on a non existent table will cause a `TableDoesNotExist`
+    exception to be raised.
+
 .. code-block:: python
 
     from pynamodb.models import Model

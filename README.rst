@@ -56,6 +56,12 @@ Create a model that describes your DynamoDB table.
         first_name = UnicodeAttribute(range_key=True)
         last_name = UnicodeAttribute(hash_key=True)
 
+PynamoDB allows you to create the table if needed (it must exist before you can use it!):
+
+.. code-block:: python
+
+    UserModel.create_table(read_capacity_units=1, write_capacity_units=1)
+
 Now, search your table for all users with a last name of 'Smith' and whose
 first name begins with 'J':
 
