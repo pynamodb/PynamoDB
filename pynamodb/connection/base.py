@@ -875,8 +875,8 @@ class Connection(object):
                 operation_kwargs[pythonic(KEY_CONDITIONS)][key] = {
                     ATTR_VALUE_LIST: [
                         {
-                            attr_type: self.parse_attribute(value) for value in condition.get(ATTR_VALUE_LIST)
-                        }
+                            attr_type: self.parse_attribute(value)
+                        } for value in condition.get(ATTR_VALUE_LIST)
                     ],
                     COMPARISON_OPERATOR: operator
                 }

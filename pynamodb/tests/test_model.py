@@ -953,7 +953,8 @@ class ModelTestCase(TestCase):
                     'foo',
                     user_id__begins_with='id',
                     email__contains='@',
-                    picture__null=False):
+                    picture__null=False,
+                    zip_code__between=[2,3]):
                 queried.append(item._serialize())
             params = {
                 'key_conditions': {
@@ -976,6 +977,13 @@ class ModelTestCase(TestCase):
                             {'S': '@'}
                         ],
                         'ComparisonOperator': 'CONTAINS'
+                    },
+                    'zip_code': {
+                        'ComparisonOperator': 'BETWEEN',
+                        'AttributeValueList': [
+                            {'N': '2'},
+                            {'N': '3'}
+                        ]
                     },
                     'picture': {
                         'ComparisonOperator': 'NOT_NULL'
