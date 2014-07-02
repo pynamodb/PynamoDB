@@ -11,7 +11,7 @@ from six import with_metaclass
 from .exceptions import DoesNotExist, TableDoesNotExist
 from .throttle import NoThrottle
 from .attributes import Attribute
-from .connection.base import MetaTable
+from .connection.base import MetaTable, Connection
 from .connection.table import TableConnection
 from .connection.util import pythonic
 from .types import HASH, RANGE
@@ -1022,3 +1022,30 @@ class Model(with_metaclass(MetaModel)):
         if range_key:
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key
+
+
+class ModelGenerator(object):
+    """
+    A class that generates a PynamoDB Model from a table
+    """
+    def __init__(self, host=None, region=None):
+        self.host = host
+        self.region = region
+        self._connection = None
+
+    @property
+    def connection(self):
+        """
+        Returns a (cached) connection
+        """
+        if self._connection is None:
+            self._connection = Connection(region=self.region, host=self.host)
+        return self._connection
+
+    def generate_model(self, table_name):
+        """
+        Generates Python code for a Model corresponding to the given table name
+        """
+        meta = self.connection.describe_table(table_name)
+        print(meta)
+        return
