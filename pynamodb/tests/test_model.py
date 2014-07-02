@@ -953,7 +953,6 @@ class ModelTestCase(TestCase):
                     'foo',
                     user_id__begins_with='id',
                     email__contains='@',
-                    zip_code__between=[2, 3],
                     picture__null=False):
                 queried.append(item._serialize())
             params = {
@@ -980,13 +979,6 @@ class ModelTestCase(TestCase):
                     },
                     'picture': {
                         'ComparisonOperator': 'NOT_NULL'
-                    },
-                    'zip_code': {
-                        'AttributeValueList': [
-                            {'N': '2'},
-                            {'N': '3'}
-                        ],
-                        'ComparisonOperator': 'BETWEEN'
                     }
                 },
                 'return_consumed_capacity': 'TOTAL',
