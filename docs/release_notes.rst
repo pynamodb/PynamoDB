@@ -1,5 +1,11 @@
 Release Notes
 =============
+v1.3.2
+
+:date: 2014-7-02
+
+* This is a minor bug fix release, fixing a bug where query filters were incorrectly parsed (#26).
+
 v1.3.1
 ------
 
