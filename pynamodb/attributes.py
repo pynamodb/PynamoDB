@@ -16,19 +16,20 @@ class Attribute(object):
     An attribute of a model
     """
     attr_name = None
+    attr_type = None
+    null = False
+
 
     def __init__(self,
-                 attr_type=str,
                  hash_key=False,
                  range_key=False,
-                 null=False,
+                 null=None,
                  default=None,
                  attr_name=None
                  ):
-        self.value = None
         self.default = default
-        self.null = null
-        self.attr_type = attr_type
+        if null is not None:
+            self.null = null
         self.is_hash_key = hash_key
         self.is_range_key = range_key
         if attr_name is not None:
@@ -39,7 +40,6 @@ class Attribute(object):
             return self
         if instance:
             instance.attribute_values[self.attr_name] = value
-            self.value = value
 
     def __get__(self, instance, owner):
         if instance:
@@ -92,9 +92,7 @@ class BinaryAttribute(Attribute):
     """
     A binary attribute
     """
-    def __init__(self, **kwargs):
-        kwargs.setdefault('attr_type', BINARY)
-        super(BinaryAttribute, self).__init__(**kwargs)
+    attr_type = BINARY
 
     def serialize(self, value):
         """
@@ -113,10 +111,8 @@ class BinarySetAttribute(SetMixin, Attribute):
     """
     A binary set
     """
-    def __init__(self, **kwargs):
-        kwargs.setdefault('attr_type', BINARY_SET)
-        kwargs.setdefault('null', True)
-        super(BinarySetAttribute, self).__init__(**kwargs)
+    attr_type = BINARY_SET
+    null = True
 
     def serialize(self, value):
         """
@@ -139,19 +135,15 @@ class UnicodeSetAttribute(SetMixin, Attribute):
     """
     A unicode set
     """
-    def __init__(self, **kwargs):
-        kwargs.setdefault('attr_type', STRING_SET)
-        kwargs.setdefault('null', True)
-        super(UnicodeSetAttribute, self).__init__(**kwargs)
+    attr_type = STRING_SET
+    null = True
 
 
 class UnicodeAttribute(Attribute):
     """
     A unicode attribute
     """
-    def __init__(self, **kwargs):
-        kwargs.setdefault('attr_type', STRING)
-        super(UnicodeAttribute, self).__init__(**kwargs)
+    attr_type = STRING
 
     def serialize(self, value):
         """
@@ -171,9 +163,7 @@ class JSONAttribute(Attribute):
 
     Encodes JSON to unicode internally
     """
-    def __init__(self, **kwargs):
-        kwargs.setdefault('attr_type', STRING)
-        super(JSONAttribute, self).__init__(**kwargs)
+    attr_type = STRING
 
     def serialize(self, value):
         """
@@ -197,9 +187,7 @@ class BooleanAttribute(Attribute):
 
     This attribute type uses a number attribute to save space
     """
-    def __init__(self, **kwargs):
-        kwargs.setdefault('attr_type', NUMBER)
-        super(BooleanAttribute, self).__init__(**kwargs)
+    attr_type = NUMBER
 
     def serialize(self, value):
         """
@@ -223,19 +211,15 @@ class NumberSetAttribute(SetMixin, Attribute):
     """
     A number set attribute
     """
-    def __init__(self, **kwargs):
-        kwargs.setdefault('attr_type', NUMBER_SET)
-        kwargs.setdefault('null', True)
-        super(NumberSetAttribute, self).__init__(**kwargs)
+    attr_type = NUMBER_SET
+    null = True
 
 
 class NumberAttribute(Attribute):
     """
     A number attribute
     """
-    def __init__(self, **kwargs):
-        kwargs.setdefault('attr_type', NUMBER)
-        super(NumberAttribute, self).__init__(**kwargs)
+    attr_type = NUMBER
 
     def serialize(self, value):
         """
@@ -254,9 +238,7 @@ class UTCDateTimeAttribute(Attribute):
     """
     An attribute for storing a UTC Datetime
     """
-    def __init__(self, **kwargs):
-        kwargs.setdefault('attr_type', STRING)
-        super(UTCDateTimeAttribute, self).__init__(**kwargs)
+    attr_type = STRING
 
     def serialize(self, value):
         """

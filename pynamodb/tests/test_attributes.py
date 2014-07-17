@@ -8,11 +8,101 @@ from datetime import datetime
 from delorean import Delorean
 from unittest import TestCase
 from pynamodb.constants import UTC, DATETIME_FORMAT
+from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY)
+
+
+class AttributeTestModel(Model):
+
+    class Meta:
+        host = 'http://localhost:8000'
+        table_name = 'test'
+
+    binary_attr = BinaryAttribute()
+    binary_set_attr = BinarySetAttribute()
+    number_attr = NumberAttribute()
+    number_set_attr = NumberSetAttribute()
+    unicode_attr = UnicodeAttribute()
+    unicode_set_attr = UnicodeSetAttribute()
+    datetime_attr = UTCDateTimeAttribute()
+    bool_attr = BooleanAttribute()
+    json_attr = JSONAttribute()
+
+
+class AttributeDescriptorTestCase(TestCase):
+    """
+    Test Attribute Descriptors
+    """
+    def setUp(self):
+        self.instance = AttributeTestModel()
+
+    def test_binary_attr(self):
+        """
+        Binary attribute descriptor
+        """
+        self.instance.binary_attr = b'test'
+        self.assertEqual(self.instance.binary_attr, b'test')
+
+    def test_binary_set_attr(self):
+        """
+        Binary set attribute descriptor
+        """
+        self.instance.binary_set_attr = {b'test', b'test2'}
+        self.assertEqual(self.instance.binary_set_attr, {b'test', b'test2'})
+
+    def test_number_attr(self):
+        """
+        Number attribute descriptor
+        """
+        self.instance.number_attr = 42
+        self.assertEqual(self.instance.number_attr, 42)
+
+    def test_number_set_attr(self):
+        """
+        Number set attribute descriptor
+        """
+        self.instance.number_set_attr = {1, 2}
+        self.assertEqual(self.instance.number_set_attr, {1, 2})
+
+    def test_unicode_attr(self):
+        """
+        Unicode attribute descriptor
+        """
+        self.instance.unicode_attr = u"test"
+        self.assertEqual(self.instance.unicode_attr, u"test")
+
+    def test_unicode_set_attr(self):
+        """
+        Unicode set attribute descriptor
+        """
+        self.instance.unicode_set_attr = {u"test", u"test2"}
+        self.assertEqual(self.instance.unicode_set_attr, {u"test", u"test2"})
+
+    def test_datetime_attr(self):
+        """
+        Datetime attribute descriptor
+        """
+        now = datetime.now()
+        self.instance.datetime_attr = now
+        self.assertEqual(self.instance.datetime_attr, now)
+
+    def test_bool_attr(self):
+        """
+        Boolean attribute descriptor
+        """
+        self.instance.bool_attr = True
+        self.assertEqual(self.instance.bool_attr, True)
+
+    def test_json_attr(self):
+        """
+        JSON attribute descriptor
+        """
+        self.instance.json_attr = {'foo': 'bar', 'bar': 42}
+        self.assertEqual(self.instance.json_attr, {'foo': 'bar', 'bar': 42})
 
 
 class UTCDateTimeAttributeTestCase(TestCase):
