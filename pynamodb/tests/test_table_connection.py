@@ -1,22 +1,12 @@
 """
 Test suite for the table class
 """
-
-from unittest import TestCase
-
-import six
-
+from pynamodb.compat import patch, CompatTestCase as TestCase
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
-
-
-if six.PY3:
-    from unittest.mock import patch
-else:
-    from mock import patch
-
 from .response import HttpOK
+
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
 

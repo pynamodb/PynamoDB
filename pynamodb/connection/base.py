@@ -8,6 +8,7 @@ from botocore.session import get_session
 
 from .util import pythonic
 from ..types import HASH, RANGE
+from pynamodb.compat import NullHandler
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist
 )
@@ -29,7 +30,7 @@ from pynamodb.constants import (
 
 
 log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler())
+log.addHandler(NullHandler())
 
 
 class MetaTable(object):

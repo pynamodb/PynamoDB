@@ -19,7 +19,6 @@ class Attribute(object):
     attr_type = None
     null = False
 
-
     def __init__(self,
                  hash_key=False,
                  range_key=False,

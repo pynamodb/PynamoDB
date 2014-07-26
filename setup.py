@@ -26,6 +26,7 @@ setup(
     install_requires=[
         'Delorean',
         'six',
+        'ordereddict',
         'botocore>=0.42.0',
     ],
     classifiers=[

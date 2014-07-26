@@ -3,9 +3,9 @@ Test model API
 """
 import six
 import copy
-import collections
 from datetime import datetime
-from unittest import TestCase
+from pynamodb.compat import CompatTestCase as TestCase
+from pynamodb.compat import patch, MagicMock, OrderedDict
 from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import TableError
@@ -30,14 +30,6 @@ from .data import (
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA
 )
 
-
-# Py2/3
-if six.PY3:
-    from unittest.mock import patch
-    from unittest.mock import MagicMock
-else:
-    from mock import patch
-    from mock import MagicMock
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
 
@@ -353,7 +345,9 @@ class ModelTestCase(TestCase):
             item = UserModel('foo', 'bar')
             self.assertEqual(item.email, 'needs_email')
             self.assertEqual(item.callable_field, 42)
-            self.assertEqual(repr(item), '{0}<{1}, {2}>'.format(UserModel.Meta.table_name, item.custom_user_name, item.user_id))
+            self.assertEqual(
+                repr(item), '{0}<{1}, {2}>'.format(UserModel.Meta.table_name, item.custom_user_name, item.user_id)
+            )
             self.assertEqual(repr(UserModel._get_meta_data()), 'MetaTable<{0}>'.format('Thread'))
 
         with patch(PATCH_METHOD) as req:
@@ -954,7 +948,7 @@ class ModelTestCase(TestCase):
                     user_id__begins_with='id',
                     email__contains='@',
                     picture__null=False,
-                    zip_code__between=[2,3]):
+                    zip_code__between=[2, 3]):
                 queried.append(item._serialize())
             params = {
                 'key_conditions': {
@@ -1521,7 +1515,6 @@ class ModelTestCase(TestCase):
             req.return_value = HttpOK(), LOCAL_INDEX_TABLE_DATA
             LocalIndexedModel('foo')
 
-
         schema = IndexedModel._get_indexes()
 
         expected = {
@@ -1567,6 +1560,7 @@ class ModelTestCase(TestCase):
         self.assertEqual(schema['local_secondary_indexes'][0]['projection']['NonKeyAttributes'], ['numbers'])
 
         scope_args = {'count': 0}
+
         def fake_dynamodb(obj, **kwargs):
             if scope_args['count'] == 0:
                 scope_args['count'] += 1
@@ -1579,7 +1573,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             LocalIndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
-            params = collections.OrderedDict({
+            params = OrderedDict({
                 'attribute_definitions': [
                     {
                         'attribute_name': 'email', 'attribute_type': 'S'

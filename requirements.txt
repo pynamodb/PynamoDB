@@ -11,4 +11,5 @@ pytz==2013.9
 requests==2.2.1
 six==1.5.2
 tox==1.7.0
+ordereddict==1.1
 python-coveralls==2.4.2

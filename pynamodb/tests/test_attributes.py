@@ -6,7 +6,7 @@ import json
 from base64 import b64encode
 from datetime import datetime
 from delorean import Delorean
-from unittest import TestCase
+from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.models import Model
 from pynamodb.attributes import (
@@ -51,8 +51,8 @@ class AttributeDescriptorTestCase(TestCase):
         """
         Binary set attribute descriptor
         """
-        self.instance.binary_set_attr = {b'test', b'test2'}
-        self.assertEqual(self.instance.binary_set_attr, {b'test', b'test2'})
+        self.instance.binary_set_attr = set([b'test', b'test2'])
+        self.assertEqual(self.instance.binary_set_attr, set([b'test', b'test2']))
 
     def test_number_attr(self):
         """
@@ -65,8 +65,8 @@ class AttributeDescriptorTestCase(TestCase):
         """
         Number set attribute descriptor
         """
-        self.instance.number_set_attr = {1, 2}
-        self.assertEqual(self.instance.number_set_attr, {1, 2})
+        self.instance.number_set_attr = set([1, 2])
+        self.assertEqual(self.instance.number_set_attr, set([1, 2]))
 
     def test_unicode_attr(self):
         """
@@ -79,8 +79,8 @@ class AttributeDescriptorTestCase(TestCase):
         """
         Unicode set attribute descriptor
         """
-        self.instance.unicode_set_attr = {u"test", u"test2"}
-        self.assertEqual(self.instance.unicode_set_attr, {u"test", u"test2"})
+        self.instance.unicode_set_attr = set([u"test", u"test2"])
+        self.assertEqual(self.instance.unicode_set_attr, set([u"test", u"test2"]))
 
     def test_datetime_attr(self):
         """
@@ -187,8 +187,8 @@ class BinaryAttributeTestCase(TestCase):
         attr = BinarySetAttribute()
         self.assertEqual(attr.attr_type, BINARY_SET)
         self.assertEqual(
-            attr.serialize({b'foo', b'bar'}),
-            [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted({b'foo', b'bar'})])
+            attr.serialize(set([b'foo', b'bar'])),
+            [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(set([b'foo', b'bar']))])
         self.assertEqual(attr.serialize(None), None)
 
     def test_binary_set_round_trip(self):
@@ -196,7 +196,7 @@ class BinaryAttributeTestCase(TestCase):
         BinarySetAttribute round trip
         """
         attr = BinarySetAttribute()
-        value = {b'foo', b'bar'}
+        value = set([b'foo', b'bar'])
         serial = attr.serialize(value)
         self.assertEqual(attr.deserialize(serial), value)
 
@@ -205,7 +205,7 @@ class BinaryAttributeTestCase(TestCase):
         BinarySetAttribute.deserialize
         """
         attr = BinarySetAttribute()
-        value = {b'foo', b'bar'}
+        value = set([b'foo', b'bar'])
         self.assertEqual(
             attr.deserialize([b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]),
             value
@@ -218,8 +218,8 @@ class BinaryAttributeTestCase(TestCase):
         attr = BinarySetAttribute()
         self.assertIsNotNone(attr)
 
-        attr = BinarySetAttribute(default={b'foo', b'bar'})
-        self.assertEqual(attr.default, {b'foo', b'bar'})
+        attr = BinarySetAttribute(default=set([b'foo', b'bar']))
+        self.assertEqual(attr.default, set([b'foo', b'bar']))
 
 
 class NumberAttributeTestCase(TestCase):
@@ -259,14 +259,14 @@ class NumberAttributeTestCase(TestCase):
         """
         attr = NumberSetAttribute()
         self.assertEqual(attr.attr_type, NUMBER_SET)
-        self.assertEqual(attr.deserialize([json.dumps(val) for val in sorted({1, 2})]), {1, 2})
+        self.assertEqual(attr.deserialize([json.dumps(val) for val in sorted(set([1, 2]))]), set([1, 2]))
 
     def test_number_set_serialize(self):
         """
         NumberSetAttribute.serialize
         """
         attr = NumberSetAttribute()
-        self.assertEqual(attr.serialize({1, 2}), [json.dumps(val) for val in sorted({1, 2})])
+        self.assertEqual(attr.serialize(set([1, 2])), [json.dumps(val) for val in sorted(set([1, 2]))])
         self.assertEqual(attr.serialize(None), None)
 
     def test_number_set_attribute(self):
@@ -276,8 +276,8 @@ class NumberAttributeTestCase(TestCase):
         attr = NumberSetAttribute()
         self.assertIsNotNone(attr)
 
-        attr = NumberSetAttribute(default={1, 2})
-        self.assertEqual(attr.default, {1, 2})
+        attr = NumberSetAttribute(default=set([1, 2]))
+        self.assertEqual(attr.default, set([1, 2]))
 
 
 class UnicodeAttributeTestCase(TestCase):
@@ -321,8 +321,8 @@ class UnicodeAttributeTestCase(TestCase):
         self.assertEqual(attr.attr_type, STRING_SET)
         self.assertEqual(attr.deserialize(None), None)
         self.assertEqual(
-            attr.serialize({six.u('foo'), six.u('bar')}),
-            [json.dumps(val) for val in sorted({six.u('foo'), six.u('bar')})])
+            attr.serialize(set([six.u('foo'), six.u('bar')])),
+            [json.dumps(val) for val in sorted(set([six.u('foo'), six.u('bar')]))])
 
     def test_unicode_set_deserialize(self):
         """
@@ -330,8 +330,8 @@ class UnicodeAttributeTestCase(TestCase):
         """
         attr = UnicodeSetAttribute()
         self.assertEqual(
-            attr.deserialize([json.dumps(val) for val in sorted({six.u('foo'), six.u('bar')})]),
-            {six.u('foo'), six.u('bar')}
+            attr.deserialize([json.dumps(val) for val in sorted(set([six.u('foo'), six.u('bar')]))]),
+            set([six.u('foo'), six.u('bar')])
         )
 
     def test_unicode_set_attribute(self):
@@ -341,8 +341,8 @@ class UnicodeAttributeTestCase(TestCase):
         attr = UnicodeSetAttribute()
         self.assertIsNotNone(attr)
         self.assertEqual(attr.attr_type, STRING_SET)
-        attr = UnicodeSetAttribute(default={six.u('foo'), six.u('bar')})
-        self.assertEqual(attr.default, {six.u('foo'), six.u('bar')})
+        attr = UnicodeSetAttribute(default=set([six.u('foo'), six.u('bar')]))
+        self.assertEqual(attr.default, set([six.u('foo'), six.u('bar')]))
 
 
 class BooleanAttributeTestCase(TestCase):

@@ -1,23 +1,15 @@
 """
 Tests for the base connection class
 """
-from unittest import TestCase
-
-import six
-
+from pynamodb.compat import CompatTestCase as TestCase
+from pynamodb.compat import patch
 from pynamodb.connection import Connection
 from pynamodb.exceptions import (
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
 from pynamodb.constants import DEFAULT_REGION
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
-
-
-if six.PY3:
-    from unittest.mock import patch
-else:
-    from mock import patch
-
 from .response import HttpBadRequest, HttpOK, HttpUnavailable
+
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
 
