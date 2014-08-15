@@ -61,7 +61,7 @@ class Attribute(object):
 
 class SetMixin(object):
     """
-    Adds (de)serialization methods
+    Adds (de)serialization methods for sets
     """
     def serialize(self, value):
         """
