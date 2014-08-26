@@ -989,7 +989,7 @@ class Model(with_metaclass(MetaModel)):
         attributes = pythonic(ATTRIBUTES)
         attrs = OrderedDict({attributes: OrderedDict()})
         for name, attr in self._get_attributes().aliased_attrs():
-            value = getattr(self, name)
+            value = attr.value
             if value is None:
                 if attr.null:
                     continue
