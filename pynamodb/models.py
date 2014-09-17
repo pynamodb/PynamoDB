@@ -318,7 +318,7 @@ class Model(with_metaclass(MetaModel)):
         :param action: The action to take if this item already exists.
             See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html#DDB-UpdateItem-request-AttributeUpdate
         """
-        args, kwargs = self._get_save_args()
+        args, kwargs = self._get_save_args(null_check=False)
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, UPDATE_FILTER_OPERATOR_MAP))
         attribute_cls = None

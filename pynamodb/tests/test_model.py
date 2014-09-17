@@ -633,6 +633,38 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(args, params)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
+            # Reproduces https://github.com/jlafon/PynamoDB/issues/34
+            item.email = None
+            item.update_item('views', 10, action='add')
+            args = req.call_args[1]
+            params = {
+                'table_name': 'SimpleModel',
+                'return_values': 'ALL_NEW',
+                'key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'attribute_updates': {
+                    'views': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'N': '10'
+                        }
+                    }
+                },
+                'return_consumed_capacity': 'TOTAL'
+            }
+            self.assertEqual(args, params)
+
     def test_save(self):
         """
         Model.save
