@@ -5,6 +5,7 @@ python:
   - "3.3"
   - "2.7"
   - "2.6"
+  - "pypy"
 
 env:
   - AWS_SECRET_ACCESS_KEY=fake_key AWS_ACCESS_KEY_ID=fake_id
