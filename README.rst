@@ -163,12 +163,12 @@ Features
 * An ORM-like interface with query and scan filters
 * Compatible with DynamoDB Local
 * Supports the entire DynamoDB API
+* Full table backup/restore
 * Support for Unicode, Binary, JSON, Number, Set, and UTC Datetime attributes
 * Support for Global and Local Secondary Indexes
 * Provides iterators for working with queries, scans, that are automatically paginated
 * Automatic pagination for bulk operations
 * Complex queries
-
 * Support for Global and Local Secondary Indexes
 * Batch operations with automatic pagination
 * Iterators for working with Query and Scan operations
