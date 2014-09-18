@@ -33,6 +33,7 @@ Topics
    conditional
    attributes
    local
+   backup_restore
    examples
    low_level
    awsaccess

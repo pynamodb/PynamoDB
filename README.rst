@@ -145,6 +145,17 @@ Want to use DynamoDB local? Just add a ``host`` name attribute and specify your 
         last_name = UnicodeAttribute(hash_key=True)
 
 
+Want to backup and restore a table? No problem.
+
+.. code-block:: python
+
+    # Backup the table
+    UserModel.dump("usermodel_backup.json")
+
+    # Restore the table
+    UserModel.load("usermodel_backup.json")
+
+
 Features
 ========
 
