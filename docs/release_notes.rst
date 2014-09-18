@@ -1,6 +1,24 @@
 Release Notes
 =============
+
+v1.3.3
+------
+
+:date: 2014-9-18
+
+This is a backward compatible, minor bug fix release, fixing the following issues
+* Fixed bug with Python 2.6 compatibility (#28)
+* Fixed bug where update_item was incorrectly checking attributes for null (#34)
+
+Other minor improvements
+* New API for backing up and restoring tables
+* Better support for custom attributes (https://github.com/jlafon/PynamoDB/commit/0c2ba5894a532ed14b6c14e5059e97dbb653ff12)
+* Explicit Travis CI testing of Python 2.6, 2.7, 3.3, 3.4, and PyPy
+* Tests added for round tripping unicode values
+
+
 v1.3.2
+------
 
 :date: 2014-7-02
 
