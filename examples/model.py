@@ -172,15 +172,23 @@ print(thread_item.update_item(
 # DynamoDB will delete the item, only if the views attribute is equal to one
 print(thread_item.delete(views__eq=1))
 
+
+# Backup/restore example
+# Print the size of the table
+print("Table size: {}".format(Thread.describe_table().get('ItemCount')))
+
 # Dump the entire table to a file
 Thread.dump('thread.json')
 
 # Optionally Delete all table items
+# Commented out for safety
 # for item in Thread.scan():
 #     item.delete()
+print("Table size: {}".format(Thread.describe_table().get('ItemCount')))
 
 # Restore table from a file
 Thread.load('thread.json')
+print("Table size: {}".format(Thread.describe_table().get('ItemCount')))
 
 # Dump the entire table to a string
 serialized = Thread.dumps()
