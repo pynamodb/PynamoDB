@@ -564,6 +564,13 @@ class Model(with_metaclass(MetaModel)):
         return cls._get_connection().delete_table()
 
     @classmethod
+    def describe_table(cls):
+        """
+        Returns the result of a DescribeTable operation on this model's table
+        """
+        return cls._get_connection().describe_table()
+
+    @classmethod
     def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None):
         """
         Create the table for this model
@@ -624,9 +631,10 @@ class Model(with_metaclass(MetaModel)):
     @classmethod
     def loads(cls, data):
         content = json.loads(data)
-        for item_data in content:
-            item = cls._from_data(item_data)
-            item.save()
+        with cls.batch_write() as batch:
+            for item_data in content:
+                item = cls._from_data(item_data)
+                batch.save(item)
 
     @classmethod
     def load(cls, filename):
@@ -641,16 +649,16 @@ class Model(with_metaclass(MetaModel)):
         """
         hash_key, attrs = data
         range_key = attrs.pop('range_key', None)
+        attributes = attrs.pop(pythonic(ATTRIBUTES))
         if range_key is not None:
             range_keyname = cls._get_meta_data().range_keyname
             range_keytype = cls._get_meta_data().get_attribute_type(range_keyname)
-            attrs[range_keyname] = {
+            attributes[range_keyname] = {
                 range_keytype: range_key
             }
         item = cls(hash_key)
-        item._deserialize(attrs)
+        item._deserialize(attributes)
         return item
-
 
     @classmethod
     def _build_expected_values(cls, expected_values, operator_map=None):

@@ -1,6 +1,8 @@
 """
 Test model API
 """
+import random
+import json
 import six
 import copy
 from datetime import datetime
@@ -12,7 +14,7 @@ from pynamodb.exceptions import TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS,
-    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES
+    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -27,7 +29,8 @@ from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
-    CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA
+    CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
+    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA
 )
 
 
@@ -1026,10 +1029,6 @@ class ModelTestCase(TestCase):
         Model.scan
         """
         with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK(), MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
-
-        with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
@@ -1260,10 +1259,6 @@ class ModelTestCase(TestCase):
         """
         Model.batch_write
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK(), MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
-
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {}
 
@@ -1680,3 +1675,66 @@ class ModelTestCase(TestCase):
 
         with self.assertRaises(AttributeError):
             OldStyleModel.exists()
+
+    def test_dumps(self):
+        """
+        Model.dumps
+        """
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['email'] = {STRING_SHORT: 'email-{0}'.format(random.randint(0, 65536))}
+                item['picture'] = {BINARY_SHORT: BINARY_ATTR_DATA}
+                items.append(item)
+            req.return_value = HttpOK({'Items': items}), {'Items': items}
+            content = UserModel.dumps()
+            serialized_items = json.loads(content)
+            for original, new_item in zip(items, serialized_items):
+                self.assertEqual(new_item[0], original['user_name'][STRING_SHORT])
+                self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['zip_code']['N'], original['zip_code']['N'])
+                self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['email']['S'], original['email']['S'])
+                self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['picture']['B'], original['picture']['B'])
+
+    def test_loads(self):
+        """
+        Model.loads
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {}
+            UserModel.loads(json.dumps(SERIALIZED_TABLE_DATA))
+
+        args = {
+            'UserModel': [
+                {
+                    'PutRequest': {
+                        'Item': {
+                            'user_id': {'S': u'id-0'},
+                            'callable_field': {'N': '42'},
+                            'user_name': {'S': u'foo'},
+                            'email': {'S': u'email-7980'},
+                            'picture': {
+                                "B": "aGVsbG8sIHdvcmxk"
+                            },
+                            'zip_code': {'N': '88030'}
+                        }
+                    }
+                },
+                {
+                    'PutRequest': {
+                        'Item': {
+                            'user_id': {'S': u'id-1'},
+                            'callable_field': {'N': '42'},
+                            'user_name': {'S': u'foo'},
+                            'email': {'S': u'email-19770'},
+                            'picture': {
+                                "B": "aGVsbG8sIHdvcmxk"
+                            },
+                            'zip_code': {'N': '88030'}
+                        }
+                    }
+                }
+            ]
+        }
+        self.assert_dict_lists_equal(req.call_args[1]['request_items']['UserModel'], args['UserModel'])
