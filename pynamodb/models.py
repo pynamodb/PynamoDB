@@ -1,7 +1,7 @@
 """
 DynamoDB Models for PynamoDB
 """
-
+import json
 import time
 import six
 import copy
@@ -606,7 +606,52 @@ class Model(with_metaclass(MetaModel)):
                 else:
                     raise ValueError("No TableStatus returned for table")
 
+    @classmethod
+    def dumps(cls):
+        """
+        Returns a JSON representation of this model's table
+        """
+        return json.dumps([item._get_json() for item in cls.scan()])
+
+    @classmethod
+    def dump(cls, filename):
+        """
+        Writes the contents of this model's table as JSON to the given filename
+        """
+        with open(filename, 'w') as out:
+            out.write(cls.dumps())
+
+    @classmethod
+    def loads(cls, data):
+        content = json.loads(data)
+        for item_data in content:
+            item = cls._from_data(item_data)
+            item.save()
+
+    @classmethod
+    def load(cls, filename):
+        with open(filename, 'r') as inf:
+            cls.loads(inf.read())
+
     # Private API below
+    @classmethod
+    def _from_data(cls, data):
+        """
+        Reconstructs a model object from JSON.
+        """
+        hash_key, attrs = data
+        range_key = attrs.pop('range_key', None)
+        if range_key is not None:
+            range_keyname = cls._get_meta_data().range_keyname
+            range_keytype = cls._get_meta_data().get_attribute_type(range_keyname)
+            attrs[range_keyname] = {
+                range_keytype: range_key
+            }
+        item = cls(hash_key)
+        item._deserialize(attrs)
+        return item
+
+
     @classmethod
     def _build_expected_values(cls, expected_values, operator_map=None):
         """
@@ -822,6 +867,19 @@ class Model(with_metaclass(MetaModel)):
                     instance = getattr(cls, item)
                     cls._attributes[item] = instance
         return cls._attributes
+
+    def _get_json(self):
+        """
+        Returns a Python object suitable for serialization
+        """
+        kwargs = OrderedDict()
+        serialized = self._serialize(null_check=False)
+        hash_key = serialized.get(HASH)
+        range_key = serialized.get(RANGE, None)
+        if range_key:
+            kwargs[pythonic(RANGE_KEY)] = range_key
+        kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
+        return hash_key, kwargs
 
     def _get_save_args(self, attributes=True, null_check=True):
         """
