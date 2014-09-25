@@ -206,7 +206,7 @@ class ModelTestCase(TestCase):
 
     def assert_dict_lists_equal(self, list1, list2):
         """
-        Compares two lists of dictionariess
+        Compares two lists of dictionaries
         """
         for d1_item in list1:
             found = False
@@ -217,6 +217,8 @@ class ModelTestCase(TestCase):
                 if six.PY3:
                     #TODO WTF python2?
                     raise AssertionError("Values not equal: {0} {1}".format(d1_item, list2))
+        if len(list1) != len(list2):
+            raise AssertionError("Values not equal: {0} {1}".format(list1, list2))
 
     def test_create_model(self):
         """
@@ -1479,6 +1481,34 @@ class ModelTestCase(TestCase):
                 'limit': 2
             }
             self.assertEqual(req.call_args[1], params)
+
+    def test_multiple_indices_share_non_key_attribute(self):
+        """
+        Models.Model
+        """
+        scope_args = {'count': 0}
+
+        def fake_dynamodb(obj, **kwargs):
+            if scope_args['count'] == 0:
+                scope_args['count'] += 1
+                return HttpBadRequest(), {}
+            else:
+                return HttpOK({}), {}
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            IndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
+            params = {
+                'attribute_definitions': [
+                    {'attribute_name': 'email', 'attribute_type': 'S'},
+                    {'attribute_name': 'numbers', 'attribute_type': 'NS'},
+                    {'attribute_name': 'user_name', 'attribute_type': 'S'}
+                ]
+            }
+            args = req.call_args[1]
+            self.assert_dict_lists_equal(args['attribute_definitions'], params['attribute_definitions'])
 
     def test_global_index(self):
         """
