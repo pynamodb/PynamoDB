@@ -1502,9 +1502,9 @@ class ModelTestCase(TestCase):
             IndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
             params = {
                 'attribute_definitions': [
-                    {'attribute_name': 'email', 'attribute_type': 'S'},
-                    {'attribute_name': 'numbers', 'attribute_type': 'NS'},
-                    {'attribute_name': 'user_name', 'attribute_type': 'S'}
+                    {'AttributeName': 'email', 'AttributeType': 'S'},
+                    {'AttributeName': 'numbers', 'AttributeType': 'NS'},
+                    {'AttributeName': 'user_name', 'AttributeType': 'S'}
                 ]
             }
             args = req.call_args[1]
