@@ -255,7 +255,7 @@ class ModelTestCase(TestCase):
                     found = True
             if not found:
                 if six.PY3:
-                    #TODO WTF python2?
+                    # TODO WTF python2?
                     raise AssertionError("Values not equal: {0} {1}".format(d1_item, list2))
         if len(list1) != len(list2):
             raise AssertionError("Values not equal: {0} {1}".format(list1, list2))
@@ -303,7 +303,7 @@ class ModelTestCase(TestCase):
             RegionSpecificModel.create_table(read_capacity_units=2, write_capacity_units=2)
             self.assertEqual(req.call_args[0][0].region_name, 'us-west-1')
 
-         # A table with a specified host
+        # A table with a specified host
         self.assertEqual(HostSpecificModel.Meta.host, 'http://localhost')
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK, MODEL_TABLE_DATA
@@ -1591,7 +1591,6 @@ class ModelTestCase(TestCase):
             args = req.call_args[1]
             for key in ['key_schema', 'attribute_definitions', 'local_secondary_indexes', 'global_secondary_indexes']:
                 self.assert_dict_lists_equal(args[key], params[key])
-
 
     def test_global_index(self):
         """

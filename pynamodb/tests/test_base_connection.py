@@ -279,7 +279,7 @@ class ConnectionTestCase(TestCase):
             with patch(PATCH_METHOD) as req:
                 req.return_value = HttpBadRequest(), DESCRIBE_TABLE_DATA
                 conn = Connection(self.region)
-                table = conn.describe_table(self.test_table_name)
+                conn.describe_table(self.test_table_name)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpUnavailable(), None

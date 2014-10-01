@@ -38,15 +38,18 @@ class Url(Model):
 app = flask.Flask(__name__)
 app.config.update(DEBUG=True)
 
+
 @app.route('/')
 def index():
     return flask.render_template("index.html")
+
 
 @app.route('/shorten/<path:url>')
 def shorten(url):
     model = Url(url)
     model.save()
     return flask.Response(model.code)
+
 
 @app.route('/<path:code>')
 def resolve(code):
