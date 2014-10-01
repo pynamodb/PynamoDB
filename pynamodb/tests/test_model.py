@@ -37,6 +37,46 @@ from .data import (
 PATCH_METHOD = 'botocore.operation.Operation.call'
 
 
+class GamePlayerOpponentIndex(LocalSecondaryIndex):
+    class Meta:
+        read_capacity_units = 1
+        write_capacity_units = 1
+        table_name = "GamePlayerOpponentIndex"
+        host = "http://localhost:8000"
+        projection = AllProjection()
+
+    player_id = UnicodeAttribute(hash_key=True)
+    winner_id = UnicodeAttribute(range_key=True)
+
+
+class GameOpponentTimeIndex(GlobalSecondaryIndex):
+    class Meta:
+        read_capacity_units = 1
+        write_capacity_units = 1
+        table_name = "GameOpponentTimeIndex"
+        host = "http://localhost:8000"
+        projection = AllProjection()
+
+    winner_id = UnicodeAttribute(hash_key=True)
+    created_time = UnicodeAttribute(range_key=True)
+
+
+class GameModel(Model):
+    class Meta:
+        read_capacity_units = 1
+        write_capacity_units = 1
+        table_name = "GameModel"
+        host = "http://localhost:8000"
+
+    player_id = UnicodeAttribute(hash_key=True)
+    created_time = UTCDateTimeAttribute(range_key=True)
+    winner_id = UnicodeAttribute()
+    loser_id = UnicodeAttribute(null=True)
+
+    player_opponent_index = GamePlayerOpponentIndex()
+    opponent_time_index = GameOpponentTimeIndex()
+
+
 class OldStyleModel(Model):
     _table_name = 'IndexedModel'
     user_name = UnicodeAttribute(hash_key=True)
@@ -1509,6 +1549,49 @@ class ModelTestCase(TestCase):
             }
             args = req.call_args[1]
             self.assert_dict_lists_equal(args['attribute_definitions'], params['attribute_definitions'])
+
+        scope_args['count'] = 0
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            GameModel.create_table()
+            params = {
+                'key_schema': [
+                    {'KeyType': 'HASH', 'AttributeName': 'player_id'},
+                    {'KeyType': 'RANGE', 'AttributeName': 'created_time'}
+                ],
+                'local_secondary_indexes': [
+                    {
+                        'KeySchema': [
+                            {'KeyType': 'HASH', 'AttributeName': 'player_id'},
+                            {'KeyType': 'RANGE', 'AttributeName': 'winner_id'}
+                        ],
+                        'IndexName': 'player_opponent_index',
+                        'Projection': {'ProjectionType': 'ALL'}
+                    }
+                ],
+                'table_name': 'GameModel',
+                'provisioned_throughput': {'WriteCapacityUnits': 1, 'ReadCapacityUnits': 1},
+                'global_secondary_indexes': [
+                    {
+                        'ProvisionedThroughput': {'WriteCapacityUnits': 1, 'ReadCapacityUnits': 1},
+                        'KeySchema': [
+                            {'KeyType': 'HASH', 'AttributeName': 'winner_id'},
+                            {'KeyType': 'RANGE', 'AttributeName': 'created_time'}
+                        ],
+                        'IndexName': 'opponent_time_index',
+                        'Projection': {'ProjectionType': 'ALL'}
+                    }
+                ],
+                'attribute_definitions': [
+                    {'AttributeName': 'created_time', 'AttributeType': 'S'},
+                    {'AttributeName': 'player_id', 'AttributeType': 'S'},
+                    {'AttributeName': 'winner_id', 'AttributeType': 'S'}
+                ]
+            }
+            args = req.call_args[1]
+            for key in ['key_schema', 'attribute_definitions', 'local_secondary_indexes', 'global_secondary_indexes']:
+                self.assert_dict_lists_equal(args[key], params[key])
+
 
     def test_global_index(self):
         """
