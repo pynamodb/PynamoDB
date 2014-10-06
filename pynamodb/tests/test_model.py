@@ -7,7 +7,7 @@ import six
 import copy
 from datetime import datetime
 from pynamodb.compat import CompatTestCase as TestCase
-from pynamodb.compat import patch, MagicMock, OrderedDict
+from pynamodb.compat import OrderedDict
 from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import TableError
@@ -33,6 +33,10 @@ from .data import (
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA
 )
 
+if six.PY3:
+    from unittest.mock import patch, MagicMock
+else:
+    from mock import patch, MagicMock
 
 PATCH_METHOD = 'botocore.operation.Operation.call'
 

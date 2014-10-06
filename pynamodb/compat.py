@@ -1,7 +1,6 @@
 """
 Support for the old and outdated Python 2.6
 """
-import six
 import logging
 import unittest
 
@@ -10,11 +9,6 @@ try:
     from collections import OrderedDict
 except ImportError:
     from ordereddict import OrderedDict
-
-if six.PY3:
-    from unittest.mock import patch, MagicMock
-else:
-    from mock import patch, MagicMock
 
 
 class FailedToRaise(Exception):
