@@ -11,6 +11,15 @@ if sys.argv[-1] == 'publish':
     print("  git push --tags")
     sys.exit()
 
+install_requires = [
+    'Delorean',
+    'six',
+    'botocore>=0.42.0'
+]
+
+if sys.version_info.major < 3:
+    install_requires.append('ordereddict')
+
 setup(
     name='pynamodb',
     version=__import__('pynamodb').__version__,
@@ -23,12 +32,7 @@ setup(
     zip_safe=False,
     license='MIT',
     keywords='python dynamodb amazon',
-    install_requires=[
-        'Delorean',
-        'six',
-        'ordereddict',
-        'botocore>=0.42.0',
-    ],
+    install_requires=install_requires,
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
