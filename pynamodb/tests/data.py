@@ -477,6 +477,7 @@ SERIALIZED_TABLE_DATA = [
                 "picture": {
                     "B": "aGVsbG8sIHdvcmxk"
                 },
+                "user_name": {"S": "foo"},
                 "zip_code": {"N": "88030"}
             }
         }
@@ -491,6 +492,7 @@ SERIALIZED_TABLE_DATA = [
                 "picture": {
                     "B": "aGVsbG8sIHdvcmxk"
                 },
+                "user_name": {"S": "foo"},
                 "zip_code": {"N": "88030"}
             }
         }

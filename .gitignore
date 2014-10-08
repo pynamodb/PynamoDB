@@ -1,0 +1,13 @@
+*.pyc
+.*.swp
+*.log
+*~
+pynamodb.egg-info
+build/
+dist/
+MANIFEST
+.DS_Store
+.idea
+.tox
+.coverage
+*flymake.py

@@ -26,11 +26,16 @@ To back up a table, you can simply use the provided `dump` method and write the 
 
     Thread.dump("thread_backup.json")
 
-Alternatively, you can write the contents to a string.
+Alternatively, you can write the contents to a list of strings or stdout:
 
 .. code-block:: python
 
-    content = Thread.dumps()
+    content = [item for item in Thread.dumps()]
+   
+    ...
+
+    for item in Thread.dumps():
+        print(item)
 
 
 Restoring from a backup
@@ -59,8 +64,12 @@ To restore items from a backup file, simply use the provided `load` method.
 
     Thread.load("thread_backup.json")
 
-Alternatively, you can also load the contents from a string.
+Alternatively, you can also load the contents from a JSON string or from a list of JSON strings:
 
 .. code-block:: python
 
     Thread.loads(content)
+   
+    ...
+
+    threads = [Thread.loads(item) for item in content]

@@ -617,9 +617,10 @@ class Model(with_metaclass(MetaModel)):
     @classmethod
     def dumps(cls):
         """
-        Returns a JSON representation of this model's table
+        Yields items as JSON representation of this model's table
         """
-        return json.dumps([item._get_json() for item in cls.scan()])
+        for item in cls.scan():
+            yield json.dumps(item._get_json())
 
     @classmethod
     def dump(cls, filename):
@@ -627,20 +628,26 @@ class Model(with_metaclass(MetaModel)):
         Writes the contents of this model's table as JSON to the given filename
         """
         with open(filename, 'w') as out:
-            out.write(cls.dumps())
+            for item in cls.dumps():
+                out.write(item + '\n')
 
     @classmethod
     def loads(cls, data):
-        content = json.loads(data)
-        with cls.batch_write() as batch:
-            for item_data in content:
-                item = cls._from_data(item_data)
-                batch.save(item)
+        """
+        Returns a model object from a JSON string
+        """
+        return cls._from_data(json.loads(data))
 
     @classmethod
     def load(cls, filename):
+        """
+        Reads a file dump of JSON-encoded items, loads model objects,
+        and batch writes back to DynamoDB
+        """
         with open(filename, 'r') as inf:
-            cls.loads(inf.read())
+            with cls.batch_write() as batch:
+                for item_data in inf.readlines():
+                    batch.save(cls.loads(item_data))
 
     # Private API below
     @classmethod

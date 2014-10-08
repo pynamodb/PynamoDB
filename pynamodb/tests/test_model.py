@@ -1,6 +1,7 @@
 """
 Test model API
 """
+import base64
 import random
 import json
 import six
@@ -14,7 +15,8 @@ from pynamodb.exceptions import TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS,
-    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT
+    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES,
+    BINARY_SHORT, NUMBER_SHORT
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -1805,9 +1807,9 @@ class ModelTestCase(TestCase):
                 item['picture'] = {BINARY_SHORT: BINARY_ATTR_DATA}
                 items.append(item)
             req.return_value = HttpOK({'Items': items}), {'Items': items}
-            content = UserModel.dumps()
-            serialized_items = json.loads(content)
-            for original, new_item in zip(items, serialized_items):
+            content = list(UserModel.dumps())
+            serialized_items = [json.loads(i) for i in content]
+            for new_item, original in zip(serialized_items, items):
                 self.assertEqual(new_item[0], original['user_name'][STRING_SHORT])
                 self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['zip_code']['N'], original['zip_code']['N'])
                 self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['email']['S'], original['email']['S'])
@@ -1817,40 +1819,39 @@ class ModelTestCase(TestCase):
         """
         Model.loads
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = HttpOK({}), {}
-            UserModel.loads(json.dumps(SERIALIZED_TABLE_DATA))
+        user_objs = []
+        for data in SERIALIZED_TABLE_DATA:
+            user_objs.append(UserModel.loads(json.dumps(data)))
 
-        args = {
-            'UserModel': [
-                {
-                    'PutRequest': {
-                        'Item': {
-                            'user_id': {'S': u'id-0'},
-                            'callable_field': {'N': '42'},
-                            'user_name': {'S': u'foo'},
-                            'email': {'S': u'email-7980'},
-                            'picture': {
-                                "B": "aGVsbG8sIHdvcmxk"
-                            },
-                            'zip_code': {'N': '88030'}
-                        }
-                    }
-                },
-                {
-                    'PutRequest': {
-                        'Item': {
-                            'user_id': {'S': u'id-1'},
-                            'callable_field': {'N': '42'},
-                            'user_name': {'S': u'foo'},
-                            'email': {'S': u'email-19770'},
-                            'picture': {
-                                "B": "aGVsbG8sIHdvcmxk"
-                            },
-                            'zip_code': {'N': '88030'}
-                        }
-                    }
-                }
-            ]
-        }
-        self.assert_dict_lists_equal(req.call_args[1]['request_items']['UserModel'], args['UserModel'])
+        users = [
+            {
+                'user_id': {'S': u'id-0'},
+                'callable_field': {'N': 42},
+                'user_name': {'S': u'foo'},
+                'email': {'S': u'email-7980'},
+                'picture': { "B": b"aGVsbG8sIHdvcmxk" },
+                'zip_code': {'N': 88030}
+            },
+            {
+                'user_id': {'S': u'id-1'},
+                'callable_field': {'N': 42},
+                'user_name': {'S': u'foo'},
+                'email': {'S': u'email-19770'},
+                'picture': { "B": b"aGVsbG8sIHdvcmxk" },
+                'zip_code': {'N': 88030}
+            }
+        ]
+
+        self.assertEqual(user_objs[0].user_id, users[0]['user_id'][STRING_SHORT])
+        self.assertEqual(user_objs[0].callable_field, users[0]['callable_field'][NUMBER_SHORT])
+        self.assertEqual(user_objs[0].user_name, users[0]['user_name'][STRING_SHORT])
+        self.assertEqual(user_objs[0].email, users[0]['email'][STRING_SHORT])
+        self.assertEqual(base64.b64encode(user_objs[0].picture), users[0]['picture'][BINARY_SHORT])
+        self.assertEqual(user_objs[0].zip_code, users[0]['zip_code'][NUMBER_SHORT])
+        self.assertEqual(user_objs[1].user_id, users[1]['user_id'][STRING_SHORT])
+        self.assertEqual(user_objs[1].callable_field, users[1]['callable_field'][NUMBER_SHORT])
+        self.assertEqual(user_objs[1].user_name, users[1]['user_name'][STRING_SHORT])
+        self.assertEqual(user_objs[1].email, users[1]['email'][STRING_SHORT])
+        self.assertEqual(base64.b64encode(user_objs[1].picture), users[1]['picture'][BINARY_SHORT])
+        self.assertEqual(user_objs[1].zip_code, users[1]['zip_code'][NUMBER_SHORT])
+        
