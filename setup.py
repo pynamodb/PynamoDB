@@ -17,7 +17,7 @@ install_requires = [
     'botocore>=0.42.0'
 ]
 
-if sys.version_info.major < 3:
+if sys.version_info[0] == 3:
     install_requires.append('ordereddict')
 
 setup(
