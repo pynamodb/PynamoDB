@@ -1462,14 +1462,7 @@ class ConnectionTestCase(TestCase):
                 table_name,
                 **kwargs)
 
-        kwargs = {
-            'scan_filter': {
-                'ForumName': {
-                    'ComparisonOperator': 'BEGINS_WITH',
-                    'AttributeValueList': ['Foo']
-                }
-            }
-        }
+
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), {}
             conn.scan(
@@ -1489,3 +1482,74 @@ class ConnectionTestCase(TestCase):
                 }
             }
             self.assertEqual(req.call_args[1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.scan(
+                table_name,
+                **kwargs
+            )
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': table_name,
+                'scan_filter': {
+                    'ForumName': {
+                        'AttributeValueList': [
+                            {'S': 'Foo'}
+                        ],
+                        'ComparisonOperator': 'BEGINS_WITH'
+                    }
+                }
+            }
+            self.assertEqual(req.call_args[1], params)
+
+        kwargs = {
+            'scan_filter': {
+                'ForumName': {
+                    'ComparisonOperator': 'BEGINS_WITH',
+                    'AttributeValueList': ['Foo']
+                },
+                'Subject': {
+                    'ComparisonOperator': 'CONTAINS',
+                    'AttributeValueList': ['Foo']
+                }
+            },
+            'conditional_operator': 'AND'
+        }
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.scan(
+                table_name,
+                **kwargs
+            )
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': table_name,
+                'scan_filter': {
+                    'ForumName': {
+                        'AttributeValueList': [
+                            {'S': 'Foo'}
+                        ],
+                        'ComparisonOperator': 'BEGINS_WITH'
+                    },
+                    'Subject': {
+                        'AttributeValueList': [
+                            {'S': 'Foo'}
+                        ],
+                        'ComparisonOperator': 'CONTAINS'
+                    }
+                },
+                'conditional_operator': 'AND'
+            }
+            self.assertEqual(req.call_args[1], params)
+
+        kwargs['conditional_operator'] = 'invalid'
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            self.assertRaises(
+                ValueError,
+                conn.scan,
+                table_name,
+                **kwargs)

@@ -140,7 +140,7 @@ for item in Thread.query('forum-1', views__eq=0):
     print("Query result: {0}".format(item))
 
 # Scan with filters
-for item in Thread.scan(subject__begins_with='subject', views__ge=0):
+for item in Thread.scan(subject__begins_with='subject', views__ge=0, conditional_operator='AND'):
     print("Scanned item: {0} {1}".format(item.subject, item.views))
 
 # Scan with null filter
