@@ -505,6 +505,7 @@ class Model(with_metaclass(MetaModel)):
              segment=None,
              total_segments=None,
              limit=None,
+             conditional_operator=None,
              **filters):
         """
         Iterates through all items in the table
@@ -525,7 +526,8 @@ class Model(with_metaclass(MetaModel)):
             segment=segment,
             limit=limit,
             scan_filter=key_filter,
-            total_segments=total_segments
+            total_segments=total_segments,
+            conditional_operator=conditional_operator
         )
         log.debug("Fetching first scan page")
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)

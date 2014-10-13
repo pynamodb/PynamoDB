@@ -1142,6 +1142,40 @@ class ModelTestCase(TestCase):
             }
             self.assertEquals(params, req.call_args[1])
 
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = HttpOK({'Items': items}), {'Items': items}
+            for item in UserModel.scan(
+                    user_id__contains='tux',
+                    zip_code__null=False,
+                    conditional_operator='OR',
+                    email__null=True):
+                self.assertIsNotNone(item)
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'scan_filter': {
+                    'user_id': {
+                        'AttributeValueList': [
+                            {'S': 'tux'}
+                        ],
+                        'ComparisonOperator': 'CONTAINS'
+                    },
+                    'zip_code': {
+                        'ComparisonOperator': 'NOT_NULL'
+                    },
+                    'email': {
+                        'ComparisonOperator': 'NULL'
+                    },
+                },
+                'conditional_operator': 'OR',
+                'table_name': 'UserModel'
+            }
+            self.assertEquals(params, req.call_args[1])
+
     def test_get(self):
         """
         Model.get

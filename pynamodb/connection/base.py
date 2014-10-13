@@ -769,6 +769,7 @@ class Connection(object):
              table_name,
              attributes_to_get=None,
              limit=None,
+             conditional_operator=None,
              scan_filter=None,
              return_consumed_capacity=None,
              exclusive_start_key=None,
@@ -805,6 +806,8 @@ class Connection(object):
                 }
                 if len(values):
                     operation_kwargs[pythonic(SCAN_FILTER)][key][ATTR_VALUE_LIST] = values
+            if conditional_operator:
+                operation_kwargs.update(self.get_conditional_operator(conditional_operator))
         response, data = self.dispatch(SCAN, operation_kwargs)
         if not response.ok:
             raise ScanError("Failed to scan table: {0}".format(response.content))
