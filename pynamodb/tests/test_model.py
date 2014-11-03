@@ -23,7 +23,7 @@ from pynamodb.indexes import (
 )
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
-    UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute)
+    UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, VersionAttribute)
 from .response import HttpOK, HttpBadRequest
 from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
@@ -209,6 +209,7 @@ class UserModel(Model):
     zip_code = NumberAttribute(null=True)
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)
+    version = VersionAttribute()
 
 
 class HostSpecificModel(Model):
@@ -740,6 +741,17 @@ class ModelTestCase(TestCase):
                     'user_name': {
                         'S': u'foo'
                     },
+                    'version': {
+                        'N': '1'
+                    }
+                },
+                'expected': {
+                    'user_name': {
+                        'ComparisonOperator': 'NULL'
+                    },
+                    'user_id': {
+                        'ComparisonOperator': 'NULL'
+                    }
                 },
                 'return_consumed_capacity': 'TOTAL',
                 'table_name': 'UserModel'
@@ -748,6 +760,10 @@ class ModelTestCase(TestCase):
             self.assertEqual(args, params)
 
         with patch(PATCH_METHOD) as req:
+            # simulate the initial version of 1 so
+            # as to validate auto-increment
+            item.version = 1
+
             req.return_value = HttpOK({}), {}
             item.save(email__exists=False)
             args = req.call_args[1]
@@ -765,10 +781,19 @@ class ModelTestCase(TestCase):
                     'user_name': {
                         'S': u'foo'
                     },
+                    'version': {
+                        'N': '2'
+                    }
                 },
                 'expected': {
                     'email': {
                         'Exists': False
+                    },
+                    'version': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [{
+                            'N': '1'
+                        }]
                     }
                 },
                 'return_consumed_capacity': 'TOTAL',
@@ -794,6 +819,9 @@ class ModelTestCase(TestCase):
                     'user_name': {
                         'S': u'foo'
                     },
+                    'version': {
+                        'N': '2'
+                    }
                 },
                 'expected': {
                     'email': {
@@ -801,6 +829,12 @@ class ModelTestCase(TestCase):
                     },
                     'zip_code': {
                         'ComparisonOperator': 'NOT_NULL'
+                    },
+                    'version': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [{
+                            'N': '1'
+                        }]
                     }
                 },
                 'return_consumed_capacity': 'TOTAL',
@@ -826,6 +860,9 @@ class ModelTestCase(TestCase):
                     'user_name': {
                         'S': u'foo'
                     },
+                    'version': {
+                        'N': '2'
+                    }
                 },
                 'conditional_operator': 'OR',
                 'expected': {
@@ -840,6 +877,12 @@ class ModelTestCase(TestCase):
                         'AttributeValueList': [
                             {'S': '@'}
                         ]
+                    },
+                    'version': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [{
+                            'N': '1'
+                        }]
                     }
                 },
                 'return_consumed_capacity': 'TOTAL',
@@ -865,10 +908,19 @@ class ModelTestCase(TestCase):
                     'user_name': {
                         'S': u'foo'
                     },
+                    'version': {
+                        'N': '2'
+                    }
                 },
                 'expected': {
                     'user_name': {
                         'Value': {'S': 'foo'}
+                    },
+                    'version': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [{
+                            'N': '1'
+                        }]
                     }
                 },
                 'return_consumed_capacity': 'TOTAL',

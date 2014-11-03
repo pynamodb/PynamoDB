@@ -251,3 +251,18 @@ class UTCDateTimeAttribute(Attribute):
         Takes a UTC datetime string and returns a datetime object
         """
         return parse(value).datetime
+
+
+class VersionAttribute(NumberAttribute):
+    """
+    We restrict the user's ability to specify most of the options
+    for this attribute.
+    """
+    def __init__(self, attr_name=None):
+        super(VersionAttribute, self).__init__(
+            hash_key=False,
+            range_key=False,
+            null=True,
+            default=None,
+            attr_name=attr_name
+        )

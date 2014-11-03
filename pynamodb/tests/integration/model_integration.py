@@ -7,7 +7,8 @@ from datetime import datetime
 from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
 from pynamodb.attributes import (
-    UnicodeAttribute, BinaryAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute
+    UnicodeAttribute, BinaryAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute,
+    VersionAttribute
 )
 
 
@@ -63,6 +64,59 @@ obj2 = TestModel('foo2', 'bar2')
 obj3 = TestModel('setitem', 'setrange', scores={1, 2.1})
 obj3.save()
 obj3.refresh()
+
+
+class VersionedModel(Model):
+    class Meta:
+        region = 'us-east-1'
+        table_name = 'pynamodb-ci2'
+        host = cfg.DYNAMODB_HOST
+    hash_field = UnicodeAttribute(hash_key=True)
+    value = NumberAttribute(null=True)
+    version = VersionAttribute()
+
+if VersionedModel.exists():
+    VersionedModel.delete_table()
+
+print("Creating table")
+VersionedModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+
+
+obj1 = VersionedModel('1')
+obj1.save()
+obj1.refresh()
+print('version on initial save :', obj1.version)
+obj1.save()
+obj1.refresh()
+print('version on second save :', obj1.version)
+
+# try to re-create the existing record, which will fail
+obj_dupe = VersionedModel('1')
+try:
+    obj_dupe.save()
+    # if we've gotten to this point successfully, that's bad
+    raise Exception('save should have caused conditional check failed exception')
+except Exception:
+    print('concurrent create threw exception as expected')
+
+# now create a concurrent modification situation
+obj2 = VersionedModel('1')
+obj2.refresh()
+print('second object version :', obj2.version)
+obj1.value = 5
+obj1.save()
+obj1.refresh()
+print('first object updated to version :', obj1.version)
+obj2.value = 10
+try:
+    obj2.save()
+    # if we've gotten to this point successfully, that's bad
+    raise Exception('save should have caused conditional check failed exception')
+except Exception:
+    print('concurrent modification threw exception as expected')
+
+obj2.refresh()
+print('second object final version :', obj2.version)
 
 with TestModel.batch_write() as batch:
     items = [TestModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]

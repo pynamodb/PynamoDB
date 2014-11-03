@@ -15,6 +15,7 @@ from .connection.base import MetaTable
 from .connection.table import TableConnection
 from .connection.util import pythonic
 from .types import HASH, RANGE
+from pynamodb.attributes import VersionAttribute
 from pynamodb.compat import NullHandler, OrderedDict
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.constants import (
@@ -28,7 +29,8 @@ from pynamodb.constants import (
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP, NOT_NULL,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
     CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
-    DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP)
+    DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
+    EQ, NUMBER_SHORT)
 
 
 log = logging.getLogger(__name__)
@@ -211,6 +213,7 @@ class Model(with_metaclass(MetaModel)):
     # DynamoDB attributes
     _meta_table = None
     _attributes = None
+    _version_attribute = None
     _indexes = None
     _connection = None
     _index_classes = None
@@ -354,8 +357,10 @@ class Model(with_metaclass(MetaModel)):
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args()
-        if len(expected_values):
-            kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
+        if len(expected_values) or self._get_version_attribute()[0]:
+            kwargs.update(expected=self._build_expected_values(expected_values,
+                                                               PUT_FILTER_OPERATOR_MAP,
+                                                               versioned=True))
         kwargs.update(conditional_operator=conditional_operator)
         data = self._get_connection().put_item(*args, **kwargs)
         if isinstance(data, dict):
@@ -663,15 +668,14 @@ class Model(with_metaclass(MetaModel)):
         item._deserialize(attributes)
         return item
 
-    @classmethod
-    def _build_expected_values(cls, expected_values, operator_map=None):
+    def _build_expected_values(self, expected_values, operator_map=None, versioned=False):
         """
         Builds an appropriate expected value map
 
         :param expected_values: A list of expected values
         """
         expected_values_result = OrderedDict()
-        attributes = cls._get_attributes()
+        attributes = self._get_attributes()
         filters = {}
         for attr_name, attr_value in expected_values.items():
             attr_cond = VALUE
@@ -721,6 +725,36 @@ class Model(with_metaclass(MetaModel)):
                     expected_values_result[attributes.get(attribute).attr_name] = condition
                 else:
                     raise ValueError("Could not parse expected condition: {0}".format(cond))
+
+        if self._get_version_attribute()[0] and versioned:
+            version_attr_name = self._get_version_attribute()[0]
+            current_version = self._get_current_version()
+            if current_version:
+                # if the current version is non-null that means we have fetched
+                # this record from the server instead of initializing it locally.
+                # in this case we want to validate that the version number has
+                # not changed since we fetched the record.
+                current_version = self._get_version_attribute()[1].serialize(current_version)
+                condition = {
+                    COMPARISON_OPERATOR: EQ,
+                    ATTR_VALUE_LIST: [
+                        dict({NUMBER_SHORT: current_version})
+                    ]
+                }
+                expected_values_result[version_attr_name] = condition
+            else:
+                # if the current version is null that means that the record
+                # was initialized locally.  in this case we want to validate
+                # that there is no existing record in the table when we attempt
+                # to put.  this is done by validating that hash and range keys
+                # are null.
+                condition = {
+                    COMPARISON_OPERATOR: NULL
+                }
+                for key, attr in self._get_keys().items():
+                    if key:
+                        expected_values_result[key] = condition
+
         return expected_values_result
 
     @classmethod
@@ -878,6 +912,29 @@ class Model(with_metaclass(MetaModel)):
                     instance = getattr(cls, item)
                     cls._attributes[item] = instance
         return cls._attributes
+
+    def _get_current_version(self):
+        attr_name = self._get_version_attribute()[0]
+        return getattr(self, attr_name) if attr_name else None
+
+    @classmethod
+    def _get_version_attribute(cls):
+        if cls._version_attribute is None:
+            # make sure that we only have one version attribute
+            print cls._get_attributes().items()
+            version_attrs = [(name, attr) for name, attr in cls._get_attributes().items()
+                             if isinstance(attr, VersionAttribute)]
+            if len(version_attrs) > 1:
+                raise ValueError('more than one version attribute specified on class {}'.format(cls.__name__))
+
+            # we set the version attribute to something non-null if there
+            # is no version attribute set so that we don't keep looking
+            # for it on every save
+            if len(version_attrs) > 0:
+                cls._version_attribute = version_attrs[0]
+            else:
+                cls._version_attribute = (None, None)
+        return cls._version_attribute
 
     def _get_json(self):
         """
@@ -1059,6 +1116,12 @@ class Model(with_metaclass(MetaModel)):
         attrs = OrderedDict({attributes: OrderedDict()})
         for name, attr in self._get_attributes().aliased_attrs():
             value = getattr(self, name)
+
+            # if this is a version attribute we want to increment
+            # an existing version or initialize to 1
+            if isinstance(attr, VersionAttribute):
+                value = value + 1 if value else 1
+
             if value is None:
                 if attr.null:
                     continue
