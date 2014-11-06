@@ -539,7 +539,7 @@ class Model(with_metaclass(MetaModel)):
             data = cls._get_connection().scan(
                 exclusive_start_key=last_evaluated_key,
                 limit=limit,
-                scan_filter=scan_filter,
+                scan_filter=key_filter,
                 segment=segment,
                 total_segments=total_segments
             )
