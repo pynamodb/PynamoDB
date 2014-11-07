@@ -57,15 +57,12 @@ item2.save()
 for item in TestModel.view_index.query(1):
     print("Item queried from index: {0}".format(item))
 
-# This should print 2 items since item1.num_comments == item2.num_comments == 0
-for item in TestModel.scan(num_comments__eq=0):
-    print("Item scanned with 0 characters and 0 comments: {0}".format(item))
+# This return 2 items since item1.num_comments == item2.num_comments == 0
+assert len(list(TestModel.scan(num_comments__eq=0))) == 2
 
-# This should print 2 items since item1.num_comments == item2.num_comments == 0
-for item in TestModel.scan(num_comments__eq=0, num_chars__eq=0, conditional_operator='or'):
-    print("Item scanned with 0 characters and 0 comments: {0}".format(item))
+# This should return 2 items since item1.num_comments == item2.num_comments == 0
+assert len(list(TestModel.scan(num_comments__eq=0, num_chars__eq=0, conditional_operator='or'))) == 2
 
-    
 class GamePlayerOpponentIndex(LocalSecondaryIndex):
     class Meta:
         read_capacity_units = 1
