@@ -19,7 +19,7 @@ from pynamodb.compat import NullHandler, OrderedDict
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
-    KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
+    KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS, COUNT,
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, QUERY_FILTER_OPERATOR_MAP,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ATTR_UPDATES, ALL_NEW,
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
@@ -536,6 +536,11 @@ class Model(with_metaclass(MetaModel)):
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
         while last_evaluated_key:
+            # If the user provided a limit, we need to subtract the number of results returned for each page
+            if limit is not None:
+                limit -= data.get("Count", 0)
+                if limit == 0:
+                    return
             log.debug("Fetching scan page with exclusive start key: {0}".format(last_evaluated_key))
             data = cls._get_connection().scan(
                 exclusive_start_key=last_evaluated_key,
