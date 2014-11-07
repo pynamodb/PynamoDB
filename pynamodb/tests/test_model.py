@@ -1280,9 +1280,11 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]
+            item_keys_copy = list(item_keys)
             req.return_value = HttpOK(), BATCH_GET_ITEMS
             for item in UserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
+            self.assertEqual(item_keys, item_keys_copy)
             params = {
                 'request_items': {
                     'UserModel': {

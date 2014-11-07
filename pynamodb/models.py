@@ -244,6 +244,7 @@ class Model(with_metaclass(MetaModel)):
         :param items: Should be a list of hash keys to retrieve, or a list of
             tuples if range keys are used.
         """
+        items = list(items)
         hash_keyname = cls._get_meta_data().hash_keyname
         range_keyname = cls._get_meta_data().range_keyname
         keys_to_get = []
