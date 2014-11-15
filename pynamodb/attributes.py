@@ -255,8 +255,20 @@ class UTCDateTimeAttribute(Attribute):
 
 class VersionAttribute(NumberAttribute):
     """
-    We restrict the user's ability to specify most of the options
-    for this attribute.
+    You can use a VersionAttribute to achieve optimistic locking at the item level.
+    On creation a version field will be initialized to 1 and a save will be conditional
+    on the specified hash/range pair not existing in the table.  If the document is
+    fetched from DynamoDB and then modified, the version number will be auto-incremented
+    and any subsequent save will be conditional on the version number equaling the value
+    before being incremented locally.  The user should not manually modify the value
+    contained in a VersionAttribute variable.  We restrict the user's ability to specify
+    most of the options for this attribute because the framework handles most logic
+    associated with this attribute type.
+
+    See the documentation for the DynamoDB SDK for Java to see another implementation of
+    optimistic locking:
+
+    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/JavaVersionSupportHLAPI.html
     """
     def __init__(self, attr_name=None):
         super(VersionAttribute, self).__init__(

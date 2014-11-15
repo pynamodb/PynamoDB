@@ -726,6 +726,11 @@ class Model(with_metaclass(MetaModel)):
                 else:
                     raise ValueError("Could not parse expected condition: {0}".format(cond))
 
+        # at this point the version attribute has not been incremented yet.
+        # we check to see if the document is versioned and if it is, if the
+        # value of the version attribute is None.  whether the value is None
+        # will dictate whether we process this document as a new creation
+        # or as an update.
         if self._get_version_attribute()[0] and versioned:
             version_attr_name = self._get_version_attribute()[0]
             current_version = self._get_current_version()
@@ -914,14 +919,21 @@ class Model(with_metaclass(MetaModel)):
         return cls._attributes
 
     def _get_current_version(self):
+        """
+        Returns the value of the version attribute for this document
+        if one exists, otherwise None.
+        """
         attr_name = self._get_version_attribute()[0]
         return getattr(self, attr_name) if attr_name else None
 
     @classmethod
     def _get_version_attribute(cls):
+        """
+        Returns the version attribute (name, attribute) tuple if it exists.
+        If none is defined on this table then it returns (None, None).
+        """
         if cls._version_attribute is None:
             # make sure that we only have one version attribute
-            print cls._get_attributes().items()
             version_attrs = [(name, attr) for name, attr in cls._get_attributes().items()
                              if isinstance(attr, VersionAttribute)]
             if len(version_attrs) > 1:
