@@ -439,6 +439,7 @@ class Model(with_metaclass(MetaModel)):
               index_name=None,
               scan_index_forward=None,
               limit=None,
+              last_evaluated_key=None,
               **filters):
         """
         Provides a high level query API
@@ -449,6 +450,7 @@ class Model(with_metaclass(MetaModel)):
         :param limit: Used to limit the number of results returned
         :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
             Controls descending or ascending results
+        :param last_evaluated_key: If set, provides the starting point for query.
         :param filters: A dictionary of filters to be used in the query
         """
         cls._get_indexes()
@@ -474,6 +476,7 @@ class Model(with_metaclass(MetaModel)):
         log.debug("Fetching first query page")
         data = cls._get_connection().query(
             hash_key,
+            exclusive_start_key=last_evaluated_key,
             index_name=index_name,
             consistent_read=consistent_read,
             scan_index_forward=scan_index_forward,
@@ -507,6 +510,7 @@ class Model(with_metaclass(MetaModel)):
              total_segments=None,
              limit=None,
              conditional_operator=None,
+             last_evaluated_key=None,
              **filters):
         """
         Iterates through all items in the table
@@ -514,6 +518,7 @@ class Model(with_metaclass(MetaModel)):
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
         :param limit: Used to limit the number of results returned
+        :param last_evaluated_key: If set, provides the starting point for scan.
         :param filters: A list of item filters
         """
         key_filter, scan_filter = cls._build_filters(
@@ -524,6 +529,7 @@ class Model(with_metaclass(MetaModel)):
         )
         key_filter.update(scan_filter)
         data = cls._get_connection().scan(
+            exclusive_start_key=last_evaluated_key,
             segment=segment,
             limit=limit,
             scan_filter=key_filter,
