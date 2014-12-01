@@ -489,6 +489,11 @@ class Model(with_metaclass(MetaModel)):
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
         while last_evaluated_key:
+            # If the user provided a limit, we need to subtract the number of results returned for each page
+            if limit is not None:
+                limit -= data.get("Count", 0)
+                if limit == 0:
+                    return
             log.debug("Fetching query page with exclusive start key: {0}".format(last_evaluated_key))
             data = cls._get_connection().query(
                 hash_key,
