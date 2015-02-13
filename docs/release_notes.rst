@@ -1,6 +1,19 @@
 Release Notes
 =============
 
+v1.3.5
+------
+
+This is a backward compatible, minor bug fix release.
+
+Bugs fixed in this release.
+
+* Fixed bug where scan did not properly limit results (#45)
+* Fixed bug where scan filters were not being preserved (#44)
+* Fixed bug where items were mutated as an unexpected side effect (#47)
+* Fixed bug where conditional operator wasn't used in scan
+
+
 v1.3.4
 ------
 
@@ -11,7 +24,7 @@ This is a backward compatible, minor bug fix release.
 Bugs fixed in this release.
 
 * Fixed bug where attributes could not be used in multiple indexes when creating a table.
-* Fixed bug where a depedency on mock was accidentally introduced.
+* Fixed bug where a dependency on mock was accidentally introduced.
 
 v1.3.3
 ------
