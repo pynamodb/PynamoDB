@@ -13,7 +13,7 @@ from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
-    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS,
+    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, ITEM_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT
 )
 from pynamodb.models import Model
@@ -1138,6 +1138,28 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(params, req.call_args[1])
             self.assertTrue(len(queried) == len(items))
+
+    def test_scan_limit(self):
+        """
+        Model.scan(limit)
+        """
+        def fake_scan(*args, **kwargs):
+            scan_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)
+            data = {
+                ITEM_COUNT: len(scan_items),
+                ITEMS: scan_items,
+            }
+            return HttpOK(data), data
+
+        mock_scan = MagicMock()
+        mock_scan.side_effect = fake_scan
+
+        with patch(PATCH_METHOD, new=mock_scan) as req:
+            count = 0
+            for item in UserModel.scan(limit=4):
+                count += 1
+                self.assertIsNotNone(item)
+            self.assertEqual(count, 4)
 
     def test_scan(self):
         """

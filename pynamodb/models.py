@@ -548,6 +548,10 @@ class Model(with_metaclass(MetaModel)):
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
         for item in data.get(ITEMS):
+            if limit is not None:
+                limit -= 1
+                if not limit:
+                    return
             yield cls.from_raw_data(item)
 
         while last_evaluated_key:
@@ -563,6 +567,10 @@ class Model(with_metaclass(MetaModel)):
             )
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):
+                if limit is not None:
+                    limit -= 1
+                    if not limit:
+                        return
                 yield cls.from_raw_data(item)
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
@@ -600,12 +608,11 @@ class Model(with_metaclass(MetaModel)):
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
-        while last_evaluated_key:
-            # If the user provided a limit, we need to subtract the number of results returned for each page
             if limit is not None:
-                limit -= data.get("Count", 0)
-                if limit == 0:
+                limit -= 1
+                if not limit:
                     return
+        while last_evaluated_key:
             log.debug("Fetching scan page with exclusive start key: {0}".format(last_evaluated_key))
             data = cls._get_connection().scan(
                 exclusive_start_key=last_evaluated_key,
@@ -616,6 +623,11 @@ class Model(with_metaclass(MetaModel)):
             )
             for item in data.get(ITEMS):
                 yield cls.from_raw_data(item)
+                if limit is not None:
+                    limit -= 1
+                    if not limit:
+                        return
+
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
     @classmethod
