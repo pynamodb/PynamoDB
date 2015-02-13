@@ -876,6 +876,74 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(args, params)
 
+    def test_filter_count(self):
+        """
+        Model.count(**filters)
+        """
+        with patch(PATCH_METHOD) as req:
+
+            req.return_value = HttpOK({'Count': 10}), {'Count': 10}
+            res = UserModel.count('foo')
+            self.assertEqual(res, 10)
+            args = req.call_args[1]
+            params = {
+                'key_conditions': {
+                    'user_name': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [{'S': u'foo'}]
+                    }
+                },
+                'table_name': 'UserModel',
+                'return_consumed_capacity': 'TOTAL',
+                'select': 'COUNT'
+            }
+            self.assertEqual(args, params)
+
+    def test_count(self):
+        """
+        Model.count()
+        """
+        def fake_dynamodb(obj, **kwargs):
+            return HttpOK(MODEL_TABLE_DATA), MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+
+            res = UserModel.count()
+            self.assertEqual(res, 42)
+            args = req.call_args[1]
+            params = {'table_name': 'UserModel'}
+            self.assertEqual(args, params)
+
+    def test_index_count(self):
+        """
+        Model.index.count()
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({'Count': 42}), {'Count': 42}
+            res = CustomAttrNameModel.uid_index.count('foo', limit=2, user_name__begins_with='bar')
+            self.assertEqual(res, 42)
+            args = req.call_args[1]
+            params = {
+                'key_conditions': {
+                    'user_name': {
+                        'ComparisonOperator': 'BEGINS_WITH',
+                        'AttributeValueList': [{'S': u'bar'}]
+                    },
+                    'user_id': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [{'S': u'foo'}]
+                    }
+                },
+                'index_name': 'uid_index',
+                'table_name': 'CustomAttrModel',
+                'return_consumed_capacity': 'TOTAL',
+                'select': 'COUNT'
+            }
+            self.assertEqual(args, params)
+
     def test_query(self):
         """
         Model.query
@@ -898,6 +966,7 @@ class ModelTestCase(TestCase):
                 [item.get('user_id').get(STRING_SHORT) for item in items],
                 queried
             )
+
 
         with patch(PATCH_METHOD) as req:
             items = []

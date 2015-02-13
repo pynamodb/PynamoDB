@@ -43,11 +43,38 @@ class Index(with_metaclass(IndexMeta)):
             raise ValueError("No projection defined, define a projection for this class")
 
     @classmethod
-    def query(cls, *args, **kwargs):
+    def count(cls,
+              hash_key,
+              consistent_read=False,
+              **filters):
+        """
+        Count on an index
+        """
+        return cls.Meta.model.count(
+            hash_key,
+            index_name=cls.Meta.index_name,
+            consistent_read=consistent_read,
+            **filters
+        )
+
+    @classmethod
+    def query(self,
+              hash_key,
+              scan_index_forward=None,
+              consistent_read=False,
+              limit=None,
+              **filters):
         """
         Queries an index
         """
-        pass
+        return self.Meta.model.query(
+            hash_key,
+            index_name=self.Meta.index_name,
+            scan_index_forward=scan_index_forward,
+            consistent_read=consistent_read,
+            limit=limit,
+            **filters
+        )
 
     @classmethod
     def _hash_key_attribute(cls):
@@ -103,47 +130,13 @@ class GlobalSecondaryIndex(Index):
     """
     A global secondary index
     """
-    def query(self,
-              hash_key,
-              scan_index_forward=None,
-              consistent_read=False,
-              limit=None,
-              **filters):
-        """
-        Queries an index
-        """
-        return self.Meta.model.query(
-            hash_key,
-            index_name=self.Meta.index_name,
-            scan_index_forward=scan_index_forward,
-            consistent_read=consistent_read,
-            limit=limit,
-            **filters
-        )
-
+    pass
 
 class LocalSecondaryIndex(Index):
     """
     A local secondary index
     """
-    @classmethod
-    def query(cls,
-              hash_key,
-              scan_index_forward=None,
-              consistent_read=False,
-              limit=None,
-              **filters):
-        """
-        Queries an index
-        """
-        return cls.Meta.model.query(
-            hash_key,
-            index_name=cls.Meta.index_name,
-            scan_index_forward=scan_index_forward,
-            consistent_read=consistent_read,
-            limit=limit,
-            **filters
-        )
+    pass
 
 
 class Projection(object):

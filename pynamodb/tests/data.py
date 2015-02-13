@@ -65,7 +65,7 @@ MODEL_TABLE_DATA = {
             }
         ],
         "CreationDateTime": 1.363729002358E9,
-        "ItemCount": 0,
+        "ItemCount": 42,
         "KeySchema": [
             {
                 "AttributeName": "user_name",

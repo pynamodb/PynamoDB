@@ -19,7 +19,7 @@ from pynamodb.compat import NullHandler, OrderedDict
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
-    KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS, COUNT,
+    KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS, CAMEL_COUNT,
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, QUERY_FILTER_OPERATOR_MAP,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ATTR_UPDATES, ALL_NEW,
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
@@ -28,7 +28,9 @@ from pynamodb.constants import (
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP, NOT_NULL,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
     CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
-    DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP)
+    DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
+    COUNT, ITEM_COUNT
+)
 
 
 log = logging.getLogger(__name__)
@@ -138,6 +140,17 @@ class DefaultMeta(object):
     table_name = None
     region = DEFAULT_REGION
     host = None
+
+
+class ResultSet(object):
+
+    def __init__(self, results, operation, arguments):
+        self.results = results
+        self.operation = operation
+        self.arguments = arguments
+
+    def __iter__(self):
+        return iter(self.results)
 
 
 class MetaModel(type):
@@ -433,6 +446,54 @@ class Model(with_metaclass(MetaModel)):
         return cls(*args, **kwargs)
 
     @classmethod
+    def count(cls,
+              hash_key=None,
+              consistent_read=False,
+              index_name=None,
+              **filters):
+        """
+        Provides a filtered count
+
+        :param hash_key: The hash key to query. Can be None.
+        :param consistent_read: If True, a consistent read is performed
+        :param index_name: If set, then this index is used
+        :param filters: A dictionary of filters to be used in the query
+        """
+        if hash_key is None:
+            return cls.describe_table().get(ITEM_COUNT)
+
+        cls._get_indexes()
+        if index_name:
+            hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
+            key_attribute_classes = cls._index_classes[index_name]._get_attributes()
+            non_key_attribute_classes = cls._get_attributes()
+        else:
+            hash_key = cls._serialize_keys(hash_key)[0]
+            non_key_attribute_classes = AttributeDict()
+            key_attribute_classes = AttributeDict()
+            for name, attr in cls._get_attributes().items():
+                if attr.is_range_key or attr.is_hash_key:
+                    key_attribute_classes[name] = attr
+                else:
+                    non_key_attribute_classes[name] = attr
+        key_conditions, query_filters = cls._build_filters(
+            QUERY_OPERATOR_MAP,
+            non_key_operator_map=QUERY_FILTER_OPERATOR_MAP,
+            key_attribute_classes=key_attribute_classes,
+            non_key_attribute_classes=non_key_attribute_classes,
+            filters=filters)
+
+        data = cls._get_connection().query(
+            hash_key,
+            index_name=index_name,
+            consistent_read=consistent_read,
+            key_conditions=key_conditions,
+            query_filters=query_filters,
+            select=COUNT
+        )
+        return data.get(CAMEL_COUNT)
+
+    @classmethod
     def query(cls,
               hash_key,
               consistent_read=False,
@@ -472,6 +533,7 @@ class Model(with_metaclass(MetaModel)):
             non_key_attribute_classes=non_key_attribute_classes,
             filters=filters)
         log.debug("Fetching first query page")
+
         data = cls._get_connection().query(
             hash_key,
             index_name=index_name,
@@ -482,9 +544,12 @@ class Model(with_metaclass(MetaModel)):
             query_filters=query_filters
         )
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
+
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
+
         while last_evaluated_key:
             log.debug("Fetching query page with exclusive start key: {0}".format(last_evaluated_key))
             data = cls._get_connection().query(

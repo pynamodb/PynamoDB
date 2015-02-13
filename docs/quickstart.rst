@@ -41,6 +41,11 @@ To write the user to DynamoDB, just call save:
 
     >>> user.save()
 
+You can see that the table count has changed:
+
+    >>> UserModel.count()
+    1
+
 Attributes can be accessed and set normally:
 
     >>> user.email
@@ -85,6 +90,30 @@ Now, suppose that you want to search the table for users with a last name
 
     for user in UserModel.query('Smith', first_name__begins_with='J'):
         print(user.first_name)
+
+
+Counting Items
+^^^^^^^^^^^^^^
+
+You can retrieve the count for queries by using the `count` method:
+
+::
+
+    print(UserModel.count('Smith', first_name__begins_with='J'))
+
+
+Counts also work for indexes:
+
+::
+
+    print(UserModel.custom_index.count('my_hash_key'))
+
+
+Alternatively, you can retrieve the table item count by calling the `count` method without filters:
+
+::
+
+    print(UserModel.count())
 
 
 Batch Operations

@@ -66,6 +66,12 @@ with Thread.batch_write() as batch:
     for thread in threads:
         batch.save(thread)
 
+# Get table count
+print(Thread.count())
+
+# Count based on a filter
+print(Thread.count('forum-1'))
+
 # Batch get
 item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(100)]
 for item in Thread.batch_get(item_keys):

@@ -97,3 +97,6 @@ item.save()
 # Indexes can be queried easily using the index's hash key
 for item in GameModel.player_opponent_index.query('1234'):
     print("Item queried from index: {0}".format(item))
+
+# Count on an index
+print(GameModel.player_opponent_index.count('1234'))
