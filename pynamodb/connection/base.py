@@ -163,7 +163,7 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None):
+    def __init__(self, region=None, host=None, env=None):
         self._tables = {}
         self.host = host
         self._session = None
@@ -171,6 +171,7 @@ class Connection(object):
             self.region = region
         else:
             self.region = DEFAULT_REGION
+        self.env = env
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.endpoint.host))
@@ -234,6 +235,8 @@ class Connection(object):
         """
         if self._session is None:
             self._session = get_session()
+            if "access_key" in self.env and "access_secret" in self.env:
+                self._session.set_credentials(self.env["access_key"], self.env["secret_key"])
         return self._session
 
     @property
