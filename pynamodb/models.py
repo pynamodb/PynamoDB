@@ -502,7 +502,8 @@ class Model(with_metaclass(MetaModel)):
                 consistent_read=consistent_read,
                 scan_index_forward=scan_index_forward,
                 limit=limit,
-                key_conditions=key_conditions
+                key_conditions=key_conditions,
+                query_filters=query_filters
             )
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):
