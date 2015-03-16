@@ -4,6 +4,7 @@ Lowest level connection
 import logging
 
 import six
+import time
 from botocore.session import get_session
 
 from .util import pythonic
@@ -200,7 +201,7 @@ class Connection(object):
             response.content)
         )
 
-    def dispatch(self, operation_name, operation_kwargs):
+    def dispatch(self, operation_name, operation_kwargs, backoff=True, **kwargs):
         """
         Dispatches `operation_name` with arguments `operation_kwargs`
 
@@ -211,8 +212,20 @@ class Connection(object):
                 operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         self._log_debug(operation_name, operation_kwargs)
         response, data = self.service.get_operation(operation_name).call(self.endpoint, **operation_kwargs)
+        operation = self.service.get_operation(operation_name)
         if not response.ok:
+            if "ProvisionedThroughputExceededException" in response.content:
+                if backoff:
+                    timeout = kwargs.get("timeout", 1)
+                    timeout = timeout * 2
+
+                    # arbitrary timeout limit such that if backing off doesn't help, at some point
+                    # let the exception propagate and it becomes a real error
+                    if timeout < 100:
+                        time.sleep(timeout)
+                        return self.dispatch(operation_name, operation_kwargs, backoff=backoff, timeout=timeout)
             self._log_error(operation_name, response)
+
         if data and CONSUMED_CAPACITY in data:
             capacity = data.get(CONSUMED_CAPACITY)
             if isinstance(capacity, dict) and CAPACITY_UNITS in capacity:
