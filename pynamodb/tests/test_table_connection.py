@@ -430,7 +430,8 @@ class ConnectionTestCase(TestCase):
             req.return_value = HttpOK(), {}
             conn.query(
                 "FooForum",
-                key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+                key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}},
+                exclusive_start_key="test_start_key"
             )
             params = {
                 'return_consumed_capacity': 'TOTAL',
@@ -441,7 +442,8 @@ class ConnectionTestCase(TestCase):
                         }]
                     }
                 },
-                'table_name': self.test_table_name
+                'table_name': self.test_table_name,
+                'exclusive_start_key': {'ForumName': {'S': 'test_start_key'}}
             }
             self.assertEqual(req.call_args[1], params)
 
@@ -455,9 +457,10 @@ class ConnectionTestCase(TestCase):
             conn.describe_table()
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), {}
-            conn.scan()
+            conn.scan(exclusive_start_key="test_start_key")
             params = {
                 'return_consumed_capacity': 'TOTAL',
-                'table_name': self.test_table_name
+                'table_name': self.test_table_name,
+                'exclusive_start_key': {'ForumName': {'S': 'test_start_key'}}
             }
             self.assertEqual(req.call_args[1], params)

@@ -10,7 +10,7 @@ from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.compat import OrderedDict
 from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
-from pynamodb.exceptions import TableError
+from pynamodb.exceptions import TableError, ScanError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, ITEM_COUNT,
@@ -243,6 +243,18 @@ class ComplexKeyModel(Model):
     date_created = UTCDateTimeAttribute(default=datetime.utcnow)
 
 
+class BackoffModel(Model):
+    """
+    This is a model to test backoff behavior when hitting rate limit
+    """
+    class Meta:
+        table_name = 'BackoffModel'
+        read_capacity_units = 1
+        write_capacity_units = 1
+    name = UnicodeAttribute(hash_key=True)
+    date_created = UTCDateTimeAttribute(range_key=True, default=datetime.utcnow)
+
+
 class ModelTestCase(TestCase):
     """
     Tests for the models API
@@ -263,6 +275,36 @@ class ModelTestCase(TestCase):
                     raise AssertionError("Values not equal: {0} {1}".format(d1_item, list2))
         if len(list1) != len(list2):
             raise AssertionError("Values not equal: {0} {1}".format(list1, list2))
+
+    def test_backoff(self):
+        class ProvisionedThroughputExceededResponse(object):
+            ok = False
+            content = "ProvisionedThroughputExceededException"
+            status_code = 400
+
+        class Sleeper(object):
+            sleep_calls = []
+            @staticmethod
+            def mock_sleep(num):
+                Sleeper.sleep_calls.append(num)
+
+        with patch("time.sleep") as sleep:
+            sleep.side_effect = Sleeper.mock_sleep
+            with patch(PATCH_METHOD) as call:
+                call.return_value = (ProvisionedThroughputExceededResponse(), None)
+                try:
+
+                    # iterating over scan and doing a backoff when exceptions are thrown in response
+                    for item in BackoffModel.scan():
+                        pass
+                except ScanError:
+
+                    # the backoff timeouts shoudl be 2, 4, 8, 16, 32, 64 and then if it reaches over 100, it breaks
+                    self.assertIn(64, Sleeper.sleep_calls)
+
+                    # validate that it calls all those sleep calls described above
+                    self.assertGreater(len(Sleeper.sleep_calls), 5)
+
 
     def test_create_model(self):
         """
