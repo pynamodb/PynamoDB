@@ -535,8 +535,7 @@ class Model(with_metaclass(MetaModel)):
             filters=filters)
         log.debug("Fetching first query page")
 
-        data = cls._get_connection().query(
-            hash_key,
+        query_kwargs = dict(
             index_name=index_name,
             consistent_read=consistent_read,
             scan_index_forward=scan_index_forward,
@@ -545,6 +544,8 @@ class Model(with_metaclass(MetaModel)):
             query_filters=query_filters,
             conditional_operator=conditional_operator
         )
+
+        data = cls._get_connection().query(hash_key, **query_kwargs)
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
 
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
@@ -558,16 +559,9 @@ class Model(with_metaclass(MetaModel)):
 
         while last_evaluated_key:
             log.debug("Fetching query page with exclusive start key: {0}".format(last_evaluated_key))
-            data = cls._get_connection().query(
-                hash_key,
-                exclusive_start_key=last_evaluated_key,
-                index_name=index_name,
-                consistent_read=consistent_read,
-                scan_index_forward=scan_index_forward,
-                limit=limit,
-                key_conditions=key_conditions,
-                conditional_operator=conditional_operator
-            )
+            query_kwargs['exclusive_start_key'] = last_evaluated_key
+            query_kwargs['limit'] = limit
+            data = cls._get_connection().query(hash_key, **query_kwargs)
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):
                 if limit is not None:
