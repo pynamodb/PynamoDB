@@ -1185,7 +1185,6 @@ class ModelTestCase(TestCase):
                     email__contains='@',
                     picture__null=False,
                     zip_code__ge=2,
-                    zip_code__le=3,
                     conditional_operator='AND'):
                 queried.append(item._serialize())
             params = {
@@ -1224,7 +1223,23 @@ class ModelTestCase(TestCase):
                 'return_consumed_capacity': 'TOTAL',
                 'table_name': 'UserModel'
             }
-            self.assertEqual(params, req.call_args[1])
+
+            for key in ('conditional_operator', 'return_consumed_capacity', 'table_name'):
+                self.assertEqual(req.call_args[1][key], params[key])
+            for key in ('user_id', 'user_name'):
+                self.assertEqual(
+                    req.call_args[1]['key_conditions'][key],
+                    params['key_conditions'][key]
+                )
+            for key in ('email', 'zip_code', 'picture'):
+                self.assertEqual(
+                    sorted(req.call_args[1]['query_filter'][key].items(), key=lambda x: x[0]),
+                    sorted(params['query_filter'][key].items(), key=lambda x: x[0]),
+                    "{} != {}".format(
+                        sorted(req.call_args[1]['query_filter'][key].items(), key=lambda x: x[0]),
+                        sorted(params['query_filter'][key].items(), key=lambda x: x[0]),
+                    )
+                )
             self.assertTrue(len(queried) == len(items))
 
     def test_scan(self):
