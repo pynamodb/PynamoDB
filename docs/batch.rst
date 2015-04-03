@@ -105,4 +105,9 @@ You can even specify multiple filters:
 Limiting results
 ^^^^^^^^^^^^^^^^
 
-Both `Scan`
+Both `Scan` and `Query` results can be limited to a maximum number of items using the `limit` argument.
+
+.. code-block:: python
+
+    for item in Thread.query('ForumName', subject__begins_with='mygreatprefix', limit=5):
+        print("Query returned item {0}".format(item))

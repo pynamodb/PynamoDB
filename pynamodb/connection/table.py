@@ -153,6 +153,7 @@ class TableConnection(object):
               limit=None,
               return_consumed_capacity=None,
               scan_index_forward=None,
+              conditional_operator=None,
               select=None
               ):
         """
@@ -170,6 +171,7 @@ class TableConnection(object):
             limit=limit,
             return_consumed_capacity=return_consumed_capacity,
             scan_index_forward=scan_index_forward,
+            conditional_operator=conditional_operator,
             select=select)
 
     def describe_table(self):

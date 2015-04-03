@@ -91,6 +91,13 @@ Now, suppose that you want to search the table for users with a last name
     for user in UserModel.query('Smith', first_name__begins_with='J'):
         print(user.first_name)
 
+You can combine query terms using 'AND' or 'OR':
+
+::
+
+    for user in UserModel.query('Smith', first_name__begins_with='J', email__contains='domain.com', conditional_operator='OR'):
+        print(user)
+
 
 Counting Items
 ^^^^^^^^^^^^^^

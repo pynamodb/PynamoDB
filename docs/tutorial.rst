@@ -1,5 +1,5 @@
-PynamoDB Tutorial
-=================
+Basic Tutorial
+==============
 
 PynamoDB is attempt to be a Pythonic interface to DynamoDB that supports all of DynamoDB's
 powerful features in *both* Python 3, and Python 2. This includes support for unicode and

@@ -1161,6 +1161,62 @@ class ModelTestCase(TestCase):
                 self.assertIsNotNone(item)
             self.assertEqual(count, 4)
 
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = HttpOK({'Items': items}), {'Items': items}
+            queried = []
+            for item in UserModel.query(
+                    'foo',
+                    user_id__begins_with='id',
+                    email__contains='@',
+                    picture__null=False,
+                    zip_code__ge=2,
+                    zip_code__le=3,
+                    conditional_operator='AND'):
+                queried.append(item._serialize())
+            params = {
+                'key_conditions': {
+                    'user_id': {
+                        'AttributeValueList': [
+                            {'S': 'id'}
+                        ],
+                        'ComparisonOperator': 'BEGINS_WITH'
+                    },
+                    'user_name': {
+                        'AttributeValueList': [
+                            {'S': 'foo'}
+                        ],
+                        'ComparisonOperator': 'EQ'
+                    }
+                },
+                'query_filter': {
+                    'email': {
+                        'AttributeValueList': [
+                            {'S': '@'}
+                        ],
+                        'ComparisonOperator': 'CONTAINS'
+                    },
+                    'zip_code': {
+                        'ComparisonOperator': 'GE',
+                        'AttributeValueList': [
+                            {'N': '2'},
+                        ]
+                    },
+                    'picture': {
+                        'ComparisonOperator': 'NOT_NULL'
+                    }
+                },
+                'conditional_operator': 'AND',
+                'return_consumed_capacity': 'TOTAL',
+                'table_name': 'UserModel'
+            }
+            self.assertEqual(params, req.call_args[1])
+            self.assertTrue(len(queried) == len(items))
+
     def test_scan(self):
         """
         Model.scan

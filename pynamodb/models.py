@@ -499,6 +499,7 @@ class Model(with_metaclass(MetaModel)):
               consistent_read=False,
               index_name=None,
               scan_index_forward=None,
+              conditional_operator=None,
               limit=None,
               **filters):
         """
@@ -541,7 +542,8 @@ class Model(with_metaclass(MetaModel)):
             scan_index_forward=scan_index_forward,
             limit=limit,
             key_conditions=key_conditions,
-            query_filters=query_filters
+            query_filters=query_filters,
+            conditional_operator=conditional_operator
         )
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
 
@@ -563,7 +565,8 @@ class Model(with_metaclass(MetaModel)):
                 consistent_read=consistent_read,
                 scan_index_forward=scan_index_forward,
                 limit=limit,
-                key_conditions=key_conditions
+                key_conditions=key_conditions,
+                conditional_operator=conditional_operator
             )
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):

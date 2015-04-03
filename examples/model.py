@@ -145,6 +145,11 @@ for item in AliasedModel.query('forum-1', subject__begins_with='subject'):
 for item in Thread.query('forum-1', views__eq=0):
     print("Query result: {0}".format(item))
 
+# Query with conditional operators
+for item in Thread.query('forum-1', views__eq=0, replies__eq=0, conditional_operator='OR'):
+    print("Query result: {0}".format(item))
+
+
 # Scan with filters
 for item in Thread.scan(subject__begins_with='subject', views__ge=0, conditional_operator='AND'):
     print("Scanned item: {0} {1}".format(item.subject, item.views))

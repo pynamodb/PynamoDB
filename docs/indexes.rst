@@ -1,4 +1,4 @@
-PynamoDB Index Queries
+Index Queries
 ======================
 
 DynamoDB supports two types of indexes: global secondary indexes, and local secondary indexes.
