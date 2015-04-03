@@ -33,7 +33,7 @@ class ConnectionTestCase(TestCase):
         """
         conn = Connection()
         self.assertIsNotNone(conn)
-        conn = Connection(host='foo-host')
+        conn = Connection(host='foohost')
         self.assertIsNotNone(conn.endpoint)
         self.assertIsNotNone(conn)
         self.assertEqual(repr(conn), "Connection<{0}>".format(conn.endpoint.host))
@@ -1237,6 +1237,16 @@ class ConnectionTestCase(TestCase):
             conn.query,
             table_name,
             "FooForum",
+            conditional_operator='NOT_A_VALID_ONE',
+            return_consumed_capacity='TOTAL',
+            key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+        )
+
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
             return_consumed_capacity='TOTAL',
             key_conditions={'ForumName': {'ComparisonOperator': 'BAD_OPERATOR', 'AttributeValueList': ['thread']}}
         )
@@ -1366,6 +1376,35 @@ class ConnectionTestCase(TestCase):
                 },
                 'table_name': 'Thread',
                 'select': 'ALL_ATTRIBUTES'
+            }
+            self.assertEqual(req.call_args[1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.query(
+                table_name,
+                "FooForum",
+                select='ALL_ATTRIBUTES',
+                conditional_operator='AND',
+                exclusive_start_key="FooForum"
+            )
+            params = {
+                'return_consumed_capacity': 'TOTAL',
+                'exclusive_start_key': {
+                    'ForumName': {
+                        'S': 'FooForum'
+                    }
+                },
+                'key_conditions': {
+                    'ForumName': {
+                        'ComparisonOperator': 'EQ', 'AttributeValueList': [{
+                            'S': 'FooForum'
+                        }]
+                    }
+                },
+                'table_name': 'Thread',
+                'select': 'ALL_ATTRIBUTES',
+                'conditional_operator': 'AND'
             }
             self.assertEqual(req.call_args[1], params)
 

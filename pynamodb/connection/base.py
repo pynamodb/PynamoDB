@@ -822,6 +822,7 @@ class Connection(object):
               index_name=None,
               key_conditions=None,
               query_filters=None,
+              conditional_operator=None,
               limit=None,
               return_consumed_capacity=None,
               scan_index_forward=None,
@@ -844,6 +845,8 @@ class Connection(object):
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if query_filters:
             operation_kwargs.update(self.get_query_filter_map(table_name, query_filters))
+        if conditional_operator:
+            operation_kwargs.update(self.get_conditional_operator(conditional_operator))
         if select:
             if select.upper() not in SELECT_VALUES:
                 raise ValueError("{0} must be one of {1}".format(SELECT, SELECT_VALUES))
