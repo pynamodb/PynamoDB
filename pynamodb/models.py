@@ -344,7 +344,7 @@ class Model(with_metaclass(MetaModel)):
         del(kwargs[pythonic(ATTRIBUTES)])
         kwargs[pythonic(ATTR_UPDATES)] = {
             attribute: {
-                ACTION: action.upper(),
+                ACTION: action.upper() if action else None,
                 VALUE: {
                     ATTR_TYPE_MAP[attribute_cls.attr_type]: value
                 }

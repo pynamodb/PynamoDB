@@ -586,6 +586,16 @@ class ModelTestCase(TestCase):
                     }
                 }
             }
+            self.assertRaises(ValueError, item.update_item, 'views', 10)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK({}), {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
             item.update_item('views', 10, action='add')
             args = req.call_args[1]
             params = {
