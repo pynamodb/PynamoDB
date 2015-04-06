@@ -1,6 +1,23 @@
 Release Notes
 =============
 
+v1.3.6
+
+:date: 2015-04-06
+
+This is a backward compatible, minor bug fix release.
+
+Bugs fixed in this release:
+
+* Fixed bug where arguments were used incorrectly in update_item (#54)
+* Fixed bug where falsy values were used incorrectly in model constructors (#57), thanks @pior
+* Fixed bug where the limit argument for scan and query was not always honored.
+
+New features:
+
+* Table counts with optional filters can now be queried using ``Model.count(**filters)``
+
+
 v1.3.5
 ------
 
