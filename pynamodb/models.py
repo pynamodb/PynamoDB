@@ -238,9 +238,9 @@ class Model(with_metaclass(MetaModel)):
         """
         self.attribute_values = OrderedDict()
         self._set_defaults()
-        if hash_key:
+        if hash_key is not None:
             attrs[self._get_meta_data().hash_keyname] = hash_key
-        if range_key:
+        if range_key is not None:
             range_keyname = self._get_meta_data().range_keyname
             if range_keyname is None:
                 raise ValueError(
@@ -1125,7 +1125,7 @@ class Model(with_metaclass(MetaModel)):
             if attr_instance:
                 attr_type = ATTR_TYPE_MAP[attr_instance.attr_type]
                 value = attr.get(attr_type, None)
-                if value:
+                if value is not None:
                     setattr(self, name, attr_instance.deserialize(value))
 
     def _serialize(self, attr_map=False, null_check=True):
