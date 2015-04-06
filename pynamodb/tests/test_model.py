@@ -1235,10 +1235,6 @@ class ModelTestCase(TestCase):
                 self.assertEqual(
                     sorted(req.call_args[1]['query_filter'][key].items(), key=lambda x: x[0]),
                     sorted(params['query_filter'][key].items(), key=lambda x: x[0]),
-                    "{} != {}".format(
-                        sorted(req.call_args[1]['query_filter'][key].items(), key=lambda x: x[0]),
-                        sorted(params['query_filter'][key].items(), key=lambda x: x[0]),
-                    )
                 )
             self.assertTrue(len(queried) == len(items))
 
