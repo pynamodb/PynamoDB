@@ -332,14 +332,17 @@ class Model(with_metaclass(MetaModel)):
         :param action: The action to take if this item already exists.
             See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html#DDB-UpdateItem-request-AttributeUpdate
         """
-        args, _ = self._get_save_args(null_check=False)
+        args, save_kwargs = self._get_save_args(null_check=False)
         attribute_cls = None
         for attr_name, attr_cls in self._get_attributes().items():
             if attr_name == attribute:
                 value = attr_cls.serialize(value)
                 attribute_cls = attr_cls
                 break
-        kwargs = {}
+        if save_kwargs.get(pythonic(RANGE_KEY)):
+            kwargs = {pythonic(RANGE_KEY): save_kwargs.get(pythonic(RANGE_KEY))}
+        else:
+            kwargs = {}
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, UPDATE_FILTER_OPERATOR_MAP))
         kwargs[pythonic(ATTR_UPDATES)] = {

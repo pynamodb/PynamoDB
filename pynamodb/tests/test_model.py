@@ -692,6 +692,28 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(args, params)
 
+        # Reproduces https://github.com/jlafon/PynamoDB/issues/59
+        with patch(PATCH_METHOD) as req:
+            user = UserModel("test_hash", "test_range")
+            req.return_value = HttpOK({}), {
+                ATTRIBUTES: {}
+            }
+            user.update_item('zip_code', 10, action='add')
+            args = req.call_args[1]
+
+            params = {
+                'attribute_updates': {
+                    'zip_code': {'Action': 'ADD', 'Value': {'N': '10'}}
+                },
+                'table_name': 'UserModel',
+                'return_values': 'ALL_NEW',
+                'key': {
+                    'user_id': {'S': u'test_range'},
+                    'user_name': {'S': u'test_hash'}
+                },
+                'return_consumed_capacity': 'TOTAL'}
+            self.assertEqual(args, params)
+
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK({}), {
                 ATTRIBUTES: {
