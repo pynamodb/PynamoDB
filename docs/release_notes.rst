@@ -1,7 +1,21 @@
 Release Notes
 =============
 
+v1.3.7
+------
+
+:date: 2015-04-06
+
+This is a backward compatible, minor bug fix release.
+
+Bugs fixed in this release:
+
+* Fixed bug where range keys were not included in update_item (#59)
+* Fixed documentation bug (#58)
+
+
 v1.3.6
+------
 
 :date: 2015-04-06
 
