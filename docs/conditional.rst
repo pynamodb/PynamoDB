@@ -29,7 +29,7 @@ Suppose that you have defined a `Thread` Model for the examples below.
 AND vs. OR
 ^^^^^^^^^^
 
-Specifying that the conditions should be applied with AND or OR is achieved through the use of the `comparison_operator` keyword,
+Specifying that the conditions should be applied with AND or OR is achieved through the use of the `conditional_operator` keyword,
 which can be `and` or `or`.
 
 .. code-block:: python
@@ -40,14 +40,14 @@ which can be `and` or `or`.
     thread_item.save(
         forum_name__null=False,
         forum_subject__contains='foobar',
-        comparison_operator='or'
+        conditional_operator='or'
     )
 
     # The item will be saved if the forum name is not null AND the subject contains 'foobar'
     thread_item.save(
         forum_name__null=False,
         forum_subject__contains='foobar',
-        comparison_operator='and'
+        conditional_operator='and'
     )
 
 Conditional Model.save
