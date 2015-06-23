@@ -15,7 +15,7 @@ if six.PY3:
 else:
     from mock import patch
 
-PATCH_METHOD = 'botocore.operation.Operation.call'
+PATCH_METHOD = 'botocore.endpoint.Endpoint._get_response'
 
 
 class ConnectionTestCase(TestCase):

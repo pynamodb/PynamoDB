@@ -210,7 +210,11 @@ class Connection(object):
             if pythonic(RETURN_CONSUMED_CAPACITY) not in operation_kwargs:
                 operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         self._log_debug(operation_name, operation_kwargs)
-        response, data = self.service.get_operation(operation_name).call(self.endpoint, **operation_kwargs)
+        #import pdb; pdb.set_trace()
+        try:
+            response, data = getattr(self.client, pythonic(operation_name))(**operation_kwargs)
+        except ClientError as e:
+            pass
         if not response.ok:
             self._log_error(operation_name, response)
         if data and CONSUMED_CAPACITY in data:
@@ -239,9 +243,18 @@ class Connection(object):
     @property
     def service(self):
         """
-        Returns a reference to the dynamodb service
+        Returns a reference to the dynamodb client.
+
+        DEPRECATED: Use ``client`` property.
         """
-        return self.session.get_service(SERVICE_NAME)
+        return self.client
+
+    @property
+    def client(self):
+        """
+        Returns a reference to the dynamodb client
+        """
+        return self.session.create_client(SERVICE_NAME, region_name=self.region)
 
     @property
     def endpoint(self):
@@ -249,9 +262,9 @@ class Connection(object):
         Returns an endpoint connection to `self.region`
         """
         if self.host:
-            end_point = self.service.get_endpoint(self.region, endpoint_url=self.host)
+            end_point = self.client.get_endpoint(self.region, endpoint_url=self.host)
         else:
-            end_point = self.service.get_endpoint(self.region)
+            end_point = self.client.get_endpoint(self.region)
         return end_point
 
     def get_meta_table(self, table_name, refresh=False):
@@ -260,7 +273,8 @@ class Connection(object):
         """
         if table_name not in self._tables or refresh:
             operation_kwargs = {
-                pythonic(TABLE_NAME): table_name
+                #pythonic(TABLE_NAME): table_name
+                TABLE_NAME: table_name
             }
             response, data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
             if not response.ok:
@@ -283,8 +297,8 @@ class Connection(object):
         Performs the CreateTable operation
         """
         operation_kwargs = {
-            pythonic(TABLE_NAME): table_name,
-            pythonic(PROVISIONED_THROUGHPUT): {
+            TABLE_NAME: table_name,
+            PROVISIONED_THROUGHPUT: {
                 READ_CAPACITY_UNITS: read_capacity_units,
                 WRITE_CAPACITY_UNITS: write_capacity_units
             }
@@ -297,7 +311,7 @@ class Connection(object):
                 ATTR_NAME: attr.get(pythonic(ATTR_NAME)),
                 ATTR_TYPE: attr.get(pythonic(ATTR_TYPE))
             })
-        operation_kwargs[pythonic(ATTR_DEFINITIONS)] = attrs_list
+        operation_kwargs[ATTR_DEFINITIONS] = attrs_list
 
         if global_secondary_indexes:
             global_secondary_indexes_list = []
@@ -308,7 +322,7 @@ class Connection(object):
                     PROJECTION: index.get(pythonic(PROJECTION)),
                     PROVISIONED_THROUGHPUT: index.get(pythonic(PROVISIONED_THROUGHPUT))
                 })
-            operation_kwargs[pythonic(GLOBAL_SECONDARY_INDEXES)] = global_secondary_indexes_list
+            operation_kwargs[GLOBAL_SECONDARY_INDEXES] = global_secondary_indexes_list
 
         if key_schema is None:
             raise ValueError("key_schema is required")
@@ -318,7 +332,7 @@ class Connection(object):
                 ATTR_NAME: item.get(pythonic(ATTR_NAME)),
                 KEY_TYPE: str(item.get(pythonic(KEY_TYPE))).upper()
             })
-        operation_kwargs[pythonic(KEY_SCHEMA)] = sorted(key_schema_list, key=lambda x: x.get(KEY_TYPE))
+        operation_kwargs[KEY_SCHEMA] = sorted(key_schema_list, key=lambda x: x.get(KEY_TYPE))
 
         local_secondary_indexes_list = []
         if local_secondary_indexes:
@@ -328,7 +342,7 @@ class Connection(object):
                     KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)), 
                     PROJECTION: index.get(pythonic(PROJECTION)),
                 })
-            operation_kwargs[pythonic(LOCAL_SECONDARY_INDEXES)] = local_secondary_indexes_list
+            operation_kwargs[LOCAL_SECONDARY_INDEXES] = local_secondary_indexes_list
         response, data = self.dispatch(CREATE_TABLE, operation_kwargs)
         if response.status_code != HTTP_OK:
             raise TableError("Failed to create table: {0}".format(response.content))
@@ -339,7 +353,7 @@ class Connection(object):
         Performs the DeleteTable operation
         """
         operation_kwargs = {
-            pythonic(TABLE_NAME): table_name
+            TABLE_NAME: table_name
         }
         response, data = self.dispatch(DELETE_TABLE, operation_kwargs)
         if response.status_code != HTTP_OK:
@@ -355,12 +369,12 @@ class Connection(object):
         Performs the UpdateTable operation
         """
         operation_kwargs = {
-            pythonic(TABLE_NAME): table_name
+            TABLE_NAME: table_name
         }
         if read_capacity_units and not write_capacity_units or write_capacity_units and not read_capacity_units:
             raise ValueError("read_capacity_units and write_capacity_units are required together")
         if read_capacity_units and write_capacity_units:
-            operation_kwargs[pythonic(PROVISIONED_THROUGHPUT)] = {
+            operation_kwargs[PROVISIONED_THROUGHPUT] = {
                 READ_CAPACITY_UNITS: read_capacity_units,
                 WRITE_CAPACITY_UNITS: write_capacity_units
             }
@@ -376,7 +390,7 @@ class Connection(object):
                         }
                     }
                 })
-            operation_kwargs[pythonic(GLOBAL_SECONDARY_INDEX_UPDATES)] = global_secondary_indexes_list
+            operation_kwargs[GLOBAL_SECONDARY_INDEX_UPDATES] = global_secondary_indexes_list
         response, data = self.dispatch(UPDATE_TABLE, operation_kwargs)
         if not response.ok:
             raise TableError("Failed to update table: {0}".format(response.content))
@@ -388,11 +402,11 @@ class Connection(object):
         operation_kwargs = {}
         if exclusive_start_table_name:
             operation_kwargs.update({
-                pythonic(EXCLUSIVE_START_TABLE_NAME): exclusive_start_table_name
+                EXCLUSIVE_START_TABLE_NAME: exclusive_start_table_name
             })
         if limit is not None:
             operation_kwargs.update({
-                pythonic(LIMIT): limit
+                LIMIT: limit
             })
         response, data = self.dispatch(LIST_TABLES, operation_kwargs)
         if not response.ok:
@@ -442,20 +456,20 @@ class Connection(object):
         """
         Builds the expected map that is common to several operations
         """
-        kwargs = {pythonic(EXPECTED): {}}
+        kwargs = {EXPECTED: {}}
         for key, condition in expected.items():
             if EXISTS in condition:
-                kwargs[pythonic(EXPECTED)][key] = {
+                kwargs[EXPECTED][key] = {
                     EXISTS: condition.get(EXISTS)
                 }
             elif VALUE in condition:
-                kwargs[pythonic(EXPECTED)][key] = {
+                kwargs[EXPECTED][key] = {
                     VALUE: {
                         self.get_attribute_type(table_name, key): condition.get(VALUE)
                     }
                 }
             elif COMPARISON_OPERATOR in condition:
-                kwargs[pythonic(EXPECTED)][key] = {
+                kwargs[EXPECTED][key] = {
                     COMPARISON_OPERATOR: condition.get(COMPARISON_OPERATOR),
                 }
                 values = []
