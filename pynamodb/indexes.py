@@ -132,6 +132,7 @@ class GlobalSecondaryIndex(Index):
     """
     pass
 
+
 class LocalSecondaryIndex(Index):
     """
     A local secondary index

@@ -103,7 +103,10 @@ class BinaryAttribute(Attribute):
         """
         Returns a decoded string from base64
         """
-        return b64decode(value.encode(DEFAULT_ENCODING))
+        try:
+            return b64decode(value.decode(DEFAULT_ENCODING))
+        except AttributeError:
+            return b64decode(value)
 
 
 class BinarySetAttribute(SetMixin, Attribute):

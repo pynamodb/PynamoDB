@@ -8,7 +8,7 @@ import copy
 import logging
 import collections
 from six import with_metaclass
-from .exceptions import DoesNotExist, TableDoesNotExist
+from .exceptions import DoesNotExist, TableDoesNotExist, TableError
 from .throttle import NoThrottle
 from .attributes import Attribute
 from .connection.base import MetaTable
@@ -453,6 +453,7 @@ class Model(with_metaclass(MetaModel)):
               hash_key=None,
               consistent_read=False,
               index_name=None,
+              limit=None,
               **filters):
         """
         Provides a filtered count
@@ -492,6 +493,7 @@ class Model(with_metaclass(MetaModel)):
             consistent_read=consistent_read,
             key_conditions=key_conditions,
             query_filters=query_filters,
+            limit=limit,
             select=COUNT
         )
         return data.get(CAMEL_COUNT)
@@ -697,7 +699,7 @@ class Model(with_metaclass(MetaModel)):
                     else:
                         time.sleep(2)
                 else:
-                    raise ValueError("No TableStatus returned for table")
+                    raise TableError("No TableStatus returned for table")
 
     @classmethod
     def dumps(cls):
@@ -813,12 +815,11 @@ class Model(with_metaclass(MetaModel)):
         """
         filters = filters or {}
         for query, value in filters.items():
-            attribute = None
-            for token in query.split('__'):
-                if attribute is None:
-                    attribute = token
-                else:
-                    yield attribute, token, value
+            if '__' in query:
+                attribute, operator = query.split('__')
+                yield attribute, operator, value
+            else:
+                yield query, None, value
 
     @classmethod
     def _build_filters(cls,

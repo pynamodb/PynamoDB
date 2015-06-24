@@ -15,7 +15,7 @@ print(table.describe_table())
 print(table.get_item('hash-key', 'range-key'))
 
 # Put an item
-table.put_item('hash-key', 'range-key', attributes={'name': 'value'})
+table.put_item('hash-key', 'range-key', attributes={'forum_name': 'value'})
 
 # Delete an item
 table.delete_item('hash-key', 'range-key')
