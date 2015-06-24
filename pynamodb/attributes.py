@@ -174,7 +174,10 @@ class JSONAttribute(Attribute):
         if value is None:
             return None
         encoded = json.dumps(value)
-        return six.u(encoded)
+        try:
+            return unicode(encoded)
+        except NameError:
+            return encoded
 
     def deserialize(self, value):
         """

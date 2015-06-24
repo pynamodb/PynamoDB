@@ -393,6 +393,14 @@ class JSONAttributeTestCase(TestCase):
     """
     Tests json attributes
     """
+    def test_quoted_json(self):
+        attr = JSONAttribute()
+        serialized = attr.serialize('\\t')
+        self.assertEqual(attr.deserialize(serialized), '\\t')
+
+        serialized = attr.serialize('"')
+        self.assertEqual(attr.deserialize(serialized), '"')
+
     def test_json_attribute(self):
         """
         JSONAttribute.default
