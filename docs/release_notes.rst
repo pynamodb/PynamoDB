@@ -1,6 +1,20 @@
 Release Notes
 =============
 
+v1.4.0
+------
+
+:date: 2015-06-23
+
+This is a minor release, with backward compatible bug fixes.
+
+Bugs fixed in this release:
+
+* Added support for botocore 1.0.0 (#63)
+* Fixed bug where Model.get() could fail in certain cases (#64)
+* Fixed bug where JSON strings weren't being encoded properly (#61)
+
+
 v1.3.7
 ------
 
