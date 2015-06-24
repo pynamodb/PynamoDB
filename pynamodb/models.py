@@ -839,6 +839,7 @@ class Model(with_metaclass(MetaModel)):
         query_conditions = OrderedDict()
         non_key_operator_map = non_key_operator_map or {}
         key_attribute_classes = key_attribute_classes or {}
+        non_key_attribute_classes = non_key_attribute_classes or {}
         for attr_name, operator, value in cls._tokenize_filters(filters):
             attribute_class = key_attribute_classes.get(attr_name, None)
             if attribute_class is None:
