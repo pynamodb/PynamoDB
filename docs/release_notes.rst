@@ -1,6 +1,18 @@
 Release Notes
 =============
 
+v1.4.1
+------
+
+:date: 2015-06-26
+
+This is a backward compatible, minor bug fix release.
+
+Bugs fixed in this release:
+
+* Fixed bug where a local variable could be unbound (#67).
+
+
 v1.4.0
 ------
 
