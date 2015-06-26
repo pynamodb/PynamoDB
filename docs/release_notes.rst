@@ -1,6 +1,18 @@
 Release Notes
 =============
 
+v1.4.2
+------
+
+:date: 2015-06-26
+
+This is a backward compatible, minor bug fix release.
+
+Bugs fixed in this release:
+
+* Fixed bug where botocore exceptions were not being reraised.
+
+
 v1.4.1
 ------
 
