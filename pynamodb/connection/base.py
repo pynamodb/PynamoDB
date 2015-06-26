@@ -267,6 +267,8 @@ class Connection(object):
             except ClientError as e:
                 if e.response['Error']['Code'] == 'ResourceNotFoundException':
                     raise TableDoesNotExist(e.response['Error']['Message'])
+                else:
+                    raise
         return self._tables[table_name]
 
     def create_table(self,
