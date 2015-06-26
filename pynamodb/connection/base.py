@@ -261,12 +261,12 @@ class Connection(object):
             }
             try:
                 data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
+                self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
             except BotoCoreError as e:
                 raise TableError("Unable to describe table: {0}".format(e))
             except ClientError as e:
                 if e.response['Error']['Code'] == 'ResourceNotFoundException':
                     raise TableDoesNotExist(e.response['Error']['Message'])
-            self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
         return self._tables[table_name]
 
     def create_table(self,
