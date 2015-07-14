@@ -972,7 +972,7 @@ class Model(with_metaclass(MetaModel)):
         serialized = self._serialize(null_check=False)
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
-        if range_key:
+        if range_key is not None:
             kwargs[pythonic(RANGE_KEY)] = range_key
         kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return hash_key, kwargs
@@ -991,7 +991,7 @@ class Model(with_metaclass(MetaModel)):
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
         args = (hash_key, )
-        if range_key:
+        if range_key is not None:
             kwargs[pythonic(RANGE_KEY)] = range_key
         if attributes:
             kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
@@ -1176,6 +1176,6 @@ class Model(with_metaclass(MetaModel)):
         :param range_key: The range key value
         """
         hash_key = cls._hash_key_attribute().serialize(hash_key)
-        if range_key:
+        if range_key is not None:
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key
