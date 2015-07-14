@@ -136,7 +136,7 @@ class MetaTable(object):
                 }
             }
         }
-        if range_key:
+        if range_key is not None:
             kwargs[key][self.range_keyname] = {
                 self.get_attribute_type(self.range_keyname): range_key
             }
