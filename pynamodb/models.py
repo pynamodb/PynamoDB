@@ -1030,8 +1030,9 @@ class Model(with_metaclass(MetaModel)):
         range_keyname = self._get_meta_data().range_keyname
         attrs = {
             hash_keyname: hash_key,
-            range_keyname: range_key
         }
+        if range_keyname is not None:
+            attrs[range_keyname] = range_key
         return attrs
 
     @classmethod
