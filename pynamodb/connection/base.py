@@ -3,11 +3,11 @@ Lowest level connection
 """
 import logging
 
-import requests
 import six
 from botocore.session import get_session
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
+from botocore.vendored import requests
 
 from .util import pythonic
 from ..types import HASH, RANGE
