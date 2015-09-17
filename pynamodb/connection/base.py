@@ -256,7 +256,6 @@ class Connection(object):
         """
         if self._requests_session is None:
             self._requests_session = requests.Session()
-            self._requests_session.headers['Accept-Encoding'] = 'gzip,deflate'
         return self._requests_session
 
     @property
