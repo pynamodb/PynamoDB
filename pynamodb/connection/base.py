@@ -3,6 +3,7 @@ Lowest level connection
 """
 import logging
 
+import requests
 import six
 from botocore.session import get_session
 from botocore.exceptions import BotoCoreError
@@ -171,6 +172,7 @@ class Connection(object):
         self._tables = {}
         self.host = host
         self._session = None
+        self._requests_session = None
         self._client = None
         if region:
             self.region = region
@@ -216,9 +218,14 @@ class Connection(object):
                 operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         self._log_debug(operation_name, operation_kwargs)
 
-        method = getattr(self.client, pythonic(operation_name))
-
-        data = method(**operation_kwargs)
+        operation_model = self.client._service_model.operation_model(operation_name)
+        request_dict = self.client._convert_to_request_dict(
+            operation_kwargs,
+            operation_model
+        )
+        prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
+        response = self.requests_session.send(prepared_request)
+        data = response.json()
 
         if data and CONSUMED_CAPACITY in data:
             capacity = data.get(CONSUMED_CAPACITY)
@@ -241,6 +248,16 @@ class Connection(object):
         if self._session is None:
             self._session = get_session()
         return self._session
+
+    @property
+    def requests_session(self):
+        """
+        Return a requests session to execute prepared requests using the same pool
+        """
+        if self._requests_session is None:
+            self._requests_session = requests.Session()
+            self._requests_session.headers['Accept-Encoding'] = 'gzip,deflate'
+        return self._requests_session
 
     @property
     def client(self):
