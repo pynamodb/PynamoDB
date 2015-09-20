@@ -53,11 +53,3 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
-
-# REDIS database dumps
-*.rdb
-
-# SCSS background files
-*.scssc
-social_network/static/.sass-cache
-social_network/static/css/.sass-cache
