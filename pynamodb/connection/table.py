@@ -2,7 +2,7 @@
 PynamoDB Connection classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
-from .base import Connection
+from pynamodb.connection.base import Connection
 
 
 class TableConnection(object):

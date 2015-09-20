@@ -8,13 +8,13 @@ import copy
 import logging
 import collections
 from six import with_metaclass
-from .exceptions import DoesNotExist, TableDoesNotExist, TableError
-from .throttle import NoThrottle
-from .attributes import Attribute
-from .connection.base import MetaTable
-from .connection.table import TableConnection
-from .connection.util import pythonic
-from .types import HASH, RANGE
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
+from pynamodb.throttle import NoThrottle
+from pynamodb.attributes import Attribute
+from pynamodb.connection.base import MetaTable
+from pynamodb.connection.table import TableConnection
+from pynamodb.connection.util import pythonic
+from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler, OrderedDict
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.constants import (
@@ -97,7 +97,7 @@ class BatchWrite(ModelContextManager):
         """
         Writes all of the changes that are pending
         """
-        log.debug("{0} committing batch operation".format(self.model))
+        log.debug("%s committing batch operation", self.model)
         put_items = []
         delete_items = []
         attrs_name = pythonic(ATTRIBUTES)
@@ -127,7 +127,7 @@ class BatchWrite(ModelContextManager):
                 elif DELETE_REQUEST in key:
                     delete_items.append(key.get(DELETE_REQUEST))
             self.model.get_throttle().throttle()
-            log.debug("Resending {0} unprocessed keys for batch operation".format(len(unprocessed_keys)))
+            log.debug("Resending %s unprocessed keys for batch operation", len(unprocessed_keys))
             data = self.model._get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items
@@ -563,7 +563,7 @@ class Model(with_metaclass(MetaModel)):
             yield cls.from_raw_data(item)
 
         while last_evaluated_key:
-            log.debug("Fetching query page with exclusive start key: {0}".format(last_evaluated_key))
+            log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
             query_kwargs['exclusive_start_key'] = last_evaluated_key
             query_kwargs['limit'] = limit
             data = cls._get_connection().query(hash_key, **query_kwargs)
@@ -615,7 +615,7 @@ class Model(with_metaclass(MetaModel)):
                 if not limit:
                     return
         while last_evaluated_key:
-            log.debug("Fetching scan page with exclusive start key: {0}".format(last_evaluated_key))
+            log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().scan(
                 exclusive_start_key=last_evaluated_key,
                 limit=limit,
