@@ -17,9 +17,6 @@ install_requires = [
     'botocore>=1.0.0'
 ]
 
-if sys.version_info[0] < 3:
-    install_requires.append('ordereddict')
-
 setup(
     name='pynamodb',
     version=__import__('pynamodb').__version__,

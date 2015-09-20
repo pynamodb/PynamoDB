@@ -8,7 +8,6 @@ import copy
 from datetime import datetime
 from botocore.client import ClientError
 from pynamodb.compat import CompatTestCase as TestCase
-from pynamodb.compat import OrderedDict
 from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import TableError
@@ -1981,7 +1980,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             LocalIndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
-            params = OrderedDict({
+            params = {
                 'AttributeDefinitions': [
                     {
                         'attribute_name': 'email', 'attribute_type': 'S'
@@ -1999,7 +1998,7 @@ class ModelTestCase(TestCase):
                         'AttributeName': 'numbers', 'KeyType': 'RANGE'
                     }
                 ]
-            })
+            }
             schema = LocalIndexedModel.email_index._get_schema()
             args = req.call_args[0][1]
             self.assert_dict_lists_equal(schema['attribute_definitions'], params['AttributeDefinitions'])
