@@ -396,11 +396,11 @@ class ModelTestCase(TestCase):
             self.assertEquals(sorted(actual.keys()), sorted(params.keys()))
             self.assertEquals(actual['TableName'], params['TableName'])
             self.assertEquals(actual['ProvisionedThroughput'], params['ProvisionedThroughput'])
-            self.assertEquals(sorted(actual['KeySchema'], key=lambda x: x['AttributeName']),
-                              sorted(actual['KeySchema'], key=lambda x: x['AttributeName']))
+            self.assert_dict_lists_equal(sorted(actual['KeySchema'], key=lambda x: x['AttributeName']),
+                                         sorted(actual['KeySchema'], key=lambda x: x['AttributeName']))
             # These come in random order
-            self.assertEquals(sorted(actual['AttributeDefinitions'], key=lambda x: x['AttributeName']),
-                              sorted(params['AttributeDefinitions'], key=lambda x: x['AttributeName']))
+            self.assert_dict_lists_equal(sorted(actual['AttributeDefinitions'], key=lambda x: x['AttributeName']),
+                                         sorted(params['AttributeDefinitions'], key=lambda x: x['AttributeName']))
 
         def bad_server(*args):
             if scope_args['count'] == 0:
