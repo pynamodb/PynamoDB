@@ -393,7 +393,7 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
             actual = req.call_args_list[1][0][1]
-            self.assertEquals(actual.keys(), params.keys())
+            self.assertEquals(sorted(actual.keys()), sorted(params.keys()))
             self.assertEquals(actual['TableName'], params['TableName'])
             self.assertEquals(actual['ProvisionedThroughput'], params['ProvisionedThroughput'])
             self.assertEquals(actual['KeySchema'], params['KeySchema'])
