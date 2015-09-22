@@ -29,8 +29,7 @@ from pynamodb.constants import (
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
     CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
-    COUNT, ITEM_COUNT
-)
+    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS)
 
 
 log = logging.getLogger(__name__)
@@ -117,23 +116,23 @@ class BatchWrite(ModelContextManager):
         self.model.add_throttle_record(data.get(CONSUMED_CAPACITY, None))
         if data is None:
             return
-        unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.Meta.table_name)
-        while unprocessed_keys:
+        unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
+        while unprocessed_items:
             put_items = []
             delete_items = []
-            for key in unprocessed_keys:
-                if PUT_REQUEST in key:
-                    put_items.append(key.get(PUT_REQUEST))
-                elif DELETE_REQUEST in key:
-                    delete_items.append(key.get(DELETE_REQUEST))
+            for item in unprocessed_items:
+                if PUT_REQUEST in item:
+                    put_items.append(item.get(PUT_REQUEST).get(ITEM))
+                elif DELETE_REQUEST in item:
+                    delete_items.append(item.get(DELETE_REQUEST).get(KEY))
             self.model.get_throttle().throttle()
-            log.debug("Resending {0} unprocessed keys for batch operation".format(len(unprocessed_keys)))
+            log.debug("Resending {0} unprocessed keys for batch operation".format(len(unprocessed_items)))
             data = self.model._get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items
             )
             self.model.add_throttle_record(data.get(CONSUMED_CAPACITY))
-            unprocessed_keys = data.get(UNPROCESSED_KEYS, {}).get(self.model.Meta.table_name)
+            unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
 
 
 class DefaultMeta(object):
