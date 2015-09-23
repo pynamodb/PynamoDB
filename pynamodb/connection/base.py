@@ -31,6 +31,12 @@ from pynamodb.constants import (
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES
 )
 
+try:
+    import ujson as json
+except ImportError:
+    import json
+
+
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
 
@@ -234,11 +240,11 @@ class Connection(object):
         )
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
         response = self.requests_session.send(prepared_request)
+        data = json.loads(response.text)
         if response.status_code >= 300:
-            data = response.json()
             botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
             raise ClientError(botocore_expected_format, operation_name)
-        return response.json()
+        return data
 
     @property
     def session(self):
