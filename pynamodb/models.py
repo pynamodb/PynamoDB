@@ -369,7 +369,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Save this object to dynamodb
         """
-        for k, v in self._get_attributes().iteritems():
+        for k, v in six.iteritems(self._get_attributes()):
             if v.calculator is not None:
                 setattr(self, k, v.calculator(self))
         args, kwargs = self._get_save_args()
