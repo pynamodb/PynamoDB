@@ -82,9 +82,6 @@ class Throttle(ThrottleBase):
         # Under capacity
         elif throughput < (.9 * self.capacity) and self.sleep_interval > 0.1:
             self.sleep_interval -= self.sleep_interval * .10
-        log.debug("Sleeping for {0}s, current throughput is {1} and desired throughput is {2}".format(
-            self.sleep_interval,
-            throughput,
-            self.capacity
-        ))
+        log.debug("Sleeping for %ss, current throughput is %s and desired throughput is %s",
+                  self.sleep_interval, throughput, self.capacity)
         time.sleep(self.sleep_interval)

@@ -3,12 +3,14 @@ Test model API
 """
 import random
 import json
-import six
 import copy
 from datetime import datetime
+
+import six
 from botocore.client import ClientError
+
 from pynamodb.compat import CompatTestCase as TestCase
-from pynamodb.compat import OrderedDict
+from pynamodb.tests.deep_eq import deep_eq
 from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import TableError
@@ -25,7 +27,7 @@ from pynamodb.indexes import (
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute)
-from .data import (
+from pynamodb.tests.data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
@@ -38,7 +40,7 @@ if six.PY3:
 else:
     from mock import patch, MagicMock
 
-PATCH_METHOD = 'botocore.client.BaseClient._make_api_call'
+PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
 
 class GamePlayerOpponentIndex(LocalSecondaryIndex):
@@ -390,8 +392,15 @@ class ModelTestCase(TestCase):
                 },
                 'TableName': 'UserModel'
             }
-
-            self.assertEqual(req.call_args_list[1][0][1], params)
+            actual = req.call_args_list[1][0][1]
+            self.assertEquals(sorted(actual.keys()), sorted(params.keys()))
+            self.assertEquals(actual['TableName'], params['TableName'])
+            self.assertEquals(actual['ProvisionedThroughput'], params['ProvisionedThroughput'])
+            self.assert_dict_lists_equal(sorted(actual['KeySchema'], key=lambda x: x['AttributeName']),
+                                         sorted(actual['KeySchema'], key=lambda x: x['AttributeName']))
+            # These come in random order
+            self.assert_dict_lists_equal(sorted(actual['AttributeDefinitions'], key=lambda x: x['AttributeName']),
+                                         sorted(params['AttributeDefinitions'], key=lambda x: x['AttributeName']))
 
         def bad_server(*args):
             if scope_args['count'] == 0:
@@ -515,7 +524,7 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
             args = req.call_args[0][1]
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = None
@@ -538,7 +547,7 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
             args = req.call_args[0][1]
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = None
@@ -593,7 +602,7 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
             args = req.call_args[0][1]
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
     def test_update_item(self):
         """
@@ -645,7 +654,7 @@ class ModelTestCase(TestCase):
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
             }
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {
@@ -686,7 +695,7 @@ class ModelTestCase(TestCase):
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
             }
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {
@@ -719,7 +728,7 @@ class ModelTestCase(TestCase):
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
             }
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
         # Reproduces https://github.com/jlafon/PynamoDB/issues/59
         with patch(PATCH_METHOD) as req:
@@ -741,7 +750,7 @@ class ModelTestCase(TestCase):
                     'user_name': {'S': u'test_hash'}
                 },
                 'ReturnConsumedCapacity': 'TOTAL'}
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {
@@ -773,7 +782,7 @@ class ModelTestCase(TestCase):
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
             }
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
     def test_save(self):
         """
@@ -806,7 +815,7 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
 
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -835,7 +844,7 @@ class ModelTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'UserModel'
             }
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -867,7 +876,7 @@ class ModelTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'UserModel'
             }
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -906,7 +915,7 @@ class ModelTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'UserModel'
             }
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -935,7 +944,7 @@ class ModelTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'UserModel'
             }
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
     def test_filter_count(self):
         """
@@ -957,7 +966,7 @@ class ModelTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL',
                 'Select': 'COUNT'
             }
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
     def test_count(self):
         """
@@ -1003,7 +1012,7 @@ class ModelTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL',
                 'Select': 'COUNT'
             }
-            self.assertEqual(args, params)
+            deep_eq(args, params, _assert=True)
 
     def test_query(self):
         """
@@ -1981,7 +1990,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             LocalIndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
-            params = OrderedDict({
+            params = {
                 'AttributeDefinitions': [
                     {
                         'attribute_name': 'email', 'attribute_type': 'S'
@@ -1999,7 +2008,7 @@ class ModelTestCase(TestCase):
                         'AttributeName': 'numbers', 'KeyType': 'RANGE'
                     }
                 ]
-            })
+            }
             schema = LocalIndexedModel.email_index._get_schema()
             args = req.call_args[0][1]
             self.assert_dict_lists_equal(schema['attribute_definitions'], params['AttributeDefinitions'])

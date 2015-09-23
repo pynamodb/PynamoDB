@@ -5,15 +5,15 @@ import six
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION
-from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
-from .response import HttpOK
+from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
+from pynamodb.tests.response import HttpOK
 
 if six.PY3:
     from unittest.mock import patch
 else:
     from mock import patch
 
-PATCH_METHOD = 'botocore.client.BaseClient._make_api_call'
+PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
 
 class ConnectionTestCase(TestCase):

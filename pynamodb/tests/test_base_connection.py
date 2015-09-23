@@ -7,7 +7,7 @@ from pynamodb.connection import Connection
 from pynamodb.exceptions import (
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
 from pynamodb.constants import DEFAULT_REGION
-from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
+from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
 
@@ -16,7 +16,7 @@ if six.PY3:
 else:
     from mock import patch
 
-PATCH_METHOD = 'botocore.client.BaseClient._make_api_call'
+PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
 
 class ConnectionTestCase(TestCase):
