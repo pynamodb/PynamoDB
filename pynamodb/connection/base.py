@@ -212,14 +212,7 @@ class Connection(object):
                 operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         self._log_debug(operation_name, operation_kwargs)
 
-        operation_model = self.client._service_model.operation_model(operation_name)
-        request_dict = self.client._convert_to_request_dict(
-            operation_kwargs,
-            operation_model
-        )
-        prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
-        response = self.requests_session.send(prepared_request)
-        data = response.json()
+        data = self._make_api_call(operation_name, operation_kwargs)
 
         if data and CONSUMED_CAPACITY in data:
             capacity = data.get(CONSUMED_CAPACITY)
@@ -227,6 +220,23 @@ class Connection(object):
                 capacity = capacity.get(CAPACITY_UNITS)
             log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
+
+    def _make_api_call(self, operation_name, operation_kwargs):
+        """
+        This private method is here for two reasons:
+        1. It's faster to avoid using botocore's response parsing
+        2. It provides a place to monkey patch requests for unit testing
+        """
+        operation_model = self.client._service_model.operation_model(operation_name)
+        request_dict = self.client._convert_to_request_dict(
+            operation_kwargs,
+            operation_model
+        )
+        prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
+        response = self.requests_session.send(prepared_request)
+        if not response.ok:
+            raise TableError("Request failed: {}".format(response.content))
+        return response.json()
 
     @property
     def session(self):
