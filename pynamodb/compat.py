@@ -5,12 +5,6 @@ import logging
 import unittest
 
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ordereddict import OrderedDict
-
-
 class FailedToRaise(Exception):
     pass
 

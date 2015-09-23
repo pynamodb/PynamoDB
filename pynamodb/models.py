@@ -15,7 +15,7 @@ from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
-from pynamodb.compat import NullHandler, OrderedDict
+from pynamodb.compat import NullHandler
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
@@ -185,8 +185,8 @@ class AttributeDict(collections.MutableMapping):
     A dictionary that stores attributes by two keys
     """
     def __init__(self, *args, **kwargs):
-        self._values = OrderedDict()
-        self._alt_values = OrderedDict()
+        self._values = {}
+        self._alt_values = {}
         self.update(dict(*args, **kwargs))
 
     def __getitem__(self, key):
@@ -236,7 +236,7 @@ class Model(with_metaclass(MetaModel)):
         :param range_key: Only required if the table has a range key attribute.
         :param attrs: A dictionary of attributes to set on this object.
         """
-        self.attribute_values = OrderedDict()
+        self.attribute_values = {}
         self._set_defaults()
         if hash_key is not None:
             attrs[self._get_meta_data().hash_keyname] = hash_key
@@ -436,7 +436,7 @@ class Model(with_metaclass(MetaModel)):
         hash_key_attr = cls._get_attributes().get(hash_keyname)
         hash_key = hash_key_attr.deserialize(hash_key)
         args = (hash_key,)
-        kwargs = OrderedDict()
+        kwargs = {}
         if range_keyname:
             range_key_attr = cls._get_attributes().get(range_keyname)
             range_key_type = cls._get_meta_data().get_attribute_type(range_keyname)
@@ -755,7 +755,7 @@ class Model(with_metaclass(MetaModel)):
 
         :param expected_values: A list of expected values
         """
-        expected_values_result = OrderedDict()
+        expected_values_result = {}
         attributes = cls._get_attributes()
         filters = {}
         for attr_name, attr_value in expected_values.items():
@@ -835,8 +835,8 @@ class Model(with_metaclass(MetaModel)):
         :param non_key_operator_map: The mapping of operators used for non key attributes
         :param filters: A list of item filters
         """
-        key_conditions = OrderedDict()
-        query_conditions = OrderedDict()
+        key_conditions = {}
+        query_conditions = {}
         non_key_operator_map = non_key_operator_map or {}
         key_attribute_classes = key_attribute_classes or {}
         non_key_attribute_classes = non_key_attribute_classes or {}
@@ -917,7 +917,7 @@ class Model(with_metaclass(MetaModel)):
                 pythonic(LOCAL_SECONDARY_INDEXES): [],
                 pythonic(ATTR_DEFINITIONS): []
             }
-            cls._index_classes = OrderedDict()
+            cls._index_classes = {}
             for item in dir(cls):
                 item_cls = getattr(getattr(cls, item), "__class__", None)
                 if item_cls is None:
@@ -968,7 +968,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Returns a Python object suitable for serialization
         """
-        kwargs = OrderedDict()
+        kwargs = {}
         serialized = self._serialize(null_check=False)
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
@@ -986,7 +986,7 @@ class Model(with_metaclass(MetaModel)):
         :param attributes: If True, then attributes are included.
         :param null_check: If True, then attributes are checked for null.
         """
-        kwargs = OrderedDict()
+        kwargs = {}
         serialized = self._serialize(null_check=null_check)
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
@@ -1142,7 +1142,7 @@ class Model(with_metaclass(MetaModel)):
         :param null_check: If True, then attributes are checked for null
         """
         attributes = pythonic(ATTRIBUTES)
-        attrs = OrderedDict({attributes: OrderedDict()})
+        attrs = {attributes: {}}
         for name, attr in self._get_attributes().aliased_attrs():
             value = getattr(self, name)
             if value is None:
