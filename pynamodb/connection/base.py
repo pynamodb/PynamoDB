@@ -7,6 +7,7 @@ import six
 from botocore.session import get_session
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
+from botocore.vendored import requests
 
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
@@ -171,6 +172,7 @@ class Connection(object):
         self._tables = {}
         self.host = host
         self._session = None
+        self._requests_session = None
         self._client = None
         if region:
             self.region = region
@@ -210,9 +212,7 @@ class Connection(object):
                 operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         self._log_debug(operation_name, operation_kwargs)
 
-        method = getattr(self.client, pythonic(operation_name))
-
-        data = method(**operation_kwargs)
+        data = self._make_api_call(operation_name, operation_kwargs)
 
         if data and CONSUMED_CAPACITY in data:
             capacity = data.get(CONSUMED_CAPACITY)
@@ -220,6 +220,23 @@ class Connection(object):
                 capacity = capacity.get(CAPACITY_UNITS)
             log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
+
+    def _make_api_call(self, operation_name, operation_kwargs):
+        """
+        This private method is here for two reasons:
+        1. It's faster to avoid using botocore's response parsing
+        2. It provides a place to monkey patch requests for unit testing
+        """
+        operation_model = self.client._service_model.operation_model(operation_name)
+        request_dict = self.client._convert_to_request_dict(
+            operation_kwargs,
+            operation_model
+        )
+        prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
+        response = self.requests_session.send(prepared_request)
+        if not response.ok:
+            raise TableError("Request failed: {}".format(response.content))
+        return response.json()
 
     @property
     def session(self):
@@ -229,6 +246,15 @@ class Connection(object):
         if self._session is None:
             self._session = get_session()
         return self._session
+
+    @property
+    def requests_session(self):
+        """
+        Return a requests session to execute prepared requests using the same pool
+        """
+        if self._requests_session is None:
+            self._requests_session = requests.Session()
+        return self._requests_session
 
     @property
     def client(self):
