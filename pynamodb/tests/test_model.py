@@ -40,7 +40,7 @@ if six.PY3:
 else:
     from mock import patch, MagicMock
 
-PATCH_METHOD = 'botocore.client.BaseClient._make_api_call'
+PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
 
 class GamePlayerOpponentIndex(LocalSecondaryIndex):

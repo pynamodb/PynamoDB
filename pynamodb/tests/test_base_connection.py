@@ -16,7 +16,7 @@ if six.PY3:
 else:
     from mock import patch
 
-PATCH_METHOD = 'botocore.client.BaseClient._make_api_call'
+PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
 
 class ConnectionTestCase(TestCase):
