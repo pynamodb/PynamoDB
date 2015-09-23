@@ -1,7 +1,6 @@
 """
 DynamoDB Models for PynamoDB
 """
-import json
 import time
 import six
 import copy
@@ -30,6 +29,11 @@ from pynamodb.constants import (
     CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS)
+
+try:
+    import ujson as json
+except ImportError:
+    import json
 
 
 log = logging.getLogger(__name__)
