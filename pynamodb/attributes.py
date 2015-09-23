@@ -24,9 +24,11 @@ class Attribute(object):
                  range_key=False,
                  null=None,
                  default=None,
+                 calculator=None,
                  attr_name=None
                  ):
         self.default = default
+        self.calculator = calculator
         if null is not None:
             self.null = null
         self.is_hash_key = hash_key
