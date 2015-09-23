@@ -15,7 +15,7 @@ from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
-    MaxBackoffException)
+    MaxBackoffExceeded)
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -252,7 +252,7 @@ class Connection(object):
                 time.sleep(backoff)
                 return self._make_api_call(operation_name, operation_kwargs, backoff=backoff)
             else:
-                raise MaxBackoffException()
+                raise MaxBackoffExceeded()
         elif backoff and "ProvisionedThroughputExceededException" in response.content:
             backoff *= 2
             log.warning("THROTTLED: At capacity, exponentially backing off for %s seconds", backoff)
@@ -261,7 +261,7 @@ class Connection(object):
                 time.sleep(backoff)
                 return self._make_api_call(operation_name, operation_kwargs, backoff=backoff)
             else:
-                raise MaxBackoffException()
+                raise MaxBackoffExceeded()
 
         return response.json()
 

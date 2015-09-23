@@ -84,8 +84,8 @@ class TableDoesNotExist(PynamoDBException):
         super(TableDoesNotExist, self).__init__(msg)
 
 
-class MaxBackoffException(PynamoDBException):
+class MaxBackoffExceeded(PynamoDBConnectionError):
     """
-    Raised when a request was throttled and the backoff maxed out
+    Raised when a request was throttled and max_backoff was exceeded
     """
-    msg = "Request was throttled and backoff expired"
+    msg = "Request was throttled and max_backoff was exceeded"
