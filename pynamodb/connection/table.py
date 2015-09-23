@@ -10,11 +10,11 @@ class TableConnection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, table_name, region=None, host=None):
+    def __init__(self, table_name, region=None, host=None, backoff=None, max_backoff=None):
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
-        self.connection = Connection(region=region, host=host)
+        self.connection = Connection(region=region, host=host, backoff=backoff, max_backoff=max_backoff)
 
     def delete_item(self, hash_key,
                     range_key=None,

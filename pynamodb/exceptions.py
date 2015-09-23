@@ -82,3 +82,10 @@ class TableDoesNotExist(PynamoDBException):
     def __init__(self, table_name):
         msg = "Table does not exist: `{0}`".format(table_name)
         super(TableDoesNotExist, self).__init__(msg)
+
+
+class MaxBackoffException(PynamoDBException):
+    """
+    Raised when a request was throttled and the backoff maxed out
+    """
+    msg = "Request was throttled and backoff expired"

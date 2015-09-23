@@ -8,13 +8,14 @@ from botocore.session import get_session
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
 from botocore.vendored import requests
+import time
 
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.exceptions import (
-    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist
-)
+    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
+    MaxBackoffException)
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -168,9 +169,11 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None):
+    def __init__(self, region=None, host=None, backoff=None, max_backoff=None):
         self._tables = {}
         self.host = host
+        self.backoff = backoff
+        self.max_backoff = max_backoff
         self._session = None
         self._requests_session = None
         self._client = None
@@ -221,7 +224,7 @@ class Connection(object):
             log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
 
-    def _make_api_call(self, operation_name, operation_kwargs):
+    def _make_api_call(self, operation_name, operation_kwargs, **kwargs):
         """
         This private method is here for two reasons:
         1. It's faster to avoid using botocore's response parsing
@@ -234,10 +237,32 @@ class Connection(object):
         )
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
         response = self.requests_session.send(prepared_request)
+        backoff = kwargs.get('backoff', self.backoff)
         if response.status_code >= 300:
             data = response.json()
             botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
             raise ClientError(botocore_expected_format, operation_name)
+        elif backoff and response.status_code in (500, 503):
+            # Retryable DynanmnoDB Service Errors (http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ErrorHandling.html)
+            backoff *= 2
+            log.warning("InternalServerError: exponentially backing off for %s seconds", backoff)
+            # arbitrary timeout limit such that if backing off doesn't help, at some point
+            # let the exception propagate and it becomes a real error
+            if backoff <= kwargs.get('max_backoff', self.max_backoff):
+                time.sleep(backoff)
+                return self._make_api_call(operation_name, operation_kwargs, backoff=backoff)
+            else:
+                raise MaxBackoffException()
+        elif backoff and "ProvisionedThroughputExceededException" in response.content:
+            backoff *= 2
+            log.warning("THROTTLED: At capacity, exponentially backing off for %s seconds", backoff)
+            # let the exception propagate and it becomes a real error
+            if backoff <= kwargs.get('max_backoff', self.max_backoff):
+                time.sleep(backoff)
+                return self._make_api_call(operation_name, operation_kwargs, backoff=backoff)
+            else:
+                raise MaxBackoffException()
+
         return response.json()
 
     @property

@@ -29,7 +29,7 @@ from pynamodb.constants import (
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
     CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
-    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS)
+    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, MAX_BACKOFF, BACKOFF)
 
 
 log = logging.getLogger(__name__)
@@ -167,6 +167,10 @@ class MetaModel(type):
                         setattr(attr_obj, REGION, DEFAULT_REGION)
                     if not hasattr(attr_obj, HOST):
                         setattr(attr_obj, HOST, None)
+                    if not hasattr(attr_obj, BACKOFF):
+                        setattr(attr_obj, BACKOFF, None)
+                    if not hasattr(attr_obj, MAX_BACKOFF):
+                        setattr(attr_obj, MAX_BACKOFF, None)
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -1119,7 +1123,8 @@ class Model(with_metaclass(MetaModel)):
                 See http://pynamodb.readthedocs.org/en/latest/release_notes.html"""
             )
         if cls._connection is None:
-            cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host)
+            cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host,
+                                              backoff=cls.Meta.backoff, max_backoff=cls.Meta.max_backoff)
         return cls._connection
 
     def _deserialize(self, attrs):
