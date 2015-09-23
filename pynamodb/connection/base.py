@@ -234,8 +234,10 @@ class Connection(object):
         )
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
         response = self.requests_session.send(prepared_request)
-        if not response.ok:
-            raise TableError("Request failed: {}".format(response.content))
+        if response.status_code >= 300:
+            data = response.json()
+            botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
+            raise ClientError(botocore_expected_format, operation_name)
         return response.json()
 
     @property
@@ -279,7 +281,7 @@ class Connection(object):
             except BotoCoreError as e:
                 raise TableError("Unable to describe table: {0}".format(e))
             except ClientError as e:
-                if e.response['Error']['Code'] == 'ResourceNotFoundException':
+                if 'ResourceNotFound' in e.response['Error']['Code']:
                     raise TableDoesNotExist(e.response['Error']['Message'])
                 else:
                     raise
