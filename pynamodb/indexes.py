@@ -63,6 +63,8 @@ class Index(with_metaclass(IndexMeta)):
               scan_index_forward=None,
               consistent_read=False,
               limit=None,
+              last_evaluated_key=None,
+              attributes_to_get=None,
               **filters):
         """
         Queries an index
@@ -73,6 +75,8 @@ class Index(with_metaclass(IndexMeta)):
             scan_index_forward=scan_index_forward,
             consistent_read=consistent_read,
             limit=limit,
+            last_evaluated_key=last_evaluated_key,
+            attributes_to_get=attributes_to_get,
             **filters
         )
 
