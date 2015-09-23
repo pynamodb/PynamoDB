@@ -2,5 +2,5 @@
 PynamoDB lowest level connection
 """
 
-from .base import Connection
-from .table import TableConnection
+from pynamodb.connection.base import Connection
+from pynamodb.connection.table import TableConnection

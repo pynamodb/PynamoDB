@@ -8,8 +8,8 @@ from botocore.session import get_session
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
 
-from .util import pythonic
-from ..types import HASH, RANGE
+from pynamodb.connection.util import pythonic
+from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist
@@ -184,26 +184,20 @@ class Connection(object):
         """
         Sends a debug message to the logger
         """
-        log.debug("Calling {0} with arguments {1}".format(
-            operation,
-            kwargs
-        ))
+        log.debug("Calling %s with arguments %s", operation, kwargs)
 
     def _log_debug_response(self, operation, response):
         """
         Sends a debug message to the logger about a response
         """
-        log.debug("{0} response: {1}".format(operation, response))
+        log.debug("%s response: %s", operation, response)
 
     def _log_error(self, operation, response):
         """
         Sends an error message to the logger
         """
-        log.error("{0} failed with status: {1}, message: {2}".format(
-            operation,
-            response.status_code,
-            response.content)
-        )
+        log.error("%s failed with status: %s, message: %s",
+                  operation, response.status_code,response.content)
 
     def dispatch(self, operation_name, operation_kwargs):
         """
@@ -224,13 +218,7 @@ class Connection(object):
             capacity = data.get(CONSUMED_CAPACITY)
             if isinstance(capacity, dict) and CAPACITY_UNITS in capacity:
                 capacity = capacity.get(CAPACITY_UNITS)
-            log.debug(
-                "{0} {1} consumed {2} units".format(
-                    data.get(TABLE_NAME, ''),
-                    operation_name,
-                    capacity
-                )
-            )
+            log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
 
     @property
