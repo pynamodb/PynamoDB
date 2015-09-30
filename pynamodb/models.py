@@ -298,7 +298,7 @@ class Model(with_metaclass(MetaModel)):
         backoff = cls.Meta.backoff
         while keys_to_get:
             if backoff:
-                if backoff > cls.model.Meta.max_backoff:
+                if backoff > cls.Meta.max_backoff:
                     raise MaxBackoffExceeded()
                 else:
                     log.info("PARTIALLY THROTTLED: At capacity, exponentially backing off for %s seconds", backoff)
