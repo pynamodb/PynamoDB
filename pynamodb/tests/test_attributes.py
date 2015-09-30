@@ -2,7 +2,6 @@
 pynamodb attributes tests
 """
 import six
-import json
 from base64 import b64encode
 from datetime import datetime
 from delorean import Delorean
@@ -14,6 +13,11 @@ from pynamodb.attributes import (
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY)
+
+try:
+    import ujson as json
+except ImportError:
+    import json
 
 
 class AttributeTestModel(Model):
