@@ -8,7 +8,7 @@ import copy
 import logging
 import collections
 from six import with_metaclass
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, MaxBackoffExceeded
 from pynamodb.throttle import NoThrottle
 from pynamodb.attributes import Attribute
 from pynamodb.connection.base import MetaTable
@@ -117,7 +117,15 @@ class BatchWrite(ModelContextManager):
         if data is None:
             return
         unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
+        backoff = self.model.Meta.backoff
         while unprocessed_items:
+            if backoff:
+                if backoff > self.model.Meta.max_backoff:
+                    raise MaxBackoffExceeded()
+                else:
+                    log.info("PARTIALLY THROTTLED: At capacity, exponentially backing off for %s seconds", backoff)
+                    time.sleep(backoff)
+                    backoff *= 2
             put_items = []
             delete_items = []
             for item in unprocessed_items:
@@ -287,7 +295,15 @@ class Model(with_metaclass(MetaModel)):
                     hash_keyname: hash_key
                 })
 
+        backoff = cls.Meta.backoff
         while keys_to_get:
+            if backoff:
+                if backoff > cls.model.Meta.max_backoff:
+                    raise MaxBackoffExceeded()
+                else:
+                    log.info("PARTIALLY THROTTLED: At capacity, exponentially backing off for %s seconds", backoff)
+                    time.sleep(backoff)
+                    backoff *= 2
             page, unprocessed_keys = cls._batch_get_page(keys_to_get)
             for batch_item in page:
                 yield cls.from_raw_data(batch_item)
