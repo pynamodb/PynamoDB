@@ -2,6 +2,8 @@
 Lowest level connection
 """
 import logging
+from botocore.retryhandler import EXCEPTION_MAP
+from retrying import retry
 
 import six
 from botocore.session import get_session
@@ -221,6 +223,7 @@ class Connection(object):
             log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
 
+    @retry(retry_on_exception=lambda e: isinstance(e, tuple(EXCEPTION_MAP['GENERAL_CONNECTION_ERROR'])))
     def _make_api_call(self, operation_name, operation_kwargs):
         """
         This private method is here for two reasons:

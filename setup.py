@@ -14,7 +14,8 @@ if sys.argv[-1] == 'publish':
 install_requires = [
     'Delorean',
     'six',
-    'botocore>=1.0.0'
+    'botocore>=1.0.0',
+    'retrying'
 ]
 
 setup(
