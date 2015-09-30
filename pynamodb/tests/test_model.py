@@ -1135,7 +1135,7 @@ class ModelTestCase(TestCase):
                 query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[:1]
             data = {
                 ITEMS: query_items,
-                LAST_EVALUATED_KEY: query_items[-1] if len(query_items) else None
+                LAST_EVALUATED_KEY: {k: v for k, v in query_items[-1].items() if k in ('user_name', 'user_id')} if len(query_items) else None
             }
             return data
 
@@ -1332,7 +1332,7 @@ class ModelTestCase(TestCase):
                 scan_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[:1]
             data = {
                 ITEMS: scan_items,
-                LAST_EVALUATED_KEY: scan_items[-1] if len(scan_items) else None
+                LAST_EVALUATED_KEY: {k:v for k,v in scan_items[-1].items() if k in ('user_name', 'user_id')} if len(scan_items) else None
             }
             return data
 

@@ -552,8 +552,6 @@ class Model(with_metaclass(MetaModel)):
         data = cls._get_connection().query(hash_key, **query_kwargs)
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
 
-        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
-
         for item in data.get(ITEMS):
             if limit is not None:
                 limit -= 1
@@ -561,9 +559,11 @@ class Model(with_metaclass(MetaModel)):
                     return
             yield cls.from_raw_data(item)
 
+        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+
         while last_evaluated_key:
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
-            query_kwargs['exclusive_start_key'] = last_evaluated_key
+            query_kwargs['exclusive_start_key'] = cls._format_keys_for_botocore(last_evaluated_key)
             query_kwargs['limit'] = limit
             data = cls._get_connection().query(hash_key, **query_kwargs)
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
@@ -605,7 +605,6 @@ class Model(with_metaclass(MetaModel)):
             conditional_operator=conditional_operator
         )
         log.debug("Fetching first scan page")
-        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
@@ -613,10 +612,12 @@ class Model(with_metaclass(MetaModel)):
                 limit -= 1
                 if not limit:
                     return
+
+        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
         while last_evaluated_key:
             log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().scan(
-                exclusive_start_key=last_evaluated_key,
+                exclusive_start_key=cls._format_keys_for_botocore(last_evaluated_key),
                 limit=limit,
                 scan_filter=key_filter,
                 segment=segment,
@@ -1182,3 +1183,13 @@ class Model(with_metaclass(MetaModel)):
         if range_key is not None:
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key
+
+    @classmethod
+    def _format_keys_for_botocore(cls, attribute_dict):
+        formatted = {}
+        for name, attr in attribute_dict.items():
+            attr_instance = cls._get_attributes()[name]
+            attr_type = ATTR_TYPE_MAP[attr_instance.attr_type]
+            value = attr[attr_type]
+            formatted[name] = {attr_type: attr_instance.serialize(attr_instance.deserialize(value))}
+        return formatted
