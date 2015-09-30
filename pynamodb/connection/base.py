@@ -242,14 +242,14 @@ class Connection(object):
         data = response.json()
         # Simulate botocore's binary attribute handling
         for item in data.get(ITEMS, tuple()):
-            for attr in item:
+            for attr in six.itervalues(item):
                 if BINARY_SHORT in attr:
                     attr[BINARY_SHORT] = b64decode(attr[BINARY_SHORT].encode(DEFAULT_ENCODING))
                 elif BINARY_SET_SHORT in attr:
                     value = attr[BINARY_SET_SHORT]
                     if value and len(value):
                         attr[BINARY_SET_SHORT] = set(b64decode(v.encode(DEFAULT_ENCODING)) for v in value)
-        for attr in data.get(LAST_EVALUATED_KEY, {}).values():
+        for attr in six.itervalues(data.get(LAST_EVALUATED_KEY, {})):
             if BINARY_SHORT in attr:
                 attr[BINARY_SHORT] = b64decode(attr[BINARY_SHORT].encode(DEFAULT_ENCODING))
             elif BINARY_SET_SHORT in attr:
