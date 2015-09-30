@@ -1,6 +1,7 @@
 """
 Lowest level connection
 """
+from base64 import b64decode
 import logging
 
 import six
@@ -28,8 +29,8 @@ from pynamodb.constants import (
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES,
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
-    CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES
-)
+    CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES,
+    ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT)
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
@@ -238,7 +239,17 @@ class Connection(object):
             data = response.json()
             botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
             raise ClientError(botocore_expected_format, operation_name)
-        return response.json()
+        data = response.json()
+        # Simulate BotoCore's binary attribute handling
+        for item in data.get(ITEMS, tuple()):
+            for attr in item:
+                if BINARY_SHORT in attr:
+                    attr[BINARY_SHORT] = b64decode(attr[BINARY_SHORT].encode(DEFAULT_ENCODING))
+                elif BINARY_SET_SHORT in attr:
+                    value = attr[BINARY_SET_SHORT]
+                    if value and len(value):
+                        attr[BINARY_SET_SHORT] = set(b64decode(b64decode(v.encode(DEFAULT_ENCODING))) for v in value)
+        return data
 
     @property
     def session(self):
