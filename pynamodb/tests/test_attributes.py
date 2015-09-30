@@ -161,7 +161,7 @@ class BinaryAttributeTestCase(TestCase):
         """
         attr = BinaryAttribute()
         value = b'foo'
-        serial = attr.serialize(value)
+        serial = b64encode(attr.serialize(value)) # Note: botocore calls b64encode
         self.assertEqual(attr.deserialize(serial), value)
 
     def test_binary_serialize(self):
@@ -177,7 +177,7 @@ class BinaryAttributeTestCase(TestCase):
         BinaryAttribute.deserialize
         """
         attr = BinaryAttribute()
-        serial = b64encode(b'foo').decode(DEFAULT_ENCODING)
+        serial = b64encode(b64encode(b'foo')).decode(DEFAULT_ENCODING)
         self.assertEqual(attr.deserialize(serial), b'foo')
 
     def test_binary_set_serialize(self):
@@ -197,7 +197,7 @@ class BinaryAttributeTestCase(TestCase):
         """
         attr = BinarySetAttribute()
         value = set([b'foo', b'bar'])
-        serial = attr.serialize(value)
+        serial = [b64encode(v) for v in attr.serialize(value)]  # Note: botocore calls b64encode
         self.assertEqual(attr.deserialize(serial), value)
 
     def test_binary_set_deserialize(self):
@@ -207,7 +207,7 @@ class BinaryAttributeTestCase(TestCase):
         attr = BinarySetAttribute()
         value = set([b'foo', b'bar'])
         self.assertEqual(
-            attr.deserialize([b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]),
+            attr.deserialize([b64encode(b64encode(val)).decode(DEFAULT_ENCODING) for val in sorted(value)]),
             value
         )
 
