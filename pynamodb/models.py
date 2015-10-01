@@ -296,8 +296,9 @@ class Model(with_metaclass(MetaModel)):
                 })
 
         backoff = cls.Meta.backoff
+        first_pass = True
         while keys_to_get:
-            if backoff:
+            if not first_pass and backoff:
                 if backoff > cls.Meta.max_backoff:
                     raise MaxBackoffExceeded()
                 else:
@@ -311,6 +312,7 @@ class Model(with_metaclass(MetaModel)):
                 keys_to_get = unprocessed_keys
             else:
                 keys_to_get = []
+            first_pass = False
 
     @classmethod
     def batch_write(cls, auto_commit=True):
