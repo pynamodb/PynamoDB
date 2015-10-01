@@ -64,6 +64,9 @@ class BatchWrite(ModelContextManager):
 
         :param put_item: Should be an instance of a `Model` to be written
         """
+        for k, v in six.iteritems(put_item._get_attributes()):
+            if v.calculator is not None:
+                setattr(put_item, k, v.calculator(put_item))
         if len(self.pending_operations) == self.max_operations:
             if not self.auto_commit:
                 raise ValueError("DynamoDB allows a maximum of 25 batch operations")
