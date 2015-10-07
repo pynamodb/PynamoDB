@@ -238,11 +238,7 @@ class Connection(object):
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
         response = self.requests_session.send(prepared_request)
         backoff = kwargs.get('backoff', self.backoff)
-        if response.status_code >= 300:
-            data = response.json()
-            botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
-            raise ClientError(botocore_expected_format, operation_name)
-        elif backoff and response.status_code in (500, 503):
+        if backoff and response.status_code in (500, 503):
             # Retryable DynanmnoDB Service Errors (http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ErrorHandling.html)
             log.warning("InternalServerError: exponentially backing off for %s seconds", backoff)
             # arbitrary timeout limit such that if backing off doesn't help, at some point
@@ -253,7 +249,7 @@ class Connection(object):
                 return self._make_api_call(operation_name, operation_kwargs, backoff=backoff)
             else:
                 raise MaxBackoffExceeded()
-        elif backoff and "ProvisionedThroughputExceededException" in response.content:
+        elif backoff and response.status_code == 400 and "ProvisionedThroughputExceededException" in response.content:
             log.info("THROTTLED: At capacity, exponentially backing off for %s seconds", backoff)
             # let the exception propagate and it becomes a real error
             if backoff <= kwargs.get('max_backoff', self.max_backoff):
@@ -262,6 +258,10 @@ class Connection(object):
                 return self._make_api_call(operation_name, operation_kwargs, backoff=backoff)
             else:
                 raise MaxBackoffExceeded()
+        elif response.status_code >= 300:
+            data = response.json()
+            botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
+            raise ClientError(botocore_expected_format, operation_name)
 
         return response.json()
 
