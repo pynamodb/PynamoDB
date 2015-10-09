@@ -30,7 +30,8 @@ from pynamodb.constants import (
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES,
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES,
-    ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY)
+    ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
+    UNPROCESSED_ITEMS)
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
@@ -241,21 +242,32 @@ class Connection(object):
             raise ClientError(botocore_expected_format, operation_name)
         data = response.json()
         # Simulate botocore's binary attribute handling
-        for item in data.get(ITEMS, tuple()):
-            for attr in six.itervalues(item):
-                if BINARY_SHORT in attr:
-                    attr[BINARY_SHORT] = b64decode(attr[BINARY_SHORT].encode(DEFAULT_ENCODING))
-                elif BINARY_SET_SHORT in attr:
-                    value = attr[BINARY_SET_SHORT]
-                    if value and len(value):
-                        attr[BINARY_SET_SHORT] = set(b64decode(v.encode(DEFAULT_ENCODING)) for v in value)
-        for attr in six.itervalues(data.get(LAST_EVALUATED_KEY, {})):
-            if BINARY_SHORT in attr:
-                attr[BINARY_SHORT] = b64decode(attr[BINARY_SHORT].encode(DEFAULT_ENCODING))
-            elif BINARY_SET_SHORT in attr:
-                value = attr[BINARY_SET_SHORT]
-                if value and len(value):
-                    attr[BINARY_SET_SHORT] = set(b64decode(v.encode(DEFAULT_ENCODING)) for v in value)
+        if ITEM in data:
+            for attr in six.itervalues(data[ITEM]):
+                _convert_binary(attr)
+        if ITEMS in data:
+            for item in data[ITEMS]:
+                for attr in six.itervalues(item):
+                    _convert_binary(attr)
+        if RESPONSES in data:
+            for item_list in six.itervalues(data[RESPONSES]):
+                for item in item_list:
+                    for attr in six.itervalues(item):
+                        _convert_binary(attr)
+        if LAST_EVALUATED_KEY in data:
+            for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
+                _convert_binary(attr)
+        if UNPROCESSED_KEYS in data:
+            for item_list in six.itervalues(data[UNPROCESSED_KEYS]):
+                for item in item_list:
+                    for attr in six.itervalues(item):
+                        _convert_binary(attr)
+        if UNPROCESSED_ITEMS in data:
+            for item_mapping in six.itervalues(data[UNPROCESSED_ITEMS]):
+                for item in six.itervalues(item_mapping):
+                    for attr in six.itervalues(item):
+                        _convert_binary(attr)
+
         return data
 
     @property
@@ -928,3 +940,12 @@ class Connection(object):
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {0}".format(e))
+
+
+def _convert_binary(attr):
+    if BINARY_SHORT in attr:
+        attr[BINARY_SHORT] = b64decode(attr[BINARY_SHORT].encode(DEFAULT_ENCODING))
+    elif BINARY_SET_SHORT in attr:
+        value = attr[BINARY_SET_SHORT]
+        if value and len(value):
+            attr[BINARY_SET_SHORT] = set(b64decode(v.encode(DEFAULT_ENCODING)) for v in value)
