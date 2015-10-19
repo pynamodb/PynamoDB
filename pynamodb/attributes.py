@@ -11,6 +11,7 @@ from pynamodb.constants import (
 
 try:
     import ujson as json
+    import json as python_json
     HAS_UJSON = True
 except ImportError:
     import json
@@ -248,7 +249,12 @@ class NumberAttribute(Attribute):
         """
         Decode numbers from JSON
         """
-        return json.loads(value)
+        try:
+            return json.loads(value)
+        except ValueError:
+            if HAS_UJSON:
+                return python_json.loads(value)
+            raise
 
 
 class UTCDateTimeAttribute(Attribute):
