@@ -243,7 +243,12 @@ class NumberAttribute(Attribute):
         if HAS_UJSON and isinstance(value, float):
             from decimal import Decimal
             value = Decimal(value)
-        return json.dumps(value)
+        try:
+            return json.dumps(value)
+        except OverflowError:
+            if HAS_UJSON:
+                return python_json.dumps(value)
+            raise
 
     def deserialize(self, value):
         """
