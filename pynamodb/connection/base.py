@@ -31,7 +31,7 @@ from pynamodb.constants import (
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
-    UNPROCESSED_ITEMS)
+    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
@@ -324,7 +324,8 @@ class Connection(object):
                      read_capacity_units=None,
                      write_capacity_units=None,
                      global_secondary_indexes=None,
-                     local_secondary_indexes=None):
+                     local_secondary_indexes=None,
+                     stream_specification=None):
         """
         Performs the CreateTable operation
         """
@@ -375,6 +376,13 @@ class Connection(object):
                     PROJECTION: index.get(pythonic(PROJECTION)),
                 })
             operation_kwargs[LOCAL_SECONDARY_INDEXES] = local_secondary_indexes_list
+
+        if stream_specification:
+            operation_kwargs[STREAM_SPECIFICATION] = {
+                STREAM_ENABLED: stream_specification[pythonic(STREAM_ENABLED)],
+                STREAM_VIEW_TYPE: stream_specification[pythonic(STREAM_VIEW_TYPE)]
+            }
+
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:

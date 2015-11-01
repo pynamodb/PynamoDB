@@ -205,7 +205,8 @@ class TableConnection(object):
                      read_capacity_units=None,
                      write_capacity_units=None,
                      global_secondary_indexes=None,
-                     local_secondary_indexes=None):
+                     local_secondary_indexes=None,
+                     stream_specification=None):
         """
         Performs the CreateTable operation and returns the result
         """
@@ -216,5 +217,6 @@ class TableConnection(object):
             read_capacity_units=read_capacity_units,
             write_capacity_units=write_capacity_units,
             global_secondary_indexes=global_secondary_indexes,
-            local_secondary_indexes=local_secondary_indexes
+            local_secondary_indexes=local_secondary_indexes,
+            stream_specification=stream_specification
         )
