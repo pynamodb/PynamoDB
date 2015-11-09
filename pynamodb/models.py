@@ -321,7 +321,7 @@ class Model(with_metaclass(MetaModel)):
         kwargs.update(conditional_operator=conditional_operator)
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update_item(self, attribute, value, action=None, conditional_operator=None, **expected_values):
+    def update_item(self, attribute, value=None, action=None, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -348,11 +348,10 @@ class Model(with_metaclass(MetaModel)):
         kwargs[pythonic(ATTR_UPDATES)] = {
             attribute: {
                 ACTION: action.upper() if action else None,
-                VALUE: {
-                    ATTR_TYPE_MAP[attribute_cls.attr_type]: value
-                }
             }
         }
+        if action is not None and action.upper() != DELETE:
+            kwargs[pythonic(ATTR_UPDATES)][attribute][VALUE] = {ATTR_TYPE_MAP[attribute_cls.attr_type]: value}
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)
         data = self._get_connection().update_item(

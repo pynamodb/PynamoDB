@@ -180,9 +180,15 @@ print(thread_item.update_item(
     subject__null=False)
 )
 
+
 # DynamoDB will delete the item, only if the views attribute is equal to one
 print(thread_item.delete(views__eq=1))
 
+# Delete an item's attribute
+print(thread_item.update_item(
+    'tags',
+    action='delete'
+))
 
 # Backup/restore example
 # Print the size of the table
