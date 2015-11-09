@@ -29,7 +29,8 @@ from pynamodb.constants import (
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
     CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
-    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS)
+    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
+    STREAM_ENABLED)
 
 
 log = logging.getLogger(__name__)
@@ -671,6 +672,11 @@ class Model(with_metaclass(MetaModel)):
                 schema[pythonic(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
             if hasattr(cls.Meta, pythonic(WRITE_CAPACITY_UNITS)):
                 schema[pythonic(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
+            if hasattr(cls.Meta, pythonic(STREAM_VIEW_TYPE)):
+                schema[pythonic(STREAM_SPECIFICATION)] = {
+                    pythonic(STREAM_ENABLED): True,
+                    pythonic(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
+                }
             if read_capacity_units is not None:
                 schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
             if write_capacity_units is not None:
