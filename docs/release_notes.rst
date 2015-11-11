@@ -1,6 +1,19 @@
 Release Notes
 =============
 
+v1.4.4
+------
+
+:date: 2015-11-10
+
+This is a backward compatible, minor release.
+
+Changes in this release:
+
+* Support for enabling table streams at table creation time (thanks to @brln)
+* Fixed bug where a value was always required for update_item when action was 'delete' (#90)
+
+
 v1.4.3
 ------
 
