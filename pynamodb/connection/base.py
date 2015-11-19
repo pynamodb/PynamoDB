@@ -170,7 +170,7 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None):
+    def __init__(self, region=None, host=None, session_cls=None):
         self._tables = {}
         self.host = host
         self._session = None
@@ -180,6 +180,11 @@ class Connection(object):
             self.region = region
         else:
             self.region = DEFAULT_REGION
+
+        if session_cls:
+            self.session_cls = session_cls
+        else:
+            self.session_cls = requests.Session
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
@@ -285,7 +290,7 @@ class Connection(object):
         Return a requests session to execute prepared requests using the same pool
         """
         if self._requests_session is None:
-            self._requests_session = requests.Session()
+            self._requests_session = self.session_cls()
         return self._requests_session
 
     @property

@@ -1124,7 +1124,8 @@ class Model(with_metaclass(MetaModel)):
                 See http://pynamodb.readthedocs.org/en/latest/release_notes.html"""
             )
         if cls._connection is None:
-            cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host)
+            cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host,
+                                              session_cls=cls.Meta.session_cls)
         return cls._connection
 
     def _deserialize(self, attrs):
