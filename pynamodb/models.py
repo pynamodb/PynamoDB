@@ -29,7 +29,8 @@ from pynamodb.constants import (
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
     CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
-    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS)
+    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
+    STREAM_ENABLED)
 
 
 log = logging.getLogger(__name__)
@@ -320,7 +321,7 @@ class Model(with_metaclass(MetaModel)):
         kwargs.update(conditional_operator=conditional_operator)
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update_item(self, attribute, value, action=None, conditional_operator=None, **expected_values):
+    def update_item(self, attribute, value=None, action=None, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -347,11 +348,10 @@ class Model(with_metaclass(MetaModel)):
         kwargs[pythonic(ATTR_UPDATES)] = {
             attribute: {
                 ACTION: action.upper() if action else None,
-                VALUE: {
-                    ATTR_TYPE_MAP[attribute_cls.attr_type]: value
-                }
             }
         }
+        if action is not None and action.upper() != DELETE:
+            kwargs[pythonic(ATTR_UPDATES)][attribute][VALUE] = {ATTR_TYPE_MAP[attribute_cls.attr_type]: value}
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)
         data = self._get_connection().update_item(
@@ -671,6 +671,11 @@ class Model(with_metaclass(MetaModel)):
                 schema[pythonic(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
             if hasattr(cls.Meta, pythonic(WRITE_CAPACITY_UNITS)):
                 schema[pythonic(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
+            if hasattr(cls.Meta, pythonic(STREAM_VIEW_TYPE)):
+                schema[pythonic(STREAM_SPECIFICATION)] = {
+                    pythonic(STREAM_ENABLED): True,
+                    pythonic(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
+                }
             if read_capacity_units is not None:
                 schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
             if write_capacity_units is not None:

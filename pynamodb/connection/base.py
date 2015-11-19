@@ -29,8 +29,9 @@ from pynamodb.constants import (
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES,
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
-    CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES,
-    ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT)
+    CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
+    ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
+    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
@@ -240,15 +241,33 @@ class Connection(object):
             botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
             raise ClientError(botocore_expected_format, operation_name)
         data = response.json()
-        # Simulate BotoCore's binary attribute handling
-        for item in data.get(ITEMS, tuple()):
-            for attr in item:
-                if BINARY_SHORT in attr:
-                    attr[BINARY_SHORT] = b64decode(attr[BINARY_SHORT].encode(DEFAULT_ENCODING))
-                elif BINARY_SET_SHORT in attr:
-                    value = attr[BINARY_SET_SHORT]
-                    if value and len(value):
-                        attr[BINARY_SET_SHORT] = set(b64decode(b64decode(v.encode(DEFAULT_ENCODING))) for v in value)
+        # Simulate botocore's binary attribute handling
+        if ITEM in data:
+            for attr in six.itervalues(data[ITEM]):
+                _convert_binary(attr)
+        if ITEMS in data:
+            for item in data[ITEMS]:
+                for attr in six.itervalues(item):
+                    _convert_binary(attr)
+        if RESPONSES in data:
+            for item_list in six.itervalues(data[RESPONSES]):
+                for item in item_list:
+                    for attr in six.itervalues(item):
+                        _convert_binary(attr)
+        if LAST_EVALUATED_KEY in data:
+            for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
+                _convert_binary(attr)
+        if UNPROCESSED_KEYS in data:
+            for item_list in six.itervalues(data[UNPROCESSED_KEYS]):
+                for item in item_list:
+                    for attr in six.itervalues(item):
+                        _convert_binary(attr)
+        if UNPROCESSED_ITEMS in data:
+            for item_mapping in six.itervalues(data[UNPROCESSED_ITEMS]):
+                for item in six.itervalues(item_mapping):
+                    for attr in six.itervalues(item):
+                        _convert_binary(attr)
+
         return data
 
     @property
@@ -305,7 +324,8 @@ class Connection(object):
                      read_capacity_units=None,
                      write_capacity_units=None,
                      global_secondary_indexes=None,
-                     local_secondary_indexes=None):
+                     local_secondary_indexes=None,
+                     stream_specification=None):
         """
         Performs the CreateTable operation
         """
@@ -356,6 +376,13 @@ class Connection(object):
                     PROJECTION: index.get(pythonic(PROJECTION)),
                 })
             operation_kwargs[LOCAL_SECONDARY_INDEXES] = local_secondary_indexes_list
+
+        if stream_specification:
+            operation_kwargs[STREAM_SPECIFICATION] = {
+                STREAM_ENABLED: stream_specification[pythonic(STREAM_ENABLED)],
+                STREAM_VIEW_TYPE: stream_specification[pythonic(STREAM_VIEW_TYPE)]
+            }
+
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -496,7 +523,7 @@ class Connection(object):
                     kwargs[EXPECTED][key][ATTR_VALUE_LIST] = values
         return kwargs
 
-    def parse_attribute(self, attribute):
+    def parse_attribute(self, attribute, return_type=False):
         """
         Returns the attribute value, where the attribute can be
         a raw attribute value, or a dictionary containing the type:
@@ -505,9 +532,13 @@ class Connection(object):
         if isinstance(attribute, dict):
             for key in SHORT_ATTR_TYPES:
                 if key in attribute:
+                    if return_type:
+                        return key, attribute.get(key)
                     return attribute.get(key)
             raise ValueError("Invalid attribute supplied: {0}".format(attribute))
         else:
+            if return_type:
+                return None, attribute
             return attribute
 
     def get_attribute_type(self, table_name, attribute_name, value=None):
@@ -648,22 +679,21 @@ class Connection(object):
             operation_kwargs.update(self.get_conditional_operator(conditional_operator))
         if not attribute_updates:
             raise ValueError("{0} cannot be empty".format(ATTR_UPDATES))
-        # {"path": {"Action": "PUT", "Value": "Foo"}}
 
         operation_kwargs[ATTR_UPDATES] = {}
         for key, update in attribute_updates.items():
             value = update.get(VALUE)
-            attr_type = self.get_attribute_type(table_name, key, value)
-            value = self.parse_attribute(value)
+            attr_type, value = self.parse_attribute(value, return_type=True)
             action = update.get(ACTION)
+            if attr_type is None and action is not None and action.upper() != DELETE:
+                attr_type = self.get_attribute_type(table_name, key, value)
             if action not in ATTR_UPDATE_ACTIONS:
                 raise ValueError("{0} must be one of {1}".format(ACTION, ATTR_UPDATE_ACTIONS))
             operation_kwargs[ATTR_UPDATES][key] = {
                 ACTION: action,
-                VALUE: {
-                    attr_type: value
-                }
             }
+            if action.upper() != DELETE:
+                operation_kwargs[ATTR_UPDATES][key][VALUE] = {attr_type: value}
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -921,3 +951,12 @@ class Connection(object):
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {0}".format(e))
+
+
+def _convert_binary(attr):
+    if BINARY_SHORT in attr:
+        attr[BINARY_SHORT] = b64decode(attr[BINARY_SHORT].encode(DEFAULT_ENCODING))
+    elif BINARY_SET_SHORT in attr:
+        value = attr[BINARY_SET_SHORT]
+        if value and len(value):
+            attr[BINARY_SET_SHORT] = set(b64decode(v.encode(DEFAULT_ENCODING)) for v in value)

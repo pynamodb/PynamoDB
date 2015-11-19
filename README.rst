@@ -138,6 +138,26 @@ Want to use DynamoDB local? Just add a ``host`` name attribute and specify your 
         first_name = UnicodeAttribute(range_key=True)
         last_name = UnicodeAttribute(hash_key=True)
 
+Want to enable streams on a table? Just add a ``stream_view_type`` name attribute and specify
+the type of data you'd like to stream.
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+    from pynamodb.constants import STREAM_NEW_AND_OLD_IMAGE
+
+    class AnimalModel(Model):
+        """
+        A DynamoDB Animal
+        """
+        class Meta:
+            table_name = "dynamodb-user"
+            host = "http://localhost:8000"
+            stream_view_type = STREAM_NEW_AND_OLD_IMAGE
+        type = UnicodeAttribute(null=True)
+        name = UnicodeAttribute(range_key=True)
+        id = UnicodeAttribute(hash_key=True)
 
 Want to backup and restore a table? No problem.
 

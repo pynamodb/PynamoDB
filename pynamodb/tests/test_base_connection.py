@@ -182,6 +182,22 @@ class ConnectionTestCase(TestCase):
             )
             self.assertEqual(req.call_args[0][1], params)
 
+        kwargs['stream_specification'] = {
+                'stream_enabled': True,
+                'stream_view_type': 'NEW_IMAGE'
+        }
+        params['StreamSpecification'] = {
+                'StreamEnabled': True,
+                'StreamViewType': 'NEW_IMAGE'
+        }
+        with patch(PATCH_METHOD) as req:
+            req.return_value = None
+            conn.create_table(
+                self.test_table_name,
+                **kwargs
+            )
+            self.assertEqual(req.call_args[0][1], params)
+
     def test_delete_table(self):
         """
         Connection.delete_table
