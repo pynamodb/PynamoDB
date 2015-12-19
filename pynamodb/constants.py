@@ -28,6 +28,7 @@ ATTR_DEFINITIONS = 'AttributeDefinitions'
 ATTR_VALUE_LIST = 'AttributeValueList'
 TABLE_DESCRIPTION = 'TableDescription'
 UNPROCESSED_KEYS = 'UnprocessedKeys'
+UNPROCESSED_ITEMS = 'UnprocessedItems'
 CONSISTENT_READ = 'ConsistentRead'
 DELETE_REQUEST = 'DeleteRequest'
 RETURN_VALUES = 'ReturnValues'
@@ -112,6 +113,15 @@ NON_KEY_ATTRIBUTES = 'NonKeyAttributes'
 KEYS_ONLY = 'KEYS_ONLY'
 ALL = 'ALL'
 INCLUDE = 'INCLUDE'
+
+# Constants for Dynamodb Streams
+STREAM_VIEW_TYPE = 'StreamViewType'
+STREAM_SPECIFICATION = 'StreamSpecification'
+STREAM_ENABLED = 'StreamEnabled'
+STREAM_NEW_IMAGE = 'NEW_IMAGE'
+STREAM_OLD_IMAGE = 'OLD_IMAGE'
+STREAM_NEW_AND_OLD_IMAGE = 'NEW_AND_OLD_IMAGES'
+STREAM_KEYS_ONLY = 'KEYS_ONLY'
 
 # These are constants used in the KeyConditions parameter
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditions

@@ -14,11 +14,8 @@ if sys.argv[-1] == 'publish':
 install_requires = [
     'Delorean',
     'six',
-    'botocore>=0.42.0'
+    'botocore>=1.0.0'
 ]
-
-if sys.version_info[0] < 3:
-    install_requires.append('ordereddict')
 
 setup(
     name='pynamodb',

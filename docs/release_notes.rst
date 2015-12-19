@@ -1,7 +1,94 @@
 Release Notes
 =============
 
+v1.4.4
+------
+
+:date: 2015-11-10
+
+This is a backward compatible, minor release.
+
+Changes in this release:
+
+* Support for enabling table streams at table creation time (thanks to @brln)
+* Fixed bug where a value was always required for update_item when action was 'delete' (#90)
+
+
+v1.4.3
+------
+
+:date: 2015-10-12
+
+This is a backward compatible, minor release. Included are bug fixes and performance improvements.
+
+A huge thank you to all who contributed to this release:
+
+* Daniel Hochman
+* Josh Owen
+* Keith Mitchell
+* Kevin Wilson
+
+Changes in this release:
+
+* Fixed bug where models without a range key weren't handled correctly
+* Botocore is now only used for preparing requests (for performance reasons)
+* Removed the dependency on OrderedDict
+* Fixed bug for zope interface compatibility (#71)
+* Fixed bug where the range key was handled incorrectly for integer values
+
+v1.4.2
+------
+
+:date: 2015-06-26
+
+This is a backward compatible, minor bug fix release.
+
+Bugs fixed in this release:
+
+* Fixed bug where botocore exceptions were not being reraised.
+
+
+v1.4.1
+------
+
+:date: 2015-06-26
+
+This is a backward compatible, minor bug fix release.
+
+Bugs fixed in this release:
+
+* Fixed bug where a local variable could be unbound (#67).
+
+
+v1.4.0
+------
+
+:date: 2015-06-23
+
+This is a minor release, with backward compatible bug fixes.
+
+Bugs fixed in this release:
+
+* Added support for botocore 1.0.0 (#63)
+* Fixed bug where Model.get() could fail in certain cases (#64)
+* Fixed bug where JSON strings weren't being encoded properly (#61)
+
+
+v1.3.7
+------
+
+:date: 2015-04-06
+
+This is a backward compatible, minor bug fix release.
+
+Bugs fixed in this release:
+
+* Fixed bug where range keys were not included in update_item (#59)
+* Fixed documentation bug (#58)
+
+
 v1.3.6
+------
 
 :date: 2015-04-06
 

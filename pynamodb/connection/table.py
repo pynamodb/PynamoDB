@@ -2,7 +2,7 @@
 PynamoDB Connection classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
-from .base import Connection
+from pynamodb.connection.base import Connection
 
 
 class TableConnection(object):
@@ -10,11 +10,11 @@ class TableConnection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, table_name, region=None, host=None):
+    def __init__(self, table_name, region=None, host=None, session_cls=None,):
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
-        self.connection = Connection(region=region, host=host)
+        self.connection = Connection(region=region, host=host, session_cls=session_cls,)
 
     def delete_item(self, hash_key,
                     range_key=None,
@@ -205,7 +205,8 @@ class TableConnection(object):
                      read_capacity_units=None,
                      write_capacity_units=None,
                      global_secondary_indexes=None,
-                     local_secondary_indexes=None):
+                     local_secondary_indexes=None,
+                     stream_specification=None):
         """
         Performs the CreateTable operation and returns the result
         """
@@ -216,5 +217,6 @@ class TableConnection(object):
             read_capacity_units=read_capacity_units,
             write_capacity_units=write_capacity_units,
             global_secondary_indexes=global_secondary_indexes,
-            local_secondary_indexes=local_secondary_indexes
+            local_secondary_indexes=local_secondary_indexes,
+            stream_specification=stream_specification
         )

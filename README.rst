@@ -2,20 +2,14 @@
 PynamoDB
 ========
 
-.. image:: https://pypip.in/v/pynamodb/badge.png
+.. image:: https://img.shields.io/pypi/v/pynamodb.svg
     :target: https://pypi.python.org/pypi/pynamodb/
-    :alt: Latest Version
+.. image:: https://img.shields.io/pypi/dm/pynamodb.svg
+    :target: https://pypi.python.org/pypi/pynamodb/
 .. image:: https://travis-ci.org/jlafon/PynamoDB.png?branch=devel
     :target: https://travis-ci.org/jlafon/PynamoDB
 .. image:: https://coveralls.io/repos/jlafon/PynamoDB/badge.png?branch=devel
     :target: https://coveralls.io/r/jlafon/PynamoDB
-.. image:: https://pypip.in/d/pynamodb/badge.png
-    :target: https://crate.io/packages/pynamodb?version=latest
-.. image:: https://pypip.in/wheel/pynamodb/badge.png
-    :target: https://pypi.python.org/pypi/pynamodb/
-.. image:: https://pypip.in/license/pynamodb/badge.png
-    :target: https://pypi.python.org/pypi/pynamodb/
-
 
 A Pythonic interface for Amazon's `DynamoDB <http://aws.amazon.com/dynamodb/>`_ that supports
 Python 2 and 3.
@@ -144,6 +138,26 @@ Want to use DynamoDB local? Just add a ``host`` name attribute and specify your 
         first_name = UnicodeAttribute(range_key=True)
         last_name = UnicodeAttribute(hash_key=True)
 
+Want to enable streams on a table? Just add a ``stream_view_type`` name attribute and specify
+the type of data you'd like to stream.
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+    from pynamodb.constants import STREAM_NEW_AND_OLD_IMAGE
+
+    class AnimalModel(Model):
+        """
+        A DynamoDB Animal
+        """
+        class Meta:
+            table_name = "dynamodb-user"
+            host = "http://localhost:8000"
+            stream_view_type = STREAM_NEW_AND_OLD_IMAGE
+        type = UnicodeAttribute(null=True)
+        name = UnicodeAttribute(range_key=True)
+        id = UnicodeAttribute(hash_key=True)
 
 Want to backup and restore a table? No problem.
 
