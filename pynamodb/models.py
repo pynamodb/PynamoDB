@@ -168,8 +168,6 @@ class MetaModel(type):
                         setattr(attr_obj, REGION, DEFAULT_REGION)
                     if not hasattr(attr_obj, HOST):
                         setattr(attr_obj, HOST, None)
-                    if not hasattr(attr_obj, 'session_cls'):
-                        setattr(attr_obj, 'session_cls', None)
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -1144,8 +1142,7 @@ class Model(with_metaclass(MetaModel)):
                 See http://pynamodb.readthedocs.org/en/latest/release_notes.html"""
             )
         if cls._connection is None:
-            cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host,
-                                              session_cls=cls.Meta.session_cls)
+            cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host)
         return cls._connection
 
     def _deserialize(self, attrs):

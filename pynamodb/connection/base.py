@@ -8,7 +8,10 @@ import six
 from botocore.session import get_session
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
+from botocore.parsers import ResponseParserFactory, BaseJSONParser
 from botocore.vendored import requests
+
+from .util import pythonic
 
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
@@ -38,6 +41,26 @@ BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
+
+class HighPerformanceJSONParser(BaseJSONParser):
+    """Response parse for the "json" protocol."""
+    def _do_parse(self, response, shape):
+        # The json.loads() gives us the primitive JSON types,
+        # but we need to traverse the parsed JSON data to convert
+        # to richer types (blobs, timestamps, etc.
+        parsed = {}
+        if shape is not None:
+            body = response['body'].decode(self.DEFAULT_ENCODING)
+            original_parsed = json.loads(body)
+            parsed = self._parse_shape(shape, original_parsed)
+        self._inject_response_metadata(parsed, response['headers'])
+        return parsed
+
+class PynamoResponseParserFactory(ResponseParserFactory):
+    def create_parser(self, protocol_name):
+        if protocol_name == 'json':
+            return HighPerformanceJSONParser(**self._defaults)
+        return super(PynamoResponseParserFactory, self).create_parser(protocol_name)
 
 
 class MetaTable(object):
@@ -170,21 +193,15 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None, session_cls=None):
+    def __init__(self, region=None, host=None):
         self._tables = {}
         self.host = host
         self._session = None
-        self._requests_session = None
         self._client = None
         if region:
             self.region = region
         else:
             self.region = DEFAULT_REGION
-
-        if session_cls:
-            self.session_cls = session_cls
-        else:
-            self.session_cls = requests.Session
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
@@ -234,46 +251,8 @@ class Connection(object):
         1. It's faster to avoid using botocore's response parsing
         2. It provides a place to monkey patch requests for unit testing
         """
-        operation_model = self.client._service_model.operation_model(operation_name)
-        request_dict = self.client._convert_to_request_dict(
-            operation_kwargs,
-            operation_model
-        )
-        prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
-        response = self.requests_session.send(prepared_request)
-        if response.status_code >= 300:
-            data = response.json()
-            botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
-            raise ClientError(botocore_expected_format, operation_name)
-        data = response.json()
-        # Simulate botocore's binary attribute handling
-        if ITEM in data:
-            for attr in six.itervalues(data[ITEM]):
-                _convert_binary(attr)
-        if ITEMS in data:
-            for item in data[ITEMS]:
-                for attr in six.itervalues(item):
-                    _convert_binary(attr)
-        if RESPONSES in data:
-            for item_list in six.itervalues(data[RESPONSES]):
-                for item in item_list:
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
-        if LAST_EVALUATED_KEY in data:
-            for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
-                _convert_binary(attr)
-        if UNPROCESSED_KEYS in data:
-            for item_list in six.itervalues(data[UNPROCESSED_KEYS]):
-                for item in item_list:
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
-        if UNPROCESSED_ITEMS in data:
-            for item_mapping in six.itervalues(data[UNPROCESSED_ITEMS]):
-                for item in six.itervalues(item_mapping):
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
-
-        return data
+        operation = getattr(self.client, pythonic(operation_name))
+        return operation(**operation_kwargs)
 
     @property
     def session(self):
@@ -282,16 +261,8 @@ class Connection(object):
         """
         if self._session is None:
             self._session = get_session()
+            self._session.register_component('response_parser_factory', PynamoResponseParserFactory())
         return self._session
-
-    @property
-    def requests_session(self):
-        """
-        Return a requests session to execute prepared requests using the same pool
-        """
-        if self._requests_session is None:
-            self._requests_session = self.session_cls()
-        return self._requests_session
 
     @property
     def client(self):
