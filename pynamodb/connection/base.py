@@ -49,12 +49,37 @@ class HighPerformanceJSONParser(BaseJSONParser):
         # but we need to traverse the parsed JSON data to convert
         # to richer types (blobs, timestamps, etc.
         parsed = {}
-        if shape is not None:
-            body = response['body'].decode(self.DEFAULT_ENCODING)
-            original_parsed = json.loads(body)
-            parsed = self._parse_shape(shape, original_parsed)
-        self._inject_response_metadata(parsed, response['headers'])
-        return parsed
+        body = response['body'].decode(self.DEFAULT_ENCODING)
+        original_parsed = json.loads(body)
+        return _convert_to_binary(original_parsed)
+
+    def _convert_to_binary(data):
+        if ITEM in data:
+            for attr in six.itervalues(data[ITEM]):
+                _convert_binary(attr)
+        if ITEMS in data:
+            for item in data[ITEMS]:
+                for attr in six.itervalues(item):
+                    _convert_binary(attr)
+        if RESPONSES in data:
+            for item_list in six.itervalues(data[RESPONSES]):
+                for item in item_list:
+                    for attr in six.itervalues(item):
+                        _convert_binary(attr)
+        if LAST_EVALUATED_KEY in data:
+            for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
+                _convert_binary(attr)
+        if UNPROCESSED_KEYS in data:
+            for item_list in six.itervalues(data[UNPROCESSED_KEYS]):
+                for item in item_list:
+                    for attr in six.itervalues(item):
+                        _convert_binary(attr)
+        if UNPROCESSED_ITEMS in data:
+            for item_mapping in six.itervalues(data[UNPROCESSED_ITEMS]):
+                for item in six.itervalues(item_mapping):
+                    for attr in six.itervalues(item):
+                        _convert_binary(attr)
+        return data
 
 class PynamoResponseParserFactory(ResponseParserFactory):
     def create_parser(self, protocol_name):
