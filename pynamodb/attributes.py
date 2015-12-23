@@ -7,7 +7,7 @@ from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING
+    DEFAULT_ENCODING, BOOLEAN
 )
 
 
@@ -190,26 +190,38 @@ class BooleanAttribute(Attribute):
     """
     A class for boolean attributes
 
-    This attribute type uses a number attribute to save space
+    By default this attribute type uses a number attribute to save space.
+    If you want to use the native DynamoDB Boolean-type, set use_number_type=False.
     """
-    attr_type = NUMBER
+
+    use_number_type = True
+
+    def __init__(self, use_number_type=True, *args, **kwargs):
+        # Run parent constructor.
+        super(BooleanAttribute, self).__init__(*args, **kwargs)
+        self.use_number_type = use_number_type
+        self.attr_type = NUMBER if use_number_type else BOOLEAN
 
     def serialize(self, value):
         """
-        Encodes True as 1, False as 0
+        If 'use_number_type' is true, encode True as 1, False as 0.
+        Else use true/false.
         """
         if value is None:
             return None
         elif value:
-            return json.dumps(1)
+            return json.dumps(1) if self.use_number_type else True
         else:
-            return json.dumps(0)
+            return json.dumps(0) if self.use_number_type else False
 
     def deserialize(self, value):
         """
         Encode
         """
-        return bool(json.loads(value))
+        if self.use_number_type:
+            return bool(json.loads(value))
+        else:
+            return bool(value)
 
 
 class NumberSetAttribute(SetMixin, Attribute):
