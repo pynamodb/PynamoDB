@@ -191,7 +191,10 @@ class JSONAttribute(Attribute):
         Deserializes JSON
         """
         if HAS_UJSON:
-            return json.loads(value)
+            try:
+                return json.loads(value)
+            except ValueError:
+                return python_json.loads(value, strict=False)
         else:
             return json.loads(value, strict=False)
 
