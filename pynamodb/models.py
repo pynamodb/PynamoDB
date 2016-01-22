@@ -28,7 +28,8 @@ from pynamodb.constants import (
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
     CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
-    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS)
+    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
+    STREAM_ENABLED)
 
 try:
     import ujson as json
@@ -171,6 +172,8 @@ class MetaModel(type):
                         setattr(attr_obj, REGION, DEFAULT_REGION)
                     if not hasattr(attr_obj, HOST):
                         setattr(attr_obj, HOST, None)
+                    if not hasattr(attr_obj, 'session_cls'):
+                        setattr(attr_obj, 'session_cls', None)
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -253,7 +256,7 @@ class Model(with_metaclass(MetaModel)):
         self._set_attributes(**attrs)
 
     @classmethod
-    def batch_get(cls, items):
+    def batch_get(cls, items, consistent_read=None, attributes_to_get=None):
         """
         BatchGetItem for this model
 
@@ -267,7 +270,8 @@ class Model(with_metaclass(MetaModel)):
         while items:
             if len(keys_to_get) == BATCH_GET_PAGE_LIMIT:
                 while keys_to_get:
-                    page, unprocessed_keys = cls._batch_get_page(keys_to_get)
+                    page, unprocessed_keys = cls._batch_get_page(keys_to_get, consistent_read=None,
+                                                                 attributes_to_get=None)
                     for batch_item in page:
                         yield cls.from_raw_data(batch_item)
                     if unprocessed_keys:
@@ -288,7 +292,7 @@ class Model(with_metaclass(MetaModel)):
                 })
 
         while keys_to_get:
-            page, unprocessed_keys = cls._batch_get_page(keys_to_get)
+            page, unprocessed_keys = cls._batch_get_page(keys_to_get, consistent_read=None, attributes_to_get=None)
             for batch_item in page:
                 yield cls.from_raw_data(batch_item)
             if unprocessed_keys:
@@ -324,7 +328,7 @@ class Model(with_metaclass(MetaModel)):
         kwargs.update(conditional_operator=conditional_operator)
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update_item(self, attribute, value, action=None, conditional_operator=None, **expected_values):
+    def update_item(self, attribute, value=None, action=None, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -351,11 +355,10 @@ class Model(with_metaclass(MetaModel)):
         kwargs[pythonic(ATTR_UPDATES)] = {
             attribute: {
                 ACTION: action.upper() if action else None,
-                VALUE: {
-                    ATTR_TYPE_MAP[attribute_cls.attr_type]: value
-                }
             }
         }
+        if action is not None and action.upper() != DELETE:
+            kwargs[pythonic(ATTR_UPDATES)][attribute][VALUE] = {ATTR_TYPE_MAP[attribute_cls.attr_type]: value}
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)
         data = self._get_connection().update_item(
@@ -509,6 +512,8 @@ class Model(with_metaclass(MetaModel)):
               scan_index_forward=None,
               conditional_operator=None,
               limit=None,
+              last_evaluated_key=None,
+              attributes_to_get=None,
               **filters):
         """
         Provides a high level query API
@@ -519,6 +524,8 @@ class Model(with_metaclass(MetaModel)):
         :param limit: Used to limit the number of results returned
         :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
             Controls descending or ascending results
+        :param last_evaluated_key: If set, provides the starting point for query.
+        :param attributes_to_get: If set, only returns these elements
         :param filters: A dictionary of filters to be used in the query
         """
         cls._get_indexes()
@@ -545,10 +552,12 @@ class Model(with_metaclass(MetaModel)):
 
         query_kwargs = dict(
             index_name=index_name,
+            exclusive_start_key=last_evaluated_key,
             consistent_read=consistent_read,
             scan_index_forward=scan_index_forward,
             limit=limit,
             key_conditions=key_conditions,
+            attributes_to_get=attributes_to_get,
             query_filters=query_filters,
             conditional_operator=conditional_operator
         )
@@ -567,8 +576,14 @@ class Model(with_metaclass(MetaModel)):
 
         while last_evaluated_key:
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
+            # If the user provided a limit, we need to subtract the number of results returned for each page
+            if limit is not None:
+                limit -= data.get("Count", 0)
+                if limit == 0:
+                    return
             query_kwargs['exclusive_start_key'] = last_evaluated_key
             query_kwargs['limit'] = limit
+            log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().query(hash_key, **query_kwargs)
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):
@@ -585,6 +600,7 @@ class Model(with_metaclass(MetaModel)):
              total_segments=None,
              limit=None,
              conditional_operator=None,
+             last_evaluated_key=None,
              **filters):
         """
         Iterates through all items in the table
@@ -592,6 +608,7 @@ class Model(with_metaclass(MetaModel)):
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
         :param limit: Used to limit the number of results returned
+        :param last_evaluated_key: If set, provides the starting point for scan.
         :param filters: A list of item filters
         """
         key_filter, scan_filter = cls._build_filters(
@@ -602,6 +619,7 @@ class Model(with_metaclass(MetaModel)):
         )
         key_filter.update(scan_filter)
         data = cls._get_connection().scan(
+            exclusive_start_key=last_evaluated_key,
             segment=segment,
             limit=limit,
             scan_filter=key_filter,
@@ -675,6 +693,11 @@ class Model(with_metaclass(MetaModel)):
                 schema[pythonic(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
             if hasattr(cls.Meta, pythonic(WRITE_CAPACITY_UNITS)):
                 schema[pythonic(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
+            if hasattr(cls.Meta, pythonic(STREAM_VIEW_TYPE)):
+                schema[pythonic(STREAM_SPECIFICATION)] = {
+                    pythonic(STREAM_ENABLED): True,
+                    pythonic(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
+                }
             if read_capacity_units is not None:
                 schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
             if write_capacity_units is not None:
@@ -1042,16 +1065,18 @@ class Model(with_metaclass(MetaModel)):
         return attrs
 
     @classmethod
-    def _batch_get_page(cls, keys_to_get):
+    def _batch_get_page(cls, keys_to_get, consistent_read, attributes_to_get):
         """
         Returns a single page from BatchGetItem
         Also returns any unprocessed items
 
         :param keys_to_get: A list of keys
+        :param consistent_read: Whether or not this needs to be consistent
+        :param attributes_to_get: A list of attributes to return
         """
         log.debug("Fetching a BatchGetItem page")
         data = cls._get_connection().batch_get_item(
-            keys_to_get
+            keys_to_get, consistent_read, attributes_to_get
         )
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         item_data = data.get(RESPONSES).get(cls.Meta.table_name)
@@ -1123,7 +1148,8 @@ class Model(with_metaclass(MetaModel)):
                 See http://pynamodb.readthedocs.org/en/latest/release_notes.html"""
             )
         if cls._connection is None:
-            cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host)
+            cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host,
+                                              session_cls=cls.Meta.session_cls)
         return cls._connection
 
     def _deserialize(self, attrs):

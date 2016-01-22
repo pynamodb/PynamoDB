@@ -784,6 +784,31 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                }
+            }
+            item.email = None
+            item.update_item('views', action='delete')
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'AttributeUpdates': {
+                    'views': {
+                        'Action': 'DELETE',
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
     def test_save(self):
         """
         Model.save

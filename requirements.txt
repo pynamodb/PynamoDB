@@ -1,7 +1,7 @@
 sphinx-rtd-theme==0.1.8
 mock==1.0.1
 Delorean==0.4.5
-botocore==1.0.0
+botocore==1.1.2
 flake8==2.4.1
 nose==1.3.7
 requests==2.7.0
