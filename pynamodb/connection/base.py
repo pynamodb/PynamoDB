@@ -269,9 +269,6 @@ class Connection(object):
                         _convert_binary_item(item)
         return data
 
-    @staticmethod
-    def _convert_binary_item(item):
-
     @property
     def session(self):
         """
