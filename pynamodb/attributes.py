@@ -219,6 +219,8 @@ class BooleanAttribute(Attribute):
         Encode
         """
         if self.use_number_type:
+            if value is None:
+                return False  # Null not allowed.
             return bool(json.loads(value))
         else:
             return bool(value)
