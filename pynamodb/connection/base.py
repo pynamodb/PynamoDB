@@ -240,7 +240,7 @@ class Connection(object):
             operation_model
         )
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
-        response = self.requests_session.send(prepared_request)
+        response = self.requests_session.send(prepared_request, proxies=self.client._endpoint.proxies)
         if response.status_code >= 300:
             data = response.json()
             botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
