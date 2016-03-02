@@ -565,9 +565,9 @@ class Model(with_metaclass(MetaModel)):
 
         for item in data.get(ITEMS):
             if limit is not None:
-                limit -= 1
-                if not limit:
+                if limit == 0:
                     return
+                limit -= 1
             yield cls.from_raw_data(item)
 
         while last_evaluated_key:
