@@ -65,7 +65,7 @@ KEY = 'Key'
 # Defaults
 DEFAULT_ENCODING = 'utf-8'
 DEFAULT_REGION = 'us-east-1'
-DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
+DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
 SERVICE_NAME = 'dynamodb'
 HTTP_OK = 200
 HTTP_BAD_REQUEST = 400
