@@ -243,7 +243,11 @@ class Connection(object):
         response = self.requests_session.send(prepared_request, proxies=self.client._endpoint.proxies)
         if response.status_code >= 300:
             data = response.json()
-            botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
+            # Extract error code from __type
+            code = data.get("__type", "")
+            if '#' in code:
+                code = code.rsplit('#', 1)[1]
+            botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": code}}
             raise ClientError(botocore_expected_format, operation_name)
         data = response.json()
         # Simulate botocore's binary attribute handling
@@ -314,7 +318,7 @@ class Connection(object):
                 data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
                 self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
             except BotoCoreError as e:
-                raise TableError("Unable to describe table: {0}".format(e))
+                raise TableError("Unable to describe table: {0}".format(e), e)
             except ClientError as e:
                 if 'ResourceNotFound' in e.response['Error']['Code']:
                     raise TableDoesNotExist(e.response['Error']['Message'])
@@ -391,7 +395,7 @@ class Connection(object):
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to create table: {0}".format(e))
+            raise TableError("Failed to create table: {0}".format(e), e)
         return data
 
     def delete_table(self, table_name):
@@ -404,7 +408,7 @@ class Connection(object):
         try:
             data = self.dispatch(DELETE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to delete table: {0}".format(e))
+            raise TableError("Failed to delete table: {0}".format(e), e)
         return data
 
     def update_table(self,
@@ -441,7 +445,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to update table: {0}".format(e))
+            raise TableError("Failed to update table: {0}".format(e), e)
 
     def list_tables(self, exclusive_start_table_name=None, limit=None):
         """
@@ -459,7 +463,7 @@ class Connection(object):
         try:
             return self.dispatch(LIST_TABLES, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Unable to list tables: {0}".format(e))
+            raise TableError("Unable to list tables: {0}".format(e), e)
 
     def describe_table(self, table_name):
         """
@@ -655,7 +659,7 @@ class Connection(object):
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise DeleteError("Failed to delete item: {0}".format(e))
+            raise DeleteError("Failed to delete item: {0}".format(e), e)
 
     def update_item(self,
                     table_name,
@@ -702,7 +706,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise UpdateError("Failed to update item: {0}".format(e))
+            raise UpdateError("Failed to update item: {0}".format(e), e)
 
     def put_item(self,
                  table_name,
@@ -735,7 +739,7 @@ class Connection(object):
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to put item: {0}".format(e))
+            raise PutError("Failed to put item: {0}".format(e), e)
 
     def batch_write_item(self,
                          table_name,
@@ -773,7 +777,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to batch write items: {0}".format(e))
+            raise PutError("Failed to batch write items: {0}".format(e), e)
 
     def batch_get_item(self,
                        table_name,
@@ -808,7 +812,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to batch get items: {0}".format(e))
+            raise GetError("Failed to batch get items: {0}".format(e), e)
 
     def get_item(self,
                  table_name,
@@ -828,7 +832,7 @@ class Connection(object):
         try:
             return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to get item: {0}".format(e))
+            raise GetError("Failed to get item: {0}".format(e), e)
 
     def scan(self,
              table_name,
@@ -876,7 +880,7 @@ class Connection(object):
         try:
             return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise ScanError("Failed to scan table: {0}".format(e))
+            raise ScanError("Failed to scan table: {0}".format(e), e)
 
     def query(self,
               table_name,
@@ -955,7 +959,7 @@ class Connection(object):
         try:
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise QueryError("Failed to query items: {0}".format(e))
+            raise QueryError("Failed to query items: {0}".format(e), e)
 
 
 def _convert_binary(attr):

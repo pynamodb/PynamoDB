@@ -7,8 +7,9 @@ class PynamoDBException(Exception):
     """
     A common exception class
     """
-    def __init__(self, msg=None):
+    def __init__(self, msg=None, cause=None):
         self.msg = msg or self.msg
+        self.cause = cause
         super(PynamoDBException, self).__init__(self.msg)
 
 
