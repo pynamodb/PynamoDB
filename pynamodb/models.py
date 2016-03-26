@@ -30,7 +30,7 @@ from pynamodb.constants import (
     CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
-    STREAM_ENABLED)
+    STREAM_ENABLED, EQ, NE)
 
 
 log = logging.getLogger(__name__)
@@ -804,7 +804,8 @@ class Model(with_metaclass(MetaModel)):
                     if attribute_class is None:
                         raise ValueError("Attribute {0} specified for expected value does not exist".format(attribute))
                 elif token in operator_map:
-                    if operator_map.get(token) == NULL:
+                    operator = operator_map.get(token)
+                    if operator == NULL:
                         if value:
                             value = NULL
                         else:
@@ -812,17 +813,24 @@ class Model(with_metaclass(MetaModel)):
                         condition = {
                             COMPARISON_OPERATOR: value,
                         }
+                    elif operator == EQ or operator == NE:
+                        condition = {
+                            COMPARISON_OPERATOR: operator,
+                            ATTR_VALUE_LIST: [{
+                                ATTR_TYPE_MAP[attribute_class.attr_type]:
+                                attribute_class.serialize(value)
+                            }]
+                        }
                     else:
                         if not isinstance(value, list):
                             value = [value]
                         condition = {
-                            COMPARISON_OPERATOR: operator_map.get(token),
+                            COMPARISON_OPERATOR: operator,
                             ATTR_VALUE_LIST: [
-                                dict([
-                                    (
-                                        ATTR_TYPE_MAP[attribute_class.attr_type],
-                                        attribute_class.serialize(val)) for val in value
-                                ])
+                                {
+                                    ATTR_TYPE_MAP[attribute_class.attr_type]:
+                                    attribute_class.serialize(val)
+                                } for val in value
                             ]
                         }
                     expected_values_result[attributes.get(attribute).attr_name] = condition
