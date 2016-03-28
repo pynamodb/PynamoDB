@@ -6,6 +6,7 @@ import json
 from base64 import b64encode
 from datetime import datetime
 from delorean import Delorean
+from mock import patch
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.models import Model
@@ -130,6 +131,18 @@ class UTCDateTimeAttributeTestCase(TestCase):
             tstamp,
             attr.deserialize(Delorean(tstamp, timezone=UTC).datetime.strftime(DATETIME_FORMAT)),
         )
+
+    def test_utc_date_time_deserialize_parse_args(self):
+        """
+        UTCDateTimeAttribute.deserialize
+        """
+        tstamp = Delorean(timezone=UTC).datetime
+        attr = UTCDateTimeAttribute()
+
+        with patch('pynamodb.attributes.parse') as parse:
+            attr.deserialize(Delorean(tstamp, timezone=UTC).datetime.strftime(DATETIME_FORMAT))
+
+            parse.assert_called_with(tstamp.strftime(DATETIME_FORMAT), dayfirst=False)
 
     def test_utc_date_time_serialize(self):
         """

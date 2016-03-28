@@ -256,4 +256,4 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a UTC datetime string and returns a datetime object
         """
-        return parse(value).datetime
+        return parse(value, dayfirst=False).datetime
