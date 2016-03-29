@@ -252,31 +252,25 @@ class Connection(object):
         data = response.json()
         # Simulate botocore's binary attribute handling
         if ITEM in data:
-            for attr in six.itervalues(data[ITEM]):
-                _convert_binary(attr)
+            _convert_binary_item(data[ITEM])
         if ITEMS in data:
             for item in data[ITEMS]:
-                for attr in six.itervalues(item):
-                    _convert_binary(attr)
+                _convert_binary_item(item)
         if RESPONSES in data:
             for item_list in six.itervalues(data[RESPONSES]):
                 for item in item_list:
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
+                    _convert_binary_item(item)
         if LAST_EVALUATED_KEY in data:
-            for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
-                _convert_binary(attr)
+            _convert_binary_item(data[LAST_EVALUATED_KEY])
         if UNPROCESSED_KEYS in data:
             for item_list in six.itervalues(data[UNPROCESSED_KEYS]):
                 for item in item_list:
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
+                    _convert_binary_item(item)
         if UNPROCESSED_ITEMS in data:
-            for item_mapping in six.itervalues(data[UNPROCESSED_ITEMS]):
-                for item in six.itervalues(item_mapping):
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
-
+            for item_list in six.itervalues(data[UNPROCESSED_ITEMS]):
+                for item_mapping in item_list:
+                    for item in six.itervalues(item_mapping):
+                        _convert_binary_item(item)
         return data
 
     @property
@@ -962,7 +956,14 @@ class Connection(object):
             raise QueryError("Failed to query items: {0}".format(e), e)
 
 
-def _convert_binary(attr):
+def _convert_binary_item(item):
+    if isinstance(item, dict):
+        for attr in six.itervalues(item):
+            _convert_binary_attr(attr)
+    else:
+        _convert_binary_attr(item)
+
+def _convert_binary_attr(attr):
     if BINARY_SHORT in attr:
         attr[BINARY_SHORT] = b64decode(attr[BINARY_SHORT].encode(DEFAULT_ENCODING))
     elif BINARY_SET_SHORT in attr:
