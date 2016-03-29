@@ -809,6 +809,84 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
+            item.update_item('views', 10, action='add', numbers__eq=[1, 2])
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'Expected': {
+                    'numbers': {
+                        'AttributeValueList': [
+                            {'NS': ['1', '2']}
+                        ],
+                        'ComparisonOperator': 'EQ'
+                    },
+                },
+                'AttributeUpdates': {
+                    'views': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'N': '10'
+                        }
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
+        # Reproduces https://github.com/jlafon/PynamoDB/issues/102
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
+            item.update_item('views', 10, action='add', email__in=['1@pynamo.db','2@pynamo.db'])
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'Expected': {
+                    'email': {
+                        'AttributeValueList': [
+                            {'S': '1@pynamo.db'},
+                            {'S': '2@pynamo.db'}
+                        ],
+                        'ComparisonOperator': 'IN'
+                    },
+                },
+                'AttributeUpdates': {
+                    'views': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'N': '10'
+                        }
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
     def test_save(self):
         """
         Model.save
