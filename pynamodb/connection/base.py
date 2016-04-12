@@ -302,7 +302,10 @@ class Connection(object):
         """
         Returns a botocore dynamodb client
         """
-        if self._client is None:
+        # botocore has a known issue where it will cache empty credentials
+        # if the client does not have credentials, we create a new client
+        # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
+        if not self._client or not self._client._request_signer._credentials:
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host)
         return self._client
 

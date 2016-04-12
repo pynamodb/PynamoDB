@@ -13,8 +13,10 @@ from botocore.client import ClientError
 
 if six.PY3:
     from unittest.mock import patch
+    from unittest import mock
 else:
     from mock import patch
+    import mock
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
@@ -38,6 +40,37 @@ class ConnectionTestCase(TestCase):
         self.assertIsNotNone(conn.client)
         self.assertIsNotNone(conn)
         self.assertEqual(repr(conn), "Connection<{0}>".format(conn.host))
+
+    def test_subsequent_client_is_not_cached_when_credentials_none(self):
+        with patch('pynamodb.connection.Connection.session') as session_mock:
+            session_mock.create_client.return_value._request_signer._credentials = None
+            conn = Connection()
+
+            # make two calls to .client property, expect two calls to create client
+            self.assertIsNotNone(conn.client)
+            self.assertIsNotNone(conn.client)
+
+            session_mock.create_client.assert_has_calls(
+                [
+                    mock.call('dynamodb', 'us-east-1', endpoint_url=None),
+                    mock.call('dynamodb', 'us-east-1', endpoint_url=None),
+                ],
+                any_order=True
+            )
+
+    def test_subsequent_client_is_cached_when_credentials_truthy(self):
+        with patch('pynamodb.connection.Connection.session') as session_mock:
+            session_mock.create_client.return_value._request_signer._credentials = True
+            conn = Connection()
+
+            # make two calls to .client property, expect one call to create client
+            self.assertIsNotNone(conn.client)
+            self.assertIsNotNone(conn.client)
+
+            self.assertEquals(
+                session_mock.create_client.mock_calls.count(mock.call('dynamodb', 'us-east-1', endpoint_url=None)),
+                1
+            )
 
     def test_create_table(self):
         """
