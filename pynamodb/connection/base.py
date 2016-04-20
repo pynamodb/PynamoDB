@@ -14,7 +14,8 @@ from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.exceptions import (
-    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist
+    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
+    VerboseClientError
 )
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
@@ -244,11 +245,15 @@ class Connection(object):
         if response.status_code >= 300:
             data = response.json()
             # Extract error code from __type
-            code = data.get("__type", "")
+            code = data.get('__type', '')
             if '#' in code:
                 code = code.rsplit('#', 1)[1]
-            botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": code}}
-            raise ClientError(botocore_expected_format, operation_name)
+            botocore_expected_format = {'Error': {'Message': data.get('message', ''), 'Code': code}}
+            verbose_properties = {
+                'table_name': operation_kwargs.get('TableName'),
+                'request_id': response.headers.get('x-amzn-RequestId'),
+            }
+            raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
         data = response.json()
         # Simulate botocore's binary attribute handling
         if ITEM in data:
