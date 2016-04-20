@@ -250,9 +250,15 @@ class Connection(object):
                 code = code.rsplit('#', 1)[1]
             botocore_expected_format = {'Error': {'Message': data.get('message', ''), 'Code': code}}
             verbose_properties = {
-                'table_name': operation_kwargs.get('TableName'),
-                'request_id': response.headers.get('x-amzn-RequestId'),
+                'request_id': response.headers.get('x-amzn-RequestId')
             }
+
+            if 'RequestItems' in operation_kwargs:
+                # Batch operations can hit multiple tables, report them comma separated
+                verbose_properties['table_name'] = ','.join(operation_kwargs['RequestItems'])
+            else:
+                verbose_properties['table_name'] = operation_kwargs.get('TableName')
+
             raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
         data = response.json()
         # Simulate botocore's binary attribute handling
