@@ -1140,17 +1140,47 @@ class ModelTestCase(TestCase):
                 queried
             )
 
+        # limit off by one https://github.com/jlafon/PynamoDB/issues/95
+        # 1 item, limit to 1
         with patch(PATCH_METHOD) as req:
+            expected_limit = 1
+            items = []
+            item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+            item['user_id'] = {STRING_SHORT: 'id-1'}
+            items.append(item)
+            req.return_value = {'Items': items}
+            queried = [
+                it for it in UserModel.query('foo', user_id__eq='id-1', limit=expected_limit)
+            ]
+            self.assertTrue(len(queried) == len(items) == expected_limit)
+
+        # 10 items, limit to 5
+        with patch(PATCH_METHOD) as req:
+            expected_limit = 5
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = {'Items': items}
-            queried = []
-            for item in UserModel.query('foo', user_id__gt='id-1', user_id__le='id-2'):
-                queried.append(item._serialize())
-            self.assertTrue(len(queried) == len(items))
+            queried = [
+                it for it in UserModel.query('foo', user_id__gt='id-0', limit=expected_limit)
+            ]
+            self.assertEqual(len(queried), expected_limit)
+
+        # 1 item, limit to 5
+        with patch(PATCH_METHOD) as req:
+            expected_limit = 1
+            limit = 5
+            items = []
+            item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+            item['user_id'] = {STRING_SHORT: 'id-1'}
+            items.append(item)
+            req.return_value = {'Items': items}
+            queried = [
+                it for it in UserModel.query('foo', user_id__gt='id-0', limit=limit)
+            ]
+            self.assertEqual(len(queried), expected_limit)
 
         with patch(PATCH_METHOD) as req:
             items = []
