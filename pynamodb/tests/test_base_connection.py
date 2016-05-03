@@ -1,9 +1,11 @@
 """
 Tests for the base connection class
 """
+import json
 import six
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import Connection
+from botocore.vendored import requests
 from pynamodb.exceptions import (
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
 from pynamodb.constants import DEFAULT_REGION
@@ -1636,3 +1638,27 @@ class ConnectionTestCase(TestCase):
                 conn.scan,
                 table_name,
                 **kwargs)
+
+    @mock.patch('pynamodb.connection.Connection.session')
+    @mock.patch('pynamodb.connection.Connection.requests_session')
+    def test_make_api_call(self, requests_session_mock, session_mock):
+
+        # mock response
+        response = requests.Response()
+        response.status_code = 400
+        response._content = json.dumps({'message': 'There is a problem', '__type': 'InternalServerError'}).encode('utf-8')
+        response.headers['x-amzn-RequestId'] = 'abcdef'
+        requests_session_mock.send.return_value = response
+
+        c = Connection()
+
+        with self.assertRaises(ClientError):
+            try:
+                c._make_api_call('CreateTable', {'TableName': 'MyTable'})
+            except Exception as e:
+                self.assertEqual(
+                    str(e),
+                    'An error occurred (InternalServerError) on request (abcdef) on table (MyTable) when calling the CreateTable operation: There is a problem'
+                )
+                raise
+
