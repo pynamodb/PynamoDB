@@ -1641,7 +1641,7 @@ class ConnectionTestCase(TestCase):
 
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
-    def test_make_api_call(self, requests_session_mock, session_mock):
+    def test_make_api_call_throws_verbose_error(self, requests_session_mock, session_mock):
 
         # mock response
         response = requests.Response()
@@ -1662,3 +1662,51 @@ class ConnectionTestCase(TestCase):
                 )
                 raise
 
+    @mock.patch('pynamodb.connection.Connection.session')
+    @mock.patch('pynamodb.connection.Connection.requests_session')
+    def test_make_api_call_retries_properly(self, requests_session_mock, session_mock):
+        # mock response
+        deserializable_response = requests.Response()
+        deserializable_response._content = json.dumps({'hello': 'world'})
+        bad_response = requests.Response()
+        bad_response._content = 'not_json'
+
+        prepared_request = requests.Request('GET', 'http://lyft.com').prepare()
+        session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
+
+        requests_session_mock.send.side_effect = [
+            requests.ConnectionError('problems!'),
+            requests.Timeout('problems!'),
+            bad_response,
+            deserializable_response
+        ]
+        c = Connection()
+        c._max_retry_attempts_exception = 4
+
+        c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
+        self.assertEqual(len(requests_session_mock.mock_calls), 4)
+        for call in requests_session_mock.mock_calls:
+            self.assertEqual(call[:2], ('send', (prepared_request,)))
+
+
+    @mock.patch('pynamodb.connection.Connection.session')
+    @mock.patch('pynamodb.connection.Connection.requests_session')
+    def test_make_api_call_retries_properly(self, requests_session_mock, session_mock):
+        prepared_request = requests.Request('GET', 'http://lyft.com').prepare()
+        session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
+
+        requests_session_mock.send.side_effect = [
+            requests.ConnectionError('problems!'),
+            requests.ConnectionError('problems!'),
+            requests.ConnectionError('problems!'),
+            requests.Timeout('problems!'),
+        ]
+        c = Connection()
+        c._max_retry_attempts_exception = 4
+
+        with self.assertRaises(requests.Timeout):
+            c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
+
+        self.assertEqual(len(requests_session_mock.mock_calls), 4)
+        for call in requests_session_mock.mock_calls:
+            self.assertEqual(call[:2], ('send', (prepared_request,)))
