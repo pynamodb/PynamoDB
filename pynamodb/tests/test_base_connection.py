@@ -1691,7 +1691,7 @@ class ConnectionTestCase(TestCase):
 
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
-    def test_make_api_call_retries_properly(self, requests_session_mock, session_mock):
+    def test_make_api_call_throws_when_retries_exhausted(self, requests_session_mock, session_mock):
         prepared_request = requests.Request('GET', 'http://lyft.com').prepare()
         session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
 
