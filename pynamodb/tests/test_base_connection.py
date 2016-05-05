@@ -1669,7 +1669,7 @@ class ConnectionTestCase(TestCase):
         deserializable_response = requests.Response()
         deserializable_response._content = json.dumps({'hello': 'world'})
         bad_response = requests.Response()
-        bad_response._content = 'not_json'
+        bad_response._content = 'not_json'.encode('utf-8')
 
         prepared_request = requests.Request('GET', 'http://lyft.com').prepare()
         session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
