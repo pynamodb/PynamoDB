@@ -1667,7 +1667,7 @@ class ConnectionTestCase(TestCase):
     def test_make_api_call_retries_properly(self, requests_session_mock, session_mock):
         # mock response
         deserializable_response = requests.Response()
-        deserializable_response._content = json.dumps({'hello': 'world'})
+        deserializable_response._content = json.dumps({'hello': 'world'}).encode('utf-8')
         bad_response = requests.Response()
         bad_response._content = 'not_json'.encode('utf-8')
 
