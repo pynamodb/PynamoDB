@@ -5,6 +5,7 @@ from base64 import b64decode
 import logging
 
 import six
+from six.moves import range
 from botocore.session import get_session
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
@@ -36,6 +37,9 @@ from pynamodb.constants import (
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
+# retry parameters
+DEFAULT_TIMEOUT = 60  # matches legacy retry timeout from botocore
+DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION = 3
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
@@ -182,6 +186,10 @@ class Connection(object):
         else:
             self.region = DEFAULT_REGION
 
+        # TODO: provide configurability of retry parameters via arguments
+        self._request_timeout_seconds = DEFAULT_TIMEOUT
+        self._max_retry_attempts_exception = DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION
+
         if session_cls:
             self.session_cls = session_cls
         else:
@@ -241,54 +249,91 @@ class Connection(object):
             operation_model
         )
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
-        response = self.requests_session.send(prepared_request, proxies=self.client._endpoint.proxies)
-        if response.status_code >= 300:
-            data = response.json()
-            # Extract error code from __type
-            code = data.get('__type', '')
-            if '#' in code:
-                code = code.rsplit('#', 1)[1]
-            botocore_expected_format = {'Error': {'Message': data.get('message', ''), 'Code': code}}
-            verbose_properties = {
-                'request_id': response.headers.get('x-amzn-RequestId')
-            }
 
-            if 'RequestItems' in operation_kwargs:
-                # Batch operations can hit multiple tables, report them comma separated
-                verbose_properties['table_name'] = ','.join(operation_kwargs['RequestItems'])
-            else:
-                verbose_properties['table_name'] = operation_kwargs.get('TableName')
+        for attempt_number in range(1, self._max_retry_attempts_exception + 1):
+            is_last_attempt_for_exceptions = attempt_number == self._max_retry_attempts_exception
 
-            raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
-        data = response.json()
-        # Simulate botocore's binary attribute handling
-        if ITEM in data:
-            for attr in six.itervalues(data[ITEM]):
-                _convert_binary(attr)
-        if ITEMS in data:
-            for item in data[ITEMS]:
-                for attr in six.itervalues(item):
+            try:
+                response = self.requests_session.send(
+                    prepared_request,
+                    timeout=self._request_timeout_seconds,
+                    proxies=self.client._endpoint.proxies,
+                )
+            except requests.RequestException as e:
+                if is_last_attempt_for_exceptions:
+                    log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
+                    raise
+                else:
+                    log.debug(
+                        'Retry needed for (%s) after attempt %s, retryable RequestException caught: %s',
+                        operation_name,
+                        attempt_number,
+                        e
+                    )
+                    continue
+
+            try:
+                data = response.json()
+            except ValueError as e:
+                if is_last_attempt_for_exceptions:
+                    log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
+                    raise
+                else:
+                    log.debug(
+                        'Retry needed for (%s) after attempt %s, retryable JSONDecodeError caught: %s',
+                        operation_name,
+                        attempt_number,
+                        e
+                    )
+                    continue
+
+            # TODO: retry with backoff based on status code, error code, operation
+            if response.status_code >= 300:
+                # Extract error code from __type
+                code = data.get('__type', '')
+                if '#' in code:
+                    code = code.rsplit('#', 1)[1]
+                botocore_expected_format = {'Error': {'Message': data.get('message', ''), 'Code': code}}
+                verbose_properties = {
+                    'request_id': response.headers.get('x-amzn-RequestId')
+                }
+
+                if 'RequestItems' in operation_kwargs:
+                    # Batch operations can hit multiple tables, report them comma separated
+                    verbose_properties['table_name'] = ','.join(operation_kwargs['RequestItems'])
+                else:
+                    verbose_properties['table_name'] = operation_kwargs.get('TableName')
+
+                raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
+
+            # Simulate botocore's binary attribute handling
+            if ITEM in data:
+                for attr in six.itervalues(data[ITEM]):
                     _convert_binary(attr)
-        if RESPONSES in data:
-            for item_list in six.itervalues(data[RESPONSES]):
-                for item in item_list:
+            if ITEMS in data:
+                for item in data[ITEMS]:
                     for attr in six.itervalues(item):
                         _convert_binary(attr)
-        if LAST_EVALUATED_KEY in data:
-            for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
-                _convert_binary(attr)
-        if UNPROCESSED_KEYS in data:
-            for item_list in six.itervalues(data[UNPROCESSED_KEYS]):
-                for item in item_list:
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
-        if UNPROCESSED_ITEMS in data:
-            for item_mapping in six.itervalues(data[UNPROCESSED_ITEMS]):
-                for item in item_mapping:
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
+            if RESPONSES in data:
+                for item_list in six.itervalues(data[RESPONSES]):
+                    for item in item_list:
+                        for attr in six.itervalues(item):
+                            _convert_binary(attr)
+            if LAST_EVALUATED_KEY in data:
+                for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
+                    _convert_binary(attr)
+            if UNPROCESSED_KEYS in data:
+                for item_list in six.itervalues(data[UNPROCESSED_KEYS]):
+                    for item in item_list:
+                        for attr in six.itervalues(item):
+                            _convert_binary(attr)
+            if UNPROCESSED_ITEMS in data:
+                for item_mapping in six.itervalues(data[UNPROCESSED_ITEMS]):
+                    for item in item_mapping:
+                        for attr in six.itervalues(item):
+                            _convert_binary(attr)
 
-        return data
+            return data
 
     @property
     def session(self):
