@@ -564,11 +564,12 @@ class Model(with_metaclass(MetaModel)):
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
         for item in data.get(ITEMS):
-            if limit is not None:
-                if limit == 0:
-                    return
-                limit -= 1
+            if limit == 0:
+                return
             yield cls.from_raw_data(item)
+            # decrement after returning item
+            if limit is not None:
+                limit -= 1
 
         while last_evaluated_key:
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
