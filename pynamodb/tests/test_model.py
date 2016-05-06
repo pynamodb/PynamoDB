@@ -1117,6 +1117,88 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
+    def test_query_limit_greater_than_available_items_single_page(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(5):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.return_value = {'Items': items}
+            results = list(UserModel.query('foo', limit=25))
+            self.assertEqual(len(results), 5)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 25)
+
+    def test_query_limit_identical_to_available_items_single_page(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(5):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.return_value = {'Items': items}
+            results = list(UserModel.query('foo', limit=5))
+            self.assertEqual(len(results), 5)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 5)
+
+    def test_query_limit_less_than_available_items_multiple_page(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Items': items[20:30]},
+            ]
+            results = list(UserModel.query('foo', limit=25))
+            self.assertEqual(len(results), 25)
+            self.assertEqual(len(req.mock_calls), 3)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 25)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 15)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 5)
+
+    def test_query_limit_greater_than_available_items_multiple_page(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Items': items[20:30]},
+            ]
+            results = list(UserModel.query('foo', limit=50))
+            self.assertEqual(len(results), 30)
+            self.assertEqual(len(req.mock_calls), 3)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 50)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 40)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 30)
+
     def test_query(self):
         """
         Model.query
