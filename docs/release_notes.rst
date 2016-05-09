@@ -24,7 +24,7 @@ Fixes in this release:
 
 New features in this release:
 
-* Return the cause of connection exceptions to the caller (#108)
+* Return the cause of connection exceptions to the caller (#108 documented by #112)
 * Configurable session class for custom connection pool size, etc (#91)
 * Add attributes_to_get and consistent_read to more of the API (#79)
 
