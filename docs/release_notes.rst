@@ -1,6 +1,44 @@
 Release Notes
 =============
 
+v1.5.0
+------
+
+:date: 2016-05-09
+
+This is a backwards compatible, minor release.
+
+Please consider the fix for limits before upgrading. Correcting for off-by-one when querying is
+no longer necessary.
+
+Fixes in this release:
+
+* Fix off-by-one error for limits when querying (#123 fixed #95)
+* Retry on ConnectionErrors and other types of RequestExceptions (#121 fixes #98)
+* More verbose logging when receiving errors e.g. InternalServerError from the DynamoDB API (#115)
+* Prevent permanent poisoning of credential cache due to botocore bug (#113 fixes #99)
+* Fix for UnprocessedItems serialization error (#114 fixes #103)
+* Fix parsing issue with newer version of dateutil and UTCDateTimeAttributes (#110 fixes #109)
+* Correctly handle expected value generation for set types (#107 fixes #102)
+* Use HTTP proxies configured by botocore (#100 fixes #92)
+
+New features in this release:
+
+* Return the cause of connection exceptions to the caller (#108 documented by #112)
+* Configurable session class for custom connection pool size, etc (#91)
+* Add attributes_to_get and consistent_read to more of the API (#79)
+
+Contributors to this release:
+
+* @ab
+* @danielhochman
+* @jlafon
+* @joshowen
+* @jpinner-lyft
+* @mxr
+* @nickgravgaard
+
+
 v1.4.4
 ------
 
