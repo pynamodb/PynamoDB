@@ -34,6 +34,7 @@ Contributors to this release:
 * @danielhochman
 * @jlafon
 * @joshowen
+* @jpinner-lyft
 * @mxr
 * @nickgravgaard
 
