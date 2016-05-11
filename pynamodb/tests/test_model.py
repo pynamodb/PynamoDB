@@ -19,7 +19,7 @@ from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, ITEM_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
-    UNPROCESSED_ITEMS
+    UNPROCESSED_ITEMS, DEFAULT_ENCODING
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -1828,7 +1828,7 @@ class ModelTestCase(TestCase):
                     'Item': {
                         'custom_username': {STRING_SHORT: 'daniel'},
                         'user_id': {STRING_SHORT: '{}'.format(idx)},
-                        'picture': {BINARY_SHORT: base64.b64encode(picture_blob)}
+                        'picture': {BINARY_SHORT: base64.b64encode(picture_blob).decode(DEFAULT_ENCODING)}
                     }
                 }
             })

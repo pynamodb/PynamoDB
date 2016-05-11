@@ -9,7 +9,7 @@ from pynamodb.connection import Connection
 from botocore.vendored import requests
 from pynamodb.exceptions import (
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
-from pynamodb.constants import DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT
+from pynamodb.constants import DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from pynamodb.tests.deep_eq import deep_eq
 from botocore.exceptions import BotoCoreError
@@ -1716,7 +1716,7 @@ class ConnectionTestCase(TestCase):
             self.assertEqual(call[:2], ('send', (prepared_request,)))
 
     def test_handle_binary_attributes_for_unprocessed_items(self):
-        binary_blob = b'\x00\xFF\x00\xFF'
+        binary_blob = six.b('\x00\xFF\x00\xFF')
 
         unprocessed_items = []
         for idx in range(0, 5):
@@ -1724,7 +1724,7 @@ class ConnectionTestCase(TestCase):
                 'PutRequest': {
                     'Item': {
                         'name': {STRING_SHORT: 'daniel'},
-                        'picture': {BINARY_SHORT: base64.b64encode(binary_blob)}
+                        'picture': {BINARY_SHORT: base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
                     }
                 }
             })
