@@ -1803,14 +1803,6 @@ class ModelTestCase(TestCase):
                     batch.save(item)
 
     def test_batch_write_with_unprocessed(self):
-        items = []
-        for idx in range(10):
-            item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-            item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-            item['email'] = {STRING_SHORT: 'email-{0}'.format(random.randint(0, 65536))}
-            item['picture'] = {BINARY_SHORT: BINARY_ATTR_DATA}
-            items.append(item)
-
         picture_blob = b'FFD8FFD8'
 
         items = []
