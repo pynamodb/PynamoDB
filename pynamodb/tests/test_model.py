@@ -1817,7 +1817,7 @@ class ModelTestCase(TestCase):
         for idx in range(10):
             items.append(UserModel(
                 'daniel',
-                '{}'.format(idx),
+                '{0}'.format(idx),
                 picture=picture_blob,
             ))
 
@@ -1827,7 +1827,7 @@ class ModelTestCase(TestCase):
                 'PutRequest': {
                     'Item': {
                         'custom_username': {STRING_SHORT: 'daniel'},
-                        'user_id': {STRING_SHORT: '{}'.format(idx)},
+                        'user_id': {STRING_SHORT: '{0}'.format(idx)},
                         'picture': {BINARY_SHORT: base64.b64encode(picture_blob).decode(DEFAULT_ENCODING)}
                     }
                 }
