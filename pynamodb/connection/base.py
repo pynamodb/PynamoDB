@@ -4,6 +4,7 @@ Lowest level connection
 from base64 import b64decode
 import logging
 
+import json
 import six
 from six.moves import range
 from botocore.session import get_session
@@ -243,11 +244,20 @@ class Connection(object):
         1. It's faster to avoid using botocore's response parsing
         2. It provides a place to monkey patch requests for unit testing
         """
+        request_dict = {
+            'body': json.dumps(operation_kwargs),
+            'headers': {
+                'Content-Type': 'application/x-amz-json-1.0',
+                'User-Agent': self.client.meta.config.user_agent,
+                'X-Amz-Target': 'DynamoDB_20120810.{0}'.format(operation_name),
+            },
+            'method': 'POST',
+            'url': self.client.meta.endpoint_url,
+            'url_path': '/',
+        }
+
+        # sign the request and create a Request object
         operation_model = self.client._service_model.operation_model(operation_name)
-        request_dict = self.client._convert_to_request_dict(
-            operation_kwargs,
-            operation_model
-        )
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
 
         for attempt_number in range(1, self._max_retry_attempts_exception + 1):
