@@ -1,6 +1,22 @@
 Release Notes
 =============
 
+v1.5.1
+------
+
+:date: 2016-05-11
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* Fix for binary attribute handling of unprocessed items data corruption affecting users of 1.5.0 (#126 fixes #125)
+
+Contributors to this release:
+
+* @danielhochman
+
+
 v1.5.0
 ------
 
