@@ -1,6 +1,7 @@
 """
 Test model API
 """
+import base64
 import random
 import json
 import copy
@@ -17,7 +18,8 @@ from pynamodb.exceptions import TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, ITEM_COUNT,
-    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT
+    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
+    UNPROCESSED_ITEMS, DEFAULT_ENCODING
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -1800,24 +1802,49 @@ class ModelTestCase(TestCase):
                 for item in items:
                     batch.save(item)
 
-        def fake_unprocessed_keys(*args, **kwargs):
-            if pythonic(REQUEST_ITEMS) in kwargs:
-                batch_items = kwargs.get(pythonic(REQUEST_ITEMS)).get(UserModel.Meta.table_name)[1:]
-                unprocessed = {
-                    UNPROCESSED_KEYS: {
-                        UserModel.Meta.table_name: batch_items
+    def test_batch_write_with_unprocessed(self):
+        picture_blob = b'FFD8FFD8'
+
+        items = []
+        for idx in range(10):
+            items.append(UserModel(
+                'daniel',
+                '{0}'.format(idx),
+                picture=picture_blob,
+            ))
+
+        unprocessed_items = []
+        for idx in range(5, 10):
+            unprocessed_items.append({
+                'PutRequest': {
+                    'Item': {
+                        'custom_username': {STRING_SHORT: 'daniel'},
+                        'user_id': {STRING_SHORT: '{0}'.format(idx)},
+                        'picture': {BINARY_SHORT: base64.b64encode(picture_blob).decode(DEFAULT_ENCODING)}
                     }
                 }
-                return unprocessed
-            return {}
+            })
 
-        batch_write_mock = MagicMock()
-        batch_write_mock.side_effect = fake_unprocessed_keys
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = [
+                {
+                    UNPROCESSED_ITEMS: {
+                        UserModel.Meta.table_name: unprocessed_items[:2],
+                    }
+                },
+                {
+                    UNPROCESSED_ITEMS: {
+                        UserModel.Meta.table_name: unprocessed_items[2:],
+                    }
+                },
+                {}
+            ]
 
-        with patch(PATCH_METHOD, new=batch_write_mock) as req:
-            items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(500)]
-            for item in items:
-                batch.save(item)
+            with UserModel.batch_write() as batch:
+                for item in items:
+                    batch.save(item)
+
+            self.assertEqual(len(req.mock_calls), 3)
 
     def test_index_queries(self):
         """

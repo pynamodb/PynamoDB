@@ -1,6 +1,7 @@
 """
 Tests for the base connection class
 """
+import base64
 import json
 import six
 from pynamodb.compat import CompatTestCase as TestCase
@@ -8,8 +9,9 @@ from pynamodb.connection import Connection
 from botocore.vendored import requests
 from pynamodb.exceptions import (
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
-from pynamodb.constants import DEFAULT_REGION
+from pynamodb.constants import DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
+from pynamodb.tests.deep_eq import deep_eq
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
 
@@ -1712,3 +1714,35 @@ class ConnectionTestCase(TestCase):
         self.assertEqual(len(requests_session_mock.mock_calls), 4)
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
+
+    def test_handle_binary_attributes_for_unprocessed_items(self):
+        binary_blob = six.b('\x00\xFF\x00\xFF')
+
+        unprocessed_items = []
+        for idx in range(0, 5):
+            unprocessed_items.append({
+                'PutRequest': {
+                    'Item': {
+                        'name': {STRING_SHORT: 'daniel'},
+                        'picture': {BINARY_SHORT: base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
+                    }
+                }
+            })
+
+        expected_unprocessed_items = []
+        for idx in range(0, 5):
+            expected_unprocessed_items.append({
+                'PutRequest': {
+                    'Item': {
+                        'name': {STRING_SHORT: 'daniel'},
+                        'picture': {BINARY_SHORT: binary_blob}
+                    }
+                }
+            })
+
+        deep_eq(
+            Connection._handle_binary_attributes({UNPROCESSED_ITEMS: {'someTable': unprocessed_items}}),
+            {UNPROCESSED_ITEMS: {'someTable': expected_unprocessed_items}},
+            _assert=True
+        )
+
