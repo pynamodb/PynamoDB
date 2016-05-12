@@ -316,39 +316,7 @@ class Connection(object):
 
                 raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
 
-            return self._handle_binary_attributes(data)
-
-    @staticmethod
-    def _handle_binary_attributes(data):
-        """ Simulate botocore's binary attribute handling """
-        if ITEM in data:
-            for attr in six.itervalues(data[ITEM]):
-                _convert_binary(attr)
-        if ITEMS in data:
-            for item in data[ITEMS]:
-                for attr in six.itervalues(item):
-                    _convert_binary(attr)
-        if RESPONSES in data:
-            for item_list in six.itervalues(data[RESPONSES]):
-                for item in item_list:
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
-        if LAST_EVALUATED_KEY in data:
-            for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
-                _convert_binary(attr)
-        if UNPROCESSED_KEYS in data:
-            for item_list in six.itervalues(data[UNPROCESSED_KEYS]):
-                for item in item_list:
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
-        if UNPROCESSED_ITEMS in data:
-            for table_unprocessed_requests in six.itervalues(data[UNPROCESSED_ITEMS]):
-                for request in table_unprocessed_requests:
-                    for item_mapping in six.itervalues(request):
-                        for item in six.itervalues(item_mapping):
-                            for attr in six.itervalues(item):
-                                _convert_binary(attr)
-        return data
+            return data
 
     @property
     def session(self):
