@@ -1714,35 +1714,3 @@ class ConnectionTestCase(TestCase):
         self.assertEqual(len(requests_session_mock.mock_calls), 4)
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
-
-    def test_handle_binary_attributes_for_unprocessed_items(self):
-        binary_blob = six.b('\x00\xFF\x00\xFF')
-
-        unprocessed_items = []
-        for idx in range(0, 5):
-            unprocessed_items.append({
-                'PutRequest': {
-                    'Item': {
-                        'name': {STRING_SHORT: 'daniel'},
-                        'picture': {BINARY_SHORT: base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
-                    }
-                }
-            })
-
-        expected_unprocessed_items = []
-        for idx in range(0, 5):
-            expected_unprocessed_items.append({
-                'PutRequest': {
-                    'Item': {
-                        'name': {STRING_SHORT: 'daniel'},
-                        'picture': {BINARY_SHORT: binary_blob}
-                    }
-                }
-            })
-
-        deep_eq(
-            Connection._handle_binary_attributes({UNPROCESSED_ITEMS: {'someTable': unprocessed_items}}),
-            {UNPROCESSED_ITEMS: {'someTable': expected_unprocessed_items}},
-            _assert=True
-        )
-
