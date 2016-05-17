@@ -885,7 +885,7 @@ class Model(with_metaclass(MetaModel)):
                     )
                 )
             if attribute_name in key_conditions or attribute_name in query_conditions:
-                # Before this validation logic, PynamoDB would stomp on multiple values with the last one provided.
+                # Before this validation logic, PynamoDB would stomp on multiple values and use only the last provided.
                 # This leads to unexpected behavior. In some cases, the DynamoDB API does not allow multiple values
                 # even when using the newer API (e.g. KeyConditions and KeyConditionExpression only allow a single
                 # value for each member of the primary key). In other cases, moving PynamoDB to the newer API
