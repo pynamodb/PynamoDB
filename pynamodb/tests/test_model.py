@@ -1224,17 +1224,8 @@ class ModelTestCase(TestCase):
                 queried
             )
 
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Items': items}
-            queried = []
-            for item in UserModel.query('foo', user_id__gt='id-1', user_id__le='id-2'):
-                queried.append(item._serialize())
-            self.assertTrue(len(queried) == len(items))
+        # you cannot query a range key with multiple conditions
+        self.assertRaises(ValueError, lambda: list(UserModel.query('foo', user_id__gt='id-1', user_id__le='id-2')))
 
         with patch(PATCH_METHOD) as req:
             items = []
