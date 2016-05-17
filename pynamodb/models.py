@@ -884,6 +884,17 @@ class Model(with_metaclass(MetaModel)):
                         key_operator_map.keys(), non_key_operator_map.keys()
                     )
                 )
+            if attribute_name in key_conditions or attribute_name in query_conditions:
+                # Before this validation logic, PynamoDB would stomp on multiple values with the last one provided.
+                # This leads to unexpected behavior. In some cases, the DynamoDB API does not allow multiple values
+                # even when using the newer API (e.g. KeyConditions and KeyConditionExpression only allow a single
+                # value for each member of the primary key). In other cases, moving PynamoDB to the newer API
+                # (e.g. FilterExpression over ScanFilter) would allow support for multiple conditions.
+                raise ValueError(
+                    "Multiple values not supported for attributes in KeyConditions, QueryFilter, or ScanFilter, "
+                    "multiple values provided for attribute {0}".format(attribute_name)
+                )
+
             if key_operator_map.get(operator, '') == NULL or non_key_operator_map.get(operator, '') == NULL:
                 if value:
                     operator = pythonic(NULL)
