@@ -1224,17 +1224,11 @@ class ModelTestCase(TestCase):
                 queried
             )
 
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Items': items}
-            queried = []
-            for item in UserModel.query('foo', user_id__gt='id-1', user_id__le='id-2'):
-                queried.append(item._serialize())
-            self.assertTrue(len(queried) == len(items))
+        # you cannot query a range key with multiple conditions
+        self.assertRaises(ValueError, lambda: list(UserModel.query('foo', user_id__gt='id-1', user_id__le='id-2')))
+
+        # you cannot query a non-primary key with multiple conditions
+        self.assertRaises(ValueError, lambda: list(UserModel.query('foo', zip_code__gt='77096', zip_code__le='94117')))
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1592,6 +1586,12 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
             self.assertEquals(params, req.call_args[0][1])
+
+        # you cannot scan with multiple conditions against the same key
+        self.assertRaises(
+            ValueError,
+            lambda: list(UserModel.scan(user_id__contains='tux', user_id__beginswith='penguin'))
+        )
 
     def test_get(self):
         """
