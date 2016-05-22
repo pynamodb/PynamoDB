@@ -241,24 +241,31 @@ class NumberAttribute(Attribute):
 
 class NumberListAttribute(Attribute):
     """
-    This is a list attribute that supports only numbers (i.e. integers). The
-    DynamoDB List attribute does actually support mixed attribute types, but
-    this one only supports numbers. Using non-integers with this type will
-    produce undefined results.
+    This is a list attribute that supports only numbers (i.e. integers) or
+    lists of numbers.
+    
+    The DynamoDB List attribute does actually support mixed attribute types,
+    but this one only supports numbers and lists of numbers. Using non-integers
+    or lists of non-integers with this type will produce undefined results.
     """
     attr_type = LIST
 
-    def serialize(self, values):
+    @staticmethod
+    def serialize(values):
         """
         Encode the given list of numbers into a list of AttributeValue types.
         """
         rval = []
         for v in values:
-            rval += [{'N': str(v)}]
+            if type(v) is list:
+                rval += [{'L': NumberListAttribute.serialize(v)}]
+            else:
+                rval += [{'N': str(v)}]
 
         return rval
 
-    def deserialize(self, values):
+    @staticmethod
+    def deserialize(values):
         """
         Decode numbers from list of AttributeValue types.
         """
@@ -267,7 +274,10 @@ class NumberListAttribute(Attribute):
         # This should be a generic function that takes any AttributeValue and
         # translates it back to the Python type.
         for v in values:
-            rval += [int(v['N'])]
+            if 'L' in v:
+                rval += [NumberListAttribute.deserialize(v['L'])]
+            else:
+                rval += [int(v['N'])]
 
         return rval
 
