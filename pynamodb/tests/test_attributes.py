@@ -402,6 +402,36 @@ class BooleanAttributeTestCase(TestCase):
         self.assertEqual(attr.deserialize('0'), False)
 
 
+class NumberListAttributeTestCase(TestCase):
+    """
+    Tests NumberListAttribute
+    """
+    def test_number_list_attribute(self):
+        """
+        NumberListAttribute.default
+        """
+        attr = NumberListAttribute()
+        self.assertIsNotNone(attr)
+        self.assertEqual(attr.attr_type, LIST)
+
+        attr = NumberAttribute(default=[1,[11]])
+        self.assertEqual(attr.default, [1,[11]])
+
+    def test_number_list_serialize(self):
+        """
+        NumberListAttribute.serialize
+        """
+        attr = NumberListAttribute()
+        self.assertEqual(attr.serialize([1,[11]], [{'N':'1'},{'L':[{'N':'11'}]}]))
+
+    def test_number_list_deserialize(self):
+        """
+        NumberListAttribute.deserialize
+        """
+        attr = NumberAttribute()
+        self.assertEqual(attr.deserialize([{'N':'1'},{'L':[{'N':'11'}]}], [1,[11]]))
+
+
 class JSONAttributeTestCase(TestCase):
     """
     Tests json attributes
