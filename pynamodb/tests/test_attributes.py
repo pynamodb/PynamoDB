@@ -14,7 +14,7 @@ from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     NumberListAttribute, UnicodeAttribute, UnicodeSetAttribute,
     UTCDateTimeAttribute, BooleanAttribute, JSONAttribute, DEFAULT_ENCODING,
-    NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET, BINARY)
+    LIST, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET, BINARY)
 
 
 class AttributeTestModel(Model):
@@ -414,7 +414,7 @@ class NumberListAttributeTestCase(TestCase):
         self.assertIsNotNone(attr)
         self.assertEqual(attr.attr_type, LIST)
 
-        attr = NumberAttribute(default=[1,[11]])
+        attr = NumberListAttribute(default=[1,[11]])
         self.assertEqual(attr.default, [1,[11]])
 
     def test_number_list_serialize(self):
@@ -428,7 +428,7 @@ class NumberListAttributeTestCase(TestCase):
         """
         NumberListAttribute.deserialize
         """
-        attr = NumberAttribute()
+        attr = NumberListAttribute()
         self.assertEqual(attr.deserialize([{'N':'1'},{'L':[{'N':'11'}]}]), [1,[11]])
 
 
