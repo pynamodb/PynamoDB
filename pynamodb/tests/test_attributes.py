@@ -12,9 +12,9 @@ from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
-    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
-    JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY)
+    NumberListAttribute, UnicodeAttribute, UnicodeSetAttribute,
+    UTCDateTimeAttribute, BooleanAttribute, JSONAttribute, DEFAULT_ENCODING,
+    NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET, BINARY)
 
 
 class AttributeTestModel(Model):
@@ -422,14 +422,14 @@ class NumberListAttributeTestCase(TestCase):
         NumberListAttribute.serialize
         """
         attr = NumberListAttribute()
-        self.assertEqual(attr.serialize([1,[11]], [{'N':'1'},{'L':[{'N':'11'}]}]))
+        self.assertEqual(attr.serialize([1,[11]]), [{'N':'1'},{'L':[{'N':'11'}]}])
 
     def test_number_list_deserialize(self):
         """
         NumberListAttribute.deserialize
         """
         attr = NumberAttribute()
-        self.assertEqual(attr.deserialize([{'N':'1'},{'L':[{'N':'11'}]}], [1,[11]]))
+        self.assertEqual(attr.deserialize([{'N':'1'},{'L':[{'N':'11'}]}]), [1,[11]])
 
 
 class JSONAttributeTestCase(TestCase):
