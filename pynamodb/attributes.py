@@ -6,8 +6,8 @@ import json
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
-    STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING
+    LIST, STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET,
+    NUMBER_SET, DEFAULT_ENCODING
 )
 
 
@@ -239,6 +239,38 @@ class NumberAttribute(Attribute):
         return json.loads(value)
 
 
+class NumberListAttribute(Attribute):
+    """
+    This is a list attribute that supports only numbers (i.e. integers). The
+    DynamoDB List attribute does actually support mixed attribute types, but
+    this one only supports numbers. Using non-integers with this type will
+    produce undefined results.
+    """
+    attr_type = LIST
+
+    def serialize(self, values):
+        """
+        Encode the given list of numbers into a list of AttributeValue types.
+        """
+        rval = []
+        for v in values:
+            rval += [{'N': str(v)}]
+
+        return rval
+
+    def deserialize(self, values):
+        """
+        Decode numbers from list of AttributeValue types.
+        """
+        rval = []
+
+        # This should be a generic function that takes any AttributeValue and
+        # translates it back to the Python type.
+        for v in values:
+            rval += [int(v['N'])]
+
+        return rval
+
 class UTCDateTimeAttribute(Attribute):
     """
     An attribute for storing a UTC Datetime
@@ -257,3 +289,5 @@ class UTCDateTimeAttribute(Attribute):
         Takes a UTC datetime string and returns a datetime object
         """
         return parse(value, dayfirst=False).datetime
+
+
