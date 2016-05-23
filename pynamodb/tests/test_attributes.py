@@ -414,22 +414,48 @@ class NumberListAttributeTestCase(TestCase):
         self.assertIsNotNone(attr)
         self.assertEqual(attr.attr_type, LIST)
 
-        attr = NumberListAttribute(default=[1,[11]])
-        self.assertEqual(attr.default, [1,[11]])
+        # The assertListEqual method cannot support heterogeneous lists, so we
+        # can only test either all numbers or all lists.
+        attr = NumberListAttribute(default=[1])
+        self.assertEqual(attr.default, [1])
+
+        attr = NumberListAttribute(default=[[1,2],[3,4]])
+        self.assertEqual(attr.default, [[1,2],[3,4]])
 
     def test_number_list_serialize(self):
         """
         NumberListAttribute.serialize
         """
         attr = NumberListAttribute()
-        self.assertEqual(attr.serialize([1,[11]]), [{'N':'1'},{'L':[{'N':'11'}]}])
+
+        # Test serialization of [1]
+        self.assertListEqual(attr.serialize([1]), [{'N':'1'}])
+
+        # Test serialization of [1,2,3]
+        testlist = ['1','2','3']
+        for i in range(len(testlist)):
+            self.assertListEqual(attr.serialize([1,2,3])[i], {'N': testlist[i]})
+
+        # Test serialization of [[1,2],[3,4]]
+        testlist = [['1','2'],['3','4']]
+        for i in range(len(testlist)):
+            for j in range(len(testlist[i])):
+                self.assertListEqual(attr.serialize([[1,2],[3,4]])[i]['L'][j], {'N': testlist[i]})
 
     def test_number_list_deserialize(self):
         """
         NumberListAttribute.deserialize
         """
         attr = NumberListAttribute()
-        self.assertEqual(attr.deserialize([{'N':'1'},{'L':[{'N':'11'}]}]), [1,[11]])
+
+        # Test deserialization of [1]
+        self.assertEqual(attr.deserialize([{'N':'1'}]), [1])
+
+        # Test deserialization of [1,2,3]
+        self.assertListEqual(attr.deserialize([{'N':'1'}, {'N': '2'}, {'N': '3'}]), [1,2,3])
+
+        # Test deserialization of [[1,2],[3,4]]
+        self.assertListEqual(attr.deserialize([{'L':[{'N':'1'},{'N':'2'}]},{'L':[{'N':'3'},{'N':'4'}]}]), [[1,2],[3,4]])
 
 
 class JSONAttributeTestCase(TestCase):
