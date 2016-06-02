@@ -6,8 +6,8 @@ import json
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
-    LIST, STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET,
-    NUMBER_SET, DEFAULT_ENCODING
+    LIST, STRING, NUMBER, BINARY, UTC, LIST_SHORT, NUMBER_SHORT,
+    DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET, DEFAULT_ENCODING
 )
 
 
@@ -258,9 +258,9 @@ class NumberListAttribute(Attribute):
         rval = []
         for v in values:
             if type(v) is list:
-                rval += [{'L': NumberListAttribute.serialize(v)}]
+                rval += [{LIST_SHORT: NumberListAttribute.serialize(v)}]
             else:
-                rval += [{'N': str(v)}]
+                rval += [{NUMBER_SHORT: str(v)}]
 
         return rval
 
@@ -274,10 +274,10 @@ class NumberListAttribute(Attribute):
         # This should be a generic function that takes any AttributeValue and
         # translates it back to the Python type.
         for v in values:
-            if 'L' in v:
-                rval += [NumberListAttribute.deserialize(v['L'])]
+            if LIST_SHORT in v:
+                rval += [NumberListAttribute.deserialize(v[LIST_SHORT])]
             else:
-                rval += [int(v['N'])]
+                rval += [int(v[NUMBER_SHORT])]
 
         return rval
 
