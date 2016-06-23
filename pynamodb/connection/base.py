@@ -35,7 +35,7 @@ from pynamodb.constants import (
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
-    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, CONDITIONAL_CHECK_FAILED_EXCEPTION)
+    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
@@ -301,8 +301,8 @@ class Connection(object):
                     if is_last_attempt_for_exceptions:
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise
-                    elif code == CONDITIONAL_CHECK_FAILED_EXCEPTION:
-                        # We don't retry on a ConditionalCheckFailedException because we assume that it will
+                    elif response.status_code < 500:
+                        # We don't retry on a ConditionalCheckFailedException or other 4xx because we assume they will
                         # fail in perpetuity. Retrying when there is already contention could cause other problems
                         # in part due to unnecessary consumption of throughput.
                         raise

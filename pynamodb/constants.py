@@ -236,6 +236,3 @@ CONDITIONAL_OPERATOR = 'ConditionalOperator'
 AND = 'AND'
 OR = 'OR'
 CONDITIONAL_OPERATORS = [AND, OR]
-
-# Exceptions
-CONDITIONAL_CHECK_FAILED_EXCEPTION = 'ConditionalCheckFailedException'
