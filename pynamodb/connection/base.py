@@ -259,30 +259,17 @@ class Connection(object):
                     timeout=self._request_timeout_seconds,
                     proxies=self.client._endpoint.proxies,
                 )
-            except requests.RequestException as e:
-                if is_last_attempt_for_exceptions:
-                    log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
-                    raise
-                else:
-                    log.debug(
-                        'Retry needed for (%s) after attempt %s, retryable RequestException caught: %s',
-                        operation_name,
-                        attempt_number,
-                        e
-                    )
-                    continue
-
-            try:
                 data = response.json()
-            except ValueError as e:
+            except (requests.RequestException, ValueError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                     raise
                 else:
                     log.debug(
-                        'Retry needed for (%s) after attempt %s, retryable JSONDecodeError caught: %s',
+                        'Retry needed for (%s) after attempt %s, retryable %s caught: %s',
                         operation_name,
                         attempt_number,
+                        e.__class__.__name__,
                         e
                     )
                     continue
