@@ -1,6 +1,22 @@
 Release Notes
 =============
 
+v1.5.2
+------
+
+:date: 2016-06-23
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* Additional retry logic for HTTP Status Code 5xx, usually attributed to InternalServerError (#135)
+
+Contributors to this release:
+
+* @danielhochman
+
+
 v1.5.1
 ------
 
