@@ -1643,11 +1643,11 @@ class ConnectionTestCase(TestCase):
 
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
-    def test_make_api_call_throws_verbose_error(self, requests_session_mock, session_mock):
+    def test_make_api_call_throws_verbose_error_after_backoff(self, requests_session_mock, session_mock):
 
         # mock response
         response = requests.Response()
-        response.status_code = 400
+        response.status_code = 500
         response._content = json.dumps({'message': 'There is a problem', '__type': 'InternalServerError'}).encode('utf-8')
         response.headers['x-amzn-RequestId'] = 'abcdef'
         requests_session_mock.send.return_value = response
