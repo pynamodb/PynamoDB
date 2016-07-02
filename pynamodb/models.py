@@ -1160,7 +1160,7 @@ class Model(with_metaclass(MetaModel)):
         if not hasattr(cls, "Meta") or cls.Meta.table_name is None:
             raise AttributeError(
                 """As of v1.0 PynamoDB Models require a `Meta` class.
-                See http://pynamodb.readthedocs.org/en/latest/release_notes.html"""
+                See https://pynamodb.readthedocs.io/en/latest/release_notes.html"""
             )
         if cls._connection is None:
             cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host,
