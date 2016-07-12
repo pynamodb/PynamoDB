@@ -510,7 +510,7 @@ class Model(with_metaclass(MetaModel)):
               limit=None,
               last_evaluated_key=None,
               attributes_to_get=None,
-              total_items_to_return=None,
+              page_size=None,
               **filters):
         """
         Provides a high level query API
@@ -518,12 +518,12 @@ class Model(with_metaclass(MetaModel)):
         :param hash_key: The hash key to query
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
-        :param limit: Page size of the query to DynamoDB.
+        :param limit: Used to limit the number of results returned
         :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
             Controls descending or ascending results
         :param last_evaluated_key: If set, provides the starting point for query.
         :param attributes_to_get: If set, only returns these elements
-        :param total_items_to_return: Indicates, the total number of items that need to be returned.
+        :param page_size: Page size of the query to DynamoDB
         :param filters: A dictionary of filters to be used in the query
         """
         cls._get_indexes()
@@ -540,6 +540,10 @@ class Model(with_metaclass(MetaModel)):
                     key_attribute_classes[name] = attr
                 else:
                     non_key_attribute_classes[name] = attr
+
+        if page_size is None:
+            page_size = limit
+
         key_conditions, query_filters = cls._build_filters(
             QUERY_OPERATOR_MAP,
             non_key_operator_map=QUERY_FILTER_OPERATOR_MAP,
@@ -553,7 +557,7 @@ class Model(with_metaclass(MetaModel)):
             exclusive_start_key=last_evaluated_key,
             consistent_read=consistent_read,
             scan_index_forward=scan_index_forward,
-            limit=limit,
+            limit=page_size,
             key_conditions=key_conditions,
             attributes_to_get=attributes_to_get,
             query_filters=query_filters,
@@ -566,10 +570,10 @@ class Model(with_metaclass(MetaModel)):
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
         for item in data.get(ITEMS):
-            if total_items_to_return is not None:
-                if total_items_to_return == 0:
+            if limit is not None:
+                if limit == 0:
                     return
-                total_items_to_return -= 1
+                limit -= 1
             yield cls.from_raw_data(item)
 
         while last_evaluated_key:
@@ -581,10 +585,10 @@ class Model(with_metaclass(MetaModel)):
             data = cls._get_connection().query(hash_key, **query_kwargs)
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):
-                if total_items_to_return is not None:
-                    if total_items_to_return == 0:
+                if limit is not None:
+                    if limit == 0:
                         return
-                    total_items_to_return -= 1
+                    limit -= 1
                 yield cls.from_raw_data(item)
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
@@ -595,16 +599,16 @@ class Model(with_metaclass(MetaModel)):
              limit=None,
              conditional_operator=None,
              last_evaluated_key=None,
-             total_items_to_return=None,
+             page_size=None,
              **filters):
         """
         Iterates through all items in the table
 
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
-        :param limit: Page size of scan to DynamoDB
+        :param limit: Used to limit the number of results returned
         :param last_evaluated_key: If set, provides the starting point for scan.
-        :param total_items_to_return: Indicates, the total number of items that need to be returned.
+        :param page_size: Page size of the query to DynamoDB
         :param filters: A list of item filters
         """
         key_filter, scan_filter = cls._build_filters(
@@ -614,10 +618,13 @@ class Model(with_metaclass(MetaModel)):
             filters=filters
         )
         key_filter.update(scan_filter)
+        if page_size is None:
+            page_size = limit
+
         data = cls._get_connection().scan(
             exclusive_start_key=last_evaluated_key,
             segment=segment,
-            limit=limit,
+            limit=page_size,
             scan_filter=key_filter,
             total_segments=total_segments,
             conditional_operator=conditional_operator
@@ -627,24 +634,24 @@ class Model(with_metaclass(MetaModel)):
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
-            if total_items_to_return is not None:
-                total_items_to_return -= 1
-                if not total_items_to_return:
+            if limit is not None:
+                limit -= 1
+                if not limit:
                     return
         while last_evaluated_key:
             log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().scan(
                 exclusive_start_key=last_evaluated_key,
-                limit=limit,
+                limit=page_size,
                 scan_filter=key_filter,
                 segment=segment,
                 total_segments=total_segments
             )
             for item in data.get(ITEMS):
                 yield cls.from_raw_data(item)
-                if total_items_to_return is not None:
-                    total_items_to_return -= 1
-                    if not total_items_to_return:
+                if limit is not None:
+                    limit -= 1
+                    if not limit:
                         return
 
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
