@@ -608,7 +608,7 @@ class Model(with_metaclass(MetaModel)):
         :param total_segments: If set, then specifies total segments
         :param limit: Used to limit the number of results returned
         :param last_evaluated_key: If set, provides the starting point for scan.
-        :param page_size: Page size of the query to DynamoDB
+        :param page_size: Page size of the scan to DynamoDB
         :param filters: A list of item filters
         """
         key_filter, scan_filter = cls._build_filters(
