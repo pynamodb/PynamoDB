@@ -572,11 +572,7 @@ class Model(with_metaclass(MetaModel)):
 
         while last_evaluated_key:
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
-            # If the user provided a limit, we need to subtract the number of results returned for each page
-            if limit is not None:
-                if limit == 0:
-                    return
-                limit -= data.get(CAMEL_COUNT, 0)
+
             query_kwargs['exclusive_start_key'] = last_evaluated_key
             query_kwargs['limit'] = limit
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
