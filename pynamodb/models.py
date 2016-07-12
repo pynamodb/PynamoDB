@@ -510,6 +510,7 @@ class Model(with_metaclass(MetaModel)):
               limit=None,
               last_evaluated_key=None,
               attributes_to_get=None,
+              total_items_to_return=None,
               **filters):
         """
         Provides a high level query API
@@ -517,11 +518,12 @@ class Model(with_metaclass(MetaModel)):
         :param hash_key: The hash key to query
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
-        :param limit: Used to limit the number of results returned
+        :param limit: Page size of the query to DynamoDB.
         :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
             Controls descending or ascending results
         :param last_evaluated_key: If set, provides the starting point for query.
         :param attributes_to_get: If set, only returns these elements
+        :param total_items_to_return: Indicates, the total number of items that need to be returned.
         :param filters: A dictionary of filters to be used in the query
         """
         cls._get_indexes()
@@ -564,29 +566,25 @@ class Model(with_metaclass(MetaModel)):
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
         for item in data.get(ITEMS):
-            if limit is not None:
-                if limit == 0:
+            if total_items_to_return is not None:
+                if total_items_to_return == 0:
                     return
-                limit -= 1
+                total_items_to_return -= 1
             yield cls.from_raw_data(item)
 
         while last_evaluated_key:
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
-            # If the user provided a limit, we need to subtract the number of results returned for each page
-            if limit is not None:
-                if limit == 0:
-                    return
-                limit -= data.get(CAMEL_COUNT, 0)
+
             query_kwargs['exclusive_start_key'] = last_evaluated_key
-            query_kwargs['limit'] = limit
+
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().query(hash_key, **query_kwargs)
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):
-                if limit is not None:
-                    if limit == 0:
+                if total_items_to_return is not None:
+                    if total_items_to_return == 0:
                         return
-                    limit -= 1
+                    total_items_to_return -= 1
                 yield cls.from_raw_data(item)
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
@@ -597,14 +595,16 @@ class Model(with_metaclass(MetaModel)):
              limit=None,
              conditional_operator=None,
              last_evaluated_key=None,
+             total_items_to_return=None,
              **filters):
         """
         Iterates through all items in the table
 
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
-        :param limit: Used to limit the number of results returned
+        :param limit: Page size of scan to DynamoDB
         :param last_evaluated_key: If set, provides the starting point for scan.
+        :param total_items_to_return: Indicates, the total number of items that need to be returned.
         :param filters: A list of item filters
         """
         key_filter, scan_filter = cls._build_filters(
@@ -627,9 +627,9 @@ class Model(with_metaclass(MetaModel)):
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
-            if limit is not None:
-                limit -= 1
-                if not limit:
+            if total_items_to_return is not None:
+                total_items_to_return -= 1
+                if not total_items_to_return:
                     return
         while last_evaluated_key:
             log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
@@ -642,9 +642,9 @@ class Model(with_metaclass(MetaModel)):
             )
             for item in data.get(ITEMS):
                 yield cls.from_raw_data(item)
-                if limit is not None:
-                    limit -= 1
-                    if not limit:
+                if total_items_to_return is not None:
+                    total_items_to_return -= 1
+                    if not total_items_to_return:
                         return
 
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
