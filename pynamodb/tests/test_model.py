@@ -1438,6 +1438,26 @@ class ModelTestCase(TestCase):
             self.assertEqual(params, req.call_args[0][1])
             self.assertTrue(len(queried) == len(items))
 
+    def test_scan_limit_with_page_size(self):
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Items': items[20:30]},
+            ]
+            results = list(UserModel.scan(limit=25, page_size=10))
+            self.assertEqual(len(results), 25)
+            self.assertEqual(len(req.mock_calls), 3)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
+
     def test_scan_limit(self):
         """
         Model.scan(limit)
