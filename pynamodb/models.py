@@ -577,10 +577,7 @@ class Model(with_metaclass(MetaModel)):
             yield cls.from_raw_data(item)
 
         while last_evaluated_key:
-            log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
-
             query_kwargs['exclusive_start_key'] = last_evaluated_key
-
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().query(hash_key, **query_kwargs)
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
