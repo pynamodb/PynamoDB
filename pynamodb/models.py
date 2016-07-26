@@ -757,7 +757,10 @@ class Model(with_metaclass(MetaModel)):
         """
         Reconstructs a model object from JSON.
         """
-        hash_key, attrs = data
+        hash_key_serialized, attrs = data
+        hash_keyname = cls._get_meta_data().hash_keyname
+        attr_instance = cls._get_attributes()[hash_keyname]
+        hash_key = attr_instance.deserialize(hash_key_serialized)        range_key = attrs.pop('range_key', None)
         range_key = attrs.pop('range_key', None)
         attributes = attrs.pop(pythonic(ATTRIBUTES))
         if range_key is not None:
