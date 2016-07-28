@@ -275,6 +275,9 @@ class MapAttribute(Attribute):
         """
         Encode the given list of numbers into a list of AttributeValue types.
         """
+        if values is None:
+            return {'NULL': bool(1)}
+
         rval = dict()
         for k in values:
             v = values[k]
@@ -305,6 +308,12 @@ class MapAttribute(Attribute):
         """
         Decode numbers from list of AttributeValue types.
         """
+        if values is None:
+            return None
+
+        if 'NULL' in values:
+            return None
+
         rval = dict()
         for k in values:
             v = values[k]
@@ -342,6 +351,9 @@ class ListAttribute(Attribute):
          """
          Encode the given list of objects into a list of AttributeValue types.
          """
+         if values is None:
+             return {'NULL': bool(1)}
+
          rval = []
          for v in values:
              if v is None:
@@ -370,6 +382,12 @@ class ListAttribute(Attribute):
          """
          Decode numbers from list of AttributeValue types.
          """
+         if values is None:
+             return None
+
+         if 'NULL' in values:
+             return None
+
          rval = []
 
          # This should be a generic function that takes any AttributeValue and
