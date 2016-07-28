@@ -13,8 +13,9 @@ from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
+    MapAttribute, ListAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY)
+    BINARY, MAP, LIST)
 
 
 class AttributeTestModel(Model):
@@ -452,3 +453,25 @@ class JSONAttributeTestCase(TestCase):
         item = {'foo\t': 'bar\n', 'bool': True, 'number': 3.141}
         encoded = six.u(json.dumps(item))
         self.assertEqual(attr.deserialize(encoded), item)
+
+
+class MapAttributeTestCase(TestCase):
+    """
+    Tests map with str, int, float
+    """
+    def test_attribute_children(self):
+        person_attributes_python_dict = {
+            'name': 'Justin',
+            'age': 31,
+            'height': 187.96
+        }
+        person_attributes = {
+            'name': UnicodeAttribute(attr_value='Justin'),
+            'age': NumberAttribute(attr_value=31),
+            'height': NumberAttribute(attr_value=187.96)
+        }
+        attr = MapAttribute()
+        serialized = attr.serialize(person_attributes)
+        print serialized
+        print attr.deserialize(serialized)
+        self.assertEqual(attr.deserialize(serialized), person_attributes_python_dict)

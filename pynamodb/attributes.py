@@ -7,7 +7,7 @@ from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, LIST, DEFAULT_ENCODING
+    MAP, LIST, DEFAULT_ENCODING, ATTR_TYPE_MAP
 )
 
 
@@ -17,6 +17,7 @@ class Attribute(object):
     """
     attr_name = None
     attr_type = None
+    attr_value = None
     null = False
 
     def __init__(self,
@@ -24,7 +25,8 @@ class Attribute(object):
                  range_key=False,
                  null=None,
                  default=None,
-                 attr_name=None
+                 attr_name=None,
+                 attr_value=None
                  ):
         self.default = default
         if null is not None:
@@ -33,6 +35,8 @@ class Attribute(object):
         self.is_range_key = range_key
         if attr_name is not None:
             self.attr_name = attr_name
+        if attr_value is not None:
+            self.attr_value = attr_value
 
     def __set__(self, instance, value):
         if isinstance(value, Attribute):
@@ -151,6 +155,8 @@ class UnicodeAttribute(Attribute):
         """
         Returns a unicode string
         """
+        if self.attr_value:
+            value = self.attr_value
         if value is None or not len(value):
             return None
         elif isinstance(value, six.text_type):
@@ -230,6 +236,8 @@ class NumberAttribute(Attribute):
         """
         Encode numbers as JSON
         """
+        if self.attr_value:
+            value = self.attr_value
         return json.dumps(value)
 
     def deserialize(self, value):
@@ -249,6 +257,8 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a datetime object and returns a string
         """
+        if self.attr_value:
+            value = self.attr_value
         fmt = Delorean(value, timezone=UTC).datetime.strftime(DATETIME_FORMAT)
         return six.u(fmt)
 
@@ -270,39 +280,40 @@ class MapAttribute(Attribute):
     """
     attr_type = MAP
 
-    @staticmethod
-    def serialize(values):
+    def serialize(self, values):
         """
         Encode the given list of numbers into a list of AttributeValue types.
         """
         rval = dict()
         for k in values:
             v = values[k]
-            print("LeiTest - k: " + str(k) + "; v: " + str(v))
+            rval[k] = {
+                ATTR_TYPE_MAP[v.attr_type]: v.serialize(v)
+            }
+            """
             if v is None:
                 rval[k] = {'NULL': bool(1)}
-            elif type(v) is dict:
+            elif type(v) is MapAttribute:
                 rval[k] = {'M': MapAttribute.serialize(v)}
-            elif type(v) is list or type(v) is set: # no set embeded in Map
+            elif type(v) is ListAttribute:
                 rval[k] = {'L': ListAttribute.serialize(v)}
             elif type(v) is float or type(v) is int or type(v) is long:
                 rval[k] = {'N': NumberAttribute().serialize(v)}
             elif type(v) is str or type(v) is unicode or type(v) is basestring:
                 rval[k] = {'S': UnicodeAttribute().serialize(v)}
             elif type(v) is bool:
-                #rval[k] = {'BOOL': BooleanAttribute().serialize(v)}
                 value_to_dump = bool(0)
-                if v :
+                if v:
                     value_to_dump = bool(1)
 
                 rval[k] = {'BOOL': value_to_dump}
             else:
                 raise Exception('Unknown value: ' + str(v))
+            """
 
         return rval
 
-    @staticmethod
-    def deserialize(values):
+    def deserialize(self, values):
         """
         Decode numbers from list of AttributeValue types.
         """
@@ -318,7 +329,6 @@ class MapAttribute(Attribute):
             elif 'NULL' in v:
                 rval[k] = None
             elif 'BOOL' in v:
-                #rval[k] = BooleanAttribute().deserialize(v['BOOL'])
                 rval[k] = bool(v['BOOL'])
             elif 'M' in v:
                 rval[k] = MapAttribute.deserialize(v['M'])
@@ -338,8 +348,7 @@ class ListAttribute(Attribute):
      """
      attr_type = LIST
 
-     @staticmethod
-     def serialize(values):
+     def serialize(self, values):
          """
          Encode the given list of objects into a list of AttributeValue types.
          """
@@ -366,8 +375,7 @@ class ListAttribute(Attribute):
 
          return rval
 
-     @staticmethod
-     def deserialize(values):
+     def deserialize(self, values):
          """
          Decode numbers from list of AttributeValue types.
          """
