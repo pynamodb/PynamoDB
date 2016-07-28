@@ -278,7 +278,6 @@ class MapAttribute(Attribute):
         rval = dict()
         for k in values:
             v = values[k]
-            print("LeiTest - k: " + str(k) + "; v: " + str(v))
             if v is None:
                 rval[k] = {'NULL': bool(1)}
             elif type(v) is dict:
@@ -360,7 +359,7 @@ class ListAttribute(Attribute):
                      value_to_dump = bool(1)
                  rval += [{'BOOL': value_to_dump}]
              elif type(v) is unicode or type(v) is str or type(v) is basestring:
-                 rval += [{'S': BooleanAttribute.serialize(v)}]
+                 rval += [{'S': UnicodeAttribute().serialize(v)}]
              else:
                  raise Exception('Unknown value: ' + str(v))
 
@@ -373,7 +372,6 @@ class ListAttribute(Attribute):
          """
          rval = []
 
-
          # This should be a generic function that takes any AttributeValue and
          # translates it back to the Python type.
          for v in values:
@@ -382,11 +380,11 @@ class ListAttribute(Attribute):
              elif 'N' in v:
                  rval += [NumberAttribute().deserialize(v['N'])]
              elif 'S' in v:
-                 rval += [UnicodeSetAttribute.deserialize(v)]
+                 rval += [str(v['S'])]
              elif 'NULL' in v:
                  rval += [None]
              elif 'BOOL' in v:
-                 rval += [BooleanAttribute.deserialize(v['BOOL'])]
+                 rval += [BooleanAttribute().deserialize(v['BOOL'])]
              elif 'M' in v:
                  rval += [MapAttribute.deserialize(v['M'])]
              else:
