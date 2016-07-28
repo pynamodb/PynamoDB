@@ -7,7 +7,7 @@ from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING
+    MAP, DEFAULT_ENCODING
 )
 
 
@@ -257,3 +257,32 @@ class UTCDateTimeAttribute(Attribute):
         Takes a UTC datetime string and returns a datetime object
         """
         return parse(value, dayfirst=False).datetime
+
+
+class MapAttribute(Attribute):
+    """
+    An attribute that maps string to AttributeValues
+    """
+    attr_type = MAP
+
+    def serialize(self, value):
+        """
+        :param value: an object with other Attributes
+        :return: serialized instance
+        """
+        serialized_map = ''
+        members = vars(value)
+        for member in members:
+            member_type = type(value.member)
+            attr = None
+            if member_type is NumberAttribute:
+                attr = NumberAttribute()
+            elif member_type is UnicodeAttribute:
+                attr = UnicodeAttribute()
+            elif member_type is BooleanAttribute:
+                attr = BooleanAttribute
+            serialized_map = '{}: {}'.format(member, attr.serialize(value.member))
+        return serialized_map
+
+    def deserialize(self, value):
+        return None
