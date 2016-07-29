@@ -24,7 +24,7 @@ class Attribute(object):
                  range_key=False,
                  null=None,
                  default=None,
-                 attr_name=None,
+                 attr_name=None
                  ):
         self.default = default
         if null is not None:
