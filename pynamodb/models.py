@@ -6,11 +6,11 @@ import time
 import six
 import copy
 import logging
-import collections
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
 from pynamodb.attributes import Attribute, MapAttribute
+from pynamodb.attribute_dict import AttributeDict
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -180,92 +180,6 @@ class MetaModel(type):
 
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
-
-
-class AttributeDict(collections.MutableMapping):
-    """
-    A dictionary that stores attributes by two keys
-    """
-    def __init__(self, *args, **kwargs):
-        self._values = {}
-        self._alt_values = {}
-        self.update(dict(*args, **kwargs))
-
-    def __getitem__(self, key):
-        if key in self._alt_values:
-            return self._alt_values[key]
-        return self._values[key]
-
-    def __setitem__(self, key, value):
-        if value.attr_name is not None:
-            self._values[value.attr_name] = value
-        self._alt_values[key] = value
-
-    def __delitem__(self, key):
-        del self._values[key]
-
-    def __iter__(self):
-        return iter(self._alt_values)
-
-    def __len__(self):
-        return len(self._values)
-
-    def aliased_attrs(self):
-        return self._alt_values.items()
-
-
-class DynamoThing(object):
-
-    _attributes = None
-
-    def __init__(self, **attrs):
-        self.attribute_values = {}
-        self._set_attributes(**attrs)
-
-    @classmethod
-    def _get_attributes(cls):
-        """
-        Returns the list of attributes for this class
-        """
-        if cls._attributes is None:
-            cls._attributes = AttributeDict()
-            for item in dir(cls):
-                try:
-                    item_cls = getattr(getattr(cls, item), "__class__", None)
-                except AttributeError:
-                    continue
-                if item_cls is None:
-                    continue
-                if issubclass(item_cls, (Attribute,)):
-                    instance = getattr(cls, item)
-                    cls._attributes[item] = instance
-        return cls._attributes
-
-    def _set_attributes(self, **attrs):
-        """
-        Sets the attributes for this object
-        """
-        for attr_name, attr in self._get_attributes().aliased_attrs():
-            if attr.attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr.attr_name))
-            elif attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr_name))
-
-    def get_values(self):
-        attributes = self._get_attributes()
-        result = {}
-        for k,v in attributes.iteritems():
-            result[k] = getattr(self, k)
-        return result
-
-    def is_type_safe(self, key, value):
-        return getattr(self, key) and type(getattr(self, key)) is not type(value)
-
-    def validate(self):
-        for key, value in self._get_attributes().iteritems():
-            if not self.is_type_safe(key, value):
-                return False
-        return True
 
 
 class Model(with_metaclass(MetaModel)):
@@ -1261,7 +1175,9 @@ class Model(with_metaclass(MetaModel)):
                     continue
                 elif null_check:
                     raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
-            if type(attr) is MapAttribute and isinstance(value, DynamoThing):
+            print 't={} v={}'.format(type(attr), type(value))
+            if type(attr) is MapAttribute and isinstance(value, MapAttribute):
+                print 'its a map attribute serializing'
                 if not value.validate():
                     raise Exception('invalid model')
                 value = value.get_values()

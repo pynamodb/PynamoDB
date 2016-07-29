@@ -9,6 +9,7 @@ from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, LIST, DEFAULT_ENCODING, ATTR_TYPE_MAP
 )
+from pynamodb.attribute_dict import AttributeDict
 
 
 class Attribute(object):
@@ -260,9 +261,7 @@ class UTCDateTimeAttribute(Attribute):
 
 
 class MapAttribute(Attribute):
-
-    attr_type = MAP
-    model = None
+    _attributes = None
 
     def __init__(self,
                  hash_key=False,
@@ -270,14 +269,62 @@ class MapAttribute(Attribute):
                  null=None,
                  default=None,
                  attr_name=None,
-                 model=None):
+                 **attrs):
         super(MapAttribute, self).__init__(hash_key=hash_key,
                                            range_key=range_key,
                                            null=null,
                                            default=default,
                                            attr_name=attr_name)
-        if model:
-            self.model = model
+        self.attribute_values = {}
+        self._set_attributes(**attrs)
+
+    @classmethod
+    def _get_attributes(cls):
+        """
+        Returns the list of attributes for this class
+        """
+        if cls._attributes is None:
+            cls._attributes = AttributeDict()
+            for item in dir(cls):
+                try:
+                    item_cls = getattr(getattr(cls, item), "__class__", None)
+                except AttributeError:
+                    continue
+                if item_cls is None:
+                    continue
+                if issubclass(item_cls, (Attribute,)):
+                    instance = getattr(cls, item)
+                    cls._attributes[item] = instance
+        return cls._attributes
+
+    def _set_attributes(self, **attrs):
+        """
+        Sets the attributes for this object
+        """
+        for attr_name, attr in self._get_attributes().aliased_attrs():
+            if attr.attr_name in attrs:
+                setattr(self, attr_name, attrs.get(attr.attr_name))
+            elif attr_name in attrs:
+                setattr(self, attr_name, attrs.get(attr_name))
+
+    def get_values(self):
+        attributes = self._get_attributes()
+        result = {}
+        for k, v in attributes.iteritems():
+            result[k] = getattr(self, k)
+        return result
+
+    def is_type_safe(self, key, value):
+        return getattr(self, key) and type(getattr(self, key)) is not type(
+            value)
+
+    def validate(self):
+        for key, value in self._get_attributes().iteritems():
+            if not self.is_type_safe(key, value):
+                return False
+        return True
+
+    attr_type = MAP
 
     def serialize(self, values):
         """

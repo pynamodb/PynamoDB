@@ -21,7 +21,7 @@ from pynamodb.constants import (
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
     UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT
 )
-from pynamodb.models import Model, DynamoThing
+from pynamodb.models import Model
 from pynamodb.indexes import (
     GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
     IncludeProjection, KeysOnlyProjection, Index
@@ -273,14 +273,14 @@ class ComplexKeyModel(Model):
     date_created = UTCDateTimeAttribute(default=datetime.utcnow)
 
 
-class Location(DynamoThing):
+class Location(MapAttribute):
 
     lat = NumberAttribute(attr_name='latitude')
     lng = NumberAttribute(attr_name='longitude')
     name = UnicodeAttribute()
 
 
-class Person(DynamoThing):
+class Person(MapAttribute):
 
     fname = UnicodeAttribute(attr_name='firstName')
     lname =  UnicodeAttribute()
@@ -2459,22 +2459,7 @@ class ModelTestCase(TestCase):
         )
 
     def test_model_with_maps(self):
-        justin = Person(
-            fname='Justin',
-            lname='Phillips',
-            age=31,
-            is_male=True
-        )
-        loc = Location(
-            lat=37.77461,
-            lng=-122.3957216,
-            name='Lyft HQ'
-        )
-        model = OfficeEmployee(
-            office_employee_id=123,
-            person=justin,
-            office_location=loc
-        )
+        model = self._get_office_employee()
         with patch(PATCH_METHOD) as req:
             req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
             model.save()
