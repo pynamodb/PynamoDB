@@ -496,3 +496,39 @@ SERIALIZED_TABLE_DATA = [
         }
     ]
 ]
+
+
+OFFICE_EMPLOYEE_MODEL_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "office_employee_id",
+                "AttributeType": "N"
+            },
+            {
+                "AttributeName": "person",
+                "AttributeType": "M"
+            },
+            {
+                "AttributeName": "office_location",
+                "AttributeType": "M"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 0,
+        "KeySchema": [
+            {
+                "AttributeName": "office_employee_id",
+                "KeyType": "HASH"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "OfficeEmployeeModel",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}

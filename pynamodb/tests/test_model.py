@@ -35,7 +35,7 @@ from pynamodb.tests.data import (
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
-    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA
+    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA
 )
 
 if six.PY3:
@@ -291,6 +291,7 @@ class OfficeEmployee(Model):
     class Meta:
         table_name = 'OfficeEmployeeModel'
 
+    office_employee_id = NumberAttribute(hash_key=True)
     person = MapAttribute(model=Person)
     office_location = MapAttribute(model=Location)
 
@@ -2451,7 +2452,10 @@ class ModelTestCase(TestCase):
             name='Lyft HQ'
         )
         model = OfficeEmployee(
+            office_employee_id=123,
             person=justin,
             office_location=loc
         )
-        model.save()
+        with patch(PATCH_METHOD) as req:
+            req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
+            model.save()
