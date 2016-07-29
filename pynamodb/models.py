@@ -214,6 +214,57 @@ class AttributeDict(collections.MutableMapping):
         return self._alt_values.items()
 
 
+class DynamoThing(object):
+
+    _attributes = None
+
+    def __init__(self, **attrs):
+        self.attribute_values = {}
+        self._set_attributes(**attrs)
+
+    @classmethod
+    def _get_attributes(cls):
+        """
+        Returns the list of attributes for this class
+        """
+        if cls._attributes is None:
+            cls._attributes = AttributeDict()
+            for item in dir(cls):
+                try:
+                    item_cls = getattr(getattr(cls, item), "__class__", None)
+                except AttributeError:
+                    continue
+                if item_cls is None:
+                    continue
+                if issubclass(item_cls, (Attribute,)):
+                    instance = getattr(cls, item)
+                    cls._attributes[item] = instance
+        return cls._attributes
+
+    def _set_attributes(self, **attrs):
+        """
+        Sets the attributes for this object
+        """
+        for attr_name, attr in self._get_attributes().aliased_attrs():
+            if attr.attr_name in attrs:
+                setattr(self, attr_name, attrs.get(attr.attr_name))
+            elif attr_name in attrs:
+                setattr(self, attr_name, attrs.get(attr_name))
+
+    def is_type_safe(self, key, value):
+        print 'key={} value={} attr_value={} attr_type={} value_type={}'.format(key, value, getattr(self, key), type(getattr(self, key)), type(value))
+        return getattr(self, key) and type(getattr(self, key)) is not type(value)
+
+    def validate(self):
+        for key, value in self._get_attributes().iteritems():
+            print 'key={} value={}'.format(key, value)
+            if not self.is_type_safe(key, value):
+                print 'returning false {} {} {}'.format(getattr(self, key), type(getattr(self, key)), type(value))
+                return False
+        print 'returning true'
+        return True
+
+
 class Model(with_metaclass(MetaModel)):
     """
     Defines a `PynamoDB` Model

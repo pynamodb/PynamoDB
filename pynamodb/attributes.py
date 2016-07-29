@@ -260,21 +260,41 @@ class UTCDateTimeAttribute(Attribute):
 
 
 class MapAttribute(Attribute):
-    """
-    This is a list attribute that supports only numbers (i.e. integers) or
-    lists of numbers.
 
-    The DynamoDB List attribute does actually support mixed attribute types,
-    but this one only supports numbers and lists of numbers. Using non-integers
-    or lists of non-integers with this type will produce undefined results.
-    """
     attr_type = MAP
+    model = None
+
+    def __init__(self,
+                 hash_key=False,
+                 range_key=False,
+                 null=None,
+                 default=None,
+                 attr_name=None,
+                 model=None):
+        super(MapAttribute, self).__init__(hash_key=hash_key,
+                                           range_key=range_key,
+                                           null=null,
+                                           default=default,
+                                           attr_name=attr_name)
+        if model:
+            self.model = model
+
+    def validate_model(self, values):
+        if not self.model:
+            return True
+        return values.validate()
 
     def serialize(self, values):
         """
         Encode the given list of numbers into a list of AttributeValue types.
         """
+        if not self.validate_model(values):
+            raise Exception('model was not valid')
         rval = dict()
+        invert_op = getattr(self, "__get_attributes", None)
+        if invert_op:
+            print 'inverting'
+            values = invert_op(values)
         for k in values:
             v = values[k]
             if v is None:
@@ -323,13 +343,6 @@ class MapAttribute(Attribute):
 
 
 class ListAttribute(Attribute):
-    """
-    This is a list attribute that supports only numbers (i.e. integers) or
-    lists of numbers.
-    The DynamoDB List attribute does actually support mixed attribute types,
-    but this one only supports numbers and lists of numbers. Using non-integers
-    or lists of non-integers with this type will produce undefined results.
-    """
     attr_type = LIST
 
     def serialize(self, values):
