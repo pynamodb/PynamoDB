@@ -19,7 +19,7 @@ from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, ITEM_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
-    UNPROCESSED_ITEMS, DEFAULT_ENCODING
+    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT
 )
 from pynamodb.models import Model, DynamoThing
 from pynamodb.indexes import (
@@ -35,7 +35,8 @@ from pynamodb.tests.data import (
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
-    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA
+    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+    GET_OFFICE_EMPLOYEE_ITEM_DATA
 )
 
 if six.PY3:
@@ -2439,6 +2440,24 @@ class ModelTestCase(TestCase):
         }
         self.assert_dict_lists_equal(req.call_args[0][1]['RequestItems']['UserModel'], args['UserModel'])
 
+    def _get_office_employee(self):
+        justin = Person(
+            fname='Justin',
+            lname='Phillips',
+            age=31,
+            is_male=True
+        )
+        loc = Location(
+            lat=37.77461,
+            lng=-122.3957216,
+            name='Lyft HQ'
+        )
+        return OfficeEmployee(
+            office_employee_id=123,
+            person=justin,
+            office_location=loc
+        )
+
     def test_model_with_maps(self):
         justin = Person(
             fname='Justin',
@@ -2459,3 +2478,40 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
             model.save()
+
+    def test_model_with_maps_retrieve_from_db(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {'TableName': OfficeEmployee.Meta.table_name}:
+                return OFFICE_EMPLOYEE_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'OfficeEmployeeModel',
+                'Key': {
+                    'office_employee_id': {'N': '123'},
+                },
+                'ConsistentRead': False}:
+                return GET_OFFICE_EMPLOYEE_ITEM_DATA
+            return OFFICE_EMPLOYEE_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = GET_OFFICE_EMPLOYEE_ITEM_DATA
+            item = OfficeEmployee.get(123)
+            print item.person
+            self.assertEqual(
+                item.person.fname,
+                GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
+                    MAP_SHORT).get('firstName').get(STRING_SHORT))
+
+    """
+    def test_map_madel_full_lifecycle(self):
+        model = self._get_office_employee()
+        with patch(PATCH_METHOD) as req:
+            req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
+            model.save()
+            other_model = OfficeEmployee.get(123)
+            self.assertEqual(model, other_model)
+    """

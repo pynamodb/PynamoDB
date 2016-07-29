@@ -361,6 +361,44 @@ GET_MODEL_ITEM_DATA = {
         }
     }
 }
+
+GET_OFFICE_EMPLOYEE_ITEM_DATA = {
+    'Item': {
+        'office_employee_id': {
+            'N': '123'
+        },
+        'person': {
+            'M': {
+                'firstName': {
+                    'S': 'Justin'
+                },
+                'lname': {
+                    'S': 'Phillips'
+                },
+                'age': {
+                    'N': '31'
+                },
+                'is_dude': {
+                    'N': '1'
+                }
+            }
+        },
+        'office_location': {
+            'M': {
+                'latitude': {
+                    'N': '37.77461'
+                },
+                'longitude': {
+                    'N': '122.3957216'
+                },
+                'name': {
+                    'S': 'Lyft HQ'
+                }
+            }
+        }
+    }
+}
+
 COMPLEX_ITEM_DATA = {
     "ConsumedCapacity": {
         "CapacityUnits": 1,

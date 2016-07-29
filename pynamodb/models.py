@@ -501,7 +501,13 @@ class Model(with_metaclass(MetaModel)):
         for name, value in mutable_data.items():
             attr = cls._get_attributes().get(name, None)
             if attr:
-                kwargs[name] = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
+                deserialized_attr = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
+                if isinstance(attr, MapAttribute):
+                    map_value = getattr(cls, name)
+                    dynamo_thing = getattr(map_value, 'model', None)
+                    if dynamo_thing:
+                        deserialized_attr = dynamo_thing(**deserialized_attr)
+                kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)
 
     @classmethod
