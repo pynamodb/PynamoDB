@@ -287,6 +287,9 @@ class Person(MapAttribute):
     age = NumberAttribute()
     is_male = BooleanAttribute(attr_name='is_dude')
 
+    def __str__(self):
+        return 'f={} l={} age={} is_male={}'.format(self.fname, self.lname, self.age, self.is_male)
+
 
 class OfficeEmployee(Model):
     class Meta:
@@ -2488,6 +2491,7 @@ class ModelTestCase(TestCase):
             req.return_value = GET_OFFICE_EMPLOYEE_ITEM_DATA
             item = OfficeEmployee.get(123)
             print item.person
+            print getattr(item.person, 'fname')
             self.assertEqual(
                 item.person.fname,
                 GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(

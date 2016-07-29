@@ -418,9 +418,19 @@ class Model(with_metaclass(MetaModel)):
                 deserialized_attr = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
                 if isinstance(attr, MapAttribute):
                     map_value = getattr(cls, name)
-                    dynamo_thing = getattr(map_value, 'model', None)
-                    if dynamo_thing:
-                        deserialized_attr = dynamo_thing(**deserialized_attr)
+                    if issubclass(type(map_value), MapAttribute):
+                        class_attributes = vars(type(map_value))
+                        good_stuff = {}
+                        """
+                        we need to put the values from deserialized_attr together with the keys from good_stuff
+                        """
+                        for k,v in class_attributes.iteritems():
+                            if k not in ['__module__', '_attributes', '__doc__', '__str__']:
+                                key_name = v.attr_name
+                                if key_name is None:
+                                    key_name = k
+                                good_stuff[k] = deserialized_attr[key_name]
+                        deserialized_attr = type(map_value)(**deserialized_attr)
                 kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)
 

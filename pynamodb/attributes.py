@@ -307,8 +307,10 @@ class MapAttribute(Attribute):
         """
         for attr_name, attr in self._get_attributes().aliased_attrs():
             if attr.attr_name in attrs:
+                print 'name={} attr={}'.format(attr_name, attrs.get(attr.attr_name))
                 setattr(self, attr_name, attrs.get(attr.attr_name))
             elif attr_name in attrs:
+                print 'name={} attr={}'.format(attr_name, attrs.get(attr_name))
                 setattr(self, attr_name, attrs.get(attr_name))
 
     def get_values(self):
