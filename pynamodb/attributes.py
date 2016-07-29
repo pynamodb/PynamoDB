@@ -263,13 +263,14 @@ class UTCDateTimeAttribute(Attribute):
 class MapAttribute(Attribute):
     _attributes = None
 
-    def __init__(self,
-                 hash_key=False,
-                 range_key=False,
-                 null=None,
-                 default=None,
-                 attr_name=None,
-                 **attrs):
+    def __init__(self, **attrs):
+
+        hash_key = attrs.get('hash_key', False)
+        range_key = attrs.get('range_key', False)
+        null = attrs.get('null', None)
+        default = attrs.get('default', None)
+        attr_name = attrs.get('attr_name', None)
+
         super(MapAttribute, self).__init__(hash_key=hash_key,
                                            range_key=range_key,
                                            null=null,
@@ -277,6 +278,9 @@ class MapAttribute(Attribute):
                                            attr_name=attr_name)
         self.attribute_values = {}
         self._set_attributes(**attrs)
+
+    def __iter__(self):
+        return iter(self.attribute_values)
 
     @classmethod
     def _get_attributes(cls):
@@ -330,6 +334,7 @@ class MapAttribute(Attribute):
         """
         Encode the given list of numbers into a list of AttributeValue types.
         """
+        print 'welcome home, {} {}'.format(type(values), values)
         rval = dict()
         for k in values:
             v = values[k]

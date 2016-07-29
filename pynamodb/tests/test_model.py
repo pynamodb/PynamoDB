@@ -293,8 +293,8 @@ class OfficeEmployee(Model):
         table_name = 'OfficeEmployeeModel'
 
     office_employee_id = NumberAttribute(hash_key=True)
-    person = MapAttribute(model=Person)
-    office_location = MapAttribute(model=Location)
+    person = Person()
+    office_location = Location()
 
 
 class ModelTestCase(TestCase):
@@ -2453,16 +2453,18 @@ class ModelTestCase(TestCase):
             name='Lyft HQ'
         )
         return OfficeEmployee(
+            hash_key=None,
+            range_key=None,
             office_employee_id=123,
             person=justin,
             office_location=loc
         )
 
     def test_model_with_maps(self):
-        model = self._get_office_employee()
+        office_employee = self._get_office_employee()
         with patch(PATCH_METHOD) as req:
             req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
-            model.save()
+            office_employee.save()
 
     def test_model_with_maps_retrieve_from_db(self):
         def fake_dynamodb(*args):

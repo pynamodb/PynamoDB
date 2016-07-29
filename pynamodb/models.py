@@ -986,6 +986,11 @@ class Model(with_metaclass(MetaModel)):
                     cls._attributes[item] = instance
         return cls._attributes
 
+    @classmethod
+    def _set_attribute(cls, key, value):
+        cls._get_attributes()
+        setattr(cls, key, value)
+
     def _get_json(self):
         """
         Returns a Python object suitable for serialization
@@ -1094,10 +1099,17 @@ class Model(with_metaclass(MetaModel)):
         Sets the attributes for this object
         """
         for attr_name, attr in self._get_attributes().aliased_attrs():
+            value = None
             if attr.attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr.attr_name))
+                value = attrs.get(attr.attr_name)
             elif attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr_name))
+                value = attrs.get(attr_name)
+
+            if value:
+                setattr(self, attr_name, value)
+
+            if issubclass(type(attr), MapAttribute):
+                self.attribute_values[attr_name] = attr
 
     @classmethod
     def add_throttle_record(cls, records):
@@ -1175,7 +1187,6 @@ class Model(with_metaclass(MetaModel)):
                     continue
                 elif null_check:
                     raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
-            print 't={} v={}'.format(type(attr), type(value))
             if type(attr) is MapAttribute and isinstance(value, MapAttribute):
                 print 'its a map attribute serializing'
                 if not value.validate():
