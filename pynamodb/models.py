@@ -10,7 +10,7 @@ import collections
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
-from pynamodb.attributes import Attribute
+from pynamodb.attributes import Attribute, MapAttribute
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -251,17 +251,20 @@ class DynamoThing(object):
             elif attr_name in attrs:
                 setattr(self, attr_name, attrs.get(attr_name))
 
+    def get_values(self):
+        attributes = self._get_attributes()
+        result = {}
+        for k,v in attributes.iteritems():
+            result[k] = getattr(self, k)
+        return result
+
     def is_type_safe(self, key, value):
-        print 'key={} value={} attr_value={} attr_type={} value_type={}'.format(key, value, getattr(self, key), type(getattr(self, key)), type(value))
         return getattr(self, key) and type(getattr(self, key)) is not type(value)
 
     def validate(self):
         for key, value in self._get_attributes().iteritems():
-            print 'key={} value={}'.format(key, value)
             if not self.is_type_safe(key, value):
-                print 'returning false {} {} {}'.format(getattr(self, key), type(getattr(self, key)), type(value))
                 return False
-        print 'returning true'
         return True
 
 
@@ -1252,6 +1255,10 @@ class Model(with_metaclass(MetaModel)):
                     continue
                 elif null_check:
                     raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
+            if type(attr) is MapAttribute and isinstance(value, DynamoThing):
+                if not value.validate():
+                    raise Exception('invalid model')
+                value = value.get_values()
             serialized = attr.serialize(value)
             if serialized is None:
                 continue

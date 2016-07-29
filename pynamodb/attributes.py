@@ -279,22 +279,11 @@ class MapAttribute(Attribute):
         if model:
             self.model = model
 
-    def validate_model(self, values):
-        if not self.model:
-            return True
-        return values.validate()
-
     def serialize(self, values):
         """
         Encode the given list of numbers into a list of AttributeValue types.
         """
-        if not self.validate_model(values):
-            raise Exception('model was not valid')
         rval = dict()
-        invert_op = getattr(self, "__get_attributes", None)
-        if invert_op:
-            print 'inverting'
-            values = invert_op(values)
         for k in values:
             v = values[k]
             if v is None:
