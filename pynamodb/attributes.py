@@ -7,7 +7,7 @@ from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING
+    MAP, LIST, DEFAULT_ENCODING, BOOL
 )
 
 
@@ -192,7 +192,7 @@ class BooleanAttribute(Attribute):
 
     This attribute type uses a number attribute to save space
     """
-    attr_type = NUMBER
+    attr_type = BOOL
 
     def serialize(self, value):
         """
@@ -200,16 +200,18 @@ class BooleanAttribute(Attribute):
         """
         if value is None:
             return None
-        elif value:
-            return json.dumps(1)
-        else:
-            return json.dumps(0)
+
+        value_to_dump = bool(0)
+        if value:
+            value_to_dump = bool(1)
+
+        return value_to_dump
 
     def deserialize(self, value):
         """
         Encode
         """
-        return bool(json.loads(value))
+        return bool(value)
 
 
 class NumberSetAttribute(SetMixin, Attribute):
@@ -257,3 +259,157 @@ class UTCDateTimeAttribute(Attribute):
         Takes a UTC datetime string and returns a datetime object
         """
         return parse(value, dayfirst=False).datetime
+
+
+class MapAttribute(Attribute):
+    """
+    This is a list attribute that supports only numbers (i.e. integers) or
+    lists of numbers.
+
+    The DynamoDB List attribute does actually support mixed attribute types,
+    but this one only supports numbers and lists of numbers. Using non-integers
+    or lists of non-integers with this type will produce undefined results.
+    """
+    attr_type = MAP
+
+    @staticmethod
+    def serialize(values):
+        """
+        Encode the given list of numbers into a list of AttributeValue types.
+        """
+        if values is None:
+            return {'NULL': bool(1)}
+
+        rval = dict()
+        for k in values:
+            v = values[k]
+            if v is None:
+                rval[k] = {'NULL': bool(1)}
+            elif type(v) is dict:
+                rval[k] = {'M': MapAttribute.serialize(v)}
+            elif type(v) is list or type(v) is set: # no set embeded in Map
+                rval[k] = {'L': ListAttribute.serialize(v)}
+            elif type(v) is float or type(v) is int or type(v) is long:
+                rval[k] = {'N': NumberAttribute().serialize(v)}
+            elif type(v) is str or type(v) is unicode or type(v) is basestring:
+                rval[k] = {'S': UnicodeAttribute().serialize(v)}
+            elif type(v) is bool:
+                #rval[k] = {'BOOL': BooleanAttribute().serialize(v)}
+                value_to_dump = bool(0)
+                if v :
+                    value_to_dump = bool(1)
+
+                rval[k] = {'BOOL': value_to_dump}
+            else:
+                raise Exception('Unknown value: ' + str(v))
+
+        return rval
+
+    @staticmethod
+    def deserialize(values):
+        """
+        Decode numbers from list of AttributeValue types.
+        """
+        '''
+        if values is None:
+            return None
+
+        if 'NULL' in values:
+            return None
+        '''
+        rval = dict()
+        for k in values:
+            v = values[k]
+            if 'L' in v:
+                rval[k] = ListAttribute.deserialize(v['L'])
+            elif 'N' in v:
+                rval[k] = NumberAttribute().deserialize(v['N'])
+            elif 'S' in v:
+                rval[k] = str(v['S'])
+            elif 'NULL' in v:
+                rval[k] = None
+            elif 'BOOL' in v:
+                #rval[k] = BooleanAttribute().deserialize(v['BOOL'])
+                rval[k] = bool(v['BOOL'])
+            elif 'M' in v:
+                rval[k] = MapAttribute.deserialize(v['M'])
+            else:
+                raise Exception('Unknown value: ' + str(v))
+        return rval
+
+
+class ListAttribute(Attribute):
+     """
+     This is a list attribute that supports only numbers (i.e. integers) or
+     lists of numbers.
+
+     The DynamoDB List attribute does actually support mixed attribute types,
+     but this one only supports numbers and lists of numbers. Using non-integers
+     or lists of non-integers with this type will produce undefined results.
+     """
+     attr_type = LIST
+
+     @staticmethod
+     def serialize(values):
+         """
+         Encode the given list of objects into a list of AttributeValue types.
+         """
+         if values is None:
+             return {'NULL': bool(1)}
+
+         rval = []
+         for v in values:
+             if v is None:
+                 rval += [{'NULL': bool(1)}]
+             elif type(v) is dict:
+                 rval += [{'M': MapAttribute.serialize(v)}]
+             elif type(v) is list or type(v) is set:  # no set embeded in List
+                 rval += [{'L': ListAttribute.serialize(v)}]
+             elif type(v) is float or type(v) is int or type(v) is long:
+                 rval += [{'N': NumberAttribute().serialize(v)}]
+             elif type(v) is bool:
+                 #rval += [{'BOOL': BooleanAttribute.serialize(v)}]
+                 value_to_dump = bool(0)
+                 if v:
+                     value_to_dump = bool(1)
+                 rval += [{'BOOL': value_to_dump}]
+             elif type(v) is unicode or type(v) is str or type(v) is basestring:
+                 rval += [{'S': UnicodeAttribute().serialize(v)}]
+             else:
+                 raise Exception('Unknown value: ' + str(v))
+
+         return rval
+
+     @staticmethod
+     def deserialize(values):
+         """
+         Decode numbers from list of AttributeValue types.
+         """
+         if values is None:
+             return None
+
+         if 'NULL' in values:
+             return None
+
+         rval = []
+
+         # This should be a generic function that takes any AttributeValue and
+         # translates it back to the Python type.
+         for v in values:
+             if 'L' in v:
+                 rval += [ListAttribute.deserialize(v['L'])]
+             elif 'N' in v:
+                 rval += [NumberAttribute().deserialize(v['N'])]
+             elif 'S' in v:
+                 rval += [str(v['S'])]
+             elif 'NULL' in v:
+                 rval += [None]
+             elif 'BOOL' in v:
+                 rval += [BooleanAttribute().deserialize(v['BOOL'])]
+             elif 'M' in v:
+                 rval += [MapAttribute.deserialize(v['M'])]
+             else:
+                 raise Exception('Unknown value: ' + str(v))
+
+         return rval
+
