@@ -7,7 +7,7 @@ from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, LIST, DEFAULT_ENCODING
+    MAP, LIST, DEFAULT_ENCODING, BOOL
 )
 
 
@@ -192,7 +192,7 @@ class BooleanAttribute(Attribute):
 
     This attribute type uses a number attribute to save space
     """
-    attr_type = NUMBER
+    attr_type = BOOL
 
     def serialize(self, value):
         """
@@ -200,16 +200,18 @@ class BooleanAttribute(Attribute):
         """
         if value is None:
             return None
-        elif value:
-            return json.dumps(1)
-        else:
-            return json.dumps(0)
+
+        value_to_dump = bool(0)
+        if value:
+            value_to_dump = bool(1)
+
+        return value_to_dump
 
     def deserialize(self, value):
         """
         Encode
         """
-        return bool(json.loads(value))
+        return bool(value)
 
 
 class NumberSetAttribute(SetMixin, Attribute):
@@ -308,12 +310,13 @@ class MapAttribute(Attribute):
         """
         Decode numbers from list of AttributeValue types.
         """
+        '''
         if values is None:
             return None
 
         if 'NULL' in values:
             return None
-
+        '''
         rval = dict()
         for k in values:
             v = values[k]
