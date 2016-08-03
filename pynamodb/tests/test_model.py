@@ -2490,8 +2490,6 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = GET_OFFICE_EMPLOYEE_ITEM_DATA
             item = OfficeEmployee.get(123)
-            print item.person
-            print getattr(item.person, 'fname')
             self.assertEqual(
                 item.person.fname,
                 GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
