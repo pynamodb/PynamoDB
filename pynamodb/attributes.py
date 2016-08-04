@@ -10,6 +10,7 @@ from pynamodb.constants import (
     MAP, LIST, DEFAULT_ENCODING, ATTR_TYPE_MAP
 )
 from pynamodb.attribute_dict import AttributeDict
+import pdb
 
 
 class Attribute(object):
@@ -43,6 +44,7 @@ class Attribute(object):
 
     def __get__(self, instance, owner):
         if instance:
+            print 'getting attr_name {} {} v {}'.format(self.attr_name, self.__class__.__name__, instance.attribute_values.get(self.attr_name, None))
             return instance.attribute_values.get(self.attr_name, None)
         else:
             return self
@@ -282,6 +284,9 @@ class MapAttribute(Attribute):
     def __iter__(self):
         return iter(self.attribute_values)
 
+    def __getitem__(self, item):
+        return self.attribute_values[item]
+
     @classmethod
     def _get_attributes(cls):
         """
@@ -306,9 +311,12 @@ class MapAttribute(Attribute):
         Sets the attributes for this object
         """
         for attr_name, attr in self._get_attributes().aliased_attrs():
+            print '{}'.format(attr.attr_name)
             if attr.attr_name in attrs:
                 setattr(self, attr_name, attrs.get(attr.attr_name))
             elif attr_name in attrs:
+                print 'setting {} to {}'.format(attr_name, attrs.get(attr_name))
+                print 'self {}'.format(self)
                 setattr(self, attr_name, attrs.get(attr_name))
 
     def get_values(self):

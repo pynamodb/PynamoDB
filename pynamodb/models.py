@@ -181,6 +181,7 @@ class MetaModel(type):
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
 
+import pdb
 
 class Model(with_metaclass(MetaModel)):
     """
@@ -1115,11 +1116,12 @@ class Model(with_metaclass(MetaModel)):
             elif attr_name in attrs:
                 value = attrs.get(attr_name)
 
-            if value:
+            if issubclass(type(attr), MapAttribute):
+                print 'a map {} {}'.format(attr_name, value)
+                self.attribute_values[attr_name] = value
+            elif value:
                 setattr(self, attr_name, value)
 
-            if issubclass(type(attr), MapAttribute):
-                self.attribute_values[attr_name] = attr
 
     @classmethod
     def add_throttle_record(cls, records):

@@ -283,12 +283,10 @@ class Location(MapAttribute):
 class Person(MapAttribute):
 
     fname = UnicodeAttribute(attr_name='firstName')
+    #fname = UnicodeAttribute()
     lname =  UnicodeAttribute()
     age = NumberAttribute()
     is_male = BooleanAttribute(attr_name='is_dude')
-
-    def __str__(self):
-        return 'f={} l={} age={} is_male={}'.format(self.fname, self.lname, self.age, self.is_male)
 
 
 class OfficeEmployee(Model):
@@ -2468,6 +2466,11 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
             office_employee.save()
+
+    def test_model_works_like_model(self):
+        office_employee = self._get_office_employee()
+        self.assertTrue(office_employee.person)
+        self.assertEquals('Justin', office_employee.person.fname)
 
     def test_model_with_maps_retrieve_from_db(self):
         def fake_dynamodb(*args):
