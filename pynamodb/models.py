@@ -181,7 +181,6 @@ class MetaModel(type):
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
 
-import pdb
 
 class Model(with_metaclass(MetaModel)):
     """
@@ -1117,7 +1116,6 @@ class Model(with_metaclass(MetaModel)):
                 value = attrs.get(attr_name)
 
             if issubclass(type(attr), MapAttribute):
-                print 'a map {} {}'.format(attr_name, value)
                 self.attribute_values[attr_name] = value
             elif value:
                 setattr(self, attr_name, value)

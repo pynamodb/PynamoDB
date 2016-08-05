@@ -2497,13 +2497,3 @@ class ModelTestCase(TestCase):
                 item.person.fname,
                 GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
-
-    """
-    def test_map_madel_full_lifecycle(self):
-        model = self._get_office_employee()
-        with patch(PATCH_METHOD) as req:
-            req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
-            model.save()
-            other_model = OfficeEmployee.get(123)
-            self.assertEqual(model, other_model)
-    """
