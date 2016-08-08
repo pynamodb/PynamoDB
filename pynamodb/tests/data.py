@@ -399,6 +399,43 @@ GET_OFFICE_EMPLOYEE_ITEM_DATA = {
     }
 }
 
+GET_GROCERY_LIST_ITEM_DATA = {
+    'Item': {
+        'store_name': {
+            'N': 'Haight Street Market'
+        },
+        'person': {
+            'M': {
+                'firstName': {
+                    'S': 'Justin'
+                },
+                'lname': {
+                    'S': 'Phillips'
+                },
+                'age': {
+                    'N': '31'
+                },
+                'is_dude': {
+                    'N': '1'
+                }
+            }
+        },
+        'office_location': {
+            'M': {
+                'latitude': {
+                    'N': '37.77461'
+                },
+                'longitude': {
+                    'N': '122.3957216'
+                },
+                'name': {
+                    'S': 'Lyft HQ'
+                }
+            }
+        }
+    }
+}
+
 COMPLEX_ITEM_DATA = {
     "ConsumedCapacity": {
         "CapacityUnits": 1,
@@ -566,6 +603,38 @@ OFFICE_EMPLOYEE_MODEL_TABLE_DATA = {
             "WriteCapacityUnits": 5
         },
         "TableName": "OfficeEmployeeModel",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}
+
+
+GROCERY_LIST_MODEL_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "groceries",
+                "AttributeType": "L"
+            },
+            {
+                "AttributeName": "store_name",
+                "AttributeType": "S"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 0,
+        "KeySchema": [
+            {
+                "AttributeName": "store_name",
+                "KeyType": "HASH"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "GroceryListModel",
         "TableSizeBytes": 0,
         "TableStatus": "ACTIVE"
     }

@@ -36,7 +36,7 @@ from pynamodb.tests.data import (
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
-    GET_OFFICE_EMPLOYEE_ITEM_DATA
+    GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA
 )
 
 if six.PY3:
@@ -283,7 +283,6 @@ class Location(MapAttribute):
 class Person(MapAttribute):
 
     fname = UnicodeAttribute(attr_name='firstName')
-    #fname = UnicodeAttribute()
     lname =  UnicodeAttribute()
     age = NumberAttribute()
     is_male = BooleanAttribute(attr_name='is_dude')
@@ -297,6 +296,13 @@ class OfficeEmployee(Model):
     person = Person()
     office_location = Location()
 
+
+class GroceryList(Model):
+    class Meta:
+        table_name = 'GroceryListModel'
+
+    store_name = UnicodeAttribute(hash_key=True)
+    groceries = ListAttribute()
 
 class ModelTestCase(TestCase):
     """
@@ -2461,16 +2467,31 @@ class ModelTestCase(TestCase):
             office_location=loc
         )
 
+    def _get_grocery_list(self):
+        return GroceryList(store_name='Haight Street Market',
+                           groceries=['bread', 1, 'butter', 6, 'milk', 1])
+
     def test_model_with_maps(self):
         office_employee = self._get_office_employee()
         with patch(PATCH_METHOD) as req:
             req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
             office_employee.save()
 
+    def test_model_with_list(self):
+        grocery_list = self._get_grocery_list()
+        with patch(PATCH_METHOD) as req:
+            req.return_value = GROCERY_LIST_MODEL_TABLE_DATA
+            grocery_list.save()
+
     def test_model_works_like_model(self):
         office_employee = self._get_office_employee()
         self.assertTrue(office_employee.person)
         self.assertEquals('Justin', office_employee.person.fname)
+
+    def test_list_works_like_list(self):
+        grocery_list = self._get_grocery_list()
+        self.assertTrue(grocery_list.groceries)
+        self.assertEquals('butter', grocery_list.groceries[2])
 
     def test_model_with_maps_retrieve_from_db(self):
         def fake_dynamodb(*args):
@@ -2497,3 +2518,29 @@ class ModelTestCase(TestCase):
                 item.person.fname,
                 GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
+
+    def test_model_with_list_retrieve_from_db(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {'TableName': OfficeEmployee.Meta.table_name}:
+                return GROCERY_LIST_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'OfficeEmployeeModel',
+                'Key': {
+                    'office_employee_id': {'N': '123'},
+                },
+                'ConsistentRead': False}:
+                return GET_OFFICE_EMPLOYEE_ITEM_DATA
+            return GROCERY_LIST_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = GET_OFFICE_EMPLOYEE_ITEM_DATA
+            item = GroceryList.get('Haight Street Market')
+            self.assertEqual(
+                item.groceries[2],
+                GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('groceries').get(
+                    LIST_SHORT).get('firstName').get(STRING_SHORT))
