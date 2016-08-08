@@ -2493,6 +2493,9 @@ class ModelTestCase(TestCase):
         self.assertTrue(grocery_list.groceries)
         self.assertEquals('butter', grocery_list.groceries[2])
 
+    def test_list_of_map_works_like_list_of_map(self):
+        # todo
+
     def test_model_with_maps_retrieve_from_db(self):
         def fake_dynamodb(*args):
             kwargs = args[1]
@@ -2546,3 +2549,6 @@ class ModelTestCase(TestCase):
                 GET_GROCERY_LIST_ITEM_DATA.get(ITEM).get('groceries').get(
                     LIST_SHORT)[2].get(STRING_SHORT))
             self.assertEquals(item.store_name, 'Haight Street Market')
+
+    def test_model_with_list_of_map_retrieve_from_db(self):
+        # todo
