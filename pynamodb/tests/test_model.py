@@ -36,7 +36,7 @@ from pynamodb.tests.data import (
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
-    GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA
+    GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA
 )
 
 if six.PY3:
@@ -2526,19 +2526,19 @@ class ModelTestCase(TestCase):
                 return GROCERY_LIST_MODEL_TABLE_DATA
             elif kwargs == {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'OfficeEmployeeModel',
+                'TableName': 'GroceryListModel',
                 'Key': {
-                    'office_employee_id': {'N': '123'},
+                    'store_name': {'S': 'Haight Street Market'},
                 },
                 'ConsistentRead': False}:
-                return GET_OFFICE_EMPLOYEE_ITEM_DATA
+                return GET_GROCERY_LIST_ITEM_DATA
             return GROCERY_LIST_MODEL_TABLE_DATA
 
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
 
         with patch(PATCH_METHOD, new=fake_db) as req:
-            req.return_value = GET_OFFICE_EMPLOYEE_ITEM_DATA
+            req.return_value = GET_GROCERY_LIST_ITEM_DATA
             item = GroceryList.get('Haight Street Market')
             self.assertEqual(
                 item.groceries[2],
