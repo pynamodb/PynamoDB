@@ -2540,7 +2540,9 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = GET_GROCERY_LIST_ITEM_DATA
             item = GroceryList.get('Haight Street Market')
-            self.assertEqual(
+            self.assertEquals(item.store_name, GET_GROCERY_LIST_ITEM_DATA.get(ITEM).get('store_name').get(STRING_SHORT))
+            self.assertEquals(
                 item.groceries[2],
-                GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('groceries').get(
-                    LIST_SHORT).get('firstName').get(STRING_SHORT))
+                GET_GROCERY_LIST_ITEM_DATA.get(ITEM).get('groceries').get(
+                    LIST_SHORT)[2].get(STRING_SHORT))
+            self.assertEquals(item.store_name, 'Haight Street Market')

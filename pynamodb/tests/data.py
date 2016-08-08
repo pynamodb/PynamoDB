@@ -402,36 +402,12 @@ GET_OFFICE_EMPLOYEE_ITEM_DATA = {
 GET_GROCERY_LIST_ITEM_DATA = {
     'Item': {
         'store_name': {
-            'N': 'Haight Street Market'
+            'S': 'Haight Street Market'
         },
-        'person': {
-            'M': {
-                'firstName': {
-                    'S': 'Justin'
-                },
-                'lname': {
-                    'S': 'Phillips'
-                },
-                'age': {
-                    'N': '31'
-                },
-                'is_dude': {
-                    'N': '1'
-                }
-            }
-        },
-        'office_location': {
-            'M': {
-                'latitude': {
-                    'N': '37.77461'
-                },
-                'longitude': {
-                    'N': '122.3957216'
-                },
-                'name': {
-                    'S': 'Lyft HQ'
-                }
-            }
+        'groceries': {
+            'L': [
+                {'S': 'bread'}, {'N': '1'}, {'S': 'butter'}, {'N': '6'}, {'S': 'milk'}, {'N': '1'}
+            ]
         }
     }
 }
