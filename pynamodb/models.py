@@ -437,8 +437,7 @@ class Model(with_metaclass(MetaModel)):
                     lst = []
                     if of_type:
                         for item in deserialized_attr:
-                            instance = of_type(**item)
-                            lst.append(instance)
+                            lst.append(of_type(**item))
                     else:
                         lst = deserialized_attr
                     deserialized_attr = lst

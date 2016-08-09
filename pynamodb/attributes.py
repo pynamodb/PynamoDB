@@ -325,7 +325,12 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                 else:
                     thing = attrs.get(attr_name)
                     instance = type(attr)()
-                    for k,v in thing.iteritems():
+                    aliased_attrs = type(attr)._get_attributes().aliased_attrs()
+                    for bad_k,v in thing.iteritems():
+                        k = None
+                        for good_k, aliased_v in aliased_attrs:
+                            if aliased_v.attr_name == bad_k:
+                                k = good_k
                         setattr(instance, k, v)
                     setattr(self, attr_name, instance)
 
