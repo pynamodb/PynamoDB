@@ -9,7 +9,7 @@ import logging
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
-from pynamodb.attributes import Attribute, MapAttribute
+from pynamodb.attributes import Attribute, MapAttribute, ListAttribute
 from pynamodb.attribute_dict import AttributeDict
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
@@ -431,6 +431,9 @@ class Model(with_metaclass(MetaModel)):
                                     key_name = k
                                 good_stuff[k] = deserialized_attr[key_name]
                         deserialized_attr = type(map_value)(**deserialized_attr)
+                if isinstance(attr, ListAttribute):
+                    # todo need to do this, probably move the of to the meta class
+                    of_type = attr._element_type
                 kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)
 

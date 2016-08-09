@@ -412,6 +412,175 @@ GET_GROCERY_LIST_ITEM_DATA = {
     }
 }
 
+GET_OFFICE_ITEM_DATA = {
+    'Item': {
+        'office_id': {
+            'N': '6161'
+        },
+        'address': {
+            'M': {
+                'latitude': {
+                    'N': '37.77461'
+                },
+                'longitude': {
+                    'N': '122.3957216'
+                },
+                'name': {
+                    'S': 'Lyft HQ'
+                }
+            }
+        },
+        'employees': {
+            'L': [
+                {
+                    'M': {
+                        'office_employee_id': {
+                            'N': '123'
+                        },
+                        'person': {
+                            'M': {
+                                'firstName': {
+                                    'S': 'Justin'
+                                },
+                                'lname': {
+                                    'S': 'Phillips'
+                                },
+                                'age': {
+                                    'N': '31'
+                                },
+                                'is_dude': {
+                                    'N': '1'
+                                }
+                            }
+                        },
+                        'office_location': {
+                            'M': {
+                                'latitude': {
+                                    'N': '37.77461'
+                                },
+                                'longitude': {
+                                    'N': '122.3957216'
+                                },
+                                'name': {
+                                    'S': 'Lyft HQ'
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    'M': {
+                        'office_employee_id': {
+                            'N': '456'
+                        },
+                        'person': {
+                            'M': {
+                                'firstName': {
+                                    'S': 'Garrett'
+                                },
+                                'lname': {
+                                    'S': 'Heel'
+                                },
+                                'age': {
+                                    'N': '30'
+                                },
+                                'is_dude': {
+                                    'N': '1'
+                                }
+                            }
+                        },
+                        'office_location': {
+                            'M': {
+                                'latitude': {
+                                    'N': '37.77461'
+                                },
+                                'longitude': {
+                                    'N': '122.3957216'
+                                },
+                                'name': {
+                                    'S': 'Lyft HQ gh'
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    'M': {
+                        'office_employee_id': {
+                            'N': '789'
+                        },
+                        'person': {
+                            'M': {
+                                'firstName': {
+                                    'S': 'Lei'
+                                },
+                                'lname': {
+                                    'S': 'Ding'
+                                },
+                                'age': {
+                                    'N': '32'
+                                },
+                                'is_dude': {
+                                    'N': '1'
+                                }
+                            }
+                        },
+                        'office_location': {
+                            'M': {
+                                'latitude': {
+                                    'N': '37.77461'
+                                },
+                                'longitude': {
+                                    'N': '122.3957216'
+                                },
+                                'name': {
+                                    'S': 'Lyft HQ ld'
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    'M': {
+                        'office_employee_id': {
+                            'N': '901'
+                        },
+                        'person': {
+                            'M': {
+                                'firstName': {
+                                    'S': 'Tanya'
+                                },
+                                'lname': {
+                                    'S': 'Ashkenazi'
+                                },
+                                'age': {
+                                    'N': '30'
+                                },
+                                'is_dude': {
+                                    'N': '0'
+                                }
+                            }
+                        },
+                        'office_location': {
+                            'M': {
+                                'latitude': {
+                                    'N': '37.77461'
+                                },
+                                'longitude': {
+                                    'N': '122.3957216'
+                                },
+                                'name': {
+                                    'S': 'Lyft HQ ta'
+                                }
+                            }
+                        }
+                    }
+                },
+            ]
+        }
+    }
+}
+
 COMPLEX_ITEM_DATA = {
     "ConsumedCapacity": {
         "CapacityUnits": 1,
@@ -611,6 +780,41 @@ GROCERY_LIST_MODEL_TABLE_DATA = {
             "WriteCapacityUnits": 5
         },
         "TableName": "GroceryListModel",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}
+
+OFFICE_MODEL_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "office_id",
+                "AttributeType": "N"
+            },
+            {
+                "AttributeName": "address",
+                "AttributeType": "M"
+            },
+            {
+                "AttributeName": "employees",
+                "AttributeType": "L"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 0,
+        "KeySchema": [
+            {
+                "AttributeName": "office_id",
+                "KeyType": "HASH"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "OfficeModel",
         "TableSizeBytes": 0,
         "TableStatus": "ACTIVE"
     }

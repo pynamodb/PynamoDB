@@ -19,7 +19,7 @@ from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, ITEM_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
-    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT
+    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT, NUMBER_SHORT
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -36,7 +36,8 @@ from pynamodb.tests.data import (
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
-    GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA
+    GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
+    GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA
 )
 
 if six.PY3:
@@ -316,7 +317,7 @@ class GroceryList(Model):
 class Office(Model):
     class Meta:
         table_name = 'OfficeModel'
-    office_id = NumberAttribute()
+    office_id = NumberAttribute(hash_key=True)
     address = Location()
     employees = ListAttribute(of=OfficeEmployeeMap)
 
@@ -2605,7 +2606,7 @@ class ModelTestCase(TestCase):
     def test_model_with_list_retrieve_from_db(self):
         def fake_dynamodb(*args):
             kwargs = args[1]
-            if kwargs == {'TableName': OfficeEmployee.Meta.table_name}:
+            if kwargs == {'TableName': GroceryList.Meta.table_name}:
                 return GROCERY_LIST_MODEL_TABLE_DATA
             elif kwargs == {
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -2633,29 +2634,30 @@ class ModelTestCase(TestCase):
     def test_model_with_list_of_map_retrieve_from_db(self):
         def fake_dynamodb(*args):
             kwargs = args[1]
-            if kwargs == {'TableName': OfficeEmployee.Meta.table_name}:
-                return GROCERY_LIST_MODEL_TABLE_DATA
+            if kwargs == {'TableName': Office.Meta.table_name}:
+                return OFFICE_MODEL_TABLE_DATA
             elif kwargs == {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'GroceryListModel',
+                'TableName': 'OfficeModel',
                 'Key': {
-                    'store_name': {'S': 'Haight Street Market'},
+                    'office_id': {'N': '6161'},
                 },
                 'ConsistentRead': False}:
-                return GET_GROCERY_LIST_ITEM_DATA
-            return GROCERY_LIST_MODEL_TABLE_DATA
+                return GET_OFFICE_ITEM_DATA
+            return OFFICE_MODEL_TABLE_DATA
 
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
 
         with patch(PATCH_METHOD, new=fake_db) as req:
-            req.return_value = GET_GROCERY_LIST_ITEM_DATA
-            item = GroceryList.get('Haight Street Market')
-            self.assertEquals(item.store_name,
-                              GET_GROCERY_LIST_ITEM_DATA.get(ITEM).get(
-                                  'store_name').get(STRING_SHORT))
+            req.return_value = GET_OFFICE_ITEM_DATA
+            item = Office.get(6161)
+            self.assertEquals(item.office_id,
+                              int(GET_OFFICE_ITEM_DATA.get(ITEM).get('office_id').get(NUMBER_SHORT)))
+            self.assertEquals(item.office_id, 6161)
+            print GET_OFFICE_ITEM_DATA.get(ITEM).get('employees').get(
+                    LIST_SHORT)[2]
             self.assertEquals(
-                item.groceries[2],
-                GET_GROCERY_LIST_ITEM_DATA.get(ITEM).get('groceries').get(
-                    LIST_SHORT)[2].get(STRING_SHORT))
-            self.assertEquals(item.store_name, 'Haight Street Market')
+                item.employees[2].person.fname,
+                GET_OFFICE_ITEM_DATA.get(ITEM).get('employees').get(
+                    LIST_SHORT)[2].get(MAP_SHORT).get('person').get(MAP_SHORT).get('firstName').get(STRING_SHORT))

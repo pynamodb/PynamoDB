@@ -415,8 +415,6 @@ class ListAttribute(Attribute):
         if element_type:
             self.element_type = element_type
 
-
-
     def serialize(self, values):
         """
         Encode the given list of objects into a list of AttributeValue types.
