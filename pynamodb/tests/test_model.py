@@ -299,7 +299,6 @@ class OfficeEmployee(Model):
 
 
 class OfficeEmployeeMap(MapAttribute):
-    # _attributes = None
 
     office_employee_id = NumberAttribute()
     person = Person()

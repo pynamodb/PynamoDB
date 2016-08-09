@@ -433,7 +433,15 @@ class Model(with_metaclass(MetaModel)):
                         deserialized_attr = type(map_value)(**deserialized_attr)
                 if isinstance(attr, ListAttribute):
                     # todo need to do this, probably move the of to the meta class
-                    of_type = attr._element_type
+                    of_type = getattr(attr, 'element_type', None)
+                    lst = []
+                    if of_type:
+                        for item in deserialized_attr:
+                            instance = of_type(**item)
+                            lst.append(instance)
+                    else:
+                        lst = deserialized_attr
+                    deserialized_attr = lst
                 kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)
 

@@ -11,6 +11,7 @@ from pynamodb.constants import (
     MAP, LIST, DEFAULT_ENCODING, ATTR_TYPE_MAP
 )
 from pynamodb.attribute_dict import AttributeDict
+import collections
 
 
 class Attribute(object):
@@ -319,7 +320,15 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         """
         for attr_name, attr in self._get_attributes().aliased_attrs():
             if attr.attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr.attr_name))
+                if type(attrs.get(attr.attr_name)) is type(attr) or not isinstance(attrs.get(attr_name), collections.Mapping):
+                    setattr(self, attr_name, attrs.get(attr.attr_name))
+                else:
+                    thing = attrs.get(attr_name)
+                    instance = type(attr)()
+                    for k,v in thing.iteritems():
+                        setattr(instance, k, v)
+                    setattr(self, attr_name, instance)
+
             elif attr_name in attrs:
                 setattr(self, attr_name, attrs.get(attr_name))
 
