@@ -1,6 +1,22 @@
 Release Notes
 =============
 
+v1.5.3
+------
+
+:date: 2016-08-08
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* introduce concept of page_size, separate from num items returned limit (#139)
+ 
+Contributors to this release:
+
+* @anandswaminathan
+
+
 v1.5.2
 ------
 
