@@ -36,8 +36,8 @@ class Attribute(object):
             self.attr_name = attr_name
 
     def __set__(self, instance, value):
-        if isinstance(value, Attribute):
-            return self
+        #if isinstance(value, Attribute):
+        #    return self
         if instance:
             instance.attribute_values[self.attr_name] = value
 
@@ -301,6 +301,8 @@ class MapAttribute(Attribute):
                     continue
                 if issubclass(item_cls, (Attribute,)):
                     instance = getattr(cls, item)
+                    if instance.attr_name is None:
+                        instance.attr_name = item
                     cls._attributes[item] = instance
         return cls._attributes
 
@@ -387,6 +389,26 @@ class MapAttribute(Attribute):
 
 class ListAttribute(Attribute):
     attr_type = LIST
+    element_type = None
+
+    def __init__(self, **attrs):
+
+        hash_key = attrs.get('hash_key', False)
+        range_key = attrs.get('range_key', False)
+        null = attrs.get('null', None)
+        default = attrs.get('default', None)
+        attr_name = attrs.get('attr_name', None)
+        element_type = attrs.get('of', None)
+
+        super(ListAttribute, self).__init__(hash_key=hash_key,
+                                            range_key=range_key,
+                                            null=null,
+                                            default=default,
+                                            attr_name=attr_name)
+        if element_type:
+            self.element_type = element_type
+
+
 
     def serialize(self, values):
         """

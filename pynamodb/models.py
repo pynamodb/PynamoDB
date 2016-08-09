@@ -1109,17 +1109,10 @@ class Model(with_metaclass(MetaModel)):
         Sets the attributes for this object
         """
         for attr_name, attr in self._get_attributes().aliased_attrs():
-            value = None
             if attr.attr_name in attrs:
-                value = attrs.get(attr.attr_name)
+                setattr(self, attr_name, attrs.get(attr.attr_name))
             elif attr_name in attrs:
-                value = attrs.get(attr_name)
-
-            if issubclass(type(attr), MapAttribute):
-                self.attribute_values[attr_name] = value
-            elif value:
-                setattr(self, attr_name, value)
-
+                setattr(self, attr_name, attrs.get(attr_name))
 
     @classmethod
     def add_throttle_record(cls, records):
