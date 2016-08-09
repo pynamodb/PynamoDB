@@ -2,6 +2,7 @@
 PynamoDB attributes
 """
 import six
+from six import with_metaclass
 import json
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
@@ -35,20 +36,8 @@ class Attribute(object):
         if attr_name is not None:
             self.attr_name = attr_name
 
-    def haha(self, hash_key=False,
-                 range_key=False,
-                 null=None,
-                 default=None,
-                 attr_name=None):
-        self.default = default
-        if null is not None:
-            self.null = null
-        self.is_hash_key = hash_key
-        self.is_range_key = range_key
-        if attr_name is not None:
-            self.attr_name = attr_name
-
     def __set__(self, instance, value):
+        # we may want to override in the child class
         #if isinstance(value, Attribute):
         #    return self
         if instance:
@@ -273,18 +262,12 @@ class UTCDateTimeAttribute(Attribute):
         return parse(value, dayfirst=False).datetime
 
 
-from six import with_metaclass
-
-
 class MapAttributeMeta(type):
     def __init__(cls, name, bases, attrs):
         setattr(cls, '_attributes', None)
 
 
-#class MapAttribute(with_metaclass(MapAttributeMeta), Attribute):
 class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
-#class MapAttribute(Attribute, with_metaclass(MapAttributeMeta)):
-#class MapAttribute(Attribute):
     _attributes = None
 
     def __init__(self, **attrs):
