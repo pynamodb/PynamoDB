@@ -412,6 +412,30 @@ GET_GROCERY_LIST_ITEM_DATA = {
     }
 }
 
+COMPLEX_MODEL_ITEM_DATA = {
+    'Item': {
+        'key': {
+            'N': '123'
+        },
+        'weird_person': {
+            'M': {
+                'firstName': {
+                    'S': 'Justin'
+                },
+                'lname': {
+                    'S': 'Phillips'
+                },
+                'age': {
+                    'N': '31'
+                },
+                'is_dude': {
+                    'N': '1'
+                }
+            }
+        }
+    }
+}
+
 GET_OFFICE_ITEM_DATA = {
     'Item': {
         'office_id': {
@@ -815,6 +839,37 @@ OFFICE_MODEL_TABLE_DATA = {
             "WriteCapacityUnits": 5
         },
         "TableName": "OfficeModel",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}
+
+COMPLEX_MODEL_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "key",
+                "AttributeType": "N"
+            },
+            {
+                "AttributeName": "person",
+                "AttributeType": "M"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 0,
+        "KeySchema": [
+            {
+                "AttributeName": "key",
+                "KeyType": "HASH"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "ComplexModel",
         "TableSizeBytes": 0,
         "TableStatus": "ACTIVE"
     }

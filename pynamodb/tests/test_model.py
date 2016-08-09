@@ -37,7 +37,7 @@ from pynamodb.tests.data import (
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
-    GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA
+    GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA
 )
 
 if six.PY3:
@@ -287,6 +287,13 @@ class Person(MapAttribute):
     lname = UnicodeAttribute()
     age = NumberAttribute()
     is_male = BooleanAttribute(attr_name='is_dude')
+
+
+class ComplexModel(Model):
+    class Meta:
+        table_name = 'ComplexModel'
+    person = Person(attr_name='weird_person')
+    key = NumberAttribute(hash_key=True)
 
 
 class OfficeEmployee(Model):
@@ -2488,6 +2495,15 @@ class ModelTestCase(TestCase):
         return GroceryList(store_name='Haight Street Market',
                            groceries=['bread', 1, 'butter', 6, 'milk', 1])
 
+    def _get_complex_thing(self):
+        justin = Person(
+            fname='Justin',
+            lname='Phillips',
+            age=31,
+            is_male=True
+        )
+        return ComplexModel(person=justin, key=123)
+
     def _get_office(self):
         justin = Person(
             fname='Justin',
@@ -2568,6 +2584,12 @@ class ModelTestCase(TestCase):
         grocery_list = self._get_grocery_list()
         self.assertTrue(grocery_list.groceries)
         self.assertEquals('butter', grocery_list.groceries[2])
+
+    def test_complex_model_is_complex(self):
+        complex_thing = self._get_complex_thing()
+        self.assertTrue(complex_thing.person)
+        self.assertEquals(complex_thing.person.fname, 'Justin')
+        self.assertEquals(complex_thing.key, 123)
 
     def test_list_of_map_works_like_list_of_map(self):
         office = self._get_office()
@@ -2654,9 +2676,37 @@ class ModelTestCase(TestCase):
             self.assertEquals(item.office_id,
                               int(GET_OFFICE_ITEM_DATA.get(ITEM).get('office_id').get(NUMBER_SHORT)))
             self.assertEquals(item.office_id, 6161)
-            print GET_OFFICE_ITEM_DATA.get(ITEM).get('employees').get(
-                    LIST_SHORT)[2]
             self.assertEquals(
                 item.employees[2].person.fname,
                 GET_OFFICE_ITEM_DATA.get(ITEM).get('employees').get(
                     LIST_SHORT)[2].get(MAP_SHORT).get('person').get(MAP_SHORT).get('firstName').get(STRING_SHORT))
+
+    def test_complex_model_retrieve_from_db(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {'TableName': ComplexModel.Meta.table_name}:
+                return COMPLEX_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'ComplexModel',
+                'Key': {
+                    'key': {'N': '123'},
+                },
+                'ConsistentRead': False}:
+                return COMPLEX_MODEL_ITEM_DATA
+            return COMPLEX_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = COMPLEX_MODEL_ITEM_DATA
+            item = ComplexModel.get(123)
+            self.assertEquals(item.key,
+                              int(COMPLEX_MODEL_ITEM_DATA.get(ITEM).get(
+                                  'key').get(NUMBER_SHORT)))
+            self.assertEquals(item.key, 123)
+            self.assertEquals(
+                item.person.fname,
+                COMPLEX_MODEL_ITEM_DATA.get(ITEM).get('weird_person').get(
+                    MAP_SHORT).get('firstName').get(STRING_SHORT))

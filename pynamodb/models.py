@@ -417,7 +417,10 @@ class Model(with_metaclass(MetaModel)):
             if attr:
                 deserialized_attr = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
                 if isinstance(attr, MapAttribute):
-                    map_value = getattr(cls, name)
+                    aliased_attrs = cls._get_attributes().aliased_attrs()
+                    for good_k, aliased_v in aliased_attrs:
+                        if aliased_v.attr_name == name:
+                            map_value = getattr(cls, good_k)
                     if issubclass(type(map_value), MapAttribute):
                         class_attributes = vars(type(map_value))
                         good_stuff = {}
@@ -432,7 +435,6 @@ class Model(with_metaclass(MetaModel)):
                                 good_stuff[k] = deserialized_attr[key_name]
                         deserialized_attr = type(map_value)(**deserialized_attr)
                 if isinstance(attr, ListAttribute):
-                    # todo need to do this, probably move the of to the meta class
                     of_type = getattr(attr, 'element_type', None)
                     lst = []
                     if of_type:
