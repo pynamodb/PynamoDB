@@ -39,8 +39,6 @@ from pynamodb.tests.data import (
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA
 )
 
-import pdb
-
 if six.PY3:
     from unittest.mock import patch, MagicMock
 else:
@@ -321,6 +319,7 @@ class Office(Model):
     office_id = NumberAttribute()
     address = Location()
     employees = ListAttribute(of=OfficeEmployeeMap)
+
 
 class ModelTestCase(TestCase):
     """
@@ -2519,7 +2518,6 @@ class ModelTestCase(TestCase):
             lng=-122.3957216,
             name='Lyft HQ'
         )
-        # pdb.set_trace()
         emp1 = OfficeEmployeeMap(
             office_employee_id=123,
             person=justin,
