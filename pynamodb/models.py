@@ -428,7 +428,7 @@ class Model(with_metaclass(MetaModel)):
                         we need to put the values from deserialized_attr together with the keys from good_stuff
                         """
                         for k,v in class_attributes.iteritems():
-                            if k not in ['__module__', '_attributes', '__doc__', '__str__']:
+                            if k not in ['__module__', '_attributes', '__doc__', '__str__'] and type(getattr(map_value, k)) is not 'function':
                                 key_name = v.attr_name
                                 if key_name is None:
                                     key_name = k
