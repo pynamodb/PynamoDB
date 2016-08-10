@@ -38,9 +38,6 @@ class Attribute(object):
             self.attr_name = attr_name
 
     def __set__(self, instance, value):
-        # we may want to override in the child class
-        #if isinstance(value, Attribute):
-        #    return self
         if instance:
             instance.attribute_values[self.attr_name] = value
 
@@ -269,7 +266,7 @@ class MapAttributeMeta(type):
 
 
 class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
-    _attributes = None
+    attr_type = MAP
 
     def __init__(self, **attrs):
 
@@ -300,18 +297,12 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         """
         if cls._attributes is None:
             cls._attributes = AttributeDict()
-            for item in dir(cls):
-                try:
-                    item_cls = getattr(getattr(cls, item), "__class__", None)
-                except AttributeError:
-                    continue
-                if item_cls is None:
-                    continue
-                if issubclass(item_cls, (Attribute,)):
-                    instance = getattr(cls, item)
-                    if instance.attr_name is None:
-                        instance.attr_name = item
-                    cls._attributes[item] = instance
+            for item in [attr for attr in dir(cls) if
+                         isinstance(getattr(cls, attr), Attribute)]:
+                instance = getattr(cls, item)
+                if instance.attr_name is None:
+                    instance.attr_name = item
+                cls._attributes[item] = instance
         return cls._attributes
 
     def _set_attributes(self, **attrs):
@@ -323,14 +314,14 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                 if type(attrs.get(attr.attr_name)) is type(attr) or not isinstance(attrs.get(attr_name), collections.Mapping):
                     setattr(self, attr_name, attrs.get(attr.attr_name))
                 else:
-                    thing = attrs.get(attr_name)
+                    sub_model = attrs.get(attr_name)
                     instance = type(attr)()
                     aliased_attrs = type(attr)._get_attributes().aliased_attrs()
-                    for bad_k,v in thing.iteritems():
+                    for unaliased_key, v in sub_model.iteritems():
                         k = None
-                        for good_k, aliased_v in aliased_attrs:
-                            if aliased_v.attr_name == bad_k:
-                                k = good_k
+                        for python_accessible_key, aliased_v in aliased_attrs:
+                            if aliased_v.attr_name == unaliased_key:
+                                k = python_accessible_key
                         setattr(instance, k, v)
                     setattr(self, attr_name, instance)
 
@@ -354,8 +345,6 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                 return False
         return True
 
-    attr_type = MAP
-
     def serialize(self, values):
         """
         Encode the given list of numbers into a list of AttributeValue types.
@@ -365,19 +354,18 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
             v = values[k]
             if v is None:
                 rval[k] = {'NULL': bool(1)}
-            elif type(v) is dict:
+            elif isinstance(v, dict):
                 rval[k] = {'M': MapAttribute().serialize(v)}
-            elif type(v) is list:
+            elif isinstance(v, list) or isinstance(v, set):
                 rval[k] = {'L': ListAttribute().serialize(v)}
-            elif type(v) is float or type(v) is int or type(v) is long:
+            elif isinstance(v, float) or isinstance(v, int) or isinstance(v, long):
                 rval[k] = {'N': NumberAttribute().serialize(v)}
-            elif type(v) is str or type(v) is unicode or type(v) is basestring:
+            elif isinstance(v, unicode) or isinstance(v, str) or isinstance(v, basestring):
                 rval[k] = {'S': UnicodeAttribute().serialize(v)}
-            elif type(v) is bool:
+            elif isinstance(v, bool):
                 value_to_dump = bool(0)
                 if v:
                     value_to_dump = bool(1)
-
                 rval[k] = {'BOOL': value_to_dump}
             elif issubclass(type(v), MapAttribute):
                 rval[k] = [{'M': type(v)().serialize(v)}]
@@ -438,22 +426,22 @@ class ListAttribute(Attribute):
         rval = []
         for v in values:
             if v is None:
-                rval += [{'NULL': bool(1)}]
-            elif type(v) is dict:
-                rval += [{'M': MapAttribute().serialize(v)}]
-            elif type(v) is list or type(v) is set:  # no set embeded in List
-                rval += [{'L': ListAttribute().serialize(v)}]
-            elif type(v) is float or type(v) is int or type(v) is long:
-                rval += [{'N': NumberAttribute().serialize(v)}]
-            elif type(v) is bool:
+                rval.append({'NULL': bool(1)})
+            elif isinstance(v, dict):
+                rval.append({'M': MapAttribute().serialize(v)})
+            elif isinstance(v, list) or isinstance(v, set):
+                rval.append({'L': ListAttribute().serialize(v)})
+            elif isinstance(v, float) or isinstance(v, int) or isinstance(v, long):
+                rval.append({'N': NumberAttribute().serialize(v)})
+            elif isinstance(v, bool):
                 value_to_dump = bool(0)
                 if v:
                     value_to_dump = bool(1)
-                rval += [{'BOOL': value_to_dump}]
-            elif type(v) is unicode or type(v) is str or type(v) is basestring:
-                rval += [{'S': UnicodeAttribute().serialize(v)}]
+                rval.append({'BOOL': value_to_dump})
+            elif isinstance(v, unicode) or isinstance(v, str) or isinstance(v, basestring):
+                rval.append({'S': UnicodeAttribute().serialize(v)})
             elif issubclass(type(v), MapAttribute):
-                rval += [{'M': type(v)().serialize(v)}]
+                rval.append({'M': type(v)().serialize(v)})
             else:
                 raise Exception('Unknown value: ' + str(v))
         return rval

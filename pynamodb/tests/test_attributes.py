@@ -489,7 +489,7 @@ class MapAndListAttributeTestCase(TestCase):
         self.assertEqual(ListAttribute().deserialize(serialized), family_attributes)
 
     def test_list_of_map_of_list(self):
-        multiple_store_grocey_list = [
+        multiple_store_grocery_list = [
             {
                 'fruit': ['apple', 'pear', 32],
                 'veggies': ['broccoli', 'potatoes', 5]
@@ -500,8 +500,8 @@ class MapAndListAttributeTestCase(TestCase):
                 'junk': ['cheetos', 'beer', 6]
             }
         ]
-        serialized = ListAttribute().serialize(multiple_store_grocey_list)
-        self.assertEqual(ListAttribute().deserialize(serialized), multiple_store_grocey_list)
+        serialized = ListAttribute().serialize(multiple_store_grocery_list)
+        self.assertEqual(ListAttribute().deserialize(serialized), multiple_store_grocery_list)
 
     def test_map_of_list(self):
         grocery_list = {
