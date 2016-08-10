@@ -358,7 +358,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                 rval[k] = {'M': MapAttribute().serialize(v)}
             elif isinstance(v, list) or isinstance(v, set):
                 rval[k] = {'L': ListAttribute().serialize(v)}
-            elif isinstance(v, float) or isinstance(v, int) or isinstance(v, long):
+            elif isinstance(v, float) or isinstance(v, int):
                 rval[k] = {'N': NumberAttribute().serialize(v)}
             elif isinstance(v, unicode) or isinstance(v, str) or isinstance(v, basestring):
                 rval[k] = {'S': UnicodeAttribute().serialize(v)}
@@ -431,7 +431,7 @@ class ListAttribute(Attribute):
                 rval.append({'M': MapAttribute().serialize(v)})
             elif isinstance(v, list) or isinstance(v, set):
                 rval.append({'L': ListAttribute().serialize(v)})
-            elif isinstance(v, float) or isinstance(v, int) or isinstance(v, long):
+            elif isinstance(v, float) or isinstance(v, int):
                 rval.append({'N': NumberAttribute().serialize(v)})
             elif isinstance(v, bool):
                 value_to_dump = bool(0)
