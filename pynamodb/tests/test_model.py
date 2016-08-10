@@ -288,6 +288,9 @@ class Person(MapAttribute):
     age = NumberAttribute()
     is_male = BooleanAttribute(attr_name='is_dude')
 
+    def foo(self):
+        return 1
+
 
 class ComplexModel(Model):
     class Meta:
@@ -304,12 +307,18 @@ class OfficeEmployee(Model):
     person = Person()
     office_location = Location()
 
+    def foo(self):
+        return 1
+
 
 class OfficeEmployeeMap(MapAttribute):
 
     office_employee_id = NumberAttribute()
     person = Person()
     office_location = Location()
+
+    def cool_function(self):
+        return 1
 
 
 class GroceryList(Model):

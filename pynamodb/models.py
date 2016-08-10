@@ -428,7 +428,8 @@ class Model(with_metaclass(MetaModel)):
                         we need to put the values from deserialized_attr together with the keys from good_stuff
                         """
                         for k,v in class_attributes.iteritems():
-                            if k not in ['__module__', '_attributes', '__doc__', '__str__'] and type(getattr(map_value, k)) is not 'function':
+                            if k not in ['__module__', '_attributes'] and getattr(map_value, k) is not None and type(getattr(map_value, k)).__name__ != 'instancemethod':
+                                print type(getattr(map_value,k))
                                 key_name = v.attr_name
                                 if key_name is None:
                                     key_name = k
