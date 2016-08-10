@@ -9,6 +9,7 @@ from datetime import datetime
 
 import six
 from botocore.client import ClientError
+from botocore.vendored import requests
 
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.tests.deep_eq import deep_eq
@@ -26,6 +27,7 @@ from pynamodb.indexes import (
     GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
     IncludeProjection, KeysOnlyProjection, Index
 )
+from pynamodb.settings import RequestSessionWithHeaders
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute)
@@ -271,6 +273,26 @@ class ComplexKeyModel(Model):
     date_created = UTCDateTimeAttribute(default=datetime.utcnow)
 
 
+class OverriddenSession(requests.Session):
+    """
+    A overridden session for test
+    """
+    def __init__(self):
+        super(OverriddenSession, self).__init__()
+
+class OverriddenSessionModel(Model):
+    """
+    A testing model
+    """
+    class Meta:
+        table_name = 'OverriddenSessionModel'
+        retry_enabled = False
+        session_cls = OverriddenSession
+
+    random_user_name = UnicodeAttribute(hash_key=True, attr_name='random_name_1')
+    random_attr = UnicodeAttribute(attr_name='random_attr_1', null=True)
+
+
 class ModelTestCase(TestCase):
     """
     Tests for the models API
@@ -323,6 +345,10 @@ class ModelTestCase(TestCase):
 
         # Test for default region
         self.assertEqual(UserModel.Meta.region, 'us-east-1')
+        self.assertEqual(UserModel.Meta.retry_enabled, True)
+        self.assertEqual(UserModel._connection.connection.retry_enabled, True)
+        self.assertTrue(type(UserModel._connection.connection.requests_session) is RequestSessionWithHeaders)
+
         with patch(PATCH_METHOD) as req:
             req.return_value = MODEL_TABLE_DATA
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
@@ -469,6 +495,22 @@ class ModelTestCase(TestCase):
         }
         self.assert_dict_lists_equal(correct_schema['KeySchema'], schema['key_schema'])
         self.assert_dict_lists_equal(correct_schema['AttributeDefinitions'], schema['attribute_definitions'])
+
+    def test_overidden_session(self):
+        """
+        Custom session
+        """
+        fake_db = MagicMock()
+
+        with patch(PATCH_METHOD, new=fake_db):
+            with patch("pynamodb.connection.TableConnection.describe_table") as req:
+                req.return_value = None
+                with self.assertRaises(TableError):
+                    OverriddenSessionModel.create_table(read_capacity_units=2, write_capacity_units=2, wait=True)
+
+        self.assertEqual(OverriddenSessionModel.Meta.retry_enabled, False)
+        self.assertEqual(OverriddenSessionModel._connection.connection.retry_enabled, False)
+        self.assertFalse(type(OverriddenSessionModel._connection.connection.requests_session) is RequestSessionWithHeaders)
 
     def test_refresh(self):
         """

@@ -178,9 +178,10 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None, session_cls=None):
+    def __init__(self, region=None, host=None, session_cls=None, retry_enabled=False):
         self._tables = {}
         self.host = host
+        self.retry_enabled = retry_enabled
         self._session = None
         self._requests_session = None
         self._client = None
@@ -265,6 +266,9 @@ class Connection(object):
                 )
                 data = response.json()
             except (requests.RequestException, ValueError) as e:
+                if not self.retry_enabled:
+                    log.debug('Retry has been disabled')
+                    raise
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                     raise
@@ -298,6 +302,9 @@ class Connection(object):
                 try:
                     raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
                 except VerboseClientError as e:
+                    if not self.retry_enabled:
+                        log.debug('Retry has been disabled')
+                        raise
                     if is_last_attempt_for_exceptions:
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise

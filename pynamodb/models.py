@@ -17,6 +17,7 @@ from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.indexes import Index, GlobalSecondaryIndex
+from pynamodb.settings import RequestSessionWithHeaders, RETRY_ENABLED
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS, CAMEL_COUNT,
@@ -140,7 +141,8 @@ class DefaultMeta(object):
     table_name = None
     region = DEFAULT_REGION
     host = None
-
+    session_cls = RequestSessionWithHeaders
+    retry_enabled = RETRY_ENABLED
 
 class ResultSet(object):
 
@@ -168,8 +170,11 @@ class MetaModel(type):
                         setattr(attr_obj, REGION, DEFAULT_REGION)
                     if not hasattr(attr_obj, HOST):
                         setattr(attr_obj, HOST, None)
+                    # The session class has to be explicitly set to override the default.
                     if not hasattr(attr_obj, 'session_cls'):
-                        setattr(attr_obj, 'session_cls', None)
+                        setattr(attr_obj, 'session_cls', RequestSessionWithHeaders)
+                    if not hasattr(attr_obj, 'retry_enabled'):
+                        setattr(attr_obj, 'retry_enabled', RETRY_ENABLED)
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -1164,7 +1169,7 @@ class Model(with_metaclass(MetaModel)):
             )
         if cls._connection is None:
             cls._connection = TableConnection(cls.Meta.table_name, region=cls.Meta.region, host=cls.Meta.host,
-                                              session_cls=cls.Meta.session_cls)
+                                              session_cls=cls.Meta.session_cls, retry_enabled=cls.Meta.retry_enabled)
         return cls._connection
 
     def _deserialize(self, attrs):
