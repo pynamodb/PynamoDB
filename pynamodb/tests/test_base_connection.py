@@ -1686,6 +1686,8 @@ class ConnectionTestCase(TestCase):
             good_response,
         ]
 
+        rand_int_mock.return_value = 1
+
         c = Connection()
 
         self.assertEqual(good_response_content, c._make_api_call('CreateTable', {'TableName': 'MyTable'}))
