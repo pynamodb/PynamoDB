@@ -286,7 +286,9 @@ class OverriddenSessionModel(Model):
     """
     class Meta:
         table_name = 'OverriddenSessionModel'
-        retry_enabled = False
+        request_timeout_seconds = 9999
+        max_retry_attempts = 200
+        base_backoff_ms = 4120
         session_cls = OverriddenSession
 
     random_user_name = UnicodeAttribute(hash_key=True, attr_name='random_name_1')
@@ -345,8 +347,14 @@ class ModelTestCase(TestCase):
 
         # Test for default region
         self.assertEqual(UserModel.Meta.region, 'us-east-1')
-        self.assertEqual(UserModel.Meta.retry_enabled, True)
-        self.assertEqual(UserModel._connection.connection.retry_enabled, True)
+        self.assertEqual(UserModel.Meta.request_timeout_seconds, None)
+        self.assertEqual(UserModel.Meta.max_retry_attempts, None)
+        self.assertEqual(UserModel.Meta.base_backoff_ms, None)
+
+        self.assertEqual(UserModel._connection.connection._request_timeout_seconds, 25)
+        self.assertEqual(UserModel._connection.connection._max_retry_attempts_exception, 3)
+        self.assertEqual(UserModel._connection.connection._base_backoff_ms, 25)
+
         self.assertTrue(type(UserModel._connection.connection.requests_session) is RequestSessionWithHeaders)
 
         with patch(PATCH_METHOD) as req:
@@ -508,8 +516,13 @@ class ModelTestCase(TestCase):
                 with self.assertRaises(TableError):
                     OverriddenSessionModel.create_table(read_capacity_units=2, write_capacity_units=2, wait=True)
 
-        self.assertEqual(OverriddenSessionModel.Meta.retry_enabled, False)
-        self.assertEqual(OverriddenSessionModel._connection.connection.retry_enabled, False)
+        self.assertEqual(OverriddenSessionModel.Meta.request_timeout_seconds, 9999)
+        self.assertEqual(OverriddenSessionModel.Meta.max_retry_attempts, 200)
+        self.assertEqual(OverriddenSessionModel.Meta.base_backoff_ms, 4120)
+
+        self.assertEqual(OverriddenSessionModel._connection.connection._request_timeout_seconds, 9999)
+        self.assertEqual(OverriddenSessionModel._connection.connection._max_retry_attempts_exception, 200)
+        self.assertEqual(OverriddenSessionModel._connection.connection._base_backoff_ms, 4120)
         self.assertFalse(type(OverriddenSessionModel._connection.connection.requests_session) is RequestSessionWithHeaders)
 
     def test_refresh(self):

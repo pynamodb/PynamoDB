@@ -36,6 +36,7 @@ from pynamodb.constants import (
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
+from pynamodb.settings import settings
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
@@ -178,10 +179,10 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None, session_cls=None, retry_enabled=False):
+    def __init__(self, region=None, host=None, session_cls=None,
+                 request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None):
         self._tables = {}
         self.host = host
-        self.retry_enabled = retry_enabled
         self._session = None
         self._requests_session = None
         self._client = None
@@ -191,9 +192,9 @@ class Connection(object):
             self.region = DEFAULT_REGION
 
         # TODO: provide configurability of retry parameters via arguments
-        self._request_timeout_seconds = DEFAULT_TIMEOUT
-        self._max_retry_attempts_exception = DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION
-        self._base_backoff_ms = DEFAULT_BASE_BACKOFF_MS
+        self._request_timeout_seconds = settings['request_timeout_seconds'] if request_timeout_seconds is None else request_timeout_seconds
+        self._max_retry_attempts_exception = settings['max_retry_attempts'] if max_retry_attempts is None else max_retry_attempts
+        self._base_backoff_ms = settings['base_backoff_ms'] if base_backoff_ms is None else base_backoff_ms
 
         if session_cls:
             self.session_cls = session_cls
@@ -255,8 +256,9 @@ class Connection(object):
         )
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
 
-        for attempt_number in range(1, self._max_retry_attempts_exception + 1):
-            is_last_attempt_for_exceptions = attempt_number == self._max_retry_attempts_exception
+        for i in range(0, self._max_retry_attempts_exception + 1):
+            attempt_number = i + 1
+            is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
 
             try:
                 response = self.requests_session.send(
@@ -266,9 +268,6 @@ class Connection(object):
                 )
                 data = response.json()
             except (requests.RequestException, ValueError) as e:
-                if not self.retry_enabled:
-                    log.debug('Retry has been disabled')
-                    raise
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                     raise
@@ -302,9 +301,6 @@ class Connection(object):
                 try:
                     raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
                 except VerboseClientError as e:
-                    if not self.retry_enabled:
-                        log.debug('Retry has been disabled')
-                        raise
                     if is_last_attempt_for_exceptions:
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise
@@ -316,7 +312,7 @@ class Connection(object):
                     else:
                         # We use fully-jittered exponentially-backed-off retries:
                         #  https://www.awsarchitectureblog.com/2015/03/backoff.html
-                        sleep_time_ms = random.randint(0, self._base_backoff_ms * (2 ** attempt_number))
+                        sleep_time_ms = random.randint(0, self._base_backoff_ms * (2 ** i))
                         log.debug(
                             'Retry with backoff needed for (%s) after attempt %s,'
                             'sleeping for %s milliseconds, retryable %s caught: %s',

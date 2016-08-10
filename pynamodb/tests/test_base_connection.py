@@ -14,7 +14,6 @@ from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_D
 from pynamodb.tests.deep_eq import deep_eq
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
-from pynamodb.settings import RETRY_ENABLED
 if six.PY3:
     from unittest.mock import patch
     from unittest import mock
@@ -1664,9 +1663,10 @@ class ConnectionTestCase(TestCase):
                 )
                 raise
 
+    @mock.patch('random.randint')
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
-    def test_make_api_call_throws_verbose_error_after_backoff_later_succeeds(self, requests_session_mock, session_mock):
+    def test_make_api_call_throws_verbose_error_after_backoff_later_succeeds(self, requests_session_mock, session_mock, rand_int_mock):
 
         # mock response
         bad_response = requests.Response()
@@ -1682,13 +1682,16 @@ class ConnectionTestCase(TestCase):
 
         requests_session_mock.send.side_effect = [
             bad_response,
+            bad_response,
             good_response,
         ]
 
-        c = Connection(retry_enabled=True)
+        c = Connection()
 
         self.assertEqual(good_response_content, c._make_api_call('CreateTable', {'TableName': 'MyTable'}))
-        self.assertEqual(len(requests_session_mock.send.mock_calls), 2)
+        self.assertEqual(len(requests_session_mock.send.mock_calls), 3)
+
+        assert rand_int_mock.call_args_list == [mock.call(0, 25), mock.call(0, 50)]
 
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
@@ -1705,13 +1708,13 @@ class ConnectionTestCase(TestCase):
         session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
 
         requests_session_mock.send.side_effect = [
-            requests.ConnectionError('problems!'),
+            bad_response,
             requests.Timeout('problems!'),
             bad_response,
             deserializable_response
         ]
-        c = Connection(retry_enabled=True)
-        c._max_retry_attempts_exception = 4
+        c = Connection()
+        c._max_retry_attempts_exception = 3
 
         c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
         self.assertEqual(len(requests_session_mock.mock_calls), 4)
@@ -1731,8 +1734,8 @@ class ConnectionTestCase(TestCase):
             requests.ConnectionError('problems!'),
             requests.Timeout('problems!'),
         ]
-        c = Connection(retry_enabled=True)
-        c._max_retry_attempts_exception = 4
+        c = Connection()
+        c._max_retry_attempts_exception = 3
 
         with self.assertRaises(requests.Timeout):
             c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
@@ -1741,24 +1744,29 @@ class ConnectionTestCase(TestCase):
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
 
+
+    @mock.patch('random.randint')
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
-    def test_make_api_call_throws_retry_disabled(self, requests_session_mock, session_mock):
+    def test_make_api_call_throws_retry_disabled(self, requests_session_mock, session_mock, rand_int_mock):
         prepared_request = requests.Request('GET', 'http://lyft.com').prepare()
         session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
 
         requests_session_mock.send.side_effect = [
             requests.Timeout('problems!'),
         ]
-        c = Connection()
-        c._max_retry_attempts_exception = 4
-
+        c = Connection(request_timeout_seconds=11, base_backoff_ms=3, max_retry_attempts=0)
+        assert c._base_backoff_ms == 3
         with self.assertRaises(requests.Timeout):
             c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
 
         self.assertEqual(len(requests_session_mock.mock_calls), 1)
+        rand_int_mock.assert_not_called()
+
+        assert requests_session_mock.send.call_args[1]['timeout'] == 11
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
+
 
     def test_handle_binary_attributes_for_unprocessed_items(self):
         binary_blob = six.b('\x00\xFF\x00\xFF')
