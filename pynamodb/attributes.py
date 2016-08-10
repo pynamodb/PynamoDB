@@ -379,6 +379,8 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                     value_to_dump = bool(1)
 
                 rval[k] = {'BOOL': value_to_dump}
+            elif issubclass(type(v), MapAttribute):
+                rval[k] = [{'M': type(v)().serialize(v)}]
             else:
                 raise Exception('Unknown value: ' + str(v))
 
@@ -450,6 +452,8 @@ class ListAttribute(Attribute):
                 rval += [{'BOOL': value_to_dump}]
             elif type(v) is unicode or type(v) is str or type(v) is basestring:
                 rval += [{'S': UnicodeAttribute().serialize(v)}]
+            elif issubclass(type(v), MapAttribute):
+                rval += [{'M': type(v)().serialize(v)}]
             else:
                 raise Exception('Unknown value: ' + str(v))
         return rval

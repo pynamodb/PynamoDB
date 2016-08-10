@@ -2572,6 +2572,12 @@ class ModelTestCase(TestCase):
             req.return_value = GROCERY_LIST_MODEL_TABLE_DATA
             grocery_list.save()
 
+    def test_model_with_list_of_map(self):
+        item = self._get_office()
+        with patch(PATCH_METHOD) as req:
+            req.return_value = OFFICE_MODEL_TABLE_DATA
+            item.save()
+
     def test_model_works_like_model(self):
         office_employee = self._get_office_employee()
         self.assertTrue(office_employee.person)
