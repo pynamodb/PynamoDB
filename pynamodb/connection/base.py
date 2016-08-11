@@ -36,7 +36,7 @@ from pynamodb.constants import (
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
-from pynamodb.settings import settings
+from pynamodb.settings import get_settings_value
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
@@ -191,15 +191,14 @@ class Connection(object):
         else:
             self.region = DEFAULT_REGION
 
-        # TODO: provide configurability of retry parameters via arguments
-        self._request_timeout_seconds = settings['request_timeout_seconds'] if request_timeout_seconds is None else request_timeout_seconds
-        self._max_retry_attempts_exception = settings['max_retry_attempts'] if max_retry_attempts is None else max_retry_attempts
-        self._base_backoff_ms = settings['base_backoff_ms'] if base_backoff_ms is None else base_backoff_ms
-
         if session_cls:
             self.session_cls = session_cls
         else:
             self.session_cls = requests.Session
+
+        self._request_timeout_seconds = get_settings_value('REQUEST_TIMEOUT_SECONDS') if request_timeout_seconds is None else request_timeout_seconds
+        self._max_retry_attempts_exception = get_settings_value('MAX_RETRY_ATTEMPTS') if max_retry_attempts is None else max_retry_attempts
+        self._base_backoff_ms = get_settings_value('BASE_BACKOFF_MS') if base_backoff_ms is None else base_backoff_ms
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))

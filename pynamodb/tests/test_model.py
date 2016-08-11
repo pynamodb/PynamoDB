@@ -347,9 +347,9 @@ class ModelTestCase(TestCase):
 
         # Test for default region
         self.assertEqual(UserModel.Meta.region, 'us-east-1')
-        self.assertEqual(UserModel.Meta.request_timeout_seconds, None)
-        self.assertEqual(UserModel.Meta.max_retry_attempts, None)
-        self.assertEqual(UserModel.Meta.base_backoff_ms, None)
+        self.assertEqual(UserModel.Meta.request_timeout_seconds, 25)
+        self.assertEqual(UserModel.Meta.max_retry_attempts, 3)
+        self.assertEqual(UserModel.Meta.base_backoff_ms, 25)
 
         self.assertEqual(UserModel._connection.connection._request_timeout_seconds, 25)
         self.assertEqual(UserModel._connection.connection._max_retry_attempts_exception, 3)
