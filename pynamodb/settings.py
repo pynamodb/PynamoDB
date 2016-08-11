@@ -5,7 +5,10 @@ import logging
 
 log = logging.getLogger(__name__)
 
-OVERRIDE_SETTINGS_PATH = getenv('PYNAMO_CONFIG', '/etc/pynamodb/settings_override.py')
+OVERRIDE_SETTINGS_PATH = getenv('PYNAMO_CONFIG')
+
+if not OVERRIDE_SETTINGS_PATH:
+    OVERRIDE_SETTINGS_PATH = '/etc/pynamodb/settings_override.py'
 
 settings = {}
 
