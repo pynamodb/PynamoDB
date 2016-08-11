@@ -5,10 +5,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-OVERRIDE_SETTINGS_PATH = getenv('PYNAMO_CONFIG')
-
-if not OVERRIDE_SETTINGS_PATH:
-    OVERRIDE_SETTINGS_PATH = '/etc/pynamodb/settings_override.py'
+OVERRIDE_SETTINGS_PATH = getenv('PYNAMO_CONFIG', '/etc/pynamodb/settings_override.py')
 
 settings = {}
 
@@ -32,14 +29,14 @@ class RequestSessionWithHeaders(requests.Session):
 
 override_setting_dict = {}
 if os.path.isfile(OVERRIDE_SETTINGS_PATH):
-    log.info('Override settings for pynamo available {}'.format(OVERRIDE_SETTINGS_PATH))
+    log.info('Override settings for pynamo available {0}'.format(OVERRIDE_SETTINGS_PATH))
     try:
         with open(OVERRIDE_SETTINGS_PATH, 'r') as f:
             exec(f.read(), override_setting_dict)
     except IOError:
-        log.error('Unable to read override settings file {}'.format(OVERRIDE_SETTINGS_PATH))
+        log.error('Unable to read override settings file {0}'.format(OVERRIDE_SETTINGS_PATH))
 else:
-    log.info('Override settings for pynamo not available {}'.format(OVERRIDE_SETTINGS_PATH))
+    log.info('Override settings for pynamo not available {0}'.format(OVERRIDE_SETTINGS_PATH))
     log.info('Using Default settings value')
 
 def get_settings_value(key):
