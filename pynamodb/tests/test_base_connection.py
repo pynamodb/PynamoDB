@@ -1743,6 +1743,7 @@ class ConnectionTestCase(TestCase):
             c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
 
         self.assertEqual(len(requests_session_mock.mock_calls), 4)
+        assert requests_session_mock.send.call_args[1]['timeout'] == 25
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
 
