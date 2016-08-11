@@ -356,7 +356,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         for k in values:
             v = values[k]
             if v is None:
-                rval[k] = {'NULL': bool(1)}
+                continue
             elif isinstance(v, dict):
                 rval[k] = {'M': MapAttribute().serialize(v)}
             elif isinstance(v, list) or isinstance(v, set):
@@ -390,8 +390,6 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                 rval[k] = NumberAttribute().deserialize(v['N'])
             elif 'S' in v:
                 rval[k] = str(v['S'])
-            elif 'NULL' in v:
-                rval[k] = None
             elif 'BOOL' in v:
                 rval[k] = bool(v['BOOL'])
             elif 'M' in v:
@@ -429,7 +427,7 @@ class ListAttribute(Attribute):
         rval = []
         for v in values:
             if v is None:
-                rval.append({'NULL': bool(1)})
+                continue
             elif isinstance(v, dict):
                 rval.append({'M': MapAttribute().serialize(v)})
             elif isinstance(v, list) or isinstance(v, set):
@@ -463,8 +461,6 @@ class ListAttribute(Attribute):
                 rval += [NumberAttribute().deserialize(v['N'])]
             elif 'S' in v:
                 rval += [UnicodeAttribute().deserialize(v['S'])]
-            elif 'NULL' in v:
-                rval += [None]
             elif 'BOOL' in v:
                 rval += [BooleanAttribute().deserialize(v['BOOL'])]
             elif 'M' in v:
