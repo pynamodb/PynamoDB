@@ -37,7 +37,8 @@ from pynamodb.tests.data import (
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
-    GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA
+    GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
+    CAR_MODEL_TABLE_DATA, FULL_CAR_MODEL_ITEM_DATA, CAR_MODEL_WITH_NULL_ITEM_DATA, INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA
 )
 
 if six.PY3:
@@ -309,6 +310,26 @@ class OfficeEmployee(Model):
 
     def foo(self):
         return 1
+
+
+class CarInfoMap(MapAttribute):
+    make = UnicodeAttribute(null=False)
+    model = UnicodeAttribute(null=True)
+
+
+class CarModel(Model):
+    class Meta:
+        table_name = 'CarModel'
+    car_id = NumberAttribute(null=False)
+    car_info = CarInfoMap(null=False)
+
+
+class CarModelWithNull(Model):
+    class Meta:
+        table_name = 'CarModelWithNull'
+    car_id = NumberAttribute(null=False)
+    car_color = UnicodeAttribute(null=True)
+    car_info = CarInfoMap(null=True)
 
 
 class OfficeEmployeeMap(MapAttribute):
@@ -2587,6 +2608,21 @@ class ModelTestCase(TestCase):
             req.return_value = OFFICE_MODEL_TABLE_DATA
             item.save()
 
+    def test_model_with_nulls_validates(self):
+        car_info = CarInfoMap(make='Dodge')
+        item = CarModel(car_id=123, car_info=car_info)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = CAR_MODEL_WITH_NULL_ITEM_DATA
+            item.save()
+
+    def test_model_with_invalid_data_does_not_validate(self):
+        car_info = CarInfoMap(model='Envoy')
+        item = CarModel(car_id=123, car_info=car_info)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA
+            with self.assertRaises(ValueError):
+                item.save()
+
     def test_model_works_like_model(self):
         office_employee = self._get_office_employee()
         self.assertTrue(office_employee.person)
@@ -2614,22 +2650,9 @@ class ModelTestCase(TestCase):
         self.assertEquals(office.employees[0].person.lname, 'Phillips')
 
     def test_model_with_maps_retrieve_from_db(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {'TableName': OfficeEmployee.Meta.table_name}:
-                return OFFICE_EMPLOYEE_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'OfficeEmployeeModel',
-                'Key': {
-                    'office_employee_id': {'N': '123'},
-                },
-                'ConsistentRead': False}:
-                return GET_OFFICE_EMPLOYEE_ITEM_DATA
-            return OFFICE_EMPLOYEE_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
+        fake_db = self.cool_func(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+                                 GET_OFFICE_EMPLOYEE_ITEM_DATA, 'office_employee_id', 'N',
+                                 '123')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = GET_OFFICE_EMPLOYEE_ITEM_DATA
@@ -2640,22 +2663,9 @@ class ModelTestCase(TestCase):
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
 
     def test_model_with_list_retrieve_from_db(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {'TableName': GroceryList.Meta.table_name}:
-                return GROCERY_LIST_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'GroceryListModel',
-                'Key': {
-                    'store_name': {'S': 'Haight Street Market'},
-                },
-                'ConsistentRead': False}:
-                return GET_GROCERY_LIST_ITEM_DATA
-            return GROCERY_LIST_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
+        fake_db = self.cool_func(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,
+                                 GET_GROCERY_LIST_ITEM_DATA, 'store_name', 'S',
+                                 'Haight Street Market')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = GET_GROCERY_LIST_ITEM_DATA
@@ -2668,22 +2678,9 @@ class ModelTestCase(TestCase):
             self.assertEquals(item.store_name, 'Haight Street Market')
 
     def test_model_with_list_of_map_retrieve_from_db(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {'TableName': Office.Meta.table_name}:
-                return OFFICE_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'OfficeModel',
-                'Key': {
-                    'office_id': {'N': '6161'},
-                },
-                'ConsistentRead': False}:
-                return GET_OFFICE_ITEM_DATA
-            return OFFICE_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
+        fake_db = self.cool_func(Office, OFFICE_MODEL_TABLE_DATA,
+                                 GET_OFFICE_ITEM_DATA, 'office_id', 'N',
+                                 '6161')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = GET_OFFICE_ITEM_DATA
@@ -2697,22 +2694,9 @@ class ModelTestCase(TestCase):
                     LIST_SHORT)[2].get(MAP_SHORT).get('person').get(MAP_SHORT).get('firstName').get(STRING_SHORT))
 
     def test_complex_model_retrieve_from_db(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {'TableName': ComplexModel.Meta.table_name}:
-                return COMPLEX_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'ComplexModel',
-                'Key': {
-                    'key': {'N': '123'},
-                },
-                'ConsistentRead': False}:
-                return COMPLEX_MODEL_ITEM_DATA
-            return COMPLEX_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
+        fake_db = self.cool_func(ComplexModel, COMPLEX_MODEL_TABLE_DATA,
+                                 COMPLEX_MODEL_ITEM_DATA, 'key', 'N',
+                                 '123')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = COMPLEX_MODEL_ITEM_DATA
@@ -2725,3 +2709,62 @@ class ModelTestCase(TestCase):
                 item.person.fname,
                 COMPLEX_MODEL_ITEM_DATA.get(ITEM).get('weird_person').get(
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
+
+    def cool_func(self, model, table_data, item_data,
+                  primary_key_name, primary_key_dynamo_type, primary_key_id):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {'TableName': model.Meta.table_name}:
+                return table_data
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': model.Meta.table_name,
+                'Key': {
+                    primary_key_name: {primary_key_dynamo_type: primary_key_id},
+                },
+                'ConsistentRead': False}:
+                return item_data
+            return table_data
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+        return fake_db
+
+    def test_car_model_retrieve_from_db(self):
+        fake_db = self.cool_func(CarModel, CAR_MODEL_TABLE_DATA,
+                                 FULL_CAR_MODEL_ITEM_DATA, 'car_id', 'N', '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = FULL_CAR_MODEL_ITEM_DATA
+            item = CarModel.get(123)
+            self.assertEquals(item.car_id,
+                              int(FULL_CAR_MODEL_ITEM_DATA.get(ITEM).get(
+                                  'car_id').get(NUMBER_SHORT)))
+            self.assertEquals(item.car_info.make, 'Volkswagen')
+            self.assertEquals(item.car_info.model, 'Beetle')
+
+    def test_car_model_with_null_retrieve_from_db(self):
+        fake_db = self.cool_func(CarModel, CAR_MODEL_TABLE_DATA,
+                                 CAR_MODEL_WITH_NULL_ITEM_DATA, 'car_id', 'N',
+                                 '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = CAR_MODEL_WITH_NULL_ITEM_DATA
+            item = CarModel.get(123)
+            self.assertEquals(item.car_id,
+                              int(CAR_MODEL_WITH_NULL_ITEM_DATA.get(ITEM).get(
+                                  'car_id').get(NUMBER_SHORT)))
+            self.assertEquals(item.car_info.make, 'Dodge')
+            self.assertIsNone(item.car_info.model)
+
+    def test_invalid_car_model_with_null_retrieve_from_db(self):
+        fake_db = self.cool_func(CarModel, CAR_MODEL_TABLE_DATA,
+                                 INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA, 'car_id', 'N',
+                                 '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA
+            item = CarModel.get(123)
+            self.assertEquals(item.car_id,
+                              int(INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA.get(ITEM).get(
+                                  'car_id').get(NUMBER_SHORT)))
+            self.assertIsNone(item.car_info.make)

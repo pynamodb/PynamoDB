@@ -436,6 +436,54 @@ COMPLEX_MODEL_ITEM_DATA = {
     }
 }
 
+FULL_CAR_MODEL_ITEM_DATA = {
+    'Item': {
+        'car_id': {
+            'N': '123'
+        },
+        'car_info': {
+            'M': {
+                'make': {
+                    'S': 'Volkswagen'
+                },
+                'model': {
+                    'S': 'Beetle'
+                }
+            }
+        }
+    }
+}
+
+CAR_MODEL_WITH_NULL_ITEM_DATA = {
+    'Item': {
+        'car_id': {
+            'N': '123'
+        },
+        'car_info': {
+            'M': {
+                'make': {
+                    'S': 'Dodge'
+                }
+            }
+        }
+    }
+}
+
+INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA = {
+    'Item': {
+        'car_id': {
+            'N': '123'
+        },
+        'car_info': {
+            'M': {
+                'model': {
+                    'S': 'Envoy'
+                }
+            }
+        }
+    }
+}
+
 GET_OFFICE_ITEM_DATA = {
     'Item': {
         'office_id': {
@@ -777,6 +825,36 @@ OFFICE_EMPLOYEE_MODEL_TABLE_DATA = {
     }
 }
 
+CAR_MODEL_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "car_id",
+                "AttributeType": "N"
+            },
+            {
+                "AttributeName": "car_info",
+                "AttributeType": "M"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 0,
+        "KeySchema": [
+            {
+                "AttributeName": "car_id",
+                "KeyType": "HASH"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "CarModel",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}
 
 GROCERY_LIST_MODEL_TABLE_DATA = {
     "Table": {

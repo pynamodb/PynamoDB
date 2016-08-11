@@ -336,6 +336,9 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         return result
 
     def is_type_safe(self, key, value):
+        can_be_null = value.null
+        if can_be_null and getattr(self, key) is None:
+            return True
         return getattr(self, key) and type(getattr(self, key)) is not type(
             value)
 
