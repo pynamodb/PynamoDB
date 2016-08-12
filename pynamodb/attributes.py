@@ -7,7 +7,7 @@ from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING
+    DEFAULT_ENCODING, BOOLEAN
 )
 
 
@@ -192,7 +192,7 @@ class BooleanAttribute(Attribute):
 
     This attribute type uses a number attribute to save space
     """
-    attr_type = NUMBER
+    attr_type = BOOLEAN
 
     def serialize(self, value):
         """
@@ -201,9 +201,9 @@ class BooleanAttribute(Attribute):
         if value is None:
             return None
         elif value:
-            return json.dumps(1)
+            return json.dumps(True)
         else:
-            return json.dumps(0)
+            return json.dumps(False)
 
     def deserialize(self, value):
         """
