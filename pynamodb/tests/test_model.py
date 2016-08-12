@@ -2539,3 +2539,12 @@ class ModelTestCase(TestCase):
         self.assertEquals(rs.results, results)
         self.assertEquals(rs.operation, operations)
         self.assertEquals(rs.arguments, arguments)
+
+    def test_result_set_iter(self):
+        results = [1, 2, 3]
+        operations = 1
+        arguments = 'args'
+        rs = ResultSet(results=results, operation=operations, arguments=arguments)
+        for k in rs:
+            self.assertTrue(k in results)
+
