@@ -3,11 +3,12 @@ pynamodb attributes tests
 """
 import six
 import json
+import unittest
 from base64 import b64encode
 from datetime import datetime
 from delorean import Delorean
 from mock import patch
-from pynamodb.compat import CompatTestCase as TestCase
+from pynamodb.compat import CompatTestCase as TestCase, AssertRaises as CompatAssertRaises
 from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.models import Model
 from pynamodb.attributes import (
@@ -452,3 +453,11 @@ class JSONAttributeTestCase(TestCase):
         item = {'foo\t': 'bar\n', 'bool': True, 'number': 3.141}
         encoded = six.u(json.dumps(item))
         self.assertEqual(attr.deserialize(encoded), item)
+
+
+class CompatTest(unittest.TestCase):
+    def test_assert_raises_exit(self):
+        context = CompatAssertRaises(None)
+        with self.assertRaises(Exception):
+            context.__exit__(None, 1, None)
+
