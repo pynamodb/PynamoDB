@@ -497,6 +497,35 @@ SERIALIZED_TABLE_DATA = [
     ]
 ]
 
+BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE = {
+    'Table': {
+        'ItemCount': 0, 'TableName': 'BooleanConversionTable',
+        'ProvisionedThroughput': {
+            'ReadCapacityUnits': 2,
+            'WriteCapacityUnits': 2,
+            'NumberOfDecreasesToday': 0
+        },
+        'CreationDateTime': 1391471876.86,
+        'TableStatus': 'ACTIVE',
+        'AttributeDefinitions': [
+            {
+                'AttributeName': 'user_name',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'is_human',
+                'AttributeType': 'N'
+            }
+        ],
+        'KeySchema': [
+            {
+                'AttributeName': 'user_name', 'KeyType': 'HASH'
+            }
+        ],
+        'TableSizeBytes': 0
+    }
+}
+
 BOOLEAN_CONVERSION_MODEL_TABLE_DATA = {
     'Table': {
         'ItemCount': 0, 'TableName': 'BooleanConversionTable',

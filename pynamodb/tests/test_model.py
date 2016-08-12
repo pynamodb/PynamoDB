@@ -36,7 +36,8 @@ from pynamodb.tests.data import (
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
     BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
-    BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA
+    BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
+    BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE
 )
 
 if six.PY3:
@@ -2424,10 +2425,15 @@ class ModelTestCase(TestCase):
         }
         self.assert_dict_lists_equal(req.call_args[0][1]['RequestItems']['UserModel'], args['UserModel'])
 
-    def test_old_style_boolean_serializes_as_bool(self):
-
+    def test_new_style_boolean_serializes_as_bool(self):
         with patch(PATCH_METHOD) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            item = BooleanConversionModel(user_name='justin', is_human=True)
+            item.save()
+
+    def test_old_style_boolean_serializes_as_bool(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE
             item = BooleanConversionModel(user_name='justin', is_human=True)
             item.save()
 
