@@ -21,7 +21,7 @@ from pynamodb.constants import (
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
     UNPROCESSED_ITEMS, DEFAULT_ENCODING
 )
-from pynamodb.models import Model
+from pynamodb.models import Model, ResultSet
 from pynamodb.indexes import (
     GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
     IncludeProjection, KeysOnlyProjection, Index
@@ -2524,3 +2524,12 @@ class ModelTestCase(TestCase):
             req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
             item = BooleanConversionModel.get('justin')
             self.assertTrue(item.is_human)
+
+    def test_result_set_init(self):
+        results = []
+        operations = 1
+        arguments = 'args'
+        rs = ResultSet(results=results, operation=operations, arguments=arguments)
+        self.assertEquals(rs.results, results)
+        self.assertEquals(rs.operation, operations)
+        self.assertEquals(rs.arguments, arguments)
