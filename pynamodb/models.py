@@ -450,7 +450,7 @@ class Model(with_metaclass(MetaModel)):
             if attr:
                 serialized_dynamo_type = ATTR_TYPE_MAP[attr.attr_type]
                 value_to_deserialize = value.get(serialized_dynamo_type)
-                # this only needs to be here until models have all BOOL types serialized
+                # we need this for legacy compatibility. previously, BOOL was serialized as N
                 if serialized_dynamo_type is BOOLEAN_SHORT and value_to_deserialize is None:
                     value_to_deserialize = value.get(NUMBER_SHORT)
                 kwargs[name] = attr.deserialize(value_to_deserialize)
