@@ -190,6 +190,22 @@ class JSONAttribute(Attribute):
         return json.loads(value, strict=False)
 
 
+class LegacyBooleanAttribute(Attribute):
+
+    attr_type = NUMBER
+
+    def serialize(self, value):
+        if value is None:
+            return None
+        elif value:
+            return json.dumps(1)
+        else:
+            return json.dumps(0)
+
+    def deserialize(self, value):
+        return bool(json.loads(value))
+
+
 class BooleanAttribute(Attribute):
     """
     A class for boolean attributes
