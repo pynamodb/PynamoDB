@@ -83,6 +83,8 @@ BINARY_SHORT = 'B'
 BINARY_SET_SHORT = 'BS'
 MAP_SHORT = 'M'
 LIST_SHORT = 'L'
+BOOLEAN = 'BOOL'
+BOOLEAN_SHORT = 'BOOL'
 STRING = 'String'
 STRING_SET = 'StringSet'
 NUMBER = 'Number'
@@ -107,7 +109,8 @@ ATTR_TYPE_MAP = {
     BINARY_SHORT: BINARY,
     BINARY_SET_SHORT: BINARY_SET,
     MAP: MAP_SHORT,
-    LIST: LIST_SHORT
+    LIST: LIST_SHORT,
+    BOOLEAN: BOOLEAN_SHORT
 }
 # Constants needed for creating indexes
 LOCAL_SECONDARY_INDEX = 'LocalSecondaryIndex'

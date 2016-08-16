@@ -415,7 +415,7 @@ class Model(with_metaclass(MetaModel)):
         for name, value in mutable_data.items():
             attr = cls._get_attributes().get(name, None)
             if attr:
-                deserialized_attr = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
+                deserialized_attr = attr.deserialize(attr.get_value(value))
                 if isinstance(attr, MapAttribute):
                     aliased_attrs = cls._get_attributes().aliased_attrs()
                     for good_k, aliased_v in aliased_attrs:

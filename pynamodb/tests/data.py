@@ -789,7 +789,6 @@ SERIALIZED_TABLE_DATA = [
     ]
 ]
 
-
 OFFICE_EMPLOYEE_MODEL_TABLE_DATA = {
     "Table": {
         "AttributeDefinitions": [
@@ -950,5 +949,107 @@ COMPLEX_MODEL_TABLE_DATA = {
         "TableName": "ComplexModel",
         "TableSizeBytes": 0,
         "TableStatus": "ACTIVE"
+     }
+}
+
+BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE = {
+    'Table': {
+        'ItemCount': 0, 'TableName': 'BooleanConversionTable',
+        'ProvisionedThroughput': {
+            'ReadCapacityUnits': 2,
+            'WriteCapacityUnits': 2,
+            'NumberOfDecreasesToday': 0
+        },
+        'CreationDateTime': 1391471876.86,
+        'TableStatus': 'ACTIVE',
+        'AttributeDefinitions': [
+            {
+                'AttributeName': 'user_name',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'is_human',
+                'AttributeType': 'N'
+            }
+        ],
+        'KeySchema': [
+            {
+                'AttributeName': 'user_name', 'KeyType': 'HASH'
+            }
+        ],
+        'TableSizeBytes': 0
+    }
+}
+
+BOOLEAN_CONVERSION_MODEL_TABLE_DATA = {
+    'Table': {
+        'ItemCount': 0, 'TableName': 'BooleanConversionTable',
+        'ProvisionedThroughput': {
+            'ReadCapacityUnits': 2,
+            'WriteCapacityUnits': 2,
+            'NumberOfDecreasesToday': 0
+        },
+        'CreationDateTime': 1391471876.86,
+        'TableStatus': 'ACTIVE',
+        'AttributeDefinitions': [
+            {
+                'AttributeName': 'user_name',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'is_human',
+                'AttributeType': 'BOOL'
+            }
+        ],
+        'KeySchema': [
+            {
+                'AttributeName': 'user_name', 'KeyType': 'HASH'
+            }
+        ],
+        'TableSizeBytes': 0
+    }
+}
+
+BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA = {
+    'Item': {
+        'user_name': {
+            'S': 'justin'
+        },
+        'is_human': {
+            'N': '1'
+        }
+    }
+}
+
+BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA = {
+    'Item': {
+        'user_name': {
+            'S': 'alf'
+        },
+        'is_human': {
+            'N': '0'
+        }
+    }
+}
+
+BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA = {
+    'Item': {
+        'user_name': {
+            'S': 'justin'
+        },
+        'is_human': {
+            'BOOL': True
+        }
+    }
+}
+
+BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA = {
+    'Item': {
+        'user_name': {
+            'S': 'alf'
+        },
+        'is_human': {
+            'BOOL': False
+        }
     }
 }
