@@ -195,9 +195,6 @@ class BooleanAttribute(Attribute):
     attr_type = BOOLEAN
 
     def serialize(self, value):
-        """
-        Encodes True as 1, False as 0
-        """
         if value is None:
             return None
         elif value:
@@ -206,9 +203,6 @@ class BooleanAttribute(Attribute):
             return False
 
     def deserialize(self, value):
-        """
-        Encode
-        """
         return bool(value)
 
 

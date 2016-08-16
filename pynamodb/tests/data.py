@@ -583,7 +583,7 @@ BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA = {
             'S': 'justin'
         },
         'is_human': {
-            'BOOL': 'true'
+            'BOOL': True
         }
     }
 }
@@ -594,7 +594,7 @@ BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA = {
             'S': 'alf'
         },
         'is_human': {
-            'BOOL': 'false'
+            'BOOL': False
         }
     }
 }
