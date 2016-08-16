@@ -230,7 +230,10 @@ class BooleanAttribute(Attribute):
         # previously, BOOL was serialized as N
         value_to_deserialize = super(BooleanAttribute, self).get_value(value)
         if value_to_deserialize is None:
-            value_to_deserialize = int(value.get(NUMBER_SHORT))
+            value_to_deserialize = value.get(NUMBER_SHORT)
+            if value_to_deserialize is None:
+                value_to_deserialize = 0
+            value_to_deserialize = int(value_to_deserialize)
         return value_to_deserialize
 
 
