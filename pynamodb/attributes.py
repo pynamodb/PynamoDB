@@ -7,7 +7,7 @@ from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING, BOOLEAN
+    DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT
 )
 
 
@@ -57,6 +57,10 @@ class Attribute(object):
         Performs any needed deserialization on the value
         """
         return value
+
+    def get_value(self, value):
+        serialized_dynamo_type = ATTR_TYPE_MAP[self.attr_type]
+        return value.get(serialized_dynamo_type)
 
 
 class SetMixin(object):
@@ -204,6 +208,14 @@ class BooleanAttribute(Attribute):
 
     def deserialize(self, value):
         return bool(value)
+
+    def get_value(self, value):
+        # we need this for legacy compatibility.
+        # previously, BOOL was serialized as N
+        value_to_deserialize = super(BooleanAttribute, self).get_value(value)
+        if value_to_deserialize is None:
+            value_to_deserialize = int(value.get(NUMBER_SHORT))
+        return value_to_deserialize
 
 
 class NumberSetAttribute(SetMixin, Attribute):
