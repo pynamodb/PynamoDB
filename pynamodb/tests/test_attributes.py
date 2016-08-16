@@ -14,7 +14,7 @@ from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY)
+    BINARY, BOOLEAN)
 
 
 class AttributeTestModel(Model):
@@ -380,7 +380,7 @@ class BooleanAttributeTestCase(TestCase):
         attr = BooleanAttribute()
         self.assertIsNotNone(attr)
 
-        self.assertEqual(attr.attr_type, NUMBER)
+        self.assertEqual(attr.attr_type, BOOLEAN)
         attr = BooleanAttribute(default=True)
         self.assertEqual(attr.default, True)
 
@@ -389,8 +389,8 @@ class BooleanAttributeTestCase(TestCase):
         BooleanAttribute.serialize
         """
         attr = BooleanAttribute()
-        self.assertEqual(attr.serialize(True), json.dumps(1))
-        self.assertEqual(attr.serialize(False), json.dumps(0))
+        self.assertEqual(attr.serialize(True), True)
+        self.assertEqual(attr.serialize(False), False)
         self.assertEqual(attr.serialize(None), None)
 
     def test_boolean_deserialize(self):
@@ -399,7 +399,9 @@ class BooleanAttributeTestCase(TestCase):
         """
         attr = BooleanAttribute()
         self.assertEqual(attr.deserialize('1'), True)
-        self.assertEqual(attr.deserialize('0'), False)
+        self.assertEqual(attr.deserialize('0'), True)
+        self.assertEqual(attr.deserialize(True), True)
+        self.assertEqual(attr.deserialize(False), False)
 
 
 class JSONAttributeTestCase(TestCase):
