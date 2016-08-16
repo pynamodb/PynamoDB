@@ -14,7 +14,6 @@ from pynamodb.attributes import Attribute
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
-from pynamodb.constants import BOOLEAN_SHORT, NUMBER_SHORT
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.indexes import Index, GlobalSecondaryIndex
