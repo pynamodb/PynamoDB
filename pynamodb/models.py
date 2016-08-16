@@ -452,7 +452,7 @@ class Model(with_metaclass(MetaModel)):
                 value_to_deserialize = value.get(serialized_dynamo_type)
                 # we need this for legacy compatibility. previously, BOOL was serialized as N
                 if serialized_dynamo_type is BOOLEAN_SHORT and value_to_deserialize is None:
-                    value_to_deserialize = value.get(NUMBER_SHORT)
+                    value_to_deserialize = int(value.get(NUMBER_SHORT)) == 1
                 kwargs[name] = attr.deserialize(value_to_deserialize)
         return cls(*args, **kwargs)
 
