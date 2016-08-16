@@ -191,6 +191,12 @@ class JSONAttribute(Attribute):
 
 
 class LegacyBooleanAttribute(Attribute):
+    """
+    A class for legacy boolean attributes
+
+    Previous versions of this library serialized bools as numbers.
+    This class allows you to continue to use that functionality.
+    """
 
     attr_type = NUMBER
 
@@ -209,8 +215,6 @@ class LegacyBooleanAttribute(Attribute):
 class BooleanAttribute(Attribute):
     """
     A class for boolean attributes
-
-    This attribute type uses a number attribute to save space
     """
     attr_type = BOOLEAN
 
