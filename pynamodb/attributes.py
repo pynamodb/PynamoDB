@@ -157,7 +157,10 @@ class UnicodeSetAttribute(SetMixin, Attribute):
             except TypeError:
                 value = [value]
             if len(value):
-                return value
+                result_set = set()
+                for str_val in value:
+                    result_set.add(str(str_val))
+                return result_set
         return None
 
     def deserialize(self, value):
