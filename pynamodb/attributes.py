@@ -63,34 +63,6 @@ class Attribute(object):
         return value.get(serialized_dynamo_type)
 
 
-class SetMixin(object):
-    """
-    Adds (de)serialization methods for sets
-    """
-    def serialize(self, value):
-        """
-        Serializes a set
-
-        Because dynamodb doesn't store empty attributes,
-        empty sets return None
-        """
-        if value is not None:
-            try:
-                iter(value)
-            except TypeError:
-                value = [value]
-            if len(value):
-                return [json.dumps(val) for val in sorted(value)]
-        return None
-
-    def deserialize(self, value):
-        """
-        Deserializes a set
-        """
-        if value and len(value):
-            return set([json.loads(val) for val in value])
-
-
 class BinaryAttribute(Attribute):
     """
     A binary attribute
@@ -113,7 +85,7 @@ class BinaryAttribute(Attribute):
             return b64decode(value)
 
 
-class BinarySetAttribute(SetMixin, Attribute):
+class BinarySetAttribute(Attribute):
     """
     A binary set
     """
@@ -137,7 +109,7 @@ class BinarySetAttribute(SetMixin, Attribute):
             return set([b64decode(val.encode(DEFAULT_ENCODING)) for val in value])
 
 
-class UnicodeSetAttribute(SetMixin, Attribute):
+class UnicodeSetAttribute(Attribute):
     """
     A unicode set
     """
@@ -270,12 +242,35 @@ class BooleanAttribute(Attribute):
         return value_to_deserialize
 
 
-class NumberSetAttribute(SetMixin, Attribute):
+class NumberSetAttribute(Attribute):
     """
     A number set attribute
     """
     attr_type = NUMBER_SET
     null = True
+
+    def serialize(self, value):
+        """
+        Serializes a set
+
+        Because dynamodb doesn't store empty attributes,
+        empty sets return None
+        """
+        if value is not None:
+            try:
+                iter(value)
+            except TypeError:
+                value = [value]
+            if len(value):
+                return [json.dumps(val) for val in sorted(value)]
+        return None
+
+    def deserialize(self, value):
+        """
+        Deserializes a set
+        """
+        if value and len(value):
+            return set([json.loads(val) for val in value])
 
 
 class NumberAttribute(Attribute):
