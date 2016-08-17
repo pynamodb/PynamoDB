@@ -144,6 +144,29 @@ class UnicodeSetAttribute(SetMixin, Attribute):
     attr_type = STRING_SET
     null = True
 
+    def serialize(self, value):
+        """
+        Serializes a set
+
+        Because dynamodb doesn't store empty attributes,
+        empty sets return None
+        """
+        if value is not None:
+            try:
+                iter(value)
+            except TypeError:
+                value = [value]
+            if len(value):
+                return value
+        return None
+
+    def deserialize(self, value):
+        """
+        Deserializes a set
+        """
+        if value and len(value):
+            return set(value)
+
 
 class UnicodeAttribute(Attribute):
     """
