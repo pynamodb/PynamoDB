@@ -145,7 +145,9 @@ class UnicodeSetAttribute(SetMixin, Attribute):
     null = True
 
     def element_serialize(self, value):
-        return str(value)
+        if isinstance(value, six.text_type):
+            return value
+        return six.u(value)
 
     def element_deserialize(self, value):
         result = value
