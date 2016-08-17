@@ -160,7 +160,7 @@ class UnicodeSetAttribute(SetMixin, Attribute):
                 result_set = set()
                 for str_val in value:
                     result_set.add(str(str_val))
-                return result_set
+                return list(result_set)
         return None
 
     def deserialize(self, value):
