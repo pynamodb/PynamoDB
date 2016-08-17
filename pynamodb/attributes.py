@@ -168,7 +168,13 @@ class UnicodeSetAttribute(SetMixin, Attribute):
         Deserializes a set
         """
         if value and len(value):
-            return set(value)
+            result = value
+            try:
+                result = [json.loads(val) for val in value]
+            except ValueError:
+                # it's serialized in the new way so pass
+                pass
+            return set(result)
 
 
 class UnicodeAttribute(Attribute):

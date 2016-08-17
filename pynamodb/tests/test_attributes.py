@@ -360,6 +360,18 @@ class UnicodeAttributeTestCase(TestCase):
             value
         )
 
+    def test_unicode_set_deserialize(self):
+        """
+        UnicodeSetAttribute.deserialize old way
+        """
+        attr = UnicodeSetAttribute()
+        value = set([six.u('foo'), six.u('bar')])
+        old_value = set([json.dumps(val) for val in value])
+        self.assertEqual(
+            attr.deserialize(old_value),
+            value
+        )
+
     def test_unicode_set_attribute(self):
         """
         UnicodeSetAttribute.default
