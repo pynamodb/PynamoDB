@@ -335,7 +335,7 @@ class UnicodeAttributeTestCase(TestCase):
         self.assertEqual(attr.deserialize(None), None)
         self.assertEqual(
             attr.serialize(set([six.u('foo'), six.u('bar')])),
-            [six.u('foo'), six.u('bar')]
+            sorted([six.u('foo'), six.u('bar')])
         )
 
     def test_round_trip_unicode_set(self):

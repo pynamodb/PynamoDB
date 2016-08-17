@@ -66,13 +66,12 @@ class Attribute(object):
 class SetMixin(object):
     """
     Adds (de)serialization methods for sets
-
+    """
     def element_serialize(self, value):
         raise NotImplemented()
 
     def element_deserialize(self, value):
         raise NotImplemented()
-    """
 
     def serialize(self, value):
         """
@@ -129,7 +128,7 @@ class BinaryAttribute(BinaryAttributeMixin, Attribute):
         return self.element_deserialize(value)
 
 
-class BinarySetAttribute(SetMixin, BinaryAttributeMixin, Attribute):
+class BinarySetAttribute(BinaryAttributeMixin, SetMixin, Attribute):
     """
     A binary set
     """
@@ -266,7 +265,7 @@ class NumberAttributeMixin(object):
         return json.loads(value)
 
 
-class NumberSetAttribute(SetMixin, NumberAttributeMixin, Attribute):
+class NumberSetAttribute(NumberAttributeMixin, SetMixin, Attribute):
     """
     A number set attribute
     """
