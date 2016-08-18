@@ -80,14 +80,13 @@ class SetMixin(object):
         Because dynamodb doesn't store empty attributes,
         empty sets return None
         """
-        if value is None:
-            return None
-        try:
-            iter(value)
-        except TypeError:
-            value = [value]
-        if len(value):
-            return [self.element_serialize(val) for val in sorted(value)]
+        if value is not None:
+            try:
+                iter(value)
+            except TypeError:
+                value = [value]
+            if len(value):
+                return [self.element_serialize(val) for val in sorted(value)]
         return None
 
     def deserialize(self, value):
