@@ -142,6 +142,7 @@ class DefaultMeta(object):
     region = DEFAULT_REGION
     host = None
 
+
 class ResultSet(object):
 
     def __init__(self, results, operation, arguments):
@@ -151,6 +152,7 @@ class ResultSet(object):
 
     def __iter__(self):
         return iter(self.results)
+
 
 class MetaModel(type):
     """
