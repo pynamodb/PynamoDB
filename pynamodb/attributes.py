@@ -67,12 +67,6 @@ class SetMixin(object):
     """
     Adds (de)serialization methods for sets
     """
-    def element_serialize(self, value):
-        raise NotImplemented()
-
-    def element_deserialize(self, value):
-        raise NotImplemented()
-
     def serialize(self, value):
         """
         Serializes a set
@@ -86,7 +80,7 @@ class SetMixin(object):
             except TypeError:
                 value = [value]
             if len(value):
-                return [self.element_serialize(val) for val in sorted(value)]
+                return [json.dumps(val) for val in sorted(value)]
         return None
 
     def deserialize(self, value):
@@ -94,17 +88,22 @@ class SetMixin(object):
         Deserializes a set
         """
         if value and len(value):
-            return set([self.element_deserialize(val) for val in value])
+            return set([json.loads(val) for val in value])
 
 
-class BinaryAttributeMixin(object):
-    def element_serialize(self, value):
+class BinaryAttribute(SetMixin, Attribute):
+    """
+    A binary attribute
+    """
+    attr_type = BINARY
+
+    def serialize(self, value):
         """
         Returns a base64 encoded binary string
         """
         return b64encode(value).decode(DEFAULT_ENCODING)
 
-    def element_deserialize(self, value):
+    def deserialize(self, value):
         """
         Returns a decoded string from base64
         """
@@ -114,20 +113,7 @@ class BinaryAttributeMixin(object):
             return b64decode(value)
 
 
-class BinaryAttribute(BinaryAttributeMixin, Attribute):
-    """
-    A binary attribute
-    """
-    attr_type = BINARY
-
-    def serialize(self, value):
-        return self.element_serialize(value)
-
-    def deserialize(self, value):
-        return self.element_deserialize(value)
-
-
-class BinarySetAttribute(BinaryAttributeMixin, SetMixin, Attribute):
+class BinarySetAttribute(SetMixin, Attribute):
     """
     A binary set
     """
@@ -155,6 +141,29 @@ class UnicodeSetAttribute(SetMixin, Attribute):
             # it's serialized in the new way so pass
             pass
         return result
+
+    def serialize(self, value):
+        """
+        Serializes a set
+
+        Because dynamodb doesn't store empty attributes,
+        empty sets return None
+        """
+        if value is not None:
+            try:
+                iter(value)
+            except TypeError:
+                value = [value]
+            if len(value):
+                return [self.element_serialize(val) for val in sorted(value)]
+        return None
+
+    def deserialize(self, value):
+        """
+        Deserializes a set
+        """
+        if value and len(value):
+            return set([self.element_deserialize(val) for val in value])
 
 
 class UnicodeAttribute(Attribute):
@@ -250,21 +259,7 @@ class BooleanAttribute(Attribute):
         return value_to_deserialize
 
 
-class NumberAttributeMixin(object):
-    def element_serialize(self, value):
-        """
-        Encode numbers as JSON
-        """
-        return json.dumps(value)
-
-    def element_deserialize(self, value):
-        """
-        Decode numbers from JSON
-        """
-        return json.loads(value)
-
-
-class NumberSetAttribute(NumberAttributeMixin, SetMixin, Attribute):
+class NumberSetAttribute(SetMixin, Attribute):
     """
     A number set attribute
     """
@@ -272,17 +267,23 @@ class NumberSetAttribute(NumberAttributeMixin, SetMixin, Attribute):
     null = True
 
 
-class NumberAttribute(NumberAttributeMixin, Attribute):
+class NumberAttribute(Attribute):
     """
     A number attribute
     """
     attr_type = NUMBER
 
     def serialize(self, value):
-        return self.element_serialize(value)
+        """
+        Encode numbers as JSON
+        """
+        return json.dumps(value)
 
     def deserialize(self, value):
-        return self.element_deserialize(value)
+        """
+        Decode numbers from JSON
+        """
+        return json.loads(value)
 
 
 class UTCDateTimeAttribute(Attribute):
