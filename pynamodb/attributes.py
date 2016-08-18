@@ -120,6 +120,22 @@ class BinarySetAttribute(SetMixin, Attribute):
     attr_type = BINARY_SET
     null = True
 
+    def serialize(self, value):
+        """
+        Returns a base64 encoded binary string
+        """
+        if value and len(value):
+            return [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]
+        else:
+            return None
+
+    def deserialize(self, value):
+        """
+        Returns a decoded string from base64
+        """
+        if value and len(value):
+            return set([b64decode(val.encode(DEFAULT_ENCODING)) for val in value])
+
 
 class UnicodeSetAttribute(SetMixin, Attribute):
     """
