@@ -91,7 +91,7 @@ class SetMixin(object):
             return set([json.loads(val) for val in value])
 
 
-class BinaryAttribute(SetMixin, Attribute):
+class BinaryAttribute(Attribute):
     """
     A binary attribute
     """
