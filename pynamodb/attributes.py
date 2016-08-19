@@ -145,6 +145,48 @@ class UnicodeSetAttribute(SetMixin, Attribute):
     attr_type = STRING_SET
     null = True
 
+    def element_serialize(self, value):
+        """
+        This serializes unicode / strings out as unicode strings.
+        It does not touch the value if it is already a unicode str
+        :param value:
+        :return:
+        """
+        if isinstance(value, six.text_type):
+            return value
+        return six.u(str(value))
+
+    def element_deserialize(self, value):
+        """
+        This deserializes what we get from mongo back into a str
+        Serialization previously json encoded strings. This caused them to have
+        extra double quote (") characters. That no longer happens.
+        This method allows both types of serialized values to be read
+        :param value:
+        :return:
+        """
+        result = value
+        try:
+            result = json.loads(value)
+        except ValueError:
+            # it's serialized in the new way so pass
+            pass
+        return result
+
+    def serialize(self, value):
+        if value is not None:
+            try:
+                iter(value)
+            except TypeError:
+                value = [value]
+            if len(value):
+                return [self.element_serialize(val) for val in sorted(value)]
+        return None
+
+    def deserialize(self, value):
+        if value and len(value):
+            return set([self.element_deserialize(val) for val in value])
+
 
 class UnicodeAttribute(Attribute):
     """

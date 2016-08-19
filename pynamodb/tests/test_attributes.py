@@ -336,7 +336,8 @@ class UnicodeAttributeTestCase(TestCase):
         self.assertEqual(attr.deserialize(None), None)
         self.assertEqual(
             attr.serialize(set([six.u('foo'), six.u('bar')])),
-            [json.dumps(val) for val in sorted(set([six.u('foo'), six.u('bar')]))])
+            sorted([six.u('foo'), six.u('bar')])
+        )
 
     def test_round_trip_unicode_set(self):
         """
@@ -354,9 +355,22 @@ class UnicodeAttributeTestCase(TestCase):
         UnicodeSetAttribute.deserialize
         """
         attr = UnicodeSetAttribute()
+        value = set([six.u('foo'), six.u('bar')])
         self.assertEqual(
-            attr.deserialize([json.dumps(val) for val in sorted(set([six.u('foo'), six.u('bar')]))]),
-            set([six.u('foo'), six.u('bar')])
+            attr.deserialize(value),
+            value
+        )
+
+    def test_unicode_set_deserialize(self):
+        """
+        UnicodeSetAttribute.deserialize old way
+        """
+        attr = UnicodeSetAttribute()
+        value = set([six.u('foo'), six.u('bar')])
+        old_value = set([json.dumps(val) for val in value])
+        self.assertEqual(
+            attr.deserialize(old_value),
+            value
         )
 
     def test_unicode_set_attribute(self):
