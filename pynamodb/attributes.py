@@ -438,14 +438,34 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         """
         Decode numbers from list of AttributeValue types.
         """
-        rval = dict()
+        deserialized_dict = dict()
         for k in values:
             v = values[k]
             attr_class = _get_class_for_deserialize(v)
             attr_value = _get_value_for_deserialize(v)
-            rval[k] = attr_class.deserialize(attr_value)
-        return rval
-
+            deserialized_dict[k] = attr_class.deserialize(attr_value)
+        return deserialized_dict
+        """
+        aliased_attrs = self._get_attributes().aliased_attrs()
+        for good_k, aliased_v in aliased_attrs:
+            if aliased_v.attr_name == name:
+                map_value = getattr(cls, good_k)
+        if issubclass(type(map_value), MapAttribute):
+            class_attributes = vars(type(map_value))
+            good_stuff = {}
+            we need to put the values from deserialized_attr together
+            with the keys from good_stuff
+            for k, v in class_attributes.iteritems():
+                if k not in ['__module__', '_attributes'] and getattr(
+                        map_value, k) is not None and type(
+                    getattr(map_value,
+                            k)).__name__ != 'instancemethod':
+                    key_name = v.attr_name
+                    if key_name is None:
+                        key_name = k
+                    good_stuff[k] = deserialized_dict[key_name]
+            return type(map_value)(**deserialized_dict)
+        """
 
 def _get_value_for_deserialize(value):
     if LIST_SHORT in value:
@@ -552,13 +572,18 @@ class ListAttribute(Attribute):
 
     def deserialize(self, values):
         """
-        Decode numbers from list of AttributeValue types.
+        Decode from list of AttributeValue types.
         """
-        rval = []
-        # This should be a generic function that takes any AttributeValue and
-        # translates it back to the Python type.
+        deserialized_lst = []
         for v in values:
             attr_class = _get_class_for_deserialize(v)
             attr_value = _get_value_for_deserialize(v)
-            rval.append(attr_class.deserialize(attr_value))
-        return rval
+            deserialized_lst.append(attr_class.deserialize(attr_value))
+
+        if not self.element_type:
+            return deserialized_lst
+
+        lst_of_type = []
+        for item in deserialized_lst:
+            lst_of_type.append(self.element_type(**item))
+        return lst_of_type

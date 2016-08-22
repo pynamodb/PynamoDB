@@ -415,6 +415,7 @@ class Model(with_metaclass(MetaModel)):
         for name, value in mutable_data.items():
             attr = cls._get_attributes().get(name, None)
             if attr:
+                kwargs[name] = attr.deserialize(attr.get_value(value))
                 deserialized_attr = attr.deserialize(attr.get_value(value))
                 if isinstance(attr, MapAttribute):
                     aliased_attrs = cls._get_attributes().aliased_attrs()
@@ -434,15 +435,6 @@ class Model(with_metaclass(MetaModel)):
                                     key_name = k
                                 good_stuff[k] = deserialized_attr[key_name]
                         deserialized_attr = type(map_value)(**deserialized_attr)
-                if isinstance(attr, ListAttribute):
-                    of_type = getattr(attr, 'element_type', None)
-                    lst = []
-                    if of_type:
-                        for item in deserialized_attr:
-                            lst.append(of_type(**item))
-                    else:
-                        lst = deserialized_attr
-                    deserialized_attr = lst
                 kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)
 
