@@ -7,8 +7,8 @@ import json
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
-    STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, LIST, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT
+    STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
+    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT
 )
 from pynamodb.attribute_dict import AttributeDict
 import collections
@@ -423,25 +423,14 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         rval = dict()
         for k in values:
             v = values[k]
-            if v is None:
+            attr_class = _get_class_for_serialize(v)
+            attr_key = _get_key_for_serialize(v)
+            if attr_class is None:
                 continue
-            elif isinstance(v, dict):
-                rval[k] = {'M': MapAttribute().serialize(v)}
-            elif isinstance(v, list) or isinstance(v, set):
-                rval[k] = {'L': ListAttribute().serialize(v)}
-            elif isinstance(v, float) or isinstance(v, int):
-                rval[k] = {'N': NumberAttribute().serialize(v)}
-            elif isinstance(v, unicode) or isinstance(v, str) or isinstance(v, basestring):
-                rval[k] = {'S': UnicodeAttribute().serialize(v)}
-            elif isinstance(v, bool):
-                value_to_dump = bool(0)
-                if v:
-                    value_to_dump = bool(1)
-                rval[k] = {'BOOL': value_to_dump}
-            elif issubclass(type(v), MapAttribute):
-                rval[k] = [{'M': type(v)().serialize(v)}]
+            if attr_key is MAP_SHORT:
+                rval[k] = [{attr_key: attr_class.serialize(v)}]
             else:
-                raise Exception('Unknown value: ' + str(v))
+                rval[k] = {attr_key: attr_class.serialize(v)}
 
         return rval
 
@@ -452,19 +441,81 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         rval = dict()
         for k in values:
             v = values[k]
-            if 'L' in v:
-                rval[k] = ListAttribute().deserialize(v['L'])
-            elif 'N' in v:
-                rval[k] = NumberAttribute().deserialize(v['N'])
-            elif 'S' in v:
-                rval[k] = str(v['S'])
-            elif 'BOOL' in v:
-                rval[k] = bool(v['BOOL'])
-            elif 'M' in v:
-                rval[k] = MapAttribute().deserialize(v['M'])
-            else:
-                raise Exception('Unknown value: ' + str(v))
+            attr_class = _get_class_for_deserialize(v)
+            attr_value = _get_value_for_deserialize(v)
+            rval[k] = attr_class.deserialize(attr_value)
         return rval
+
+
+def _get_value_for_deserialize(value):
+    if LIST_SHORT in value:
+        attr_value = value[LIST_SHORT]
+    elif NUMBER_SHORT in value:
+        attr_value = value[NUMBER_SHORT]
+    elif STRING_SHORT in value:
+        attr_value = value[STRING_SHORT]
+    elif BOOLEAN in value:
+        attr_value = value[BOOLEAN]
+    elif MAP_SHORT in value:
+        attr_value = value[MAP_SHORT]
+    else:
+        raise ValueError('Unknown value: ' + str(value))
+    return attr_value
+
+
+def _get_class_for_deserialize(value):
+    if LIST_SHORT in value:
+        return ListAttribute()
+    elif NUMBER_SHORT in value:
+        return NumberAttribute()
+    elif STRING_SHORT in value:
+        return UnicodeAttribute()
+        #rval[k] = str(v['S'])
+    elif BOOLEAN in value:
+        return BooleanAttribute()
+        #rval[k] = bool(v['BOOL'])
+    elif MAP_SHORT in value:
+        return MapAttribute()
+    else:
+        raise ValueError('Unknown value: ' + str(value))
+
+
+def _get_class_for_serialize(value):
+    if value is None:
+        return None
+    elif isinstance(value, dict):
+        return MapAttribute()
+    elif isinstance(value, list) or isinstance(value, set):
+        return ListAttribute()
+    elif isinstance(value, float) or isinstance(value, int):
+        return NumberAttribute()
+    elif isinstance(value, bool):
+        return BooleanAttribute()
+    elif isinstance(value, unicode) or isinstance(value, str) or isinstance(value, basestring):
+        return UnicodeAttribute()
+    elif issubclass(type(value), MapAttribute):
+        return type(value)()
+    else:
+        raise Exception('Unknown value: ' + str(value))
+
+
+def _get_key_for_serialize(value):
+    if value is None:
+        return None
+    elif isinstance(value, dict):
+        return MAP_SHORT
+    elif isinstance(value, list) or isinstance(value, set):
+        return LIST_SHORT
+    elif isinstance(value, float) or isinstance(value, int):
+        return NUMBER_SHORT
+    elif isinstance(value, bool):
+        return BOOLEAN
+    elif isinstance(value, unicode) or isinstance(value, str) or isinstance(value, basestring):
+        return STRING_SHORT
+    elif issubclass(type(value), MapAttribute):
+        return MAP_SHORT
+    else:
+        raise Exception('Unknown value: ' + str(value))
 
 
 class ListAttribute(Attribute):
@@ -494,25 +545,9 @@ class ListAttribute(Attribute):
         """
         rval = []
         for v in values:
-            if v is None:
-                continue
-            elif isinstance(v, dict):
-                rval.append({'M': MapAttribute().serialize(v)})
-            elif isinstance(v, list) or isinstance(v, set):
-                rval.append({'L': ListAttribute().serialize(v)})
-            elif isinstance(v, float) or isinstance(v, int):
-                rval.append({'N': NumberAttribute().serialize(v)})
-            elif isinstance(v, bool):
-                value_to_dump = bool(0)
-                if v:
-                    value_to_dump = bool(1)
-                rval.append({'BOOL': value_to_dump})
-            elif isinstance(v, unicode) or isinstance(v, str) or isinstance(v, basestring):
-                rval.append({'S': UnicodeAttribute().serialize(v)})
-            elif issubclass(type(v), MapAttribute):
-                rval.append({'M': type(v)().serialize(v)})
-            else:
-                raise Exception('Unknown value: ' + str(v))
+            attr_class = _get_class_for_serialize(v)
+            attr_key = _get_key_for_serialize(v)
+            rval.append({attr_key: attr_class.serialize(v)})
         return rval
 
     def deserialize(self, values):
@@ -523,16 +558,7 @@ class ListAttribute(Attribute):
         # This should be a generic function that takes any AttributeValue and
         # translates it back to the Python type.
         for v in values:
-            if 'L' in v:
-                rval += [ListAttribute().deserialize(v['L'])]
-            elif 'N' in v:
-                rval += [NumberAttribute().deserialize(v['N'])]
-            elif 'S' in v:
-                rval += [UnicodeAttribute().deserialize(v['S'])]
-            elif 'BOOL' in v:
-                rval += [BooleanAttribute().deserialize(v['BOOL'])]
-            elif 'M' in v:
-                rval += [MapAttribute().deserialize(v['M'])]
-            else:
-                raise Exception('Unknown value: ' + str(v))
+            attr_class = _get_class_for_deserialize(v)
+            attr_value = _get_value_for_deserialize(v)
+            rval.append(attr_class.deserialize(attr_value))
         return rval
