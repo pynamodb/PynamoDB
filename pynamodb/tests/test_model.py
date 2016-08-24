@@ -292,7 +292,6 @@ class Person(MapAttribute):
     lname = UnicodeAttribute()
     age = NumberAttribute()
     is_male = BooleanAttribute(attr_name='is_dude')
-    factoids = JSONAttribute()
 
     def foo(self):
         return 1
@@ -2519,8 +2518,7 @@ class ModelTestCase(TestCase):
             fname='Justin',
             lname='Phillips',
             age=31,
-            is_male=True,
-            factoids="{'some': 'stuff'}"
+            is_male=True
         )
         loc = Location(
             lat=37.77461,
@@ -2544,8 +2542,7 @@ class ModelTestCase(TestCase):
             fname='Justin',
             lname='Phillips',
             age=31,
-            is_male=True,
-            factoids="{'some': 'stuff'}"
+            is_male=True
         )
         return ComplexModel(person=justin, key=123)
 
@@ -2554,29 +2551,25 @@ class ModelTestCase(TestCase):
             fname='Justin',
             lname='Phillips',
             age=31,
-            is_male=True,
-            factoids="{'some': 'stuff'}"
+            is_male=True
         )
         lei = Person(
             fname='Lei',
             lname='Ding',
             age=32,
-            is_male=True,
-            factoids="{'some': 'other stuff'}"
+            is_male=True
         )
         garrett = Person(
             fname='Garrett',
             lname='Heel',
             age=30,
-            is_male=True,
-            factoids="{'some': 'different stuff'}"
+            is_male=True
         )
         tanya = Person(
             fname='Tanya',
             lname='Ashkenazi',
             age=30,
-            is_male=False,
-            factoids="{'some': 'really different stuff'}"
+            is_male=False
         )
         loc = Location(
             lat=37.77461,
@@ -2660,7 +2653,6 @@ class ModelTestCase(TestCase):
         self.assertTrue(complex_thing.person)
         self.assertEquals(complex_thing.person.fname, 'Justin')
         self.assertEquals(complex_thing.key, 123)
-        self.assertEquals(complex_thing.person.factoids, "{'some': 'stuff'}")
 
     def test_list_of_map_works_like_list_of_map(self):
         office = self._get_office()
@@ -2681,10 +2673,6 @@ class ModelTestCase(TestCase):
                 item.person.fname,
                 GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
-            self.assertEqual(
-                item.person.factoids,
-                GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
-                    MAP_SHORT).get('factoids'))
 
     def test_model_with_list_retrieve_from_db(self):
         fake_db = self.cool_func(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,

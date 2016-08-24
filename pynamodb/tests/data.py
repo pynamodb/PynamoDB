@@ -380,9 +380,6 @@ GET_OFFICE_EMPLOYEE_ITEM_DATA = {
                 },
                 'is_dude': {
                     'N': '1'
-                },
-                'factoids': {
-                    'some': 'stuff'
                 }
             }
         },

@@ -422,15 +422,15 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
             value)
 
     def validate(self):
+        return all(self.is_type_safe(k, v) for k, v in self._get_attributes().iteritems())
+        """
         for key, value in self._get_attributes().iteritems():
             if not self.is_type_safe(key, value):
                 return False
         return True
+        """
 
     def serialize(self, values):
-        """
-        Encode the given list of numbers into a list of AttributeValue types.
-        """
         rval = dict()
         for k in values:
             v = values[k]
