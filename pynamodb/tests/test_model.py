@@ -2794,94 +2794,43 @@ class ModelTestCase(TestCase):
             item.save()
 
     def test_deserializing_old_style_bool_false_works(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {'TableName': BooleanConversionModel.Meta.table_name}:
-                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'BooleanConversionTable',
-                'Key': {
-                    'user_name': {'S': 'alf'},
-                },
-                'ConsistentRead': False}:
-                return BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA
-            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
-
+        fake_db = self.cool_func(BooleanConversionModel, BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                 BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA,
+                                 'user_name', 'S',
+                                 'alf')
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA
             item = BooleanConversionModel.get('alf')
             self.assertFalse(item.is_human)
 
     def test_deserializing_old_style_bool_true_works(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {
-                'TableName': BooleanConversionModel.Meta.table_name}:
-                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'BooleanConversionTable',
-                'Key': {
-                    'user_name': {'S': 'justin'},
-                },
-                'ConsistentRead': False}:
-                return BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA
-            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
-
+        fake_db = self.cool_func(BooleanConversionModel,
+                                 BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                 BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
+                                 'user_name', 'S',
+                                 'justin')
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA
             item = BooleanConversionModel.get('justin')
             self.assertTrue(item.is_human)
 
     def test_deserializing_new_style_bool_false_works(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {
-                'TableName': BooleanConversionModel.Meta.table_name}:
-                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'BooleanConversionTable',
-                'Key': {
-                    'user_name': {'S': 'alf'},
-                },
-                'ConsistentRead': False}:
-                return BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA
-            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
-
+        fake_db = self.cool_func(BooleanConversionModel,
+                                 BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                 BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA,
+                                 'user_name', 'S',
+                                 'alf')
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA
             item = BooleanConversionModel.get('alf')
             self.assertFalse(item.is_human)
 
     def test_deserializing_new_style_bool_true_works(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {
-                'TableName': BooleanConversionModel.Meta.table_name}:
-                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'BooleanConversionTable',
-                'Key': {
-                    'user_name': {'S': 'justin'},
-                },
-                'ConsistentRead': False}:
-                return BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
-            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
+        fake_db = self.cool_func(BooleanConversionModel,
+                                 BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                 BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
+                                 'user_name', 'S',
+                                 'justin')
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
             item = BooleanConversionModel.get('justin')
