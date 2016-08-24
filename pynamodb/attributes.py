@@ -459,19 +459,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
 
 
 def _get_value_for_deserialize(value):
-    if LIST_SHORT in value:
-        attr_value = value[LIST_SHORT]
-    elif NUMBER_SHORT in value:
-        attr_value = value[NUMBER_SHORT]
-    elif STRING_SHORT in value:
-        attr_value = value[STRING_SHORT]
-    elif BOOLEAN in value:
-        attr_value = value[BOOLEAN]
-    elif MAP_SHORT in value:
-        attr_value = value[MAP_SHORT]
-    else:
-        raise ValueError('Unknown value: ' + str(value))
-    return attr_value
+    return value[value.keys()[0]]
 
 
 def _get_class_for_deserialize(value):
@@ -489,23 +477,14 @@ def _get_class_for_serialize(value):
         raise ValueError('Unknown value: {}'.format(value_type))
     return SERIALIZE_CLASS_MAP[value_type]
 
+
 def _get_key_for_serialize(value):
-    if value is None:
-        return None
-    elif isinstance(value, dict):
+    if issubclass(type(value), MapAttribute):
         return MAP_SHORT
-    elif isinstance(value, list) or isinstance(value, set):
-        return LIST_SHORT
-    elif isinstance(value, bool):
-        return BOOLEAN
-    elif isinstance(value, float) or isinstance(value, int):
-        return NUMBER_SHORT
-    elif isinstance(value, unicode) or isinstance(value, str) or isinstance(value, basestring):
-        return STRING_SHORT
-    elif issubclass(type(value), MapAttribute):
-        return MAP_SHORT
-    else:
-        raise Exception('Unknown value: ' + str(value))
+    value_type = type(value).__name__
+    if value_type not in SERIALIZE_CLASS_MAP:
+        raise ValueError('Unknown value: {}'.format(value_type))
+    return SERIALIZE_KEY_MAP[value_type]
 
 
 class ListAttribute(Attribute):
@@ -576,4 +555,16 @@ SERIALIZE_CLASS_MAP = {
     'int': NumberAttribute(),
     'unicode': UnicodeAttribute(),
     'str': UnicodeAttribute(),
+}
+
+SERIALIZE_KEY_MAP = {
+    'NoneType': None,
+    'dict': MAP_SHORT,
+    'list': LIST_SHORT,
+    'set': LIST_SHORT,
+    'bool': BOOLEAN,
+    'float': NUMBER_SHORT,
+    'int': NUMBER_SHORT,
+    'unicode': STRING_SHORT,
+    'str': STRING_SHORT,
 }
