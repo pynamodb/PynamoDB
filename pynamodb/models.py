@@ -1000,11 +1000,6 @@ class Model(with_metaclass(MetaModel)):
                     cls._attributes[item] = instance
         return cls._attributes
 
-    @classmethod
-    def _set_attribute(cls, key, value):
-        cls._get_attributes()
-        setattr(cls, key, value)
-
     def _get_json(self):
         """
         Returns a Python object suitable for serialization
