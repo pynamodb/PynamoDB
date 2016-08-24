@@ -417,24 +417,19 @@ class Model(with_metaclass(MetaModel)):
             if attr:
                 kwargs[name] = attr.deserialize(attr.get_value(value))
                 deserialized_attr = attr.deserialize(attr.get_value(value))
-                if isinstance(attr, MapAttribute):
-                    aliased_attrs = cls._get_attributes().aliased_attrs()
-                    for good_k, aliased_v in aliased_attrs:
-                        if aliased_v.attr_name == name:
-                            map_value = getattr(cls, good_k)
-                    if issubclass(type(map_value), MapAttribute):
-                        class_attributes = vars(type(map_value))
-                        good_stuff = {}
-                        """
-                        we need to put the values from deserialized_attr together with the keys from good_stuff
-                        """
-                        for k,v in class_attributes.iteritems():
-                            if k not in ['__module__', '_attributes'] and getattr(map_value, k) is not None and type(getattr(map_value, k)).__name__ != 'instancemethod':
-                                key_name = v.attr_name
-                                if key_name is None:
-                                    key_name = k
-                                good_stuff[k] = deserialized_attr[key_name]
-                        deserialized_attr = type(map_value)(**deserialized_attr)
+                if issubclass(type(attr), MapAttribute):
+                    class_attributes = vars(type(attr))
+                    good_stuff = {}
+                    """
+                    we need to put the values from deserialized_attr together with the keys from good_stuff
+                    """
+                    for k,v in class_attributes.iteritems():
+                        if k not in ['__module__', '_attributes'] and getattr(attr, k) is not None and type(getattr(attr, k)).__name__ != 'instancemethod':
+                            key_name = v.attr_name
+                            if key_name is None:
+                                key_name = k
+                            good_stuff[k] = deserialized_attr[key_name]
+                    deserialized_attr = type(attr)(**deserialized_attr)
                 kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)
 
