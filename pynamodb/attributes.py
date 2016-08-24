@@ -456,27 +456,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
             attr_value = _get_value_for_deserialize(v)
             deserialized_dict[k] = attr_class.deserialize(attr_value)
         return deserialized_dict
-        """
-        aliased_attrs = self._get_attributes().aliased_attrs()
-        for good_k, aliased_v in aliased_attrs:
-            if aliased_v.attr_name == name:
-                map_value = getattr(cls, good_k)
-        if issubclass(type(map_value), MapAttribute):
-            class_attributes = vars(type(map_value))
-            good_stuff = {}
-            we need to put the values from deserialized_attr together
-            with the keys from good_stuff
-            for k, v in class_attributes.iteritems():
-                if k not in ['__module__', '_attributes'] and getattr(
-                        map_value, k) is not None and type(
-                    getattr(map_value,
-                            k)).__name__ != 'instancemethod':
-                    key_name = v.attr_name
-                    if key_name is None:
-                        key_name = k
-                    good_stuff[k] = deserialized_dict[key_name]
-            return type(map_value)(**deserialized_dict)
-        """
+
 
 def _get_value_for_deserialize(value):
     if LIST_SHORT in value:
@@ -495,40 +475,19 @@ def _get_value_for_deserialize(value):
 
 
 def _get_class_for_deserialize(value):
-    if LIST_SHORT in value:
-        return ListAttribute()
-    elif NUMBER_SHORT in value:
-        return NumberAttribute()
-    elif STRING_SHORT in value:
-        return UnicodeAttribute()
-        #rval[k] = str(v['S'])
-    elif BOOLEAN in value:
-        return BooleanAttribute()
-        #rval[k] = bool(v['BOOL'])
-    elif MAP_SHORT in value:
-        return MapAttribute()
-    else:
+    value_type = value.keys()[0]
+    if value_type not in DESERIALIZE_CLASS_MAP:
         raise ValueError('Unknown value: ' + str(value))
+    return DESERIALIZE_CLASS_MAP[value_type]
 
 
 def _get_class_for_serialize(value):
-    if value is None:
-        return None
-    elif isinstance(value, dict):
-        return MapAttribute()
-    elif isinstance(value, list) or isinstance(value, set):
-        return ListAttribute()
-    elif isinstance(value, float) or isinstance(value, int):
-        return NumberAttribute()
-    elif isinstance(value, bool):
-        return BooleanAttribute()
-    elif isinstance(value, unicode) or isinstance(value, str) or isinstance(value, basestring):
-        return UnicodeAttribute()
-    elif issubclass(type(value), MapAttribute):
+    if issubclass(type(value), MapAttribute):
         return type(value)()
-    else:
-        raise Exception('Unknown value: ' + str(value))
-
+    value_type = type(value).__name__
+    if value_type not in SERIALIZE_CLASS_MAP:
+        raise ValueError('Unknown value: {}'.format(value_type))
+    return SERIALIZE_CLASS_MAP[value_type]
 
 def _get_key_for_serialize(value):
     if value is None:
@@ -537,10 +496,10 @@ def _get_key_for_serialize(value):
         return MAP_SHORT
     elif isinstance(value, list) or isinstance(value, set):
         return LIST_SHORT
-    elif isinstance(value, float) or isinstance(value, int):
-        return NUMBER_SHORT
     elif isinstance(value, bool):
         return BOOLEAN
+    elif isinstance(value, float) or isinstance(value, int):
+        return NUMBER_SHORT
     elif isinstance(value, unicode) or isinstance(value, str) or isinstance(value, basestring):
         return STRING_SHORT
     elif issubclass(type(value), MapAttribute):
@@ -598,3 +557,23 @@ class ListAttribute(Attribute):
         for item in deserialized_lst:
             lst_of_type.append(self.element_type(**item))
         return lst_of_type
+
+DESERIALIZE_CLASS_MAP = {
+    LIST_SHORT: ListAttribute(),
+    NUMBER_SHORT: NumberAttribute(),
+    STRING_SHORT: UnicodeAttribute(),
+    BOOLEAN: BooleanAttribute(),
+    MAP_SHORT: MapAttribute(),
+}
+
+SERIALIZE_CLASS_MAP = {
+    'NoneType': None,
+    'dict': MapAttribute(),
+    'list': ListAttribute(),
+    'set': ListAttribute(),
+    'bool': BooleanAttribute(),
+    'float': NumberAttribute(),
+    'int': NumberAttribute(),
+    'unicode': UnicodeAttribute(),
+    'str': UnicodeAttribute(),
+}
