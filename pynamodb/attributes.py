@@ -8,7 +8,7 @@ from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT
+    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
 )
 from pynamodb.attribute_dict import AttributeDict
 import collections
@@ -339,6 +339,16 @@ class UTCDateTimeAttribute(Attribute):
         return parse(value, dayfirst=False).datetime
 
 
+class NullAttribute(Attribute):
+    attr_type = NULL
+
+    def serialize(self, value):
+        return True
+
+    def deserialize(self, value):
+        return None
+
+
 class MapAttributeMeta(type):
     def __init__(cls, name, bases, attrs):
         setattr(cls, '_attributes', None)
@@ -423,12 +433,6 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
 
     def validate(self):
         return all(self.is_type_safe(k, v) for k, v in self._get_attributes().iteritems())
-        """
-        for key, value in self._get_attributes().iteritems():
-            if not self.is_type_safe(key, value):
-                return False
-        return True
-        """
 
     def serialize(self, values):
         rval = dict()
@@ -470,19 +474,23 @@ def _get_class_for_deserialize(value):
 
 
 def _get_class_for_serialize(value):
+    if value is None:
+        return NullAttribute()
     if issubclass(type(value), MapAttribute):
         return type(value)()
-    value_type = type(value).__name__
+    value_type = type(value)
     if value_type not in SERIALIZE_CLASS_MAP:
         raise ValueError('Unknown value: {}'.format(value_type))
     return SERIALIZE_CLASS_MAP[value_type]
 
 
 def _get_key_for_serialize(value):
+    if value is None:
+        return NullAttribute.attr_type
     if issubclass(type(value), MapAttribute):
         return MAP_SHORT
-    value_type = type(value).__name__
-    if value_type not in SERIALIZE_CLASS_MAP:
+    value_type = type(value)
+    if value_type not in SERIALIZE_KEY_MAP:
         raise ValueError('Unknown value: {}'.format(value_type))
     return SERIALIZE_KEY_MAP[value_type]
 
@@ -546,25 +554,23 @@ DESERIALIZE_CLASS_MAP = {
 }
 
 SERIALIZE_CLASS_MAP = {
-    'NoneType': None,
-    'dict': MapAttribute(),
-    'list': ListAttribute(),
-    'set': ListAttribute(),
-    'bool': BooleanAttribute(),
-    'float': NumberAttribute(),
-    'int': NumberAttribute(),
-    'unicode': UnicodeAttribute(),
-    'str': UnicodeAttribute(),
+    dict: MapAttribute(),
+    list: ListAttribute(),
+    set: ListAttribute(),
+    bool: BooleanAttribute(),
+    float: NumberAttribute(),
+    int: NumberAttribute(),
+    unicode: UnicodeAttribute(),
+    str: UnicodeAttribute(),
 }
 
 SERIALIZE_KEY_MAP = {
-    'NoneType': None,
-    'dict': MAP_SHORT,
-    'list': LIST_SHORT,
-    'set': LIST_SHORT,
-    'bool': BOOLEAN,
-    'float': NUMBER_SHORT,
-    'int': NUMBER_SHORT,
-    'unicode': STRING_SHORT,
-    'str': STRING_SHORT,
+    dict: MAP_SHORT,
+    list: LIST_SHORT,
+    set: LIST_SHORT,
+    bool: BOOLEAN,
+    float: NUMBER_SHORT,
+    int: NUMBER_SHORT,
+    unicode: STRING_SHORT,
+    str: STRING_SHORT,
 }
