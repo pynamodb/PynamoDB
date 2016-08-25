@@ -404,14 +404,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                     setattr(self, attr_name, attrs.get(attr.attr_name))
                 else:
                     sub_model = attrs.get(attr_name)
-                    instance = type(attr)()
-                    aliased_attrs = type(attr)._get_attributes().aliased_attrs()
-                    for unaliased_key, v in sub_model.iteritems():
-                        k = None
-                        for python_accessible_key, aliased_v in aliased_attrs:
-                            if aliased_v.attr_name == unaliased_key:
-                                k = python_accessible_key
-                        setattr(instance, k, v)
+                    instance = type(attr)(**sub_model)
                     setattr(self, attr_name, instance)
 
             elif attr_name in attrs:

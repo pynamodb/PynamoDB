@@ -1095,7 +1095,7 @@ TREE_MODEL_ITEM_DATA = {
         'left': {
             'M': {
                 'value': {
-                    'N': 1
+                    'N': '1'
                 },
                 'left': {
                     'M': {
@@ -1144,7 +1144,7 @@ TREE_MODEL_ITEM_DATA = {
         'right': {
             'M': {
                 'value': {
-                    'N': 1
+                    'N': '1'
                 },
                 'left': {
                     'M': {

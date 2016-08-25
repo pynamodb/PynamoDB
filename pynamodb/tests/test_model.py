@@ -2865,12 +2865,12 @@ class ModelTestCase(TestCase):
         fake_db = self.cool_func(TreeModel,
                                  TREE_MODEL_TABLE_DATA,
                                  TREE_MODEL_ITEM_DATA,
-                                 'hash_key', 'S',
+                                 'tree_key', 'S',
                                  '123')
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = TREE_MODEL_ITEM_DATA
             item = TreeModel.get('123')
-            self.assertTrue(item.is_human)
+            self.assertEquals(item.left.left.left.value, 3)
 
     def test_result_set_init(self):
         results = []
