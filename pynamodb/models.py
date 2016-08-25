@@ -415,20 +415,8 @@ class Model(with_metaclass(MetaModel)):
         for name, value in mutable_data.items():
             attr = cls._get_attributes().get(name, None)
             if attr:
-                kwargs[name] = attr.deserialize(attr.get_value(value))
                 deserialized_attr = attr.deserialize(attr.get_value(value))
                 if issubclass(type(attr), MapAttribute):
-                    class_attributes = vars(type(attr))
-                    good_stuff = {}
-                    """
-                    we need to put the values from deserialized_attr together with the keys from good_stuff
-                    """
-                    for k,v in class_attributes.iteritems():
-                        if k not in ['__module__', '_attributes'] and getattr(attr, k) is not None and type(getattr(attr, k)).__name__ != 'instancemethod':
-                            key_name = v.attr_name
-                            if key_name is None:
-                                key_name = k
-                            good_stuff[k] = deserialized_attr[key_name]
                     deserialized_attr = type(attr)(**deserialized_attr)
                 kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)

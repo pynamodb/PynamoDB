@@ -42,7 +42,7 @@ from pynamodb.tests.data import (
     BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
     BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
     BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
-    BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE
+    BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE, TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA
 )
 
 if six.PY3:
@@ -368,6 +368,31 @@ class BooleanConversionModel(Model):
 
     user_name = UnicodeAttribute(hash_key=True)
     is_human = BooleanAttribute()
+
+
+class TreeLeaf2(MapAttribute):
+    value = NumberAttribute()
+
+
+class TreeLeaf1(MapAttribute):
+    value = NumberAttribute()
+    left = TreeLeaf2()
+    right = TreeLeaf2()
+
+
+class TreeLeaf(MapAttribute):
+    value = NumberAttribute()
+    left = TreeLeaf1()
+    right = TreeLeaf1()
+
+
+class TreeModel(Model):
+    class Meta:
+        table_name = 'TreeModelTable'
+
+    tree_key = UnicodeAttribute(hash_key=True)
+    left = TreeLeaf()
+    right = TreeLeaf()
 
 
 class ModelTestCase(TestCase):
@@ -2834,6 +2859,17 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
             item = BooleanConversionModel.get('justin')
+            self.assertTrue(item.is_human)
+
+    def test_deserializing_map_four_layers_deep_works(self):
+        fake_db = self.cool_func(TreeModel,
+                                 TREE_MODEL_TABLE_DATA,
+                                 TREE_MODEL_ITEM_DATA,
+                                 'hash_key', 'S',
+                                 '123')
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = TREE_MODEL_ITEM_DATA
+            item = TreeModel.get('123')
             self.assertTrue(item.is_human)
 
     def test_result_set_init(self):

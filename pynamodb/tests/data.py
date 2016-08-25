@@ -1053,3 +1053,142 @@ BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA = {
         }
     }
 }
+
+TREE_MODEL_TABLE_DATA = {
+    'Table': {
+        'ItemCount': 0, 'TableName': 'TreeModelTable',
+        'ProvisionedThroughput': {
+            'ReadCapacityUnits': 2,
+            'WriteCapacityUnits': 2,
+            'NumberOfDecreasesToday': 0
+        },
+        'CreationDateTime': 1391471876.86,
+        'TableStatus': 'ACTIVE',
+        'AttributeDefinitions': [
+            {
+                'AttributeName': 'tree_key',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'left',
+                'AttributeType': 'M'
+            },
+            {
+                'AttributeName': 'right',
+                'AttributeType': 'M'
+            }
+        ],
+        'KeySchema': [
+            {
+                'AttributeName': 'tree_key', 'KeyType': 'HASH'
+            }
+        ],
+        'TableSizeBytes': 0
+    }
+}
+
+TREE_MODEL_ITEM_DATA = {
+    'Item': {
+        'tree_key': {
+            'S': '123'
+        },
+        'left': {
+            'M': {
+                'value': {
+                    'N': 1
+                },
+                'left': {
+                    'M': {
+                        'value': {
+                            'N': '2'
+                        },
+                        'left': {
+                            'M': {
+                                'value': {
+                                    'N': '3'
+                                }
+                            }
+                        },
+                        'right': {
+                            'M': {
+                                'value': {
+                                    'N': '4'
+                                }
+                            }
+                        }
+                    }
+                },
+                'right': {
+                    'M': {
+                        'value': {
+                            'N': '2'
+                        },
+                        'left': {
+                            'M': {
+                                'value': {
+                                    'N': '3'
+                                }
+                            }
+                        },
+                        'right': {
+                            'M': {
+                                'value': {
+                                    'N': '4'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        'right': {
+            'M': {
+                'value': {
+                    'N': 1
+                },
+                'left': {
+                    'M': {
+                        'value': {
+                            'N': '2'
+                        },
+                        'left': {
+                            'M': {
+                                'value': {
+                                    'N': '3'
+                                }
+                            }
+                        },
+                        'right': {
+                            'M': {
+                                'value': {
+                                    'N': '4'
+                                }
+                            }
+                        }
+                    }
+                },
+                'right': {
+                    'M': {
+                        'value': {
+                            'N': '2'
+                        },
+                        'left': {
+                            'M': {
+                                'value': {
+                                    'N': '3'
+                                }
+                            }
+                        },
+                        'right': {
+                            'M': {
+                                'value': {
+                                    'N': '4'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
