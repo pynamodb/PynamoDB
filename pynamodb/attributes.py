@@ -544,6 +544,7 @@ DESERIALIZE_CLASS_MAP = {
     STRING_SHORT: UnicodeAttribute(),
     BOOLEAN: BooleanAttribute(),
     MAP_SHORT: MapAttribute(),
+    NULL: NullAttribute()
 }
 
 SERIALIZE_CLASS_MAP = {
