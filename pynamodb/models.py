@@ -9,7 +9,7 @@ import logging
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
-from pynamodb.attributes import Attribute, MapAttribute, ListAttribute
+from pynamodb.attributes import Attribute, MapAttribute
 from pynamodb.attribute_dict import AttributeDict
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
