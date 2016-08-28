@@ -1643,11 +1643,11 @@ class ConnectionTestCase(TestCase):
 
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
-    def test_make_api_call_throws_verbose_error(self, requests_session_mock, session_mock):
+    def test_make_api_call_throws_verbose_error_after_backoff(self, requests_session_mock, session_mock):
 
         # mock response
         response = requests.Response()
-        response.status_code = 400
+        response.status_code = 500
         response._content = json.dumps({'message': 'There is a problem', '__type': 'InternalServerError'}).encode('utf-8')
         response.headers['x-amzn-RequestId'] = 'abcdef'
         requests_session_mock.send.return_value = response
@@ -1663,6 +1663,32 @@ class ConnectionTestCase(TestCase):
                     'An error occurred (InternalServerError) on request (abcdef) on table (MyTable) when calling the CreateTable operation: There is a problem'
                 )
                 raise
+
+    @mock.patch('pynamodb.connection.Connection.session')
+    @mock.patch('pynamodb.connection.Connection.requests_session')
+    def test_make_api_call_throws_verbose_error_after_backoff_later_succeeds(self, requests_session_mock, session_mock):
+
+        # mock response
+        bad_response = requests.Response()
+        bad_response.status_code = 500
+        bad_response._content = json.dumps({'message': 'There is a problem', '__type': 'InternalServerError'}).encode(
+            'utf-8')
+        bad_response.headers['x-amzn-RequestId'] = 'abcdef'
+
+        good_response_content = {'TableDescription': {'TableName': 'table', 'TableStatus': 'Creating'}}
+        good_response = requests.Response()
+        good_response.status_code = 200
+        good_response._content = json.dumps(good_response_content).encode('utf-8')
+
+        requests_session_mock.send.side_effect = [
+            bad_response,
+            good_response,
+        ]
+
+        c = Connection()
+
+        self.assertEqual(good_response_content, c._make_api_call('CreateTable', {'TableName': 'MyTable'}))
+        self.assertEqual(len(requests_session_mock.send.mock_calls), 2)
 
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
