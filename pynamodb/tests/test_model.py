@@ -1174,8 +1174,32 @@ class ModelTestCase(TestCase):
             self.assertEqual(len(results), 25)
             self.assertEqual(len(req.mock_calls), 3)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 25)
-            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 15)
-            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 5)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 25)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 25)
+
+    def test_query_limit_less_than_available_and_page_size(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Items': items[20:30]},
+            ]
+            results = list(UserModel.query('foo', limit=25, page_size=10))
+            self.assertEqual(len(results), 25)
+            self.assertEqual(len(req.mock_calls), 3)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
 
     def test_query_limit_greater_than_available_items_multiple_page(self):
         with patch(PATCH_METHOD) as req:
@@ -1198,8 +1222,32 @@ class ModelTestCase(TestCase):
             self.assertEqual(len(results), 30)
             self.assertEqual(len(req.mock_calls), 3)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 50)
-            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 40)
-            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 30)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 50)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 50)
+
+    def test_query_limit_greater_than_available_items_and_page_size(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Items': items[20:30]},
+            ]
+            results = list(UserModel.query('foo', limit=50, page_size=10))
+            self.assertEqual(len(results), 30)
+            self.assertEqual(len(req.mock_calls), 3)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
 
     def test_query(self):
         """
@@ -1390,6 +1438,26 @@ class ModelTestCase(TestCase):
             self.assertEqual(params, req.call_args[0][1])
             self.assertTrue(len(queried) == len(items))
 
+    def test_scan_limit_with_page_size(self):
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Items': items[20:30]},
+            ]
+            results = list(UserModel.scan(limit=25, page_size=10))
+            self.assertEqual(len(results), 25)
+            self.assertEqual(len(req.mock_calls), 3)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
+
     def test_scan_limit(self):
         """
         Model.scan(limit)
@@ -1411,6 +1479,8 @@ class ModelTestCase(TestCase):
             for item in UserModel.scan(limit=4):
                 count += 1
                 self.assertIsNotNone(item)
+            self.assertEqual(len(req.mock_calls), 1)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 4)
             self.assertEqual(count, 4)
 
         with patch(PATCH_METHOD) as req:
