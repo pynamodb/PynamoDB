@@ -21,20 +21,23 @@ from pynamodb.constants import (
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
     UNPROCESSED_ITEMS, DEFAULT_ENCODING
 )
-from pynamodb.models import Model
+from pynamodb.models import Model, ResultSet
 from pynamodb.indexes import (
     GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
     IncludeProjection, KeysOnlyProjection, Index
 )
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
-    UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute)
+    UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, BooleanAttribute)
 from pynamodb.tests.data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
-    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA
+    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+    BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
+    BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
+    BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE
 )
 
 if six.PY3:
@@ -269,6 +272,14 @@ class ComplexKeyModel(Model):
 
     name = UnicodeAttribute(hash_key=True)
     date_created = UTCDateTimeAttribute(default=datetime.utcnow)
+
+
+class BooleanConversionModel(Model):
+    class Meta:
+        table_name = 'BooleanConversionTable'
+
+    user_name = UnicodeAttribute(hash_key=True)
+    is_human = BooleanAttribute()
 
 
 class ModelTestCase(TestCase):
@@ -2413,3 +2424,127 @@ class ModelTestCase(TestCase):
             ]
         }
         self.assert_dict_lists_equal(req.call_args[0][1]['RequestItems']['UserModel'], args['UserModel'])
+
+    def test_new_style_boolean_serializes_as_bool(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            item = BooleanConversionModel(user_name='justin', is_human=True)
+            item.save()
+
+    def test_old_style_boolean_serializes_as_bool(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE
+            item = BooleanConversionModel(user_name='justin', is_human=True)
+            item.save()
+
+    def test_deserializing_old_style_bool_false_works(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {'TableName': BooleanConversionModel.Meta.table_name}:
+                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'BooleanConversionTable',
+                'Key': {
+                    'user_name': {'S': 'alf'},
+                },
+                'ConsistentRead': False}:
+                return BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA
+            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA
+            item = BooleanConversionModel.get('alf')
+            self.assertFalse(item.is_human)
+
+    def test_deserializing_old_style_bool_true_works(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {
+                'TableName': BooleanConversionModel.Meta.table_name}:
+                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'BooleanConversionTable',
+                'Key': {
+                    'user_name': {'S': 'justin'},
+                },
+                'ConsistentRead': False}:
+                return BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA
+            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA
+            item = BooleanConversionModel.get('justin')
+            self.assertTrue(item.is_human)
+
+    def test_deserializing_new_style_bool_false_works(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {
+                'TableName': BooleanConversionModel.Meta.table_name}:
+                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'BooleanConversionTable',
+                'Key': {
+                    'user_name': {'S': 'alf'},
+                },
+                'ConsistentRead': False}:
+                return BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA
+            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA
+            item = BooleanConversionModel.get('alf')
+            self.assertFalse(item.is_human)
+
+    def test_deserializing_new_style_bool_true_works(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {
+                'TableName': BooleanConversionModel.Meta.table_name}:
+                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'BooleanConversionTable',
+                'Key': {
+                    'user_name': {'S': 'justin'},
+                },
+                'ConsistentRead': False}:
+                return BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
+            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
+            item = BooleanConversionModel.get('justin')
+            self.assertTrue(item.is_human)
+
+    def test_result_set_init(self):
+        results = []
+        operations = 1
+        arguments = 'args'
+        rs = ResultSet(results=results, operation=operations, arguments=arguments)
+        self.assertEquals(rs.results, results)
+        self.assertEquals(rs.operation, operations)
+        self.assertEquals(rs.arguments, arguments)
+
+    def test_result_set_iter(self):
+        results = [1, 2, 3]
+        operations = 1
+        arguments = 'args'
+        rs = ResultSet(results=results, operation=operations, arguments=arguments)
+        for k in rs:
+            self.assertTrue(k in results)
+

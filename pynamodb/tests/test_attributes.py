@@ -14,7 +14,7 @@ from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     NumberListAttribute, UnicodeAttribute, UnicodeSetAttribute,
     UTCDateTimeAttribute, BooleanAttribute, JSONAttribute, DEFAULT_ENCODING,
-    LIST, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET, BINARY)
+    LIST, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET, BINARY, BOOLEAN)
 
 
 class AttributeTestModel(Model):
@@ -335,7 +335,8 @@ class UnicodeAttributeTestCase(TestCase):
         self.assertEqual(attr.deserialize(None), None)
         self.assertEqual(
             attr.serialize(set([six.u('foo'), six.u('bar')])),
-            [json.dumps(val) for val in sorted(set([six.u('foo'), six.u('bar')]))])
+            sorted([six.u('foo'), six.u('bar')])
+        )
 
     def test_round_trip_unicode_set(self):
         """
@@ -353,9 +354,22 @@ class UnicodeAttributeTestCase(TestCase):
         UnicodeSetAttribute.deserialize
         """
         attr = UnicodeSetAttribute()
+        value = set([six.u('foo'), six.u('bar')])
         self.assertEqual(
-            attr.deserialize([json.dumps(val) for val in sorted(set([six.u('foo'), six.u('bar')]))]),
-            set([six.u('foo'), six.u('bar')])
+            attr.deserialize(value),
+            value
+        )
+
+    def test_unicode_set_deserialize(self):
+        """
+        UnicodeSetAttribute.deserialize old way
+        """
+        attr = UnicodeSetAttribute()
+        value = set([six.u('foo'), six.u('bar')])
+        old_value = set([json.dumps(val) for val in value])
+        self.assertEqual(
+            attr.deserialize(old_value),
+            value
         )
 
     def test_unicode_set_attribute(self):
@@ -380,7 +394,7 @@ class BooleanAttributeTestCase(TestCase):
         attr = BooleanAttribute()
         self.assertIsNotNone(attr)
 
-        self.assertEqual(attr.attr_type, NUMBER)
+        self.assertEqual(attr.attr_type, BOOLEAN)
         attr = BooleanAttribute(default=True)
         self.assertEqual(attr.default, True)
 
@@ -389,8 +403,8 @@ class BooleanAttributeTestCase(TestCase):
         BooleanAttribute.serialize
         """
         attr = BooleanAttribute()
-        self.assertEqual(attr.serialize(True), json.dumps(1))
-        self.assertEqual(attr.serialize(False), json.dumps(0))
+        self.assertEqual(attr.serialize(True), True)
+        self.assertEqual(attr.serialize(False), False)
         self.assertEqual(attr.serialize(None), None)
 
     def test_boolean_deserialize(self):
@@ -399,7 +413,9 @@ class BooleanAttributeTestCase(TestCase):
         """
         attr = BooleanAttribute()
         self.assertEqual(attr.deserialize('1'), True)
-        self.assertEqual(attr.deserialize('0'), False)
+        self.assertEqual(attr.deserialize('0'), True)
+        self.assertEqual(attr.deserialize(True), True)
+        self.assertEqual(attr.deserialize(False), False)
 
 
 class NumberListAttributeTestCase(TestCase):

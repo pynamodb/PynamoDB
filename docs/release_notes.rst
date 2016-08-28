@@ -1,6 +1,38 @@
 Release Notes
 =============
 
+v1.5.3
+------
+
+:date: 2016-08-08
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* introduce concept of page_size, separate from num items returned limit (#139)
+ 
+Contributors to this release:
+
+* @anandswaminathan
+
+
+v1.5.2
+------
+
+:date: 2016-06-23
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* Additional retry logic for HTTP Status Code 5xx, usually attributed to InternalServerError (#135)
+
+Contributors to this release:
+
+* @danielhochman
+
+
 v1.5.1
 ------
 

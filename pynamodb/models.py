@@ -447,7 +447,7 @@ class Model(with_metaclass(MetaModel)):
         for name, value in mutable_data.items():
             attr = cls._get_attributes().get(name, None)
             if attr:
-                kwargs[name] = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
+                kwargs[name] = attr.deserialize(attr.get_value(value))
         return cls(*args, **kwargs)
 
     @classmethod
