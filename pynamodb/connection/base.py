@@ -3,6 +3,8 @@ Lowest level connection
 """
 from base64 import b64decode
 import logging
+import random
+import time
 
 import six
 from six.moves import range
@@ -40,6 +42,7 @@ BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 # retry parameters
 DEFAULT_TIMEOUT = 60  # matches legacy retry timeout from botocore
 DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION = 3
+DEFAULT_BASE_BACKOFF_MS = 25
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
@@ -189,6 +192,7 @@ class Connection(object):
         # TODO: provide configurability of retry parameters via arguments
         self._request_timeout_seconds = DEFAULT_TIMEOUT
         self._max_retry_attempts_exception = DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION
+        self._base_backoff_ms = DEFAULT_BASE_BACKOFF_MS
 
         if session_cls:
             self.session_cls = session_cls
@@ -259,35 +263,22 @@ class Connection(object):
                     timeout=self._request_timeout_seconds,
                     proxies=self.client._endpoint.proxies,
                 )
-            except requests.RequestException as e:
-                if is_last_attempt_for_exceptions:
-                    log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
-                    raise
-                else:
-                    log.debug(
-                        'Retry needed for (%s) after attempt %s, retryable RequestException caught: %s',
-                        operation_name,
-                        attempt_number,
-                        e
-                    )
-                    continue
-
-            try:
                 data = response.json()
-            except ValueError as e:
+            except (requests.RequestException, ValueError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                     raise
                 else:
+                    # No backoff for fast-fail exceptions that likely failed at the frontend
                     log.debug(
-                        'Retry needed for (%s) after attempt %s, retryable JSONDecodeError caught: %s',
+                        'Retry needed for (%s) after attempt %s, retryable %s caught: %s',
                         operation_name,
                         attempt_number,
+                        e.__class__.__name__,
                         e
                     )
                     continue
 
-            # TODO: retry with backoff based on status code, error code, operation
             if response.status_code >= 300:
                 # Extract error code from __type
                 code = data.get('__type', '')
@@ -304,7 +295,32 @@ class Connection(object):
                 else:
                     verbose_properties['table_name'] = operation_kwargs.get('TableName')
 
-                raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
+                try:
+                    raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
+                except VerboseClientError as e:
+                    if is_last_attempt_for_exceptions:
+                        log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
+                        raise
+                    elif response.status_code < 500:
+                        # We don't retry on a ConditionalCheckFailedException or other 4xx because we assume they will
+                        # fail in perpetuity. Retrying when there is already contention could cause other problems
+                        # in part due to unnecessary consumption of throughput.
+                        raise
+                    else:
+                        # We use fully-jittered exponentially-backed-off retries:
+                        #  https://www.awsarchitectureblog.com/2015/03/backoff.html
+                        sleep_time_ms = random.randint(0, self._base_backoff_ms * (2 ** attempt_number))
+                        log.debug(
+                            'Retry with backoff needed for (%s) after attempt %s,'
+                            'sleeping for %s milliseconds, retryable %s caught: %s',
+                            operation_name,
+                            attempt_number,
+                            sleep_time_ms,
+                            e.__class__.__name__,
+                            e
+                        )
+                        time.sleep(sleep_time_ms / 1000.0)
+                        continue
 
             return self._handle_binary_attributes(data)
 
