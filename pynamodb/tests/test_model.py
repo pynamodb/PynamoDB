@@ -2548,3 +2548,46 @@ class ModelTestCase(TestCase):
         for k in rs:
             self.assertTrue(k in results)
 
+    def test_model_as_dict(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            item = UserModel('foo', 'bar')
+
+            # Test keys that should not be considered "in" the model.
+            self.assertFalse('garbage' in item)
+            self.assertFalse('zip_code' in item)
+            self.assertFalse('user_name' in item)
+
+            # Test keys that should be considered "in" the model.
+            item.zip_code = 0
+            self.assertTrue('zip_code' in item)
+            self.assertTrue('custom_user_name' in item)
+
+            # Test dictionary-style lookup.
+            self.assertEquals(item['custom_user_name'], 'foo')
+            self.assertEquals(item['user_id'], 'bar')
+            with self.assertRaises(KeyError):
+                value = item['garbage']
+
+            with self.assertRaises(KeyError):
+                value = item['user_name']
+
+            # Test dictionary-style setting.
+            item['custom_user_name'] = 'faz'
+            item['user_id'] = 'baz'
+            self.assertEquals(item.custom_user_name, 'faz')
+            self.assertEquals(item.user_id, 'baz')
+            with self.assertRaises(KeyError):
+                item['garbage'] = 'garbage'
+
+            with self.assertRaises(KeyError):
+                item['user_name'] = 'faz'
+
+            # Test conversion to a dictionary.
+            item_dict = dict(item)
+            self.assertEquals(item_dict,
+                              {'custom_user_name': 'faz',
+                               'user_id': 'baz',
+                               'zip_code': 0,
+                               'email': 'needs_email',
+                               'callable_field': 42})

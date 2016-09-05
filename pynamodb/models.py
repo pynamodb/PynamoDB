@@ -210,6 +210,9 @@ class AttributeDict(collections.MutableMapping):
     def __len__(self):
         return len(self._values)
 
+    def aliased_attr_names(self):
+        return self._alt_values.keys()
+
     def aliased_attrs(self):
         return self._alt_values.items()
 
@@ -754,6 +757,26 @@ class Model(with_metaclass(MetaModel)):
     def load(cls, filename):
         with open(filename, 'r') as inf:
             cls.loads(inf.read())
+
+    def keys(self):
+        # Get the names of this model's attributes, and filter out the
+        # attributes that are set to None in this instance of the model.
+        names = self._get_attributes().aliased_attr_names()
+        return [name for name in names if getattr(self, name) != None]
+
+    def __contains__(self, key):
+        return key in self.keys()
+
+    def __getitem__(self, key):
+        if not key in self:
+            raise KeyError(key)
+        return getattr(self, key)
+
+    def __setitem__(self, key, value):
+        # Require that the key is one of this model's attribute names.
+        if not key in self._get_attributes().aliased_attr_names():
+            raise KeyError(key)
+        setattr(self, key, value)
 
     # Private API below
     @classmethod
