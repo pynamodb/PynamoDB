@@ -415,7 +415,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
     def get_values(self):
         attributes = self._get_attributes()
         result = {}
-        for k, v in attributes.iteritems():
+        for k, v in six.iteritems(attributes):
             result[k] = getattr(self, k)
         return result
 
