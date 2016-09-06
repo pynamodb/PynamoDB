@@ -462,7 +462,7 @@ def _get_value_for_deserialize(value):
 
 
 def _get_class_for_deserialize(value):
-    value_type = value.keys()[0]
+    value_type = list(value.keys())[0]
     if value_type not in DESERIALIZE_CLASS_MAP:
         raise ValueError('Unknown value: ' + str(value))
     return DESERIALIZE_CLASS_MAP[value_type]
