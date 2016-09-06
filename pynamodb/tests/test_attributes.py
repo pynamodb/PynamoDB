@@ -565,7 +565,7 @@ class MapAndListAttributeTestCase(TestCase):
             ]
         }
         serialized = MapAttribute().serialize(family_attributes)
-        self.assertEqual(MapAttribute().deserialize(serialized), family_attributes)
+        self.assertDictEqual(MapAttribute().deserialize(serialized), family_attributes)
 
     def test_list_of_map_of_list_of_map(self):
         thing = [
