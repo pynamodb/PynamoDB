@@ -556,9 +556,9 @@ SERIALIZE_CLASS_MAP = {
     bool: BooleanAttribute(),
     float: NumberAttribute(),
     int: NumberAttribute(),
-    six.text_type: UnicodeAttribute(),
     str: UnicodeAttribute()
 }
+
 
 SERIALIZE_KEY_MAP = {
     dict: MAP_SHORT,
@@ -567,6 +567,10 @@ SERIALIZE_KEY_MAP = {
     bool: BOOLEAN,
     float: NUMBER_SHORT,
     int: NUMBER_SHORT,
-    six.text_type: STRING_SHORT,
     str: STRING_SHORT
 }
+
+
+if six.PY2:
+    SERIALIZE_CLASS_MAP[unicode] = UnicodeAttribute()
+    SERIALIZE_KEY_MAP[unicode] = STRING_SHORT
