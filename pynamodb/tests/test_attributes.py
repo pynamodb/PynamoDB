@@ -488,37 +488,6 @@ class MapAttributeTestCase(TestCase):
 
 class MapAndListAttributeTestCase(TestCase):
 
-    def test_list_of_maps(self):
-        family_attributes = [
-            {
-                'name': 'Justin',
-                'age': 31,
-                'height': 187.96
-            },
-            {
-                'name': 'Mandy',
-                'age': 29,
-                'height': 157.48
-            },
-        ]
-        serialized = ListAttribute().serialize(family_attributes)
-        self.assertEqual(ListAttribute().deserialize(serialized), family_attributes)
-
-    def test_list_of_map_of_list(self):
-        multiple_store_grocery_list = [
-            {
-                'fruit': ['apple', 'pear', 32],
-                'veggies': ['broccoli', 'potatoes', 5]
-            },
-            {
-                'fruit': ['orange', 'blueberry', 50],
-                'veggies': ['sweet potatoes', 'turnips', 34],
-                'junk': ['cheetos', 'beer', 6]
-            }
-        ]
-        serialized = ListAttribute().serialize(multiple_store_grocery_list)
-        self.assertEquals(ListAttribute().deserialize(serialized), multiple_store_grocery_list)
-
     def test_map_of_list(self):
         grocery_list = {
             'fruit': ['apple', 'pear', 32],
@@ -566,49 +535,3 @@ class MapAndListAttributeTestCase(TestCase):
         }
         serialized = MapAttribute().serialize(family_attributes)
         self.assertDictEqual(MapAttribute().deserialize(serialized), family_attributes)
-
-    def test_list_of_map_of_list_of_map(self):
-        thing = [
-            {
-                'thing': [
-                    {
-                        'a': 23,
-                        'b': True
-                    },
-                    {
-                        'c': 3.3,
-                        'd': 'ya thats right'
-                    }
-                ],
-                'other thing':[
-                    {
-                        'e': 'something'
-                    },
-                    {
-                        'f': 33,
-                        'g': False
-                    }
-                ]
-            },
-            {
-                'stuff': [
-                    {
-                        'h': 'i ran out of '
-                    },
-                    {
-                        'i': 'real world ideas'
-                    }
-                ],
-                'other stuff': [
-                    {
-                        'hh': 983,
-                        'tou': True
-                    },
-                    {
-                        'tsth': '?'
-                    }
-                ]
-            }
-        ]
-        serialized = ListAttribute().serialize(thing)
-        self.assertEqual(ListAttribute().deserialize(serialized), thing)
