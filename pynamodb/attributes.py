@@ -403,6 +403,8 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                 if type(attrs.get(attr.attr_name)) is type(attr) or not isinstance(attrs.get(attr_name), collections.Mapping):
                     setattr(self, attr_name, attrs.get(attr.attr_name))
                 else:
+                    # it's a sub model which means we need to instantiate that type first
+                    # pass in the attributes of that model, then set the field on this object to point to that model
                     sub_model = attrs.get(attr_name)
                     instance = type(attr)(**sub_model)
                     setattr(self, attr_name, instance)
