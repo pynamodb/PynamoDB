@@ -556,8 +556,8 @@ SERIALIZE_CLASS_MAP = {
     bool: BooleanAttribute(),
     float: NumberAttribute(),
     int: NumberAttribute(),
-    unicode: UnicodeAttribute(),
-    str: UnicodeAttribute(),
+    six.text_type: UnicodeAttribute(),
+    str: UnicodeAttribute()
 }
 
 SERIALIZE_KEY_MAP = {
@@ -567,6 +567,6 @@ SERIALIZE_KEY_MAP = {
     bool: BOOLEAN,
     float: NUMBER_SHORT,
     int: NUMBER_SHORT,
-    unicode: STRING_SHORT,
-    str: STRING_SHORT,
+    six.text_type: STRING_SHORT,
+    str: STRING_SHORT
 }
