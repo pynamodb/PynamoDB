@@ -517,7 +517,7 @@ class MapAndListAttributeTestCase(TestCase):
             }
         ]
         serialized = ListAttribute().serialize(multiple_store_grocery_list)
-        self.assertEqual(ListAttribute().deserialize(serialized), multiple_store_grocery_list)
+        self.assertEquals(ListAttribute().deserialize(serialized), multiple_store_grocery_list)
 
     def test_map_of_list(self):
         grocery_list = {
