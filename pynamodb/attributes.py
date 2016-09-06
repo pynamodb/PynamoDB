@@ -458,7 +458,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
 
 
 def _get_value_for_deserialize(value):
-    return value[value.keys()[0]]
+    return value[list(value.keys())[0]]
 
 
 def _get_class_for_deserialize(value):
