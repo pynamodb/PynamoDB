@@ -22,7 +22,7 @@ from pynamodb.constants import (
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
     UNPROCESSED_ITEMS, DEFAULT_ENCODING
 )
-from pynamodb.models import Model
+from pynamodb.models import Model, ResultSet
 from pynamodb.indexes import (
     GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
     IncludeProjection, KeysOnlyProjection, Index
@@ -30,13 +30,16 @@ from pynamodb.indexes import (
 from pynamodb.settings import RequestSessionWithHeaders
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
-    UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute)
+    UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, BooleanAttribute)
 from pynamodb.tests.data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
-    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA
+    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+    BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
+    BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
+    BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE
 )
 
 if six.PY3:
@@ -273,12 +276,13 @@ class ComplexKeyModel(Model):
     date_created = UTCDateTimeAttribute(default=datetime.utcnow)
 
 
-class OverriddenSession(requests.Session):
-    """
-    A overridden session for test
-    """
-    def __init__(self):
-        super(OverriddenSession, self).__init__()
+class BooleanConversionModel(Model):
+    class Meta:
+        table_name = 'BooleanConversionTable'
+
+    user_name = UnicodeAttribute(hash_key=True)
+    is_human = BooleanAttribute()
+
 
 class OverriddenSessionModel(Model):
     """
@@ -1229,8 +1233,32 @@ class ModelTestCase(TestCase):
             self.assertEqual(len(results), 25)
             self.assertEqual(len(req.mock_calls), 3)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 25)
-            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 15)
-            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 5)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 25)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 25)
+
+    def test_query_limit_less_than_available_and_page_size(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Items': items[20:30]},
+            ]
+            results = list(UserModel.query('foo', limit=25, page_size=10))
+            self.assertEqual(len(results), 25)
+            self.assertEqual(len(req.mock_calls), 3)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
 
     def test_query_limit_greater_than_available_items_multiple_page(self):
         with patch(PATCH_METHOD) as req:
@@ -1253,8 +1281,32 @@ class ModelTestCase(TestCase):
             self.assertEqual(len(results), 30)
             self.assertEqual(len(req.mock_calls), 3)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 50)
-            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 40)
-            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 30)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 50)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 50)
+
+    def test_query_limit_greater_than_available_items_and_page_size(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Items': items[20:30]},
+            ]
+            results = list(UserModel.query('foo', limit=50, page_size=10))
+            self.assertEqual(len(results), 30)
+            self.assertEqual(len(req.mock_calls), 3)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
 
     def test_query(self):
         """
@@ -1445,6 +1497,26 @@ class ModelTestCase(TestCase):
             self.assertEqual(params, req.call_args[0][1])
             self.assertTrue(len(queried) == len(items))
 
+    def test_scan_limit_with_page_size(self):
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Items': items[20:30]},
+            ]
+            results = list(UserModel.scan(limit=25, page_size=10))
+            self.assertEqual(len(results), 25)
+            self.assertEqual(len(req.mock_calls), 3)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
+            self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
+
     def test_scan_limit(self):
         """
         Model.scan(limit)
@@ -1466,6 +1538,8 @@ class ModelTestCase(TestCase):
             for item in UserModel.scan(limit=4):
                 count += 1
                 self.assertIsNotNone(item)
+            self.assertEqual(len(req.mock_calls), 1)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 4)
             self.assertEqual(count, 4)
 
         with patch(PATCH_METHOD) as req:
@@ -2398,3 +2472,127 @@ class ModelTestCase(TestCase):
             ]
         }
         self.assert_dict_lists_equal(req.call_args[0][1]['RequestItems']['UserModel'], args['UserModel'])
+
+    def test_new_style_boolean_serializes_as_bool(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            item = BooleanConversionModel(user_name='justin', is_human=True)
+            item.save()
+
+    def test_old_style_boolean_serializes_as_bool(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE
+            item = BooleanConversionModel(user_name='justin', is_human=True)
+            item.save()
+
+    def test_deserializing_old_style_bool_false_works(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {'TableName': BooleanConversionModel.Meta.table_name}:
+                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'BooleanConversionTable',
+                'Key': {
+                    'user_name': {'S': 'alf'},
+                },
+                'ConsistentRead': False}:
+                return BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA
+            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA
+            item = BooleanConversionModel.get('alf')
+            self.assertFalse(item.is_human)
+
+    def test_deserializing_old_style_bool_true_works(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {
+                'TableName': BooleanConversionModel.Meta.table_name}:
+                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'BooleanConversionTable',
+                'Key': {
+                    'user_name': {'S': 'justin'},
+                },
+                'ConsistentRead': False}:
+                return BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA
+            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA
+            item = BooleanConversionModel.get('justin')
+            self.assertTrue(item.is_human)
+
+    def test_deserializing_new_style_bool_false_works(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {
+                'TableName': BooleanConversionModel.Meta.table_name}:
+                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'BooleanConversionTable',
+                'Key': {
+                    'user_name': {'S': 'alf'},
+                },
+                'ConsistentRead': False}:
+                return BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA
+            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA
+            item = BooleanConversionModel.get('alf')
+            self.assertFalse(item.is_human)
+
+    def test_deserializing_new_style_bool_true_works(self):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {
+                'TableName': BooleanConversionModel.Meta.table_name}:
+                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'BooleanConversionTable',
+                'Key': {
+                    'user_name': {'S': 'justin'},
+                },
+                'ConsistentRead': False}:
+                return BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
+            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
+            item = BooleanConversionModel.get('justin')
+            self.assertTrue(item.is_human)
+
+    def test_result_set_init(self):
+        results = []
+        operations = 1
+        arguments = 'args'
+        rs = ResultSet(results=results, operation=operations, arguments=arguments)
+        self.assertEquals(rs.results, results)
+        self.assertEquals(rs.operation, operations)
+        self.assertEquals(rs.arguments, arguments)
+
+    def test_result_set_iter(self):
+        results = [1, 2, 3]
+        operations = 1
+        arguments = 'args'
+        rs = ResultSet(results=results, operation=operations, arguments=arguments)
+        for k in rs:
+            self.assertTrue(k in results)
+

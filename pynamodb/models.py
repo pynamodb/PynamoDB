@@ -454,7 +454,7 @@ class Model(with_metaclass(MetaModel)):
         for name, value in mutable_data.items():
             attr = cls._get_attributes().get(name, None)
             if attr:
-                kwargs[name] = attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type]))
+                kwargs[name] = attr.deserialize(attr.get_value(value))
         return cls(*args, **kwargs)
 
     @classmethod
@@ -517,6 +517,7 @@ class Model(with_metaclass(MetaModel)):
               limit=None,
               last_evaluated_key=None,
               attributes_to_get=None,
+              page_size=None,
               **filters):
         """
         Provides a high level query API
@@ -529,6 +530,7 @@ class Model(with_metaclass(MetaModel)):
             Controls descending or ascending results
         :param last_evaluated_key: If set, provides the starting point for query.
         :param attributes_to_get: If set, only returns these elements
+        :param page_size: Page size of the query to DynamoDB
         :param filters: A dictionary of filters to be used in the query
         """
         cls._get_indexes()
@@ -545,6 +547,10 @@ class Model(with_metaclass(MetaModel)):
                     key_attribute_classes[name] = attr
                 else:
                     non_key_attribute_classes[name] = attr
+
+        if page_size is None:
+            page_size = limit
+
         key_conditions, query_filters = cls._build_filters(
             QUERY_OPERATOR_MAP,
             non_key_operator_map=QUERY_FILTER_OPERATOR_MAP,
@@ -558,7 +564,7 @@ class Model(with_metaclass(MetaModel)):
             exclusive_start_key=last_evaluated_key,
             consistent_read=consistent_read,
             scan_index_forward=scan_index_forward,
-            limit=limit,
+            limit=page_size,
             key_conditions=key_conditions,
             attributes_to_get=attributes_to_get,
             query_filters=query_filters,
@@ -578,14 +584,7 @@ class Model(with_metaclass(MetaModel)):
             yield cls.from_raw_data(item)
 
         while last_evaluated_key:
-            log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
-            # If the user provided a limit, we need to subtract the number of results returned for each page
-            if limit is not None:
-                if limit == 0:
-                    return
-                limit -= data.get(CAMEL_COUNT, 0)
             query_kwargs['exclusive_start_key'] = last_evaluated_key
-            query_kwargs['limit'] = limit
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().query(hash_key, **query_kwargs)
             cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
@@ -604,6 +603,7 @@ class Model(with_metaclass(MetaModel)):
              limit=None,
              conditional_operator=None,
              last_evaluated_key=None,
+             page_size=None,
              **filters):
         """
         Iterates through all items in the table
@@ -612,6 +612,7 @@ class Model(with_metaclass(MetaModel)):
         :param total_segments: If set, then specifies total segments
         :param limit: Used to limit the number of results returned
         :param last_evaluated_key: If set, provides the starting point for scan.
+        :param page_size: Page size of the scan to DynamoDB
         :param filters: A list of item filters
         """
         key_filter, scan_filter = cls._build_filters(
@@ -621,10 +622,13 @@ class Model(with_metaclass(MetaModel)):
             filters=filters
         )
         key_filter.update(scan_filter)
+        if page_size is None:
+            page_size = limit
+
         data = cls._get_connection().scan(
             exclusive_start_key=last_evaluated_key,
             segment=segment,
-            limit=limit,
+            limit=page_size,
             scan_filter=key_filter,
             total_segments=total_segments,
             conditional_operator=conditional_operator
@@ -642,7 +646,7 @@ class Model(with_metaclass(MetaModel)):
             log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().scan(
                 exclusive_start_key=last_evaluated_key,
-                limit=limit,
+                limit=page_size,
                 scan_filter=key_filter,
                 segment=segment,
                 total_segments=total_segments
@@ -1167,7 +1171,7 @@ class Model(with_metaclass(MetaModel)):
         if not hasattr(cls, "Meta") or cls.Meta.table_name is None:
             raise AttributeError(
                 """As of v1.0 PynamoDB Models require a `Meta` class.
-                See http://pynamodb.readthedocs.org/en/latest/release_notes.html"""
+                See https://pynamodb.readthedocs.io/en/latest/release_notes.html"""
             )
         if cls._connection is None:
             cls._connection = TableConnection(cls.Meta.table_name,

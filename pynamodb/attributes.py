@@ -7,7 +7,7 @@ from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING
+    DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT
 )
 
 
@@ -57,6 +57,10 @@ class Attribute(object):
         Performs any needed deserialization on the value
         """
         return value
+
+    def get_value(self, value):
+        serialized_dynamo_type = ATTR_TYPE_MAP[self.attr_type]
+        return value.get(serialized_dynamo_type)
 
 
 class SetMixin(object):
@@ -140,6 +144,48 @@ class UnicodeSetAttribute(SetMixin, Attribute):
     attr_type = STRING_SET
     null = True
 
+    def element_serialize(self, value):
+        """
+        This serializes unicode / strings out as unicode strings.
+        It does not touch the value if it is already a unicode str
+        :param value:
+        :return:
+        """
+        if isinstance(value, six.text_type):
+            return value
+        return six.u(str(value))
+
+    def element_deserialize(self, value):
+        """
+        This deserializes what we get from mongo back into a str
+        Serialization previously json encoded strings. This caused them to have
+        extra double quote (") characters. That no longer happens.
+        This method allows both types of serialized values to be read
+        :param value:
+        :return:
+        """
+        result = value
+        try:
+            result = json.loads(value)
+        except ValueError:
+            # it's serialized in the new way so pass
+            pass
+        return result
+
+    def serialize(self, value):
+        if value is not None:
+            try:
+                iter(value)
+            except TypeError:
+                value = [value]
+            if len(value):
+                return [self.element_serialize(val) for val in sorted(value)]
+        return None
+
+    def deserialize(self, value):
+        if value and len(value):
+            return set([self.element_deserialize(val) for val in value])
+
 
 class UnicodeAttribute(Attribute):
     """
@@ -186,18 +232,17 @@ class JSONAttribute(Attribute):
         return json.loads(value, strict=False)
 
 
-class BooleanAttribute(Attribute):
+class LegacyBooleanAttribute(Attribute):
     """
-    A class for boolean attributes
+    A class for legacy boolean attributes
 
-    This attribute type uses a number attribute to save space
+    Previous versions of this library serialized bools as numbers.
+    This class allows you to continue to use that functionality.
     """
+
     attr_type = NUMBER
 
     def serialize(self, value):
-        """
-        Encodes True as 1, False as 0
-        """
         if value is None:
             return None
         elif value:
@@ -206,10 +251,33 @@ class BooleanAttribute(Attribute):
             return json.dumps(0)
 
     def deserialize(self, value):
-        """
-        Encode
-        """
         return bool(json.loads(value))
+
+
+class BooleanAttribute(Attribute):
+    """
+    A class for boolean attributes
+    """
+    attr_type = BOOLEAN
+
+    def serialize(self, value):
+        if value is None:
+            return None
+        elif value:
+            return True
+        else:
+            return False
+
+    def deserialize(self, value):
+        return bool(value)
+
+    def get_value(self, value):
+        # we need this for legacy compatibility.
+        # previously, BOOL was serialized as N
+        value_to_deserialize = super(BooleanAttribute, self).get_value(value)
+        if value_to_deserialize is None:
+            value_to_deserialize = json.loads(value.get(NUMBER_SHORT, 0))
+        return value_to_deserialize
 
 
 class NumberSetAttribute(SetMixin, Attribute):
