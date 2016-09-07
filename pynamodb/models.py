@@ -17,7 +17,7 @@ from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.indexes import Index, GlobalSecondaryIndex
-from pynamodb.settings import get_settings_value, RequestSessionWithHeaders
+from pynamodb.settings import get_settings_value
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS, CAMEL_COUNT,
@@ -170,7 +170,7 @@ class MetaModel(type):
                     if not hasattr(attr_obj, HOST):
                         setattr(attr_obj, HOST, None)
                     if not hasattr(attr_obj, 'session_cls'):
-                        setattr(attr_obj, 'session_cls', RequestSessionWithHeaders)
+                        setattr(attr_obj, 'session_cls', get_settings_value('session_cls'))
                     if not hasattr(attr_obj, 'request_timeout_seconds'):
                         setattr(attr_obj, 'request_timeout_seconds', get_settings_value('REQUEST_TIMEOUT_SECONDS'))
                     if not hasattr(attr_obj, 'base_backoff_ms'):

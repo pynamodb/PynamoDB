@@ -1,7 +1,6 @@
 import imp
 import os
 from os import getenv
-from botocore.vendored import requests
 import constants
 
 import logging
@@ -9,16 +8,6 @@ import logging
 log = logging.getLogger(__name__)
 
 OVERRIDE_SETTINGS_PATH = getenv('PYNAMO_CONFIG', '/etc/pynamodb/settings_override.py')
-
-settings = {}
-
-class RequestSessionWithHeaders(requests.Session):
-
-    def __init__(self):
-        super(RequestSessionWithHeaders, self).__init__()
-        request_Session_headers = get_settings_value('REQUEST_SESSION_HEADERS')
-        for header_key in request_Session_headers:
-            self.headers.update({header_key: request_Session_headers[header_key]})
 
 override_settings = {}
 if os.path.isfile(OVERRIDE_SETTINGS_PATH):
@@ -29,6 +18,10 @@ else:
     log.info('Using Default settings value')
 
 def get_settings_value(key):
+    """
+    Fetches the value from the override file.
+    If the value is not present, then tries to fetch the values from constants.py
+    """
     if hasattr(override_settings, key):
         return getattr(override_settings, key)
 

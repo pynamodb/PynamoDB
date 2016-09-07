@@ -27,7 +27,6 @@ from pynamodb.indexes import (
     GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
     IncludeProjection, KeysOnlyProjection, Index
 )
-from pynamodb.settings import RequestSessionWithHeaders
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, BooleanAttribute)
@@ -284,6 +283,14 @@ class BooleanConversionModel(Model):
     is_human = BooleanAttribute()
 
 
+class OverriddenSession(requests.Session):
+    """
+    A overridden session for test
+    """
+    def __init__(self):
+        super(OverriddenSession, self).__init__()
+
+
 class OverriddenSessionModel(Model):
     """
     A testing model
@@ -354,12 +361,13 @@ class ModelTestCase(TestCase):
         self.assertEqual(UserModel.Meta.request_timeout_seconds, 25)
         self.assertEqual(UserModel.Meta.max_retry_attempts, 3)
         self.assertEqual(UserModel.Meta.base_backoff_ms, 25)
+        self.assertTrue(UserModel.Meta.session_cls is None)
 
         self.assertEqual(UserModel._connection.connection._request_timeout_seconds, 25)
         self.assertEqual(UserModel._connection.connection._max_retry_attempts_exception, 3)
         self.assertEqual(UserModel._connection.connection._base_backoff_ms, 25)
 
-        self.assertTrue(type(UserModel._connection.connection.requests_session) is RequestSessionWithHeaders)
+        self.assertTrue(type(UserModel._connection.connection.requests_session) is requests.Session)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = MODEL_TABLE_DATA
@@ -523,11 +531,12 @@ class ModelTestCase(TestCase):
         self.assertEqual(OverriddenSessionModel.Meta.request_timeout_seconds, 9999)
         self.assertEqual(OverriddenSessionModel.Meta.max_retry_attempts, 200)
         self.assertEqual(OverriddenSessionModel.Meta.base_backoff_ms, 4120)
+        self.assertTrue(OverriddenSessionModel.Meta.session_cls is OverriddenSession)
 
         self.assertEqual(OverriddenSessionModel._connection.connection._request_timeout_seconds, 9999)
         self.assertEqual(OverriddenSessionModel._connection.connection._max_retry_attempts_exception, 200)
         self.assertEqual(OverriddenSessionModel._connection.connection._base_backoff_ms, 4120)
-        self.assertFalse(type(OverriddenSessionModel._connection.connection.requests_session) is RequestSessionWithHeaders)
+        self.assertTrue(type(OverriddenSessionModel._connection.connection.requests_session) is OverriddenSession)
 
     def test_refresh(self):
         """
