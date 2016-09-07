@@ -357,14 +357,7 @@ class MapAttributeMeta(type):
 class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
     attr_type = MAP
 
-    def __init__(self, **attrs):
-
-        hash_key = attrs.get('hash_key', False)
-        range_key = attrs.get('range_key', False)
-        null = attrs.get('null', None)
-        default = attrs.get('default', None)
-        attr_name = attrs.get('attr_name', None)
-
+    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, **attrs):
         super(MapAttribute, self).__init__(hash_key=hash_key,
                                            range_key=range_key,
                                            null=null,
