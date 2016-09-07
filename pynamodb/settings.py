@@ -1,7 +1,7 @@
 import imp
 import os
 from os import getenv
-import constants
+from pynamodb import constants
 
 import logging
 
