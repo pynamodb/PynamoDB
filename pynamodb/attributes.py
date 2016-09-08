@@ -393,7 +393,8 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         """
         for attr_name, attr in self._get_attributes().aliased_attrs():
             if attr.attr_name in attrs:
-                if type(attrs.get(attr.attr_name)) is type(attr) or not isinstance(attrs.get(attr_name), collections.Mapping):
+                # if type(attrs.get(attr.attr_name)) is type(attr) or not isinstance(attrs.get(attr_name), collections.Mapping):
+                if not isinstance(attrs.get(attr_name), collections.Mapping):
                     setattr(self, attr_name, attrs.get(attr.attr_name))
                 else:
                     # it's a sub model which means we need to instantiate that type first
@@ -416,8 +417,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         can_be_null = value.null
         if can_be_null and getattr(self, key) is None:
             return True
-        return getattr(self, key) and type(getattr(self, key)) is not type(
-            value)
+        return getattr(self, key) and type(getattr(self, key)) is not type(value)
 
     def validate(self):
         return all(self.is_type_safe(k, v) for k, v in six.iteritems(self._get_attributes()))
@@ -464,7 +464,7 @@ def _get_class_for_deserialize(value):
 def _get_class_for_serialize(value):
     if value is None:
         return NullAttribute()
-    if issubclass(type(value), MapAttribute):
+    if isinstance(value, MapAttribute):
         return type(value)()
     value_type = type(value)
     if value_type not in SERIALIZE_CLASS_MAP:
@@ -475,7 +475,7 @@ def _get_class_for_serialize(value):
 def _get_key_for_serialize(value):
     if value is None:
         return NullAttribute.attr_type
-    if issubclass(type(value), MapAttribute):
+    if isinstance(value, MapAttribute):
         return MAP_SHORT
     value_type = type(value)
     if value_type not in SERIALIZE_KEY_MAP:
@@ -487,14 +487,8 @@ class ListAttribute(Attribute):
     attr_type = LIST
     element_type = None
 
-    def __init__(self, **attrs):
-
-        hash_key = attrs.get('hash_key', False)
-        range_key = attrs.get('range_key', False)
-        null = attrs.get('null', None)
-        default = attrs.get('default', None)
-        attr_name = attrs.get('attr_name', None)
-        element_type = attrs.get('of', None)
+    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, of=None):
+        element_type = of
 
         super(ListAttribute, self).__init__(hash_key=hash_key,
                                             range_key=range_key,

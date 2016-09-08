@@ -416,7 +416,7 @@ class Model(with_metaclass(MetaModel)):
             attr = cls._get_attributes().get(name, None)
             if attr:
                 deserialized_attr = attr.deserialize(attr.get_value(value))
-                if issubclass(type(attr), MapAttribute):
+                if isinstance(attr, MapAttribute):
                     deserialized_attr = type(attr)(**deserialized_attr)
                 kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)
@@ -1172,7 +1172,7 @@ class Model(with_metaclass(MetaModel)):
                     continue
                 elif null_check:
                     raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
-            if issubclass(type(attr), MapAttribute):
+            if isinstance(attr, MapAttribute):
                 if not value.validate():
                     raise ValueError('invalid model')
                 value = value.get_values()
