@@ -170,7 +170,7 @@ class MetaModel(type):
                     if not hasattr(attr_obj, HOST):
                         setattr(attr_obj, HOST, None)
                     if not hasattr(attr_obj, 'session_cls'):
-                        setattr(attr_obj, 'session_cls', get_settings_value('session_cls'))
+                        setattr(attr_obj, 'session_cls', get_settings_value('SESSION_CLS'))
                     if not hasattr(attr_obj, 'request_timeout_seconds'):
                         setattr(attr_obj, 'request_timeout_seconds', get_settings_value('REQUEST_TIMEOUT_SECONDS'))
                     if not hasattr(attr_obj, 'base_backoff_ms'):
