@@ -379,8 +379,8 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         """
         if cls._attributes is None:
             cls._attributes = AttributeDict()
-            for item in [attr for attr in dir(cls) if
-                         isinstance(getattr(cls, attr), Attribute)]:
+            class_attribute_variables = [attr for attr in vars(cls) if isinstance(getattr(cls, attr), Attribute)]
+            for item in class_attribute_variables:
                 instance = getattr(cls, item)
                 if instance.attr_name is None:
                     instance.attr_name = item
@@ -393,7 +393,6 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         """
         for attr_name, attr in self._get_attributes().aliased_attrs():
             if attr.attr_name in attrs:
-                # if type(attrs.get(attr.attr_name)) is type(attr) or not isinstance(attrs.get(attr_name), collections.Mapping):
                 if not isinstance(attrs.get(attr_name), collections.Mapping):
                     setattr(self, attr_name, attrs.get(attr.attr_name))
                 else:
