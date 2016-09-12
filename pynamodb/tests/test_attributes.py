@@ -12,7 +12,7 @@ from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
-    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
+    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, BOOLEAN)
 
@@ -381,6 +381,46 @@ class UnicodeAttributeTestCase(TestCase):
         self.assertEqual(attr.attr_type, STRING_SET)
         attr = UnicodeSetAttribute(default=set([six.u('foo'), six.u('bar')]))
         self.assertEqual(attr.default, set([six.u('foo'), six.u('bar')]))
+
+
+class LegacyBooleanAttributeTestCase(TestCase):
+    def test_legacy_boolean_attribute_can_read_future_boolean_attributes(self):
+        """
+        LegacyBooleanAttribute.deserialize
+        :return:
+        """
+        attr = LegacyBooleanAttribute()
+        self.assertEqual(attr.deserialize('1'), True)
+        self.assertEqual(attr.deserialize('0'), False)
+        self.assertEqual(attr.deserialize(json.dumps(True)), True)
+        self.assertEqual(attr.deserialize(json.dumps(False)), False)
+
+    def test_legacy_boolean_attribute_get_value_can_read_both(self):
+        """
+        LegacyBooleanAttribute.get_value
+        :return:
+        """
+        attr = LegacyBooleanAttribute()
+        self.assertEqual(attr.get_value({'N': '1'}), '1')
+        self.assertEqual(attr.get_value({'N': '0'}), '0')
+        self.assertEqual(attr.get_value({'BOOL': True}), json.dumps(True))
+        self.assertEqual(attr.get_value({'BOOL': False}), json.dumps(False))
+
+    def test_legacy_boolean_attribute_get_value_and_deserialize_work_together(self):
+        attr = LegacyBooleanAttribute()
+        self.assertEqual(attr.deserialize(attr.get_value({'N': '1'})), True)
+        self.assertEqual(attr.deserialize(attr.get_value({'N': '0'})), False)
+        self.assertEqual(attr.deserialize(attr.get_value({'BOOL': True})), True)
+        self.assertEqual(attr.deserialize(attr.get_value({'BOOL': False})), False)
+
+    def test_legacy_boolean_attribute_serialize(self):
+        """
+        LegacyBooleanAttribute.serialize
+        """
+        attr = LegacyBooleanAttribute()
+        self.assertEqual(attr.serialize(True), '1')
+        self.assertEqual(attr.serialize(False), '0')
+        self.assertEqual(attr.serialize(None), None)
 
 
 class BooleanAttributeTestCase(TestCase):
