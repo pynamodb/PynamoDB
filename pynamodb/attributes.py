@@ -487,15 +487,13 @@ class ListAttribute(Attribute):
     element_type = None
 
     def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, of=None):
-        element_type = of
-
         super(ListAttribute, self).__init__(hash_key=hash_key,
                                             range_key=range_key,
                                             null=null,
                                             default=default,
                                             attr_name=attr_name)
-        if element_type:
-            self.element_type = element_type
+        if of:
+            self.element_type = of
 
     def serialize(self, values):
         """
