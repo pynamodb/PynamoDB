@@ -253,6 +253,17 @@ class LegacyBooleanAttribute(Attribute):
     def deserialize(self, value):
         return bool(json.loads(value))
 
+    def get_value(self, value):
+        # we need this for the period in which you are upgrading
+        # you can switch all BooleanAttributes to LegacyBooleanAttributes
+        # this can read both but serializes as Numbers
+        # once you've transitioned, you can then switch back to
+        # BooleanAttribute and it will serialize the new fancy way
+        value_to_deserialize = super(LegacyBooleanAttribute, self).get_value(value)
+        if value_to_deserialize is None:
+            value_to_deserialize = json.dumps(value.get(BOOLEAN, 0))
+        return value_to_deserialize
+
 
 class BooleanAttribute(Attribute):
     """
