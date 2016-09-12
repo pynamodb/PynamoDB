@@ -422,7 +422,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         return all(self.is_type_safe(k, v) for k, v in six.iteritems(self._get_attributes()))
 
     def serialize(self, values):
-        rval = dict()
+        rval = {}
         for k in values:
             v = values[k]
             attr_class = _get_class_for_serialize(v)
