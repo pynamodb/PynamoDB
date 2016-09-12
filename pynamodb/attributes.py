@@ -258,11 +258,11 @@ class LegacyBooleanAttribute(Attribute):
         # we need this for the period in which you are upgrading
         # you can switch all BooleanAttributes to LegacyBooleanAttributes
         # this can read both but serializes as Numbers
-        # once you've transitioned, you can then switch back to BooleanAttribute
-        # and it will serialize the new fancy way
-        value_to_deserialize = super(BooleanAttribute, self).get_value(value)
+        # once you've transitioned, you can then switch back to
+        # BooleanAttribute and it will serialize the new fancy way
+        value_to_deserialize = super(LegacyBooleanAttribute, self).get_value(value)
         if value_to_deserialize is None:
-            value_to_deserialize = json.loads(value.get(NUMBER_SHORT, 0))
+            value_to_deserialize = json.dumps(value.get(BOOLEAN, 0))
         return value_to_deserialize
 
 
