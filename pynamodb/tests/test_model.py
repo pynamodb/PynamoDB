@@ -2686,9 +2686,22 @@ class ModelTestCase(TestCase):
         self.assertEquals(office.employees[2].person.fname, 'Garrett')
         self.assertEquals(office.employees[0].person.lname, 'Phillips')
 
+    def test_invalid_map_model_raises(self):
+        fake_db = self.database_mocker(CarModel, CAR_MODEL_TABLE_DATA,
+                                       FULL_CAR_MODEL_ITEM_DATA, 'car_id', 'N',
+                                 '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            with self.assertRaises(ValueError):
+                CarModel(car_id=2).save()
+            try:
+                CarModel(car_id=2).save()
+            except ValueError as e:
+                assert e.message == "Attribute 'car_info' cannot be None"
+
     def test_model_with_maps_retrieve_from_db(self):
-        fake_db = self.cool_func(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
-                                 GET_OFFICE_EMPLOYEE_ITEM_DATA, 'office_employee_id', 'N',
+        fake_db = self.database_mocker(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+                                       GET_OFFICE_EMPLOYEE_ITEM_DATA, 'office_employee_id', 'N',
                                  '123')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
@@ -2700,8 +2713,8 @@ class ModelTestCase(TestCase):
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
 
     def test_model_with_list_retrieve_from_db(self):
-        fake_db = self.cool_func(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,
-                                 GET_GROCERY_LIST_ITEM_DATA, 'store_name', 'S',
+        fake_db = self.database_mocker(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,
+                                       GET_GROCERY_LIST_ITEM_DATA, 'store_name', 'S',
                                  'Haight Street Market')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
@@ -2715,8 +2728,8 @@ class ModelTestCase(TestCase):
             self.assertEquals(item.store_name, 'Haight Street Market')
 
     def test_model_with_list_of_map_retrieve_from_db(self):
-        fake_db = self.cool_func(Office, OFFICE_MODEL_TABLE_DATA,
-                                 GET_OFFICE_ITEM_DATA, 'office_id', 'N',
+        fake_db = self.database_mocker(Office, OFFICE_MODEL_TABLE_DATA,
+                                       GET_OFFICE_ITEM_DATA, 'office_id', 'N',
                                  '6161')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
@@ -2731,8 +2744,8 @@ class ModelTestCase(TestCase):
                     LIST_SHORT)[2].get(MAP_SHORT).get('person').get(MAP_SHORT).get('firstName').get(STRING_SHORT))
 
     def test_complex_model_retrieve_from_db(self):
-        fake_db = self.cool_func(ComplexModel, COMPLEX_MODEL_TABLE_DATA,
-                                 COMPLEX_MODEL_ITEM_DATA, 'key', 'N',
+        fake_db = self.database_mocker(ComplexModel, COMPLEX_MODEL_TABLE_DATA,
+                                       COMPLEX_MODEL_ITEM_DATA, 'key', 'N',
                                  '123')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
@@ -2747,8 +2760,8 @@ class ModelTestCase(TestCase):
                 COMPLEX_MODEL_ITEM_DATA.get(ITEM).get('weird_person').get(
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
 
-    def cool_func(self, model, table_data, item_data,
-                  primary_key_name, primary_key_dynamo_type, primary_key_id):
+    def database_mocker(self, model, table_data, item_data,
+                        primary_key_name, primary_key_dynamo_type, primary_key_id):
         def fake_dynamodb(*args):
             kwargs = args[1]
             if kwargs == {'TableName': model.Meta.table_name}:
@@ -2767,8 +2780,8 @@ class ModelTestCase(TestCase):
         return fake_db
 
     def test_car_model_retrieve_from_db(self):
-        fake_db = self.cool_func(CarModel, CAR_MODEL_TABLE_DATA,
-                                 FULL_CAR_MODEL_ITEM_DATA, 'car_id', 'N', '123')
+        fake_db = self.database_mocker(CarModel, CAR_MODEL_TABLE_DATA,
+                                       FULL_CAR_MODEL_ITEM_DATA, 'car_id', 'N', '123')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = FULL_CAR_MODEL_ITEM_DATA
@@ -2780,8 +2793,8 @@ class ModelTestCase(TestCase):
             self.assertEquals(item.car_info.model, 'Beetle')
 
     def test_car_model_with_null_retrieve_from_db(self):
-        fake_db = self.cool_func(CarModel, CAR_MODEL_TABLE_DATA,
-                                 CAR_MODEL_WITH_NULL_ITEM_DATA, 'car_id', 'N',
+        fake_db = self.database_mocker(CarModel, CAR_MODEL_TABLE_DATA,
+                                       CAR_MODEL_WITH_NULL_ITEM_DATA, 'car_id', 'N',
                                  '123')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
@@ -2794,8 +2807,8 @@ class ModelTestCase(TestCase):
             self.assertIsNone(item.car_info.model)
 
     def test_invalid_car_model_with_null_retrieve_from_db(self):
-        fake_db = self.cool_func(CarModel, CAR_MODEL_TABLE_DATA,
-                                 INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA, 'car_id', 'N',
+        fake_db = self.database_mocker(CarModel, CAR_MODEL_TABLE_DATA,
+                                       INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA, 'car_id', 'N',
                                  '123')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
@@ -2819,8 +2832,8 @@ class ModelTestCase(TestCase):
             item.save()
 
     def test_deserializing_old_style_bool_false_works(self):
-        fake_db = self.cool_func(BooleanConversionModel, BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
-                                 BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA,
+        fake_db = self.database_mocker(BooleanConversionModel, BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                       BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA,
                                  'user_name', 'S',
                                  'alf')
         with patch(PATCH_METHOD, new=fake_db) as req:
@@ -2829,9 +2842,9 @@ class ModelTestCase(TestCase):
             self.assertFalse(item.is_human)
 
     def test_deserializing_old_style_bool_true_works(self):
-        fake_db = self.cool_func(BooleanConversionModel,
-                                 BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
-                                 BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
+        fake_db = self.database_mocker(BooleanConversionModel,
+                                       BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                       BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
                                  'user_name', 'S',
                                  'justin')
         with patch(PATCH_METHOD, new=fake_db) as req:
@@ -2840,9 +2853,9 @@ class ModelTestCase(TestCase):
             self.assertTrue(item.is_human)
 
     def test_deserializing_new_style_bool_false_works(self):
-        fake_db = self.cool_func(BooleanConversionModel,
-                                 BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
-                                 BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA,
+        fake_db = self.database_mocker(BooleanConversionModel,
+                                       BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                       BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA,
                                  'user_name', 'S',
                                  'alf')
         with patch(PATCH_METHOD, new=fake_db) as req:
@@ -2851,9 +2864,9 @@ class ModelTestCase(TestCase):
             self.assertFalse(item.is_human)
 
     def test_deserializing_new_style_bool_true_works(self):
-        fake_db = self.cool_func(BooleanConversionModel,
-                                 BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
-                                 BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
+        fake_db = self.database_mocker(BooleanConversionModel,
+                                       BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                       BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
                                  'user_name', 'S',
                                  'justin')
         with patch(PATCH_METHOD, new=fake_db) as req:
@@ -2862,9 +2875,9 @@ class ModelTestCase(TestCase):
             self.assertTrue(item.is_human)
 
     def test_deserializing_map_four_layers_deep_works(self):
-        fake_db = self.cool_func(TreeModel,
-                                 TREE_MODEL_TABLE_DATA,
-                                 TREE_MODEL_ITEM_DATA,
+        fake_db = self.database_mocker(TreeModel,
+                                       TREE_MODEL_TABLE_DATA,
+                                       TREE_MODEL_ITEM_DATA,
                                  'tree_key', 'S',
                                  '123')
         with patch(PATCH_METHOD, new=fake_db) as req:

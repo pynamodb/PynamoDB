@@ -416,6 +416,8 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         can_be_null = value.null
         if can_be_null and getattr(self, key) is None:
             return True
+        if getattr(self, key) is None:
+            raise ValueError("Attribute '{0}' cannot be None".format(key))
         return getattr(self, key) and type(getattr(self, key)) is not type(value)
 
     def validate(self):
