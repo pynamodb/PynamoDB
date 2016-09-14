@@ -2,7 +2,7 @@ Custom Attributes
 ==========================
 
 Attributes in PynamoDB are classes that are serialized to and from DynamoDB attributes. PynamoDB provides attribute classes
-for all of the basic DynamoDB data types, as defined in the `DynamoDB documentation <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html>`_.
+for all DynamoDB data types, as defined in the `DynamoDB documentation <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html>`_.
 Higher level attribute types (internally stored as a DynamoDB data types) can be defined with PynamoDB. Two such types
 are included with PynamoDB for convenience: ``JSONAttribute`` and ``UnicodeDatetimeAttribute``.
 
