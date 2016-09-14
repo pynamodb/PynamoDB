@@ -9,7 +9,7 @@ are included with PynamoDB for convenience: ``JSONAttribute`` and ``UnicodeDatet
 Attribute Methods
 -----------------
 
-All ``Attribute`` classes must define three methods, ``serialize`, ``deserialize`` and ``get_value``. The ``serialize`` method takes a Python
+All ``Attribute`` classes must define three methods, ``serialize``, ``deserialize`` and ``get_value``. The ``serialize`` method takes a Python
 value and converts it into a format that can be stored into DynamoDB. The ``get_value`` method reads the serialized value out of the DynamoDB record.
 This raw value is then passed to the ``deserialize`` method. The ``deserialize`` method then converts it back into its value in Python.
 Additionally, a class attribute called ``attr_type`` is required for PynamoDB to know which DynamoDB data type the attribute is stored as.
