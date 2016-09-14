@@ -6,11 +6,11 @@ import time
 import six
 import copy
 import logging
-import collections
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
-from pynamodb.attributes import Attribute
+from pynamodb.attributes import Attribute, MapAttribute, ListAttribute
+from pynamodb.attribute_dict import AttributeDict
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -182,38 +182,6 @@ class MetaModel(type):
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
 
 
-class AttributeDict(collections.MutableMapping):
-    """
-    A dictionary that stores attributes by two keys
-    """
-    def __init__(self, *args, **kwargs):
-        self._values = {}
-        self._alt_values = {}
-        self.update(dict(*args, **kwargs))
-
-    def __getitem__(self, key):
-        if key in self._alt_values:
-            return self._alt_values[key]
-        return self._values[key]
-
-    def __setitem__(self, key, value):
-        if value.attr_name is not None:
-            self._values[value.attr_name] = value
-        self._alt_values[key] = value
-
-    def __delitem__(self, key):
-        del self._values[key]
-
-    def __iter__(self):
-        return iter(self._alt_values)
-
-    def __len__(self):
-        return len(self._values)
-
-    def aliased_attrs(self):
-        return self._alt_values.items()
-
-
 class Model(with_metaclass(MetaModel)):
     """
     Defines a `PynamoDB` Model
@@ -250,6 +218,20 @@ class Model(with_metaclass(MetaModel)):
                 )
             attrs[range_keyname] = range_key
         self._set_attributes(**attrs)
+
+    @classmethod
+    def has_map_or_list_attributes(cls):
+        for attr_name in cls._get_attributes()._values:
+            attr_value = cls._get_attributes().get(attr_name)
+            if isinstance(attr_value, MapAttribute) or isinstance(attr_value, ListAttribute):
+                return True
+        return False
+
+    @classmethod
+    def _conditional_operator_check(cls, conditional_operator):
+        if conditional_operator is not None and cls.has_map_or_list_attributes():
+            raise NotImplementedError('Map and List attribute do not support conditional_operator yet')
+
 
     @classmethod
     def batch_get(cls, items, consistent_read=None, attributes_to_get=None):
@@ -318,6 +300,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Deletes this object from dynamodb
         """
+        self._conditional_operator_check(conditional_operator)
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, DELETE_FILTER_OPERATOR_MAP))
@@ -335,6 +318,7 @@ class Model(with_metaclass(MetaModel)):
         :param action: The action to take if this item already exists.
             See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html#DDB-UpdateItem-request-AttributeUpdate
         """
+        self._conditional_operator_check(conditional_operator)
         args, save_kwargs = self._get_save_args(null_check=False)
         attribute_cls = None
         for attr_name, attr_cls in self._get_attributes().items():
@@ -372,6 +356,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Save this object to dynamodb
         """
+        self._conditional_operator_check(conditional_operator)
         args, kwargs = self._get_save_args()
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
@@ -447,7 +432,10 @@ class Model(with_metaclass(MetaModel)):
         for name, value in mutable_data.items():
             attr = cls._get_attributes().get(name, None)
             if attr:
-                kwargs[name] = attr.deserialize(attr.get_value(value))
+                deserialized_attr = attr.deserialize(attr.get_value(value))
+                if isinstance(attr, MapAttribute):
+                    deserialized_attr = type(attr)(**deserialized_attr)
+                kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)
 
     @classmethod
@@ -521,11 +509,13 @@ class Model(with_metaclass(MetaModel)):
         :param limit: Used to limit the number of results returned
         :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
             Controls descending or ascending results
+        :param conditional_operator:
         :param last_evaluated_key: If set, provides the starting point for query.
         :param attributes_to_get: If set, only returns these elements
         :param page_size: Page size of the query to DynamoDB
         :param filters: A dictionary of filters to be used in the query
         """
+        cls._conditional_operator_check(conditional_operator)
         cls._get_indexes()
         if index_name:
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
@@ -604,10 +594,12 @@ class Model(with_metaclass(MetaModel)):
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
         :param limit: Used to limit the number of results returned
+        :param conditional_operator:
         :param last_evaluated_key: If set, provides the starting point for scan.
         :param page_size: Page size of the scan to DynamoDB
         :param filters: A list of item filters
         """
+        cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
             non_key_operator_map=SCAN_OPERATOR_MAP,
@@ -1201,6 +1193,10 @@ class Model(with_metaclass(MetaModel)):
                     continue
                 elif null_check:
                     raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
+            if isinstance(attr, MapAttribute):
+                if not value.validate():
+                    raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
+                value = value.get_values()
             serialized = attr.serialize(value)
             if serialized is None:
                 continue
