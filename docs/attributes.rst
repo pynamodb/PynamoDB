@@ -9,12 +9,12 @@ are included with PynamoDB for convenience: ``JSONAttribute`` and ``UnicodeDatet
 Attribute Methods
 -----------------
 
-All `Attribute` classes must define three methods, `serialize`, `deserialize` and `get_value`. The `serialize` method takes a Python
-value and converts it into a format that can be stored into DynamoDB. The `get_value` method reads the serialized value out of the DynamoDB record.
-This raw value is then passed to the `deserialize` method. The `deserialize` method then converts it back into its value in Python.
-Additionally, a class attribute called `attr_type` is required for PynamoDB to know which DynamoDB data type the attribute is stored as.
-The `get_value` method is provided to help when migrating from one attribute type to another, specifically with the `BooleanAttribute` type.
-If you're writing your own attribute and the `attr_type` has not changed you can simply use the base `Attribute` implementation of `get_value`.
+All ``Attribute`` classes must define three methods, ``serialize`, ``deserialize`` and ``get_value``. The ``serialize`` method takes a Python
+value and converts it into a format that can be stored into DynamoDB. The ``get_value`` method reads the serialized value out of the DynamoDB record.
+This raw value is then passed to the ``deserialize`` method. The ``deserialize`` method then converts it back into its value in Python.
+Additionally, a class attribute called ``attr_type`` is required for PynamoDB to know which DynamoDB data type the attribute is stored as.
+The ``get_value`` method is provided to help when migrating from one attribute type to another, specifically with the ``BooleanAttribute`` type.
+If you're writing your own attribute and the ``attr_type`` has not changed you can simply use the base ``Attribute`` implementation of ``get_value``.
 
 
 Writing your own attribute
@@ -47,8 +47,8 @@ Custom Attribute Example
 ------------------------
 
 The example below shows how to write a custom attribute that will pickle a customized class. The attribute itself is stored
-in DynamoDB as a binary attribute. The `pickle` module is used to serialize and deserialize the attribute. In this example,
-it is not necessary to define `attr_type` because the `PickleAttribute` class is inheriting from `BinaryAttribute` which has
+in DynamoDB as a binary attribute. The ``pickle`` module is used to serialize and deserialize the attribute. In this example,
+it is not necessary to define ``attr_type`` because the ``PickleAttribute`` class is inheriting from ``BinaryAttribute`` which has
 already defined it.
 
 .. code-block:: python
@@ -116,8 +116,8 @@ List Attributes
 ---------------
 
 DynamoDB list attributes are simply lists of other attributes. DynamoDB asserts no requirements about the types embedded within the list.
-DynamoDB is perfectly content with a list of `UnicodeAttribute` and `NumberAttributes` mixed together. Pynamo can provide type safety if it is required.
-When defining your model use the `of=` kwarg and pass in a class. Pynamo will check that all items in the list are of the type you require.
+DynamoDB is perfectly content with a list of ``UnicodeAttribute`` and ``NumberAttributes`` mixed together. Pynamo can provide type safety if it is required.
+When defining your model use the ``of=`` kwarg and pass in a class. Pynamo will check that all items in the list are of the type you require.
 
 .. code-block:: python
 
@@ -134,7 +134,7 @@ Map Attributes
 --------------
 
 DynamoDB map attributes are objects embedded inside of top level models. See the examples `here <https://github.com/jlafon/PynamoDB/tree/devel/examples/office_model.py>`_.
-When implementing your own MapAttribute you can simply extend `MapAttribute` and ignore writing serialization code.
+When implementing your own MapAttribute you can simply extend ``MapAttribute`` and ignore writing serialization code.
 These attributes can then be used inside of Model classes just like any other attribute.
 
 .. code-block:: python
