@@ -6,11 +6,11 @@ import time
 import six
 import copy
 import logging
-import collections
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
-from pynamodb.attributes import Attribute
+from pynamodb.attributes import Attribute, MapAttribute
+from pynamodb.attribute_dict import AttributeDict
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -180,38 +180,6 @@ class MetaModel(type):
 
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
-
-
-class AttributeDict(collections.MutableMapping):
-    """
-    A dictionary that stores attributes by two keys
-    """
-    def __init__(self, *args, **kwargs):
-        self._values = {}
-        self._alt_values = {}
-        self.update(dict(*args, **kwargs))
-
-    def __getitem__(self, key):
-        if key in self._alt_values:
-            return self._alt_values[key]
-        return self._values[key]
-
-    def __setitem__(self, key, value):
-        if value.attr_name is not None:
-            self._values[value.attr_name] = value
-        self._alt_values[key] = value
-
-    def __delitem__(self, key):
-        del self._values[key]
-
-    def __iter__(self):
-        return iter(self._alt_values)
-
-    def __len__(self):
-        return len(self._values)
-
-    def aliased_attrs(self):
-        return self._alt_values.items()
 
 
 class Model(with_metaclass(MetaModel)):
@@ -447,7 +415,10 @@ class Model(with_metaclass(MetaModel)):
         for name, value in mutable_data.items():
             attr = cls._get_attributes().get(name, None)
             if attr:
-                kwargs[name] = attr.deserialize(attr.get_value(value))
+                deserialized_attr = attr.deserialize(attr.get_value(value))
+                if isinstance(attr, MapAttribute):
+                    deserialized_attr = type(attr)(**deserialized_attr)
+                kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)
 
     @classmethod
@@ -1201,6 +1172,10 @@ class Model(with_metaclass(MetaModel)):
                     continue
                 elif null_check:
                     raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
+            if isinstance(attr, MapAttribute):
+                if not value.validate():
+                    raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
+                value = value.get_values()
             serialized = attr.serialize(value)
             if serialized is None:
                 continue

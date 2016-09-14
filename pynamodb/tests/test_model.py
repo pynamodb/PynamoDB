@@ -19,7 +19,7 @@ from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, ITEM_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
-    UNPROCESSED_ITEMS, DEFAULT_ENCODING
+    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT, NUMBER_SHORT
 )
 from pynamodb.models import Model, ResultSet
 from pynamodb.indexes import (
@@ -28,16 +28,21 @@ from pynamodb.indexes import (
 )
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
-    UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, BooleanAttribute)
+    UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
+    BooleanAttribute, ListAttribute, JSONAttribute)
 from pynamodb.tests.data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
-    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+    GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
+    GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
+    CAR_MODEL_TABLE_DATA, FULL_CAR_MODEL_ITEM_DATA, CAR_MODEL_WITH_NULL_ITEM_DATA, INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA,
+    BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
     BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
     BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
-    BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE
+    BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE, TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA
 )
 
 if six.PY3:
@@ -274,12 +279,120 @@ class ComplexKeyModel(Model):
     date_created = UTCDateTimeAttribute(default=datetime.utcnow)
 
 
+class Location(MapAttribute):
+
+    lat = NumberAttribute(attr_name='latitude')
+    lng = NumberAttribute(attr_name='longitude')
+    name = UnicodeAttribute()
+
+
+class Person(MapAttribute):
+
+    fname = UnicodeAttribute(attr_name='firstName')
+    lname = UnicodeAttribute()
+    age = NumberAttribute()
+    is_male = BooleanAttribute(attr_name='is_dude')
+
+    def foo(self):
+        return 1
+
+
+class ComplexModel(Model):
+    class Meta:
+        table_name = 'ComplexModel'
+    person = Person(attr_name='weird_person')
+    key = NumberAttribute(hash_key=True)
+
+
+class OfficeEmployee(Model):
+    class Meta:
+        table_name = 'OfficeEmployeeModel'
+
+    office_employee_id = NumberAttribute(hash_key=True)
+    person = Person()
+    office_location = Location()
+
+    def foo(self):
+        return 1
+
+
+class CarInfoMap(MapAttribute):
+    make = UnicodeAttribute(null=False)
+    model = UnicodeAttribute(null=True)
+
+
+class CarModel(Model):
+    class Meta:
+        table_name = 'CarModel'
+    car_id = NumberAttribute(null=False)
+    car_info = CarInfoMap(null=False)
+
+
+class CarModelWithNull(Model):
+    class Meta:
+        table_name = 'CarModelWithNull'
+    car_id = NumberAttribute(null=False)
+    car_color = UnicodeAttribute(null=True)
+    car_info = CarInfoMap(null=True)
+
+
+class OfficeEmployeeMap(MapAttribute):
+
+    office_employee_id = NumberAttribute()
+    person = Person()
+    office_location = Location()
+
+    def cool_function(self):
+        return 1
+
+
+class GroceryList(Model):
+    class Meta:
+        table_name = 'GroceryListModel'
+
+    store_name = UnicodeAttribute(hash_key=True)
+    groceries = ListAttribute()
+
+
+class Office(Model):
+    class Meta:
+        table_name = 'OfficeModel'
+    office_id = NumberAttribute(hash_key=True)
+    address = Location()
+    employees = ListAttribute(of=OfficeEmployeeMap)
+
+
 class BooleanConversionModel(Model):
     class Meta:
         table_name = 'BooleanConversionTable'
 
     user_name = UnicodeAttribute(hash_key=True)
     is_human = BooleanAttribute()
+
+
+class TreeLeaf2(MapAttribute):
+    value = NumberAttribute()
+
+
+class TreeLeaf1(MapAttribute):
+    value = NumberAttribute()
+    left = TreeLeaf2()
+    right = TreeLeaf2()
+
+
+class TreeLeaf(MapAttribute):
+    value = NumberAttribute()
+    left = TreeLeaf1()
+    right = TreeLeaf1()
+
+
+class TreeModel(Model):
+    class Meta:
+        table_name = 'TreeModelTable'
+
+    tree_key = UnicodeAttribute(hash_key=True)
+    left = TreeLeaf()
+    right = TreeLeaf()
 
 
 class ModelTestCase(TestCase):
@@ -2425,6 +2538,287 @@ class ModelTestCase(TestCase):
         }
         self.assert_dict_lists_equal(req.call_args[0][1]['RequestItems']['UserModel'], args['UserModel'])
 
+    def _get_office_employee(self):
+        justin = Person(
+            fname='Justin',
+            lname='Phillips',
+            age=31,
+            is_male=True
+        )
+        loc = Location(
+            lat=37.77461,
+            lng=-122.3957216,
+            name='Lyft HQ'
+        )
+        return OfficeEmployee(
+            hash_key=None,
+            range_key=None,
+            office_employee_id=123,
+            person=justin,
+            office_location=loc
+        )
+
+    def _get_grocery_list(self):
+        return GroceryList(store_name='Haight Street Market',
+                           groceries=['bread', 1, 'butter', 6, 'milk', 1])
+
+    def _get_complex_thing(self):
+        justin = Person(
+            fname='Justin',
+            lname='Phillips',
+            age=31,
+            is_male=True
+        )
+        return ComplexModel(person=justin, key=123)
+
+    def _get_office(self):
+        justin = Person(
+            fname='Justin',
+            lname='Phillips',
+            age=31,
+            is_male=True
+        )
+        lei = Person(
+            fname='Lei',
+            lname='Ding',
+            age=32,
+            is_male=True
+        )
+        garrett = Person(
+            fname='Garrett',
+            lname='Heel',
+            age=30,
+            is_male=True
+        )
+        tanya = Person(
+            fname='Tanya',
+            lname='Ashkenazi',
+            age=30,
+            is_male=False
+        )
+        loc = Location(
+            lat=37.77461,
+            lng=-122.3957216,
+            name='Lyft HQ'
+        )
+        emp1 = OfficeEmployeeMap(
+            office_employee_id=123,
+            person=justin,
+            office_location=loc
+        )
+        emp2 = OfficeEmployeeMap(
+            office_employee_id=124,
+            person=lei,
+            office_location=loc
+        )
+        emp3 = OfficeEmployeeMap(
+            office_employee_id=125,
+            person=garrett,
+            office_location=loc
+        )
+        emp4 = OfficeEmployeeMap(
+            office_employee_id=126,
+            person=tanya,
+            office_location=loc
+        )
+        return Office(
+            office_id=3,
+            address=loc,
+            employees=[emp1, emp2, emp3, emp4]
+        )
+
+    def test_model_with_maps(self):
+        office_employee = self._get_office_employee()
+        with patch(PATCH_METHOD) as req:
+            req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
+            office_employee.save()
+
+    def test_model_with_list(self):
+        grocery_list = self._get_grocery_list()
+        with patch(PATCH_METHOD) as req:
+            req.return_value = GROCERY_LIST_MODEL_TABLE_DATA
+            grocery_list.save()
+
+    def test_model_with_list_of_map(self):
+        item = self._get_office()
+        with patch(PATCH_METHOD) as req:
+            req.return_value = OFFICE_MODEL_TABLE_DATA
+            item.save()
+
+    def test_model_with_nulls_validates(self):
+        car_info = CarInfoMap(make='Dodge')
+        item = CarModel(car_id=123, car_info=car_info)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = CAR_MODEL_WITH_NULL_ITEM_DATA
+            item.save()
+
+    def test_model_with_invalid_data_does_not_validate(self):
+        car_info = CarInfoMap(model='Envoy')
+        item = CarModel(car_id=123, car_info=car_info)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA
+            with self.assertRaises(ValueError):
+                item.save()
+
+    def test_model_works_like_model(self):
+        office_employee = self._get_office_employee()
+        self.assertTrue(office_employee.person)
+        self.assertEquals('Justin', office_employee.person.fname)
+        self.assertEquals('Phillips', office_employee.person.lname)
+        self.assertEquals(31, office_employee.person.age)
+        self.assertEquals(True, office_employee.person.is_male)
+
+    def test_list_works_like_list(self):
+        grocery_list = self._get_grocery_list()
+        self.assertTrue(grocery_list.groceries)
+        self.assertEquals('butter', grocery_list.groceries[2])
+
+    def test_complex_model_is_complex(self):
+        complex_thing = self._get_complex_thing()
+        self.assertTrue(complex_thing.person)
+        self.assertEquals(complex_thing.person.fname, 'Justin')
+        self.assertEquals(complex_thing.key, 123)
+
+    def test_list_of_map_works_like_list_of_map(self):
+        office = self._get_office()
+        self.assertTrue(office.employees[1].person.is_male)
+        self.assertFalse(office.employees[3].person.is_male)
+        self.assertEquals(office.employees[2].person.fname, 'Garrett')
+        self.assertEquals(office.employees[0].person.lname, 'Phillips')
+
+    def test_invalid_map_model_raises(self):
+        fake_db = self.database_mocker(CarModel, CAR_MODEL_TABLE_DATA,
+                                       FULL_CAR_MODEL_ITEM_DATA, 'car_id', 'N',
+                                 '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            with self.assertRaises(ValueError):
+                CarModel(car_id=2).save()
+            try:
+                CarModel(car_id=2).save()
+            except ValueError as e:
+                assert str(e) == "Attribute 'car_info' cannot be None"
+
+    def test_model_with_maps_retrieve_from_db(self):
+        fake_db = self.database_mocker(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+                                       GET_OFFICE_EMPLOYEE_ITEM_DATA, 'office_employee_id', 'N',
+                                 '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = GET_OFFICE_EMPLOYEE_ITEM_DATA
+            item = OfficeEmployee.get(123)
+            self.assertEqual(
+                item.person.fname,
+                GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
+                    MAP_SHORT).get('firstName').get(STRING_SHORT))
+
+    def test_model_with_list_retrieve_from_db(self):
+        fake_db = self.database_mocker(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,
+                                       GET_GROCERY_LIST_ITEM_DATA, 'store_name', 'S',
+                                 'Haight Street Market')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = GET_GROCERY_LIST_ITEM_DATA
+            item = GroceryList.get('Haight Street Market')
+            self.assertEquals(item.store_name, GET_GROCERY_LIST_ITEM_DATA.get(ITEM).get('store_name').get(STRING_SHORT))
+            self.assertEquals(
+                item.groceries[2],
+                GET_GROCERY_LIST_ITEM_DATA.get(ITEM).get('groceries').get(
+                    LIST_SHORT)[2].get(STRING_SHORT))
+            self.assertEquals(item.store_name, 'Haight Street Market')
+
+    def test_model_with_list_of_map_retrieve_from_db(self):
+        fake_db = self.database_mocker(Office, OFFICE_MODEL_TABLE_DATA,
+                                       GET_OFFICE_ITEM_DATA, 'office_id', 'N',
+                                 '6161')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = GET_OFFICE_ITEM_DATA
+            item = Office.get(6161)
+            self.assertEquals(item.office_id,
+                              int(GET_OFFICE_ITEM_DATA.get(ITEM).get('office_id').get(NUMBER_SHORT)))
+            self.assertEquals(item.office_id, 6161)
+            self.assertEquals(
+                item.employees[2].person.fname,
+                GET_OFFICE_ITEM_DATA.get(ITEM).get('employees').get(
+                    LIST_SHORT)[2].get(MAP_SHORT).get('person').get(MAP_SHORT).get('firstName').get(STRING_SHORT))
+
+    def test_complex_model_retrieve_from_db(self):
+        fake_db = self.database_mocker(ComplexModel, COMPLEX_MODEL_TABLE_DATA,
+                                       COMPLEX_MODEL_ITEM_DATA, 'key', 'N',
+                                 '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = COMPLEX_MODEL_ITEM_DATA
+            item = ComplexModel.get(123)
+            self.assertEquals(item.key,
+                              int(COMPLEX_MODEL_ITEM_DATA.get(ITEM).get(
+                                  'key').get(NUMBER_SHORT)))
+            self.assertEquals(item.key, 123)
+            self.assertEquals(
+                item.person.fname,
+                COMPLEX_MODEL_ITEM_DATA.get(ITEM).get('weird_person').get(
+                    MAP_SHORT).get('firstName').get(STRING_SHORT))
+
+    def database_mocker(self, model, table_data, item_data,
+                        primary_key_name, primary_key_dynamo_type, primary_key_id):
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {'TableName': model.Meta.table_name}:
+                return table_data
+            elif kwargs == {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': model.Meta.table_name,
+                'Key': {
+                    primary_key_name: {primary_key_dynamo_type: primary_key_id},
+                },
+                'ConsistentRead': False}:
+                return item_data
+            return table_data
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+        return fake_db
+
+    def test_car_model_retrieve_from_db(self):
+        fake_db = self.database_mocker(CarModel, CAR_MODEL_TABLE_DATA,
+                                       FULL_CAR_MODEL_ITEM_DATA, 'car_id', 'N', '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = FULL_CAR_MODEL_ITEM_DATA
+            item = CarModel.get(123)
+            self.assertEquals(item.car_id,
+                              int(FULL_CAR_MODEL_ITEM_DATA.get(ITEM).get(
+                                  'car_id').get(NUMBER_SHORT)))
+            self.assertEquals(item.car_info.make, 'Volkswagen')
+            self.assertEquals(item.car_info.model, 'Beetle')
+
+    def test_car_model_with_null_retrieve_from_db(self):
+        fake_db = self.database_mocker(CarModel, CAR_MODEL_TABLE_DATA,
+                                       CAR_MODEL_WITH_NULL_ITEM_DATA, 'car_id', 'N',
+                                 '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = CAR_MODEL_WITH_NULL_ITEM_DATA
+            item = CarModel.get(123)
+            self.assertEquals(item.car_id,
+                              int(CAR_MODEL_WITH_NULL_ITEM_DATA.get(ITEM).get(
+                                  'car_id').get(NUMBER_SHORT)))
+            self.assertEquals(item.car_info.make, 'Dodge')
+            self.assertIsNone(item.car_info.model)
+
+    def test_invalid_car_model_with_null_retrieve_from_db(self):
+        fake_db = self.database_mocker(CarModel, CAR_MODEL_TABLE_DATA,
+                                       INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA, 'car_id', 'N',
+                                 '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA
+            item = CarModel.get(123)
+            self.assertEquals(item.car_id,
+                              int(INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA.get(ITEM).get(
+                                  'car_id').get(NUMBER_SHORT)))
+            self.assertIsNone(item.car_info.make)
+
     def test_new_style_boolean_serializes_as_bool(self):
         with patch(PATCH_METHOD) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA
@@ -2438,98 +2832,58 @@ class ModelTestCase(TestCase):
             item.save()
 
     def test_deserializing_old_style_bool_false_works(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {'TableName': BooleanConversionModel.Meta.table_name}:
-                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'BooleanConversionTable',
-                'Key': {
-                    'user_name': {'S': 'alf'},
-                },
-                'ConsistentRead': False}:
-                return BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA
-            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
-
+        fake_db = self.database_mocker(BooleanConversionModel, BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                       BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA,
+                                 'user_name', 'S',
+                                 'alf')
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA
             item = BooleanConversionModel.get('alf')
             self.assertFalse(item.is_human)
 
     def test_deserializing_old_style_bool_true_works(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {
-                'TableName': BooleanConversionModel.Meta.table_name}:
-                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'BooleanConversionTable',
-                'Key': {
-                    'user_name': {'S': 'justin'},
-                },
-                'ConsistentRead': False}:
-                return BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA
-            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
-
+        fake_db = self.database_mocker(BooleanConversionModel,
+                                       BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                       BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
+                                 'user_name', 'S',
+                                 'justin')
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA
             item = BooleanConversionModel.get('justin')
             self.assertTrue(item.is_human)
 
     def test_deserializing_new_style_bool_false_works(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {
-                'TableName': BooleanConversionModel.Meta.table_name}:
-                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'BooleanConversionTable',
-                'Key': {
-                    'user_name': {'S': 'alf'},
-                },
-                'ConsistentRead': False}:
-                return BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA
-            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
-
+        fake_db = self.database_mocker(BooleanConversionModel,
+                                       BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                       BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA,
+                                 'user_name', 'S',
+                                 'alf')
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA
             item = BooleanConversionModel.get('alf')
             self.assertFalse(item.is_human)
 
     def test_deserializing_new_style_bool_true_works(self):
-        def fake_dynamodb(*args):
-            kwargs = args[1]
-            if kwargs == {
-                'TableName': BooleanConversionModel.Meta.table_name}:
-                return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-            elif kwargs == {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'BooleanConversionTable',
-                'Key': {
-                    'user_name': {'S': 'justin'},
-                },
-                'ConsistentRead': False}:
-                return BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
-            return BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
+        fake_db = self.database_mocker(BooleanConversionModel,
+                                       BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
+                                       BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
+                                 'user_name', 'S',
+                                 'justin')
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
             item = BooleanConversionModel.get('justin')
             self.assertTrue(item.is_human)
+
+    def test_deserializing_map_four_layers_deep_works(self):
+        fake_db = self.database_mocker(TreeModel,
+                                       TREE_MODEL_TABLE_DATA,
+                                       TREE_MODEL_ITEM_DATA,
+                                 'tree_key', 'S',
+                                 '123')
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = TREE_MODEL_ITEM_DATA
+            item = TreeModel.get('123')
+            self.assertEquals(item.left.left.left.value, 3)
 
     def test_result_set_init(self):
         results = []
@@ -2547,4 +2901,3 @@ class ModelTestCase(TestCase):
         rs = ResultSet(results=results, operation=operations, arguments=arguments)
         for k in rs:
             self.assertTrue(k in results)
-
