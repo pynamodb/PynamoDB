@@ -2885,6 +2885,21 @@ class ModelTestCase(TestCase):
             item = TreeModel.get('123')
             self.assertEquals(item.left.left.left.value, 3)
 
+    def test_conditional_operator_map_attribute(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item = self._get_complex_thing()
+            with self.assertRaises(NotImplementedError):
+                item.save(key=123, conditional_operator='OR')
+            with self.assertRaises(NotImplementedError):
+                item.delete(key=123, conditional_operator='OR')
+            with self.assertRaises(NotImplementedError):
+                item.update_item(123, conditional_operator='OR')
+            with self.assertRaises(NotImplementedError):
+                list(ComplexModel.query(123, limit=20, conditional_operator='OR'))
+            with self.assertRaises(NotImplementedError):
+                list(ComplexModel.scan(conditional_operator='OR'))
+
     def test_result_set_init(self):
         results = []
         operations = 1

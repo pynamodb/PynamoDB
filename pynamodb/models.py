@@ -9,7 +9,7 @@ import logging
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
-from pynamodb.attributes import Attribute, MapAttribute
+from pynamodb.attributes import Attribute, MapAttribute, ListAttribute
 from pynamodb.attribute_dict import AttributeDict
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
@@ -220,6 +220,20 @@ class Model(with_metaclass(MetaModel)):
         self._set_attributes(**attrs)
 
     @classmethod
+    def has_map_or_list_attributes(cls):
+        for attr_name in cls._get_attributes()._values:
+            attr_value = cls._get_attributes().get(attr_name)
+            if isinstance(attr_value, MapAttribute) or isinstance(attr_value, ListAttribute):
+                return True
+        return False
+
+    @classmethod
+    def _conditional_operator_check(cls, conditional_operator):
+        if conditional_operator is not None and cls.has_map_or_list_attributes():
+            raise NotImplementedError()
+
+
+    @classmethod
     def batch_get(cls, items, consistent_read=None, attributes_to_get=None):
         """
         BatchGetItem for this model
@@ -286,6 +300,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Deletes this object from dynamodb
         """
+        self._conditional_operator_check(conditional_operator)
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, DELETE_FILTER_OPERATOR_MAP))
@@ -303,6 +318,7 @@ class Model(with_metaclass(MetaModel)):
         :param action: The action to take if this item already exists.
             See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html#DDB-UpdateItem-request-AttributeUpdate
         """
+        self._conditional_operator_check(conditional_operator)
         args, save_kwargs = self._get_save_args(null_check=False)
         attribute_cls = None
         for attr_name, attr_cls in self._get_attributes().items():
@@ -340,6 +356,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Save this object to dynamodb
         """
+        self._conditional_operator_check(conditional_operator)
         args, kwargs = self._get_save_args()
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
@@ -492,11 +509,13 @@ class Model(with_metaclass(MetaModel)):
         :param limit: Used to limit the number of results returned
         :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
             Controls descending or ascending results
+        :param conditional_operator:
         :param last_evaluated_key: If set, provides the starting point for query.
         :param attributes_to_get: If set, only returns these elements
         :param page_size: Page size of the query to DynamoDB
         :param filters: A dictionary of filters to be used in the query
         """
+        cls._conditional_operator_check(conditional_operator)
         cls._get_indexes()
         if index_name:
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
@@ -575,10 +594,12 @@ class Model(with_metaclass(MetaModel)):
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
         :param limit: Used to limit the number of results returned
+        :param conditional_operator:
         :param last_evaluated_key: If set, provides the starting point for scan.
         :param page_size: Page size of the scan to DynamoDB
         :param filters: A list of item filters
         """
+        cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
             non_key_operator_map=SCAN_OPERATOR_MAP,
