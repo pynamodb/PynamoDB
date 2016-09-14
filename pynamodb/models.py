@@ -230,7 +230,7 @@ class Model(with_metaclass(MetaModel)):
     @classmethod
     def _conditional_operator_check(cls, conditional_operator):
         if conditional_operator is not None and cls.has_map_or_list_attributes():
-            raise NotImplementedError()
+            raise NotImplementedError('Map and List attribute do not support conditional_operator yet')
 
 
     @classmethod
