@@ -1,4 +1,5 @@
 from os import getenv
+from pynamodb.constants import DEFAULT_REGION
 import imp
 import os
 import logging
@@ -9,7 +10,7 @@ default_settings_dict = {}
 default_settings_dict['REQUEST_TIMEOUT_SECONDS'] = 25
 default_settings_dict['MAX_RETRY_ATTEMPTS'] = 3
 default_settings_dict['BASE_BACKOFF_MS'] = 25
-default_settings_dict['REGION'] = 'us-east-1'
+default_settings_dict['REGION'] = DEFAULT_REGION
 
 OVERRIDE_SETTINGS_PATH = getenv('PYNAMO_CONFIG', '/etc/pynamodb/settings_override.py')
 
