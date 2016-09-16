@@ -1,11 +1,15 @@
+from os import getenv
 import imp
 import os
-from os import getenv
-from pynamodb import constants
-
 import logging
 
 log = logging.getLogger(__name__)
+
+default_settings_dict = {}
+default_settings_dict['REQUEST_TIMEOUT_SECONDS'] = 25
+default_settings_dict['MAX_RETRY_ATTEMPTS'] = 3
+default_settings_dict['BASE_BACKOFF_MS'] = 25
+default_settings_dict['REGION'] = 'us-east-1'
 
 OVERRIDE_SETTINGS_PATH = getenv('PYNAMO_CONFIG', '/etc/pynamodb/settings_override.py')
 
@@ -25,7 +29,7 @@ def get_settings_value(key):
     if hasattr(override_settings, key):
         return getattr(override_settings, key)
 
-    if hasattr(constants, key):
-        return getattr(constants, key)
+    if hasattr(default_settings_dict, key):
+        return getattr(default_settings_dict, key)
 
     return None

@@ -28,7 +28,7 @@ from pynamodb.constants import (
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP, NOT_NULL,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, DEFAULT_REGION, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
+    CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
     STREAM_ENABLED, EQ, NE)
@@ -139,8 +139,8 @@ class BatchWrite(ModelContextManager):
 
 class DefaultMeta(object):
     table_name = None
-    region = DEFAULT_REGION
-    host = None
+    region = get_settings_value('REGION')
+    host = get_settings_value('HOST')
 
 
 class ResultSet(object):
@@ -166,9 +166,9 @@ class MetaModel(type):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
                     if not hasattr(attr_obj, REGION):
-                        setattr(attr_obj, REGION, DEFAULT_REGION)
+                        setattr(attr_obj, REGION, get_settings_value('REGION'))
                     if not hasattr(attr_obj, HOST):
-                        setattr(attr_obj, HOST, None)
+                        setattr(attr_obj, HOST, get_settings_value('HOST'))
                     if not hasattr(attr_obj, 'session_cls'):
                         setattr(attr_obj, 'session_cls', get_settings_value('SESSION_CLS'))
                     if not hasattr(attr_obj, 'request_timeout_seconds'):
