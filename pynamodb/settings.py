@@ -30,7 +30,7 @@ def get_settings_value(key):
     if hasattr(override_settings, key):
         return getattr(override_settings, key)
 
-    if hasattr(default_settings_dict, key):
-        return getattr(default_settings_dict, key)
+    if key in default_settings_dict:
+        return default_settings_dict[key]
 
     return None
