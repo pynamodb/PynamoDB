@@ -990,7 +990,7 @@ class ModelTestCase(TestCase):
                     }
                 },
                 'AttributeUpdates': {
-                    '': {
+                    'aliases': {
                         'Action': 'ADD',
                         'Value': {
                             'N': '10'
