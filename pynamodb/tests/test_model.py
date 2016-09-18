@@ -915,7 +915,7 @@ class ModelTestCase(TestCase):
                     'aliases': {
                         'Action': 'ADD',
                         'Value': {
-                            'SS': {'"lita"'}
+                            'SS': {'lita'}
                         }
                     }
                 },
