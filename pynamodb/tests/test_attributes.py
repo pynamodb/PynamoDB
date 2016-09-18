@@ -6,14 +6,15 @@ import json
 from base64 import b64encode
 from datetime import datetime
 from delorean import Delorean
+from mock import patch
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
-    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
+    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY)
+    BINARY, BOOLEAN)
 
 
 class AttributeTestModel(Model):
@@ -130,6 +131,18 @@ class UTCDateTimeAttributeTestCase(TestCase):
             tstamp,
             attr.deserialize(Delorean(tstamp, timezone=UTC).datetime.strftime(DATETIME_FORMAT)),
         )
+
+    def test_utc_date_time_deserialize_parse_args(self):
+        """
+        UTCDateTimeAttribute.deserialize
+        """
+        tstamp = Delorean(timezone=UTC).datetime
+        attr = UTCDateTimeAttribute()
+
+        with patch('pynamodb.attributes.parse') as parse:
+            attr.deserialize(Delorean(tstamp, timezone=UTC).datetime.strftime(DATETIME_FORMAT))
+
+            parse.assert_called_with(tstamp.strftime(DATETIME_FORMAT), dayfirst=False)
 
     def test_utc_date_time_serialize(self):
         """
@@ -322,7 +335,8 @@ class UnicodeAttributeTestCase(TestCase):
         self.assertEqual(attr.deserialize(None), None)
         self.assertEqual(
             attr.serialize(set([six.u('foo'), six.u('bar')])),
-            [json.dumps(val) for val in sorted(set([six.u('foo'), six.u('bar')]))])
+            sorted([six.u('foo'), six.u('bar')])
+        )
 
     def test_round_trip_unicode_set(self):
         """
@@ -340,9 +354,22 @@ class UnicodeAttributeTestCase(TestCase):
         UnicodeSetAttribute.deserialize
         """
         attr = UnicodeSetAttribute()
+        value = set([six.u('foo'), six.u('bar')])
         self.assertEqual(
-            attr.deserialize([json.dumps(val) for val in sorted(set([six.u('foo'), six.u('bar')]))]),
-            set([six.u('foo'), six.u('bar')])
+            attr.deserialize(value),
+            value
+        )
+
+    def test_unicode_set_deserialize(self):
+        """
+        UnicodeSetAttribute.deserialize old way
+        """
+        attr = UnicodeSetAttribute()
+        value = set([six.u('foo'), six.u('bar')])
+        old_value = set([json.dumps(val) for val in value])
+        self.assertEqual(
+            attr.deserialize(old_value),
+            value
         )
 
     def test_unicode_set_attribute(self):
@@ -356,6 +383,46 @@ class UnicodeAttributeTestCase(TestCase):
         self.assertEqual(attr.default, set([six.u('foo'), six.u('bar')]))
 
 
+class LegacyBooleanAttributeTestCase(TestCase):
+    def test_legacy_boolean_attribute_can_read_future_boolean_attributes(self):
+        """
+        LegacyBooleanAttribute.deserialize
+        :return:
+        """
+        attr = LegacyBooleanAttribute()
+        self.assertEqual(attr.deserialize('1'), True)
+        self.assertEqual(attr.deserialize('0'), False)
+        self.assertEqual(attr.deserialize(json.dumps(True)), True)
+        self.assertEqual(attr.deserialize(json.dumps(False)), False)
+
+    def test_legacy_boolean_attribute_get_value_can_read_both(self):
+        """
+        LegacyBooleanAttribute.get_value
+        :return:
+        """
+        attr = LegacyBooleanAttribute()
+        self.assertEqual(attr.get_value({'N': '1'}), '1')
+        self.assertEqual(attr.get_value({'N': '0'}), '0')
+        self.assertEqual(attr.get_value({'BOOL': True}), json.dumps(True))
+        self.assertEqual(attr.get_value({'BOOL': False}), json.dumps(False))
+
+    def test_legacy_boolean_attribute_get_value_and_deserialize_work_together(self):
+        attr = LegacyBooleanAttribute()
+        self.assertEqual(attr.deserialize(attr.get_value({'N': '1'})), True)
+        self.assertEqual(attr.deserialize(attr.get_value({'N': '0'})), False)
+        self.assertEqual(attr.deserialize(attr.get_value({'BOOL': True})), True)
+        self.assertEqual(attr.deserialize(attr.get_value({'BOOL': False})), False)
+
+    def test_legacy_boolean_attribute_serialize(self):
+        """
+        LegacyBooleanAttribute.serialize
+        """
+        attr = LegacyBooleanAttribute()
+        self.assertEqual(attr.serialize(True), '1')
+        self.assertEqual(attr.serialize(False), '0')
+        self.assertEqual(attr.serialize(None), None)
+
+
 class BooleanAttributeTestCase(TestCase):
     """
     Tests boolean attributes
@@ -367,7 +434,7 @@ class BooleanAttributeTestCase(TestCase):
         attr = BooleanAttribute()
         self.assertIsNotNone(attr)
 
-        self.assertEqual(attr.attr_type, NUMBER)
+        self.assertEqual(attr.attr_type, BOOLEAN)
         attr = BooleanAttribute(default=True)
         self.assertEqual(attr.default, True)
 
@@ -376,8 +443,8 @@ class BooleanAttributeTestCase(TestCase):
         BooleanAttribute.serialize
         """
         attr = BooleanAttribute()
-        self.assertEqual(attr.serialize(True), json.dumps(1))
-        self.assertEqual(attr.serialize(False), json.dumps(0))
+        self.assertEqual(attr.serialize(True), True)
+        self.assertEqual(attr.serialize(False), False)
         self.assertEqual(attr.serialize(None), None)
 
     def test_boolean_deserialize(self):
@@ -386,7 +453,9 @@ class BooleanAttributeTestCase(TestCase):
         """
         attr = BooleanAttribute()
         self.assertEqual(attr.deserialize('1'), True)
-        self.assertEqual(attr.deserialize('0'), False)
+        self.assertEqual(attr.deserialize('0'), True)
+        self.assertEqual(attr.deserialize(True), True)
+        self.assertEqual(attr.deserialize(False), False)
 
 
 class JSONAttributeTestCase(TestCase):

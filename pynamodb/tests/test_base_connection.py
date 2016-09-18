@@ -1,20 +1,26 @@
 """
 Tests for the base connection class
 """
+import base64
+import json
 import six
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import Connection
+from botocore.vendored import requests
 from pynamodb.exceptions import (
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
-from pynamodb.constants import DEFAULT_REGION
+from pynamodb.constants import DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
+from pynamodb.tests.deep_eq import deep_eq
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
 
 if six.PY3:
     from unittest.mock import patch
+    from unittest import mock
 else:
     from mock import patch
+    import mock
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
@@ -38,6 +44,37 @@ class ConnectionTestCase(TestCase):
         self.assertIsNotNone(conn.client)
         self.assertIsNotNone(conn)
         self.assertEqual(repr(conn), "Connection<{0}>".format(conn.host))
+
+    def test_subsequent_client_is_not_cached_when_credentials_none(self):
+        with patch('pynamodb.connection.Connection.session') as session_mock:
+            session_mock.create_client.return_value._request_signer._credentials = None
+            conn = Connection()
+
+            # make two calls to .client property, expect two calls to create client
+            self.assertIsNotNone(conn.client)
+            self.assertIsNotNone(conn.client)
+
+            session_mock.create_client.assert_has_calls(
+                [
+                    mock.call('dynamodb', 'us-east-1', endpoint_url=None),
+                    mock.call('dynamodb', 'us-east-1', endpoint_url=None),
+                ],
+                any_order=True
+            )
+
+    def test_subsequent_client_is_cached_when_credentials_truthy(self):
+        with patch('pynamodb.connection.Connection.session') as session_mock:
+            session_mock.create_client.return_value._request_signer._credentials = True
+            conn = Connection()
+
+            # make two calls to .client property, expect one call to create client
+            self.assertIsNotNone(conn.client)
+            self.assertIsNotNone(conn.client)
+
+            self.assertEquals(
+                session_mock.create_client.mock_calls.count(mock.call('dynamodb', 'us-east-1', endpoint_url=None)),
+                1
+            )
 
     def test_create_table(self):
         """
@@ -1603,3 +1640,135 @@ class ConnectionTestCase(TestCase):
                 conn.scan,
                 table_name,
                 **kwargs)
+
+    @mock.patch('pynamodb.connection.Connection.session')
+    @mock.patch('pynamodb.connection.Connection.requests_session')
+    def test_make_api_call_throws_verbose_error_after_backoff(self, requests_session_mock, session_mock):
+
+        # mock response
+        response = requests.Response()
+        response.status_code = 500
+        response._content = json.dumps({'message': 'There is a problem', '__type': 'InternalServerError'}).encode('utf-8')
+        response.headers['x-amzn-RequestId'] = 'abcdef'
+        requests_session_mock.send.return_value = response
+
+        c = Connection()
+
+        with self.assertRaises(ClientError):
+            try:
+                c._make_api_call('CreateTable', {'TableName': 'MyTable'})
+            except Exception as e:
+                self.assertEqual(
+                    str(e),
+                    'An error occurred (InternalServerError) on request (abcdef) on table (MyTable) when calling the CreateTable operation: There is a problem'
+                )
+                raise
+
+    @mock.patch('pynamodb.connection.Connection.session')
+    @mock.patch('pynamodb.connection.Connection.requests_session')
+    def test_make_api_call_throws_verbose_error_after_backoff_later_succeeds(self, requests_session_mock, session_mock):
+
+        # mock response
+        bad_response = requests.Response()
+        bad_response.status_code = 500
+        bad_response._content = json.dumps({'message': 'There is a problem', '__type': 'InternalServerError'}).encode(
+            'utf-8')
+        bad_response.headers['x-amzn-RequestId'] = 'abcdef'
+
+        good_response_content = {'TableDescription': {'TableName': 'table', 'TableStatus': 'Creating'}}
+        good_response = requests.Response()
+        good_response.status_code = 200
+        good_response._content = json.dumps(good_response_content).encode('utf-8')
+
+        requests_session_mock.send.side_effect = [
+            bad_response,
+            good_response,
+        ]
+
+        c = Connection()
+
+        self.assertEqual(good_response_content, c._make_api_call('CreateTable', {'TableName': 'MyTable'}))
+        self.assertEqual(len(requests_session_mock.send.mock_calls), 2)
+
+    @mock.patch('pynamodb.connection.Connection.session')
+    @mock.patch('pynamodb.connection.Connection.requests_session')
+    def test_make_api_call_retries_properly(self, requests_session_mock, session_mock):
+        # mock response
+        deserializable_response = requests.Response()
+        deserializable_response._content = json.dumps({'hello': 'world'}).encode('utf-8')
+        deserializable_response.status_code = 200
+        bad_response = requests.Response()
+        bad_response._content = 'not_json'.encode('utf-8')
+        bad_response.status_code = 503
+
+        prepared_request = requests.Request('GET', 'http://lyft.com').prepare()
+        session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
+
+        requests_session_mock.send.side_effect = [
+            requests.ConnectionError('problems!'),
+            requests.Timeout('problems!'),
+            bad_response,
+            deserializable_response
+        ]
+        c = Connection()
+        c._max_retry_attempts_exception = 4
+
+        c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
+        self.assertEqual(len(requests_session_mock.mock_calls), 4)
+        for call in requests_session_mock.mock_calls:
+            self.assertEqual(call[:2], ('send', (prepared_request,)))
+
+
+    @mock.patch('pynamodb.connection.Connection.session')
+    @mock.patch('pynamodb.connection.Connection.requests_session')
+    def test_make_api_call_throws_when_retries_exhausted(self, requests_session_mock, session_mock):
+        prepared_request = requests.Request('GET', 'http://lyft.com').prepare()
+        session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
+
+        requests_session_mock.send.side_effect = [
+            requests.ConnectionError('problems!'),
+            requests.ConnectionError('problems!'),
+            requests.ConnectionError('problems!'),
+            requests.Timeout('problems!'),
+        ]
+        c = Connection()
+        c._max_retry_attempts_exception = 4
+
+        with self.assertRaises(requests.Timeout):
+            c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
+
+        self.assertEqual(len(requests_session_mock.mock_calls), 4)
+        for call in requests_session_mock.mock_calls:
+            self.assertEqual(call[:2], ('send', (prepared_request,)))
+
+    def test_handle_binary_attributes_for_unprocessed_items(self):
+        binary_blob = six.b('\x00\xFF\x00\xFF')
+
+        unprocessed_items = []
+        for idx in range(0, 5):
+            unprocessed_items.append({
+                'PutRequest': {
+                    'Item': {
+                        'name': {STRING_SHORT: 'daniel'},
+                        'picture': {BINARY_SHORT: base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
+                    }
+                }
+            })
+
+        expected_unprocessed_items = []
+        for idx in range(0, 5):
+            expected_unprocessed_items.append({
+                'PutRequest': {
+                    'Item': {
+                        'name': {STRING_SHORT: 'daniel'},
+                        'picture': {BINARY_SHORT: binary_blob}
+                    }
+                }
+            })
+
+        deep_eq(
+            Connection._handle_binary_attributes({UNPROCESSED_ITEMS: {'someTable': unprocessed_items}}),
+            {UNPROCESSED_ITEMS: {'someTable': expected_unprocessed_items}},
+            _assert=True
+        )
+

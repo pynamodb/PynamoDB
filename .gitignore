@@ -43,6 +43,7 @@ pip-log.txt
 
 # Unit test / coverage reports
 .coverage
+cover/
 .tox
 nosetests.xml
 
@@ -53,3 +54,6 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# PyCharm
+.idea/

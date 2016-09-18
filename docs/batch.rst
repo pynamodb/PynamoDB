@@ -77,6 +77,13 @@ and `operator` can be one of the following:
  * begins_with
  * between
 
+.. note::
+
+    DynamoDB does not allow multiple operators against range keys. `PynamoDB` is also currently
+    based on deprecated API functionality that does not support multiple operators against any
+    key, even if not part of the primary key. `between` can be used in place of `le AND ge`.
+
+
 Scan Filters
 ^^^^^^^^^^^^
 
@@ -101,6 +108,12 @@ You can even specify multiple filters:
 
     >>> for item in Thread.scan(forum_name__begins_with='Prefix', views__gt=10):
             print(item)
+
+.. note::
+
+    PynamoDB is currently based on deprecated API functionality that does not support multiple operators per key.
+    `between` can be used in place of `le AND ge`.
+
 
 Limiting results
 ^^^^^^^^^^^^^^^^

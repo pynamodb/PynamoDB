@@ -3,8 +3,11 @@ Lowest level connection
 """
 from base64 import b64decode
 import logging
+import random
+import time
 
 import six
+from six.moves import range
 from botocore.session import get_session
 from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
@@ -14,7 +17,8 @@ from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.exceptions import (
-    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist
+    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
+    VerboseClientError
 )
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
@@ -35,6 +39,10 @@ from pynamodb.constants import (
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
+# retry parameters
+DEFAULT_TIMEOUT = 60  # matches legacy retry timeout from botocore
+DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION = 3
+DEFAULT_BASE_BACKOFF_MS = 25
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
@@ -170,7 +178,7 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None):
+    def __init__(self, region=None, host=None, session_cls=None):
         self._tables = {}
         self.host = host
         self._session = None
@@ -180,6 +188,16 @@ class Connection(object):
             self.region = region
         else:
             self.region = DEFAULT_REGION
+
+        # TODO: provide configurability of retry parameters via arguments
+        self._request_timeout_seconds = DEFAULT_TIMEOUT
+        self._max_retry_attempts_exception = DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION
+        self._base_backoff_ms = DEFAULT_BASE_BACKOFF_MS
+
+        if session_cls:
+            self.session_cls = session_cls
+        else:
+            self.session_cls = requests.Session
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
@@ -235,13 +253,80 @@ class Connection(object):
             operation_model
         )
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
-        response = self.requests_session.send(prepared_request)
-        if response.status_code >= 300:
-            data = response.json()
-            botocore_expected_format = {"Error": {"Message": data.get("message", ""), "Code": data.get("__type", "")}}
-            raise ClientError(botocore_expected_format, operation_name)
-        data = response.json()
-        # Simulate botocore's binary attribute handling
+
+        for attempt_number in range(1, self._max_retry_attempts_exception + 1):
+            is_last_attempt_for_exceptions = attempt_number == self._max_retry_attempts_exception
+
+            try:
+                response = self.requests_session.send(
+                    prepared_request,
+                    timeout=self._request_timeout_seconds,
+                    proxies=self.client._endpoint.proxies,
+                )
+                data = response.json()
+            except (requests.RequestException, ValueError) as e:
+                if is_last_attempt_for_exceptions:
+                    log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
+                    raise
+                else:
+                    # No backoff for fast-fail exceptions that likely failed at the frontend
+                    log.debug(
+                        'Retry needed for (%s) after attempt %s, retryable %s caught: %s',
+                        operation_name,
+                        attempt_number,
+                        e.__class__.__name__,
+                        e
+                    )
+                    continue
+
+            if response.status_code >= 300:
+                # Extract error code from __type
+                code = data.get('__type', '')
+                if '#' in code:
+                    code = code.rsplit('#', 1)[1]
+                botocore_expected_format = {'Error': {'Message': data.get('message', ''), 'Code': code}}
+                verbose_properties = {
+                    'request_id': response.headers.get('x-amzn-RequestId')
+                }
+
+                if 'RequestItems' in operation_kwargs:
+                    # Batch operations can hit multiple tables, report them comma separated
+                    verbose_properties['table_name'] = ','.join(operation_kwargs['RequestItems'])
+                else:
+                    verbose_properties['table_name'] = operation_kwargs.get('TableName')
+
+                try:
+                    raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
+                except VerboseClientError as e:
+                    if is_last_attempt_for_exceptions:
+                        log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
+                        raise
+                    elif response.status_code < 500:
+                        # We don't retry on a ConditionalCheckFailedException or other 4xx because we assume they will
+                        # fail in perpetuity. Retrying when there is already contention could cause other problems
+                        # in part due to unnecessary consumption of throughput.
+                        raise
+                    else:
+                        # We use fully-jittered exponentially-backed-off retries:
+                        #  https://www.awsarchitectureblog.com/2015/03/backoff.html
+                        sleep_time_ms = random.randint(0, self._base_backoff_ms * (2 ** attempt_number))
+                        log.debug(
+                            'Retry with backoff needed for (%s) after attempt %s,'
+                            'sleeping for %s milliseconds, retryable %s caught: %s',
+                            operation_name,
+                            attempt_number,
+                            sleep_time_ms,
+                            e.__class__.__name__,
+                            e
+                        )
+                        time.sleep(sleep_time_ms / 1000.0)
+                        continue
+
+            return self._handle_binary_attributes(data)
+
+    @staticmethod
+    def _handle_binary_attributes(data):
+        """ Simulate botocore's binary attribute handling """
         if ITEM in data:
             for attr in six.itervalues(data[ITEM]):
                 _convert_binary(attr)
@@ -263,11 +348,12 @@ class Connection(object):
                     for attr in six.itervalues(item):
                         _convert_binary(attr)
         if UNPROCESSED_ITEMS in data:
-            for item_mapping in six.itervalues(data[UNPROCESSED_ITEMS]):
-                for item in six.itervalues(item_mapping):
-                    for attr in six.itervalues(item):
-                        _convert_binary(attr)
-
+            for table_unprocessed_requests in six.itervalues(data[UNPROCESSED_ITEMS]):
+                for request in table_unprocessed_requests:
+                    for item_mapping in six.itervalues(request):
+                        for item in six.itervalues(item_mapping):
+                            for attr in six.itervalues(item):
+                                _convert_binary(attr)
         return data
 
     @property
@@ -285,7 +371,7 @@ class Connection(object):
         Return a requests session to execute prepared requests using the same pool
         """
         if self._requests_session is None:
-            self._requests_session = requests.Session()
+            self._requests_session = self.session_cls()
         return self._requests_session
 
     @property
@@ -293,7 +379,11 @@ class Connection(object):
         """
         Returns a botocore dynamodb client
         """
-        if self._client is None:
+        # botocore has a known issue where it will cache empty credentials
+        # https://github.com/boto/botocore/blob/4d55c9b4142/botocore/credentials.py#L1016-L1021
+        # if the client does not have credentials, we create a new client
+        # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
+        if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host)
         return self._client
 
@@ -309,7 +399,7 @@ class Connection(object):
                 data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
                 self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
             except BotoCoreError as e:
-                raise TableError("Unable to describe table: {0}".format(e))
+                raise TableError("Unable to describe table: {0}".format(e), e)
             except ClientError as e:
                 if 'ResourceNotFound' in e.response['Error']['Code']:
                     raise TableDoesNotExist(e.response['Error']['Message'])
@@ -386,7 +476,7 @@ class Connection(object):
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to create table: {0}".format(e))
+            raise TableError("Failed to create table: {0}".format(e), e)
         return data
 
     def delete_table(self, table_name):
@@ -399,7 +489,7 @@ class Connection(object):
         try:
             data = self.dispatch(DELETE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to delete table: {0}".format(e))
+            raise TableError("Failed to delete table: {0}".format(e), e)
         return data
 
     def update_table(self,
@@ -436,7 +526,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to update table: {0}".format(e))
+            raise TableError("Failed to update table: {0}".format(e), e)
 
     def list_tables(self, exclusive_start_table_name=None, limit=None):
         """
@@ -454,7 +544,7 @@ class Connection(object):
         try:
             return self.dispatch(LIST_TABLES, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Unable to list tables: {0}".format(e))
+            raise TableError("Unable to list tables: {0}".format(e), e)
 
     def describe_table(self, table_name):
         """
@@ -650,7 +740,7 @@ class Connection(object):
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise DeleteError("Failed to delete item: {0}".format(e))
+            raise DeleteError("Failed to delete item: {0}".format(e), e)
 
     def update_item(self,
                     table_name,
@@ -697,7 +787,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise UpdateError("Failed to update item: {0}".format(e))
+            raise UpdateError("Failed to update item: {0}".format(e), e)
 
     def put_item(self,
                  table_name,
@@ -730,7 +820,7 @@ class Connection(object):
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to put item: {0}".format(e))
+            raise PutError("Failed to put item: {0}".format(e), e)
 
     def batch_write_item(self,
                          table_name,
@@ -768,7 +858,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to batch write items: {0}".format(e))
+            raise PutError("Failed to batch write items: {0}".format(e), e)
 
     def batch_get_item(self,
                        table_name,
@@ -803,7 +893,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to batch get items: {0}".format(e))
+            raise GetError("Failed to batch get items: {0}".format(e), e)
 
     def get_item(self,
                  table_name,
@@ -823,7 +913,7 @@ class Connection(object):
         try:
             return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to get item: {0}".format(e))
+            raise GetError("Failed to get item: {0}".format(e), e)
 
     def scan(self,
              table_name,
@@ -871,7 +961,7 @@ class Connection(object):
         try:
             return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise ScanError("Failed to scan table: {0}".format(e))
+            raise ScanError("Failed to scan table: {0}".format(e), e)
 
     def query(self,
               table_name,
@@ -950,7 +1040,7 @@ class Connection(object):
         try:
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise QueryError("Failed to query items: {0}".format(e))
+            raise QueryError("Failed to query items: {0}".format(e), e)
 
 
 def _convert_binary(attr):

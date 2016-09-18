@@ -133,3 +133,17 @@ This example will delete the item, only if its `views` attribute is equal to 0.
 .. code-block:: python
 
     print(thread_item.delete(views__eq=0))
+
+Conditional Operation Failures
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can check for conditional operation failures by inspecting the cause of the raised exception:
+
+.. code-block:: python
+
+    try:
+        thread_item.save(forum_name__null=False)
+    except PutError as e:
+        if isinstance(e.cause, ClientError):
+            code = e.cause.response['Error'].get('Code')
+            print(code == "ConditionalCheckFailedException")
