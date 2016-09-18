@@ -901,7 +901,7 @@ class ModelTestCase(TestCase):
             deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
-            item.update_item('custom_aliases', set(["lita"]), action='add')
+            item.update_item('custom_aliases', set(['lita']), action='add')
             args = req.call_args[0][1]
             params = {
                 'TableName': 'SimpleModel',
@@ -915,7 +915,7 @@ class ModelTestCase(TestCase):
                     'aliases': {
                         'Action': 'ADD',
                         'Value': {
-                            'SS': {'lita'}
+                            'SS': set(['lita'])
                         }
                     }
                 },
