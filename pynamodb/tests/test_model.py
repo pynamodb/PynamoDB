@@ -809,6 +809,29 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
+        with patch(PATCH_METHOD) as req:
+            item.update_item('custom_aliases', {"lita"}, action='add')
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'AttributeUpdates': {
+                    'aliases': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'SS': {'"lita"'}
+                        }
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
     def test_save(self):
         """
         Model.save
@@ -968,36 +991,6 @@ class ModelTestCase(TestCase):
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'UserModel'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "aliases": {
-                        "S": "lita"
-                    }
-                }
-            }
-            item.update_item('custom_aliases', "lita", action='put')
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'AttributeUpdates': {
-                    'aliases': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
             }
             deep_eq(args, params, _assert=True)
 
