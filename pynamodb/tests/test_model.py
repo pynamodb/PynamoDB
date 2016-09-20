@@ -900,6 +900,29 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
+        with patch(PATCH_METHOD) as req:
+            item.update_item('custom_aliases', set(['lita']), action='add')
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'AttributeUpdates': {
+                    'aliases': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'SS': set(['lita'])
+                        }
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
     def test_save(self):
         """
         Model.save

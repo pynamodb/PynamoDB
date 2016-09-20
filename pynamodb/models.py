@@ -349,12 +349,12 @@ class Model(with_metaclass(MetaModel)):
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, UPDATE_FILTER_OPERATOR_MAP))
         kwargs[pythonic(ATTR_UPDATES)] = {
-            attribute: {
+            attribute_cls.attr_name: {
                 ACTION: action.upper() if action else None,
             }
         }
         if action is not None and action.upper() != DELETE:
-            kwargs[pythonic(ATTR_UPDATES)][attribute][VALUE] = {ATTR_TYPE_MAP[attribute_cls.attr_type]: value}
+            kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name][VALUE] = {ATTR_TYPE_MAP[attribute_cls.attr_type]: value}
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)
         data = self._get_connection().update_item(
