@@ -3,13 +3,16 @@ import logging
 import os
 from os import getenv
 
+from botocore.vendored import requests
+
 log = logging.getLogger(__name__)
 
 default_settings_dict = {
-    'REQUEST_TIMEOUT_SECONDS': 25,
-    'MAX_RETRY_ATTEMPTS': 3,
-    'BASE_BACKOFF_MS': 25,
-    'REGION': 'us-east-1'
+    'request_timeout_seconds': 60,
+    'max_retry_attempts': 3,
+    'base_backoff_ms': 25,
+    'region': 'us-east-1',
+    'session_cls': requests.Session
 }
 
 OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default_settings.py')

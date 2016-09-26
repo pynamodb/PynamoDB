@@ -164,17 +164,17 @@ class MetaModel(type):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
                     if not hasattr(attr_obj, REGION):
-                        setattr(attr_obj, REGION, get_settings_value('REGION'))
+                        setattr(attr_obj, REGION, get_settings_value('region'))
                     if not hasattr(attr_obj, HOST):
-                        setattr(attr_obj, HOST, get_settings_value('HOST'))
+                        setattr(attr_obj, HOST, get_settings_value('host'))
                     if not hasattr(attr_obj, 'session_cls'):
-                        setattr(attr_obj, 'session_cls', get_settings_value('SESSION_CLS'))
+                        setattr(attr_obj, 'session_cls', get_settings_value('session_cls'))
                     if not hasattr(attr_obj, 'request_timeout_seconds'):
-                        setattr(attr_obj, 'request_timeout_seconds', get_settings_value('REQUEST_TIMEOUT_SECONDS'))
+                        setattr(attr_obj, 'request_timeout_seconds', get_settings_value('request_timeout_seconds'))
                     if not hasattr(attr_obj, 'base_backoff_ms'):
-                        setattr(attr_obj, 'base_backoff_ms', get_settings_value('BASE_BACKOFF_MS'))
+                        setattr(attr_obj, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
                     if not hasattr(attr_obj, 'max_retry_attempts'):
-                        setattr(attr_obj, 'max_retry_attempts', get_settings_value('MAX_RETRY_ATTEMPTS'))
+                        setattr(attr_obj, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):

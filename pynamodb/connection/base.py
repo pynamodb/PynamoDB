@@ -40,11 +40,6 @@ from pynamodb.settings import get_settings_value
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
-# retry parameters
-DEFAULT_TIMEOUT = 60  # matches legacy retry timeout from botocore
-DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION = 3
-DEFAULT_BASE_BACKOFF_MS = 25
-
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
 
@@ -189,31 +184,27 @@ class Connection(object):
         if region:
             self.region = region
         else:
-            self.region = get_settings_value('REGION')
+            self.region = get_settings_value('region')
 
         if session_cls:
             self.session_cls = session_cls
         else:
-            session_cls_from_settings = get_settings_value('SESSION_CLS')
-            if session_cls_from_settings is not None:
-                self.session_cls = session_cls_from_settings
-            else:
-                self.session_cls = requests.Session
+            self.session_cls = get_settings_value('session_cls')
 
         if request_timeout_seconds is not None:
             self._request_timeout_seconds = request_timeout_seconds
         else:
-            self._request_timeout_seconds = get_settings_value('REQUEST_TIMEOUT_SECONDS')
+            self._request_timeout_seconds = get_settings_value('request_timeout_seconds')
 
         if max_retry_attempts is not None:
             self._max_retry_attempts_exception = max_retry_attempts
         else:
-            self._max_retry_attempts_exception = get_settings_value('MAX_RETRY_ATTEMPTS')
+            self._max_retry_attempts_exception = get_settings_value('max_retry_attempts')
 
         if base_backoff_ms is not None:
             self._base_backoff_ms = base_backoff_ms
         else:
-            self._base_backoff_ms = get_settings_value('BASE_BACKOFF_MS')
+            self._base_backoff_ms = get_settings_value('base_backoff_ms')
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
