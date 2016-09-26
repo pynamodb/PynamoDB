@@ -138,9 +138,7 @@ class BatchWrite(ModelContextManager):
 
 
 class DefaultMeta(object):
-    table_name = None
-    region = get_settings_value('REGION')
-    host = get_settings_value('HOST')
+    pass
 
 
 class ResultSet(object):

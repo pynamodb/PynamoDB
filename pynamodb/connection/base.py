@@ -24,7 +24,7 @@ from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
     COMPARISON_OPERATOR, EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, SCAN_FILTER_VALUES, ATTR_DEFINITIONS,
-    BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, DEFAULT_REGION, KEY_CONDITIONS,
+    BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, KEY_CONDITIONS,
     BATCH_GET_ITEM, DELETE_REQUEST, SELECT_VALUES, RETURN_VALUES, REQUEST_ITEMS, ATTR_UPDATES,
     ATTRS_TO_GET, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
     INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
@@ -189,16 +189,31 @@ class Connection(object):
         if region:
             self.region = region
         else:
-            self.region = DEFAULT_REGION
+            self.region = get_settings_value('REGION')
 
         if session_cls:
             self.session_cls = session_cls
         else:
-            self.session_cls = requests.Session
+            session_cls_from_settings = get_settings_value('SESSION_CLS')
+            if session_cls_from_settings is not None:
+                self.session_cls = session_cls_from_settings
+            else:
+                self.session_cls = requests.Session
 
-        self._request_timeout_seconds = get_settings_value('REQUEST_TIMEOUT_SECONDS') if request_timeout_seconds is None else request_timeout_seconds
-        self._max_retry_attempts_exception = get_settings_value('MAX_RETRY_ATTEMPTS') if max_retry_attempts is None else max_retry_attempts
-        self._base_backoff_ms = get_settings_value('BASE_BACKOFF_MS') if base_backoff_ms is None else base_backoff_ms
+        if request_timeout_seconds is not None:
+            self._request_timeout_seconds = request_timeout_seconds
+        else:
+            self._request_timeout_seconds = get_settings_value('REQUEST_TIMEOUT_SECONDS')
+
+        if max_retry_attempts is not None:
+            self._max_retry_attempts_exception = max_retry_attempts
+        else:
+            self._max_retry_attempts_exception = get_settings_value('MAX_RETRY_ATTEMPTS')
+
+        if base_backoff_ms is not None:
+            self._base_backoff_ms = base_backoff_ms
+        else:
+            self._base_backoff_ms = get_settings_value('BASE_BACKOFF_MS')
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
