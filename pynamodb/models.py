@@ -1076,7 +1076,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Returns the proper arguments for deleting
         """
-        serialized = self._serialize()
+        serialized = self._serialize(null_check=False)
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
         hash_keyname = self._get_meta_data().hash_keyname
