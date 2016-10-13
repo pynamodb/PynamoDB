@@ -1187,13 +1187,14 @@ class Model(with_metaclass(MetaModel)):
 
         :param attrs: A dictionary of attributes to update this item with.
         """
-        for name, attr in attrs.items():
-            attr_instance = self._get_attributes().get(name, None)
-            if attr_instance:
-                attr_type = ATTR_TYPE_MAP[attr_instance.attr_type]
-                value = attr.get(attr_type, None)
+        for name, attr in self._get_attributes():
+            if name in attrs:
+                attr_type = ATTR_TYPE_MAP[attr.attr_type]
+                value = attrs[name].get(attr_type, None)
                 if value is not None:
-                    setattr(self, name, attr_instance.deserialize(value))
+                    setattr(self, name, attr.deserialize(value))
+            else:
+                setattr(self, name, None)
 
     def _serialize(self, attr_map=False, null_check=True):
         """
