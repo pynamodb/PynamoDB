@@ -1187,7 +1187,7 @@ class Model(with_metaclass(MetaModel)):
 
         :param attrs: A dictionary of attributes to update this item with.
         """
-        for name, attr in self._get_attributes():
+        for name, attr in self._get_attributes().items():
             if name in attrs:
                 attr_type = ATTR_TYPE_MAP[attr.attr_type]
                 value = attrs[name].get(attr_type, None)
