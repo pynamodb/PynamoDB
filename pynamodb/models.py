@@ -1193,6 +1193,7 @@ class Model(with_metaclass(MetaModel)):
                 value = attrs[name].get(attr_type, None)
                 if value is not None:
                     setattr(self, name, attr.deserialize(value))
+                # FIXME: what if it is not found? Maybe set to None?..
             else:
                 setattr(self, name, None)
 
