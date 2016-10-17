@@ -1193,9 +1193,9 @@ class Model(with_metaclass(MetaModel)):
         :param attrs: A dictionary of attributes to update this item with.
         """
         for name, attr in self._get_attributes().items():
-            if name in attrs:
+            if attr.attr_name in attrs:
                 attr_type = ATTR_TYPE_MAP[attr.attr_type]
-                value = attrs[name].get(attr_type, None)
+                value = attrs[attr.attr_name].get(attr_type, None)
                 if value is not None:
                     setattr(self, name, attr.deserialize(value))
                 # FIXME: what if it is not found? Maybe set to None?..
