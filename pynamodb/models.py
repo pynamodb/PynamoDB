@@ -769,13 +769,18 @@ class Model(with_metaclass(MetaModel)):
         hash_key, attrs = data
         range_key = attrs.pop('range_key', None)
         attributes = attrs.pop(pythonic(ATTRIBUTES))
+        hash_keyname = cls._get_meta_data().hash_keyname
+        hash_keytype = cls._get_meta_data().get_attribute_type(hash_keyname)
+        attributes[hash_keyname] = {
+            hash_keytype: hash_key
+        }
         if range_key is not None:
             range_keyname = cls._get_meta_data().range_keyname
             range_keytype = cls._get_meta_data().get_attribute_type(range_keyname)
             attributes[range_keyname] = {
                 range_keytype: range_key
             }
-        item = cls(hash_key)
+        item = cls()
         item._deserialize(attributes)
         return item
 
