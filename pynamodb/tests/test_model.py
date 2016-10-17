@@ -554,7 +554,7 @@ class ModelTestCase(TestCase):
             req.return_value = GET_MODEL_ITEM_DATA
             item.refresh()
             self.assertEqual(
-                item.user_name,
+                item.custom_user_name,
                 GET_MODEL_ITEM_DATA.get(ITEM).get('user_name').get(STRING_SHORT))
 
     def test_complex_key(self):
