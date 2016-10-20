@@ -14,6 +14,7 @@ to use LegacyBooleanAttribute. LegacyBooleanAttribute is also forward compatible
 attributes to allow for migration.
 
 New features in this release:
+
 * Add support for native boolean attributes (#149)
 * Parse legacy and native bool in legacy bool (#158)
 
