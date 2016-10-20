@@ -1,6 +1,35 @@
 Release Notes
 =============
 
+v1.6.0
+------
+
+:date: 2016-10-20
+
+This is a minor release, with some changes to BinaryAttribute handling.
+
+BooleanAttribute now uses the native API type "B". BooleanAttribute is also compatible with the legacy BooleanAttributes
+on read. On save, they will be rewritten with the native type. If you wish to avoid this behavior, you can continue
+to use LegacyBooleanAttribute. LegacyBooleanAttribute is also forward compatible with native boolean
+attributes to allow for migration.
+
+New features in this release:
+* Add support for native boolean attributes (#149)
+* Parse legacy and native bool in legacy bool (#158)
+
+Fixes in this release:
+
+* Serialize UnicodeSetAttributes correctly (#151)
+* Parse legacy and native bool in legacy bool (#158)
+* Make update_item respect attr_name differences (#160)
+
+Contributors to this release:
+
+* @anandswaminathan
+* @jmphilli
+* @lita
+
+
 v1.5.3
 ------
 
@@ -10,7 +39,7 @@ This is a backwards compatible, minor release.
 
 Fixes in this release:
 
-* introduce concept of page_size, separate from num items returned limit (#139)
+* Introduce concept of page_size, separate from num items returned limit (#139)
  
 Contributors to this release:
 
