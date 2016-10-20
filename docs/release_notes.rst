@@ -6,7 +6,7 @@ v1.6.0
 
 :date: 2016-10-20
 
-This is a minor release, with some changes to BinaryAttribute handling.
+This is a minor release, with some changes to BinaryAttribute handling and new options for configuration.
 
 BooleanAttribute now uses the native API type "B". BooleanAttribute is also compatible with the legacy BooleanAttributes
 on read. On save, they will be rewritten with the native type. If you wish to avoid this behavior, you can continue
@@ -17,11 +17,11 @@ New features in this release:
 
 * Add support for native boolean attributes (#149)
 * Parse legacy and native bool in legacy bool (#158)
+* Allow override of settings from global configuration file (#147)
 
 Fixes in this release:
 
 * Serialize UnicodeSetAttributes correctly (#151)
-* Parse legacy and native bool in legacy bool (#158)
 * Make update_item respect attr_name differences (#160)
 
 Contributors to this release:
