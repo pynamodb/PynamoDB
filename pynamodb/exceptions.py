@@ -101,3 +101,9 @@ class VerboseClientError(botocore.exceptions.ClientError):
 
         super(VerboseClientError, self).__init__(error_response, operation_name)
 
+
+class AttributeSerializationError(TypeError):
+    def __init__(self, expected_type, actual_type):
+        super(AttributeSerializationError, self).__init__('Serialization failed: {} expected but passed {}'.format(expected_type, actual_type))
+
+
