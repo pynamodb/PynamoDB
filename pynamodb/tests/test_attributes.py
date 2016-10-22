@@ -14,7 +14,8 @@ from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     NumberListAttribute, UnicodeAttribute, UnicodeSetAttribute,
     UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
-    JSONAttribute, DEFAULT_ENCODING, LIST, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET, BINARY, BOOLEAN)
+    ListAttribute, JSONAttribute, DEFAULT_ENCODING, LIST, NUMBER, STRING,
+    STRING_SET, NUMBER_SET, BINARY_SET, BINARY, BOOLEAN)
 
 
 class AttributeTestModel(Model):
@@ -456,6 +457,65 @@ class BooleanAttributeTestCase(TestCase):
         self.assertEqual(attr.deserialize('0'), True)
         self.assertEqual(attr.deserialize(True), True)
         self.assertEqual(attr.deserialize(False), False)
+
+
+class ListAttributeTestCase(TestCase):
+    """
+    Tests ListAttribute
+    """
+    def test_list_attribute(self):
+        """
+        ListAttribute.default
+        """
+        attr = ListAttribute()
+        self.assertIsNotNone(attr)
+        self.assertEqual(attr.attr_type, LIST)
+        self.assertIs(attr.inner_attr_type, 'UNDEFINED')
+
+        # The assertListEqual method cannot support heterogeneous lists, so we
+        # can only test either all <<type>>, whatever <<type>> is, or all
+        # lists.
+        attr = ListAttribute(default=[1])
+        self.assertEqual(attr.default, [1])
+
+        attr = ListAttribute(default=[[1,2],[3,4]])
+        self.assertEqual(attr.default, [[1,2],[3,4]])
+
+    def test_list_serialize(self):
+        """
+        ListAttribute.serialize
+        """
+        attr = ListAttribute()
+
+        # Test serialization of [1]
+        # By default this class just returns the value passed in.
+        self.assertListEqual(attr.serialize([1]), [{'UNDEFINED':1}])
+
+        # Test serialization of [1,2,3]
+        testlist = [1,'a','3ra31DEadfao7']
+        for i in range(len(testlist)):
+            self.assertListEqual(attr.serialize(testlist)[i], {'UNDEFINED': testlist[i]})
+
+        # Test serialization of [[1,2],[3,4]]
+        testlist = [[1,'f00b4r6'],[3.14159,4]]
+        for i in range(len(testlist)):
+            for j in range(len(testlist[i])):
+                self.assertListEqual(attr.serialize(testlist)[i]['L'][j], {'UNDEFINED': testlist[i]})
+
+    def test_list_deserialize(self):
+        """
+        ListAttribute.deserialize
+        """
+        attr = ListAttribute()
+
+        # Test deserialization of [1]
+        self.assertEqual(attr.deserialize([{'UNDEFINED':1}]), [1])
+
+        # Test deserialization of [1,2,3]
+        self.assertListEqual(attr.deserialize([{'UNDEFINED':'foo'}, {'UNDEFINED': 'bar'}, {'UNDEFINED': 'spam'}]), ['foo','bar','spam'])
+
+        # Test deserialization of [[1,2],[3,4]]
+        self.assertListEqual(attr.deserialize([{'L':[{'UNDEFINED':1},{'UNDEFINED':2}]},{'L':[{'UNDEFINED':3},{'UNDEFINED':4}]}]), [[1,2],[3,4]])
 
 
 class NumberListAttributeTestCase(TestCase):
