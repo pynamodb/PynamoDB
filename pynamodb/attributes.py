@@ -206,6 +206,13 @@ class UnicodeAttribute(Attribute):
         else:
             return six.u(value)
 
+    @staticmethod
+    def deserialize(value):
+        """
+        Performs any needed deserialization on the value
+        """
+        return value
+
 
 class JSONAttribute(Attribute):
     """
@@ -403,12 +410,13 @@ class NumberListAttribute(ListAttribute):
 
 class UnicodeListAttribute(ListAttribute):
     """
-    This is a list attribute that supports only numbers (i.e. integers) or
-    lists of numbers.
+    This is a list attribute that supports only Unicode strings or lists of
+    Unicode strings.
     
     The DynamoDB List attribute does actually support mixed attribute types,
-    but this one only supports numbers and lists of numbers. Using non-integers
-    or lists of non-integers with this type will produce undefined results.
+    but this one only supports Unicode strings and lists of Unicode strings.
+    Using non-strings or lists of non-strings with this type will produce
+    undefined results.
     """
     attr_type = LIST
     inner_attr_type = STRING_SHORT
