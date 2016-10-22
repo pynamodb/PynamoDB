@@ -6,8 +6,9 @@ import json
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
-    STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT
+    LIST, STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET,
+    NUMBER_SET, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT,
+    LIST_SHORT
 )
 
 
@@ -316,6 +317,49 @@ class NumberAttribute(Attribute):
         Decode numbers from JSON
         """
         return json.loads(value)
+
+
+class NumberListAttribute(Attribute):
+    """
+    This is a list attribute that supports only numbers (i.e. integers) or
+    lists of numbers.
+    
+    The DynamoDB List attribute does actually support mixed attribute types,
+    but this one only supports numbers and lists of numbers. Using non-integers
+    or lists of non-integers with this type will produce undefined results.
+    """
+    attr_type = LIST
+
+    @staticmethod
+    def serialize(values):
+        """
+        Encode the given list of numbers into a list of AttributeValue types.
+        """
+        rval = []
+        for v in values:
+            if type(v) is list:
+                rval += [{LIST_SHORT: NumberListAttribute.serialize(v)}]
+            else:
+                rval += [{NUMBER_SHORT: str(v)}]
+
+        return rval
+
+    @staticmethod
+    def deserialize(values):
+        """
+        Decode numbers from list of AttributeValue types.
+        """
+        rval = []
+
+        # This should be a generic function that takes any AttributeValue and
+        # translates it back to the Python type.
+        for v in values:
+            if LIST_SHORT in v:
+                rval += [NumberListAttribute.deserialize(v[LIST_SHORT])]
+            else:
+                rval += [int(v[NUMBER_SHORT])]
+
+        return rval
 
 
 class UTCDateTimeAttribute(Attribute):
