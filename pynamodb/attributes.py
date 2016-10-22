@@ -6,8 +6,9 @@ import json
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
-    STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT
+    LIST, STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET,
+    NUMBER_SET, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT,
+    LIST_SHORT, STRING_SHORT
 )
 
 
@@ -193,7 +194,8 @@ class UnicodeAttribute(Attribute):
     """
     attr_type = STRING
 
-    def serialize(self, value):
+    @staticmethod
+    def serialize(value):
         """
         Returns a unicode string
         """
@@ -203,6 +205,13 @@ class UnicodeAttribute(Attribute):
             return value
         else:
             return six.u(value)
+
+    @staticmethod
+    def deserialize(value):
+        """
+        Performs any needed deserialization on the value
+        """
+        return value
 
 
 class JSONAttribute(Attribute):
@@ -305,17 +314,126 @@ class NumberAttribute(Attribute):
     """
     attr_type = NUMBER
 
-    def serialize(self, value):
+    @staticmethod
+    def serialize(value):
         """
         Encode numbers as JSON
         """
         return json.dumps(value)
 
-    def deserialize(self, value):
+    @staticmethod
+    def deserialize(value):
         """
         Decode numbers from JSON
         """
         return json.loads(value)
+
+
+class ListAttribute(Attribute):
+    """
+    This is a list attribute that is for use in inheritance by fully defined
+    List attributes.
+    """
+    attr_type = LIST
+    inner_attr_type = 'UNDEFINED'
+
+    def inner_serialize(self, v):
+        """
+        This method must be overridden in the inheriting class with a method that
+        properly serializes the given type.
+        """
+        return v
+
+    def inner_deserialize(self, v):
+        """
+        This method must be overridden in the inheriting class with a method that
+        properly deserializes the given type.
+        """
+        return v
+
+    def serialize(self, values):
+        """
+        Encode the given list of numbers into a list of AttributeValue types.
+        """
+        rval = []
+        for v in values:
+            if isinstance(v, list):
+                rval += [{LIST_SHORT: self.serialize(v)}]
+            else:
+                rval += [{self.inner_attr_type: self.inner_serialize(v)}]
+
+        return rval
+
+    def deserialize(self, values):
+        """
+        Decode numbers from list of AttributeValue types.
+        """
+        rval = []
+
+        # This should be a generic function that takes any AttributeValue and
+        # translates it back to the Python type.
+        for v in values:
+            if LIST_SHORT in v:
+                rval += [self.deserialize(v[LIST_SHORT])]
+            else:
+                rval += [self.inner_deserialize(v[self.inner_attr_type])]
+
+        return rval
+
+
+class NumberListAttribute(ListAttribute):
+    """
+    This is a list attribute that supports only numbers (i.e. integers) or
+    lists of numbers.
+    
+    The DynamoDB List attribute does actually support mixed attribute types,
+    but this one only supports numbers and lists of numbers. Using non-integers
+    or lists of non-integers with this type will produce undefined results.
+    """
+    attr_type = LIST
+    inner_attr_type = NUMBER_SHORT
+
+    def inner_serialize(self, v):
+        """
+        This method must be overridden in the inheriting class with a method that
+        properly serializes the given type.
+        """
+        return NumberAttribute.serialize(v)
+
+    def inner_deserialize(self, v):
+        """
+        This method must be overridden in the inheriting class with a method that
+        properly deserializes the given type.
+        """
+        return NumberAttribute.deserialize(v)
+
+
+class UnicodeListAttribute(ListAttribute):
+    """
+    This is a list attribute that supports only Unicode strings or lists of
+    Unicode strings.
+    
+    The DynamoDB List attribute does actually support mixed attribute types,
+    but this one only supports Unicode strings and lists of Unicode strings.
+    Using non-strings or lists of non-strings with this type will produce
+    undefined results.
+    """
+    attr_type = LIST
+    inner_attr_type = STRING_SHORT
+
+    def inner_serialize(self, v):
+        """
+        This method must be overridden in the inheriting class with a method that
+        properly serializes the given type.
+        """
+        return UnicodeAttribute.serialize(v)
+
+    def inner_deserialize(self, v):
+        """
+        This method must be overridden in the inheriting class with a method that
+        properly deserializes the given type.
+        """
+        return UnicodeAttribute.deserialize(v)
 
 
 class UTCDateTimeAttribute(Attribute):
