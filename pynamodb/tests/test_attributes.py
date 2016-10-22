@@ -470,7 +470,7 @@ class ListAttributeTestCase(TestCase):
         attr = ListAttribute()
         self.assertIsNotNone(attr)
         self.assertEqual(attr.attr_type, LIST)
-        self.assertIs(attr.inner_attr_type, 'UNDEFINED')
+        self.assertEqual(attr.inner_attr_type, 'UNDEFINED')
 
         # The assertListEqual method cannot support heterogeneous lists, so we
         # can only test either all <<type>>, whatever <<type>> is, or all
