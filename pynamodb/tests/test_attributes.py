@@ -13,8 +13,9 @@ from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
+    MapAttribute, ListAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY, BOOLEAN)
+    BINARY, MAP, LIST, BOOLEAN)
 
 
 class AttributeTestModel(Model):
@@ -508,3 +509,69 @@ class JSONAttributeTestCase(TestCase):
         item = {'foo\t': 'bar\n', 'bool': True, 'number': 3.141}
         encoded = six.u(json.dumps(item))
         self.assertEqual(attr.deserialize(encoded), item)
+
+
+class MapAttributeTestCase(TestCase):
+    """
+    Tests map with str, int, float
+    """
+    def test_attribute_children(self):
+        person_attribute = {
+            'name': 'Justin',
+            'age': 31,
+            'height': 187.96
+        }
+        attr = MapAttribute()
+        serialized = attr.serialize(person_attribute)
+        self.assertEqual(attr.deserialize(serialized), person_attribute)
+
+
+class MapAndListAttributeTestCase(TestCase):
+
+    def test_map_of_list(self):
+        grocery_list = {
+            'fruit': ['apple', 'pear', 32],
+            'veggies': ['broccoli', 'potatoes', 5]
+        }
+        serialized = MapAttribute().serialize(grocery_list)
+        self.assertEqual(MapAttribute().deserialize(serialized), grocery_list)
+
+    def test_map_of_list_of_map(self):
+        family_attributes = {
+            'phillips': [
+                {
+                    'name': 'Justin',
+                    'age': 31,
+                    'height': 187.96
+                },
+                {
+                    'name': 'Galen',
+                    'age': 29,
+                    'height': 193.04,
+                    'male': True
+                },
+                {
+                    'name': 'Colin',
+                    'age': 32,
+                    'height': 203.2,
+                    'male': True,
+                    'hasChild': True
+                }
+            ],
+            'workman': [
+                {
+                    'name': 'Mandy',
+                    'age': 29,
+                    'height': 157.48,
+                    'female': True
+                },
+                {
+                    'name': 'Rodney',
+                    'age': 31,
+                    'height': 175.26,
+                    'hasChild': False
+                }
+            ]
+        }
+        serialized = MapAttribute().serialize(family_attributes)
+        self.assertDictEqual(MapAttribute().deserialize(serialized), family_attributes)
