@@ -525,6 +525,18 @@ class MapAttributeTestCase(TestCase):
         serialized = attr.serialize(person_attribute)
         self.assertEqual(attr.deserialize(serialized), person_attribute)
 
+    def test_map_of_map(self):
+        attribute = {
+            'name': 'Justin',
+            'metrics': {
+                'age': 31,
+                'height': 187.96
+            }
+        }
+        attr = MapAttribute()
+        serialized = attr.serialize(attribute)
+        self.assertEqual(attr.deserialize(serialized), attribute)
+
 
 class MapAndListAttributeTestCase(TestCase):
 
