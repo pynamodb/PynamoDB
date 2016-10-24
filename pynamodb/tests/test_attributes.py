@@ -535,7 +535,6 @@ class MapAttributeTestCase(TestCase):
         }
         attr = MapAttribute()
         serialized = attr.serialize(attribute)
-        print(serialized)
         self.assertEqual(attr.deserialize(serialized), attribute)
 
 
