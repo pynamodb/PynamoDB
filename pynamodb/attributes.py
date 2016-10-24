@@ -431,10 +431,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
             attr_key = _get_key_for_serialize(v)
             if attr_class is None:
                 continue
-            if attr_key is MAP_SHORT:
-                rval[k] = [{attr_key: attr_class.serialize(v)}]
-            else:
-                rval[k] = {attr_key: attr_class.serialize(v)}
+            rval[k] = {attr_key: attr_class.serialize(v)}
 
         return rval
 
