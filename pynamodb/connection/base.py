@@ -24,7 +24,7 @@ from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
     COMPARISON_OPERATOR, EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, SCAN_FILTER_VALUES, ATTR_DEFINITIONS,
-    BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, DEFAULT_REGION, KEY_CONDITIONS,
+    BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, KEY_CONDITIONS,
     BATCH_GET_ITEM, DELETE_REQUEST, SELECT_VALUES, RETURN_VALUES, REQUEST_ITEMS, ATTR_UPDATES,
     ATTRS_TO_GET, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
     INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
@@ -36,13 +36,9 @@ from pynamodb.constants import (
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
+from pynamodb.settings import get_settings_value
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
-
-# retry parameters
-DEFAULT_TIMEOUT = 60  # matches legacy retry timeout from botocore
-DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION = 3
-DEFAULT_BASE_BACKOFF_MS = 25
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
@@ -178,7 +174,8 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None, session_cls=None):
+    def __init__(self, region=None, host=None, session_cls=None,
+                 request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None):
         self._tables = {}
         self.host = host
         self._session = None
@@ -187,17 +184,27 @@ class Connection(object):
         if region:
             self.region = region
         else:
-            self.region = DEFAULT_REGION
-
-        # TODO: provide configurability of retry parameters via arguments
-        self._request_timeout_seconds = DEFAULT_TIMEOUT
-        self._max_retry_attempts_exception = DEFAULT_MAX_RETRY_ATTEMPTS_EXCEPTION
-        self._base_backoff_ms = DEFAULT_BASE_BACKOFF_MS
+            self.region = get_settings_value('region')
 
         if session_cls:
             self.session_cls = session_cls
         else:
-            self.session_cls = requests.Session
+            self.session_cls = get_settings_value('session_cls')
+
+        if request_timeout_seconds is not None:
+            self._request_timeout_seconds = request_timeout_seconds
+        else:
+            self._request_timeout_seconds = get_settings_value('request_timeout_seconds')
+
+        if max_retry_attempts is not None:
+            self._max_retry_attempts_exception = max_retry_attempts
+        else:
+            self._max_retry_attempts_exception = get_settings_value('max_retry_attempts')
+
+        if base_backoff_ms is not None:
+            self._base_backoff_ms = base_backoff_ms
+        else:
+            self._base_backoff_ms = get_settings_value('base_backoff_ms')
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
@@ -254,8 +261,9 @@ class Connection(object):
         )
         prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
 
-        for attempt_number in range(1, self._max_retry_attempts_exception + 1):
-            is_last_attempt_for_exceptions = attempt_number == self._max_retry_attempts_exception
+        for i in range(0, self._max_retry_attempts_exception + 1):
+            attempt_number = i + 1
+            is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
 
             try:
                 response = self.requests_session.send(
@@ -309,7 +317,7 @@ class Connection(object):
                     else:
                         # We use fully-jittered exponentially-backed-off retries:
                         #  https://www.awsarchitectureblog.com/2015/03/backoff.html
-                        sleep_time_ms = random.randint(0, self._base_backoff_ms * (2 ** attempt_number))
+                        sleep_time_ms = random.randint(0, self._base_backoff_ms * (2 ** i))
                         log.debug(
                             'Retry with backoff needed for (%s) after attempt %s,'
                             'sleeping for %s milliseconds, retryable %s caught: %s',
