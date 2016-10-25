@@ -19,6 +19,10 @@ SIMPLE_MODEL_TABLE_DATA = {
                 "AttributeName": "email",
                 "AttributeType": "S"
             },
+            {
+                "AttributeName": "numbers",
+                "AttributeType": "NS"
+            },
         ],
         "CreationDateTime": 1.363729002358E9,
         "ItemCount": 0,

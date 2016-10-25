@@ -360,7 +360,7 @@ class Model(AttributeContainer):
                 ACTION: action.upper() if action else None,
             }
         }
-        if action is not None and action.upper() != DELETE:
+        if action is not None and (action.upper() != DELETE or (value is not None and not(isinstance(value, str) and value.upper() == 'NULL'))):
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name][VALUE] = {ATTR_TYPE_MAP[attribute_cls.attr_type]: value}
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)

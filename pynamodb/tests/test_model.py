@@ -1516,6 +1516,40 @@ class ModelTestCase(TestCase):
             deep_eq(args, params, _assert=True)
 
 
+    def test_update_item_delete_from_set(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = SIMPLE_MODEL_TABLE_DATA
+            item = SimpleUserModel('bar', email='bar', numbers=set([1, 2, 3]))
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item.save()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    'numbers': {
+                        'NS': ['1', '3']
+                    }
+                }
+            }
+            item.update_item('numbers', value=[2], action='delete')
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'bar'
+                    },
+                },
+                'ExpressionAttributeNames': {'#0': 'numbers'},
+                'ExpressionAttributeValues': {':0': {'NS': ['2']}},
+                'UpdateExpression': 'DELETE #0 :0',
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
     def test_save(self):
         """
         Model.save
