@@ -495,6 +495,8 @@ class ListAttribute(Attribute):
                                             default=default,
                                             attr_name=attr_name)
         if of:
+            if not issubclass(of, MapAttribute):
+                raise ValueError("'of' must be subclass of MapAttribute")
             self.element_type = of
 
     def serialize(self, values):
