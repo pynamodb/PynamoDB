@@ -587,3 +587,40 @@ class MapAndListAttributeTestCase(TestCase):
         }
         serialized = MapAttribute().serialize(family_attributes)
         self.assertDictEqual(MapAttribute().deserialize(serialized), family_attributes)
+
+    def test_list_of_map_with_of(self):
+        class Person(MapAttribute):
+            name = UnicodeAttribute()
+            age = NumberAttribute()
+
+            def __lt__(self, other):
+                return self.name < other.name
+
+            def __eq__(self, other):
+                return self.name == other.name and \
+                       self.age == other.age
+
+        person1 = Person()
+        person1.name = 'john'
+        person1.age = 40
+
+        person2 = Person()
+        person2.name = 'Dana'
+        person2.age = 41
+        inp = [person1, person2]
+
+        list_attribute = ListAttribute(default=[], of=Person)
+        serialized = list_attribute.serialize(inp)
+        deserialized = list_attribute.deserialize(serialized)
+        self.assertEqual(sorted(deserialized), sorted(inp))
+
+    def test_list_of_unicode_with_of(self):
+        with self.assertRaises(ValueError):
+            ListAttribute(default=[], of=UnicodeAttribute)
+
+    def test_list_of_unicode(self):
+        list_attribute = ListAttribute()
+        inp = ['rome', 'berlin']
+        serialized = list_attribute.serialize(inp)
+        deserialized = list_attribute.deserialize(serialized)
+        self.assertEqual(sorted(deserialized), sorted(inp))
