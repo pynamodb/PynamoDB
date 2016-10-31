@@ -2,13 +2,16 @@
 PynamoDB attributes
 """
 import six
+from six import with_metaclass
 import json
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
-    STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT
+    STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
+    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
 )
+from pynamodb.attribute_dict import AttributeDict
+import collections
 
 
 class Attribute(object):
@@ -35,8 +38,6 @@ class Attribute(object):
             self.attr_name = attr_name
 
     def __set__(self, instance, value):
-        if isinstance(value, Attribute):
-            return self
         if instance:
             instance.attribute_values[self.attr_name] = value
 
@@ -336,3 +337,225 @@ class UTCDateTimeAttribute(Attribute):
         Takes a UTC datetime string and returns a datetime object
         """
         return parse(value, dayfirst=False).datetime
+
+
+class NullAttribute(Attribute):
+    attr_type = NULL
+
+    def serialize(self, value):
+        return True
+
+    def deserialize(self, value):
+        return None
+
+
+class MapAttributeMeta(type):
+    def __init__(cls, name, bases, attrs):
+        setattr(cls, '_attributes', None)
+
+
+class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
+    attr_type = MAP
+
+    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, **attrs):
+        super(MapAttribute, self).__init__(hash_key=hash_key,
+                                           range_key=range_key,
+                                           null=null,
+                                           default=default,
+                                           attr_name=attr_name)
+        self.attribute_values = {}
+        self._set_attributes(**attrs)
+
+    def __iter__(self):
+        return iter(self.attribute_values)
+
+    def __getitem__(self, item):
+        return self.attribute_values[item]
+
+    @classmethod
+    def _get_attributes(cls):
+        """
+        Returns the list of attributes for this class
+        """
+        if cls._attributes is None:
+            cls._attributes = AttributeDict()
+            class_attribute_variables = [attr for attr in vars(cls) if isinstance(getattr(cls, attr), Attribute)]
+            for item in class_attribute_variables:
+                instance = getattr(cls, item)
+                if instance.attr_name is None:
+                    instance.attr_name = item
+                cls._attributes[item] = instance
+        return cls._attributes
+
+    def _set_attributes(self, **attrs):
+        """
+        Sets the attributes for this object
+        """
+        for attr_name, attr in self._get_attributes().aliased_attrs():
+            if attr.attr_name in attrs:
+                if not isinstance(attrs.get(attr_name), collections.Mapping):
+                    setattr(self, attr_name, attrs.get(attr.attr_name))
+                else:
+                    # it's a sub model which means we need to instantiate that type first
+                    # pass in the attributes of that model, then set the field on this object to point to that model
+                    sub_model = attrs.get(attr_name)
+                    instance = type(attr)(**sub_model)
+                    setattr(self, attr_name, instance)
+
+            elif attr_name in attrs:
+                setattr(self, attr_name, attrs.get(attr_name))
+
+    def get_values(self):
+        attributes = self._get_attributes()
+        result = {}
+        for k, v in six.iteritems(attributes):
+            result[k] = getattr(self, k)
+        return result
+
+    def is_type_safe(self, key, value):
+        can_be_null = value.null
+        if can_be_null and getattr(self, key) is None:
+            return True
+        if getattr(self, key) is None:
+            raise ValueError("Attribute '{0}' cannot be None".format(key))
+        return getattr(self, key) and type(getattr(self, key)) is not type(value)
+
+    def validate(self):
+        return all(self.is_type_safe(k, v) for k, v in six.iteritems(self._get_attributes()))
+
+    def serialize(self, values):
+        rval = {}
+        for k in values:
+            v = values[k]
+            attr_class = _get_class_for_serialize(v)
+            attr_key = _get_key_for_serialize(v)
+            if attr_class is None:
+                continue
+            rval[k] = {attr_key: attr_class.serialize(v)}
+
+        return rval
+
+    def deserialize(self, values):
+        """
+        Decode numbers from list of AttributeValue types.
+        """
+        deserialized_dict = dict()
+        for k in values:
+            v = values[k]
+            attr_class = _get_class_for_deserialize(v)
+            attr_value = _get_value_for_deserialize(v)
+            deserialized_dict[k] = attr_class.deserialize(attr_value)
+        return deserialized_dict
+
+
+def _get_value_for_deserialize(value):
+    return value[list(value.keys())[0]]
+
+
+def _get_class_for_deserialize(value):
+    value_type = list(value.keys())[0]
+    if value_type not in DESERIALIZE_CLASS_MAP:
+        raise ValueError('Unknown value: ' + str(value))
+    return DESERIALIZE_CLASS_MAP[value_type]
+
+
+def _get_class_for_serialize(value):
+    if value is None:
+        return NullAttribute()
+    if isinstance(value, MapAttribute):
+        return type(value)()
+    value_type = type(value)
+    if value_type not in SERIALIZE_CLASS_MAP:
+        raise ValueError('Unknown value: {}'.format(value_type))
+    return SERIALIZE_CLASS_MAP[value_type]
+
+
+def _get_key_for_serialize(value):
+    if value is None:
+        return NullAttribute.attr_type
+    if isinstance(value, MapAttribute):
+        return MAP_SHORT
+    value_type = type(value)
+    if value_type not in SERIALIZE_KEY_MAP:
+        raise ValueError('Unknown value: {}'.format(value_type))
+    return SERIALIZE_KEY_MAP[value_type]
+
+
+class ListAttribute(Attribute):
+    attr_type = LIST
+    element_type = None
+
+    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, of=None):
+        super(ListAttribute, self).__init__(hash_key=hash_key,
+                                            range_key=range_key,
+                                            null=null,
+                                            default=default,
+                                            attr_name=attr_name)
+        if of:
+            if not issubclass(of, MapAttribute):
+                raise ValueError("'of' must be subclass of MapAttribute")
+            self.element_type = of
+
+    def serialize(self, values):
+        """
+        Encode the given list of objects into a list of AttributeValue types.
+        """
+        rval = []
+        for v in values:
+            attr_class = _get_class_for_serialize(v)
+            attr_key = _get_key_for_serialize(v)
+            rval.append({attr_key: attr_class.serialize(v)})
+        return rval
+
+    def deserialize(self, values):
+        """
+        Decode from list of AttributeValue types.
+        """
+        deserialized_lst = []
+        for v in values:
+            attr_class = _get_class_for_deserialize(v)
+            attr_value = _get_value_for_deserialize(v)
+            deserialized_lst.append(attr_class.deserialize(attr_value))
+
+        if not self.element_type:
+            return deserialized_lst
+
+        lst_of_type = []
+        for item in deserialized_lst:
+            lst_of_type.append(self.element_type(**item))
+        return lst_of_type
+
+DESERIALIZE_CLASS_MAP = {
+    LIST_SHORT: ListAttribute(),
+    NUMBER_SHORT: NumberAttribute(),
+    STRING_SHORT: UnicodeAttribute(),
+    BOOLEAN: BooleanAttribute(),
+    MAP_SHORT: MapAttribute(),
+    NULL: NullAttribute()
+}
+
+SERIALIZE_CLASS_MAP = {
+    dict: MapAttribute(),
+    list: ListAttribute(),
+    set: ListAttribute(),
+    bool: BooleanAttribute(),
+    float: NumberAttribute(),
+    int: NumberAttribute(),
+    str: UnicodeAttribute()
+}
+
+
+SERIALIZE_KEY_MAP = {
+    dict: MAP_SHORT,
+    list: LIST_SHORT,
+    set: LIST_SHORT,
+    bool: BOOLEAN,
+    float: NUMBER_SHORT,
+    int: NUMBER_SHORT,
+    str: STRING_SHORT
+}
+
+
+if six.PY2:
+    SERIALIZE_CLASS_MAP[unicode] = UnicodeAttribute()
+    SERIALIZE_KEY_MAP[unicode] = STRING_SHORT

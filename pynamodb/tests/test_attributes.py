@@ -13,8 +13,9 @@ from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
+    MapAttribute, ListAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY, BOOLEAN)
+    BINARY, MAP, LIST, BOOLEAN)
 
 
 class AttributeTestModel(Model):
@@ -508,3 +509,118 @@ class JSONAttributeTestCase(TestCase):
         item = {'foo\t': 'bar\n', 'bool': True, 'number': 3.141}
         encoded = six.u(json.dumps(item))
         self.assertEqual(attr.deserialize(encoded), item)
+
+
+class MapAttributeTestCase(TestCase):
+    """
+    Tests map with str, int, float
+    """
+    def test_attribute_children(self):
+        person_attribute = {
+            'name': 'Justin',
+            'age': 31,
+            'height': 187.96
+        }
+        attr = MapAttribute()
+        serialized = attr.serialize(person_attribute)
+        self.assertEqual(attr.deserialize(serialized), person_attribute)
+
+    def test_map_of_map(self):
+        attribute = {
+            'name': 'Justin',
+            'metrics': {
+                'age': 31,
+                'height': 187.96
+            }
+        }
+        attr = MapAttribute()
+        serialized = attr.serialize(attribute)
+        self.assertEqual(attr.deserialize(serialized), attribute)
+
+
+class MapAndListAttributeTestCase(TestCase):
+
+    def test_map_of_list(self):
+        grocery_list = {
+            'fruit': ['apple', 'pear', 32],
+            'veggies': ['broccoli', 'potatoes', 5]
+        }
+        serialized = MapAttribute().serialize(grocery_list)
+        self.assertEqual(MapAttribute().deserialize(serialized), grocery_list)
+
+    def test_map_of_list_of_map(self):
+        family_attributes = {
+            'phillips': [
+                {
+                    'name': 'Justin',
+                    'age': 31,
+                    'height': 187.96
+                },
+                {
+                    'name': 'Galen',
+                    'age': 29,
+                    'height': 193.04,
+                    'male': True
+                },
+                {
+                    'name': 'Colin',
+                    'age': 32,
+                    'height': 203.2,
+                    'male': True,
+                    'hasChild': True
+                }
+            ],
+            'workman': [
+                {
+                    'name': 'Mandy',
+                    'age': 29,
+                    'height': 157.48,
+                    'female': True
+                },
+                {
+                    'name': 'Rodney',
+                    'age': 31,
+                    'height': 175.26,
+                    'hasChild': False
+                }
+            ]
+        }
+        serialized = MapAttribute().serialize(family_attributes)
+        self.assertDictEqual(MapAttribute().deserialize(serialized), family_attributes)
+
+    def test_list_of_map_with_of(self):
+        class Person(MapAttribute):
+            name = UnicodeAttribute()
+            age = NumberAttribute()
+
+            def __lt__(self, other):
+                return self.name < other.name
+
+            def __eq__(self, other):
+                return self.name == other.name and \
+                       self.age == other.age
+
+        person1 = Person()
+        person1.name = 'john'
+        person1.age = 40
+
+        person2 = Person()
+        person2.name = 'Dana'
+        person2.age = 41
+        inp = [person1, person2]
+
+        list_attribute = ListAttribute(default=[], of=Person)
+        serialized = list_attribute.serialize(inp)
+        deserialized = list_attribute.deserialize(serialized)
+        self.assertEqual(sorted(deserialized), sorted(inp))
+
+    def test_list_of_unicode_with_of(self):
+        with self.assertRaises(ValueError):
+            ListAttribute(default=[], of=UnicodeAttribute)
+
+    def test_list_of_unicode(self):
+        list_attribute = ListAttribute()
+        inp = ['rome', 'berlin']
+        serialized = list_attribute.serialize(inp)
+        deserialized = list_attribute.deserialize(serialized)
+        self.assertEqual(sorted(deserialized), sorted(inp))
