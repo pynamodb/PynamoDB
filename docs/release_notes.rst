@@ -7,8 +7,8 @@ v2.0.0
 :date: 2016-11-01
 
 This is a major release, which introduces support for native DynamoDB maps and lists. There are no
-changes which are expected to break backwards compatibility, but you should test extensively due
-to the volume of changes required for map and list support.
+changes which are expected to break backwards compatibility, but you should test extensively before
+upgrading in production due to the volume of changes.
 
 New features in this release:
 
