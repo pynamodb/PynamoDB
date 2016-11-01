@@ -128,7 +128,7 @@ class BatchWrite(ModelContextManager):
                 elif DELETE_REQUEST in item:
                     delete_items.append(item.get(DELETE_REQUEST).get(KEY))
             self.model.get_throttle().throttle()
-            log.debug("Resending %s unprocessed keys for batch operation", len(unprocessed_items))
+            log.info("Resending %s unprocessed keys for batch operation", len(unprocessed_items))
             data = self.model._get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items
