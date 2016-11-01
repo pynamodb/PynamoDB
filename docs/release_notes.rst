@@ -1,6 +1,25 @@
 Release Notes
 =============
 
+v2.0.0
+------
+
+:date: 2016-11-01
+
+This is a major release, which introduces support for native DynamoDB maps and lists. There are no
+changes which are expected to break backwards compatibility, but you should test extensively due
+to the volume of changes required for map and list support.
+
+New features in this release:
+
+* Add support for native map and list attributes (#175)
+
+Contributors to this release:
+
+* @jmphilli
+* @berdim99
+
+
 v1.6.0
 ------
 
@@ -41,7 +60,7 @@ This is a backwards compatible, minor release.
 Fixes in this release:
 
 * Introduce concept of page_size, separate from num items returned limit (#139)
- 
+
 Contributors to this release:
 
 * @anandswaminathan
