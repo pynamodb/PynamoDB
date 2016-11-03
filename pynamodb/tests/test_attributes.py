@@ -389,14 +389,8 @@ class UnicodeAttributeTestCase(TestCase):
         UnicodeAttribute.raises
         """
         attr = UnicodeAttribute()
-        expected_message = 'Serialization failed: UnicodeAttribute expected but passed int'
-
         with self.assertRaises(AttributeSerializationError):
             attr.serialize(4)
-        try:
-            attr.serialize(4)
-        except AttributeSerializationError as e:
-            self.assertEquals(e.message, expected_message)
 
 
 class LegacyBooleanAttributeTestCase(TestCase):
