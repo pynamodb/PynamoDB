@@ -357,7 +357,7 @@ class MapAttributeMeta(type):
 class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
     attr_type = MAP
 
-    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, **attrs):
+    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, raw=False, **attrs):
         super(MapAttribute, self).__init__(hash_key=hash_key,
                                            range_key=range_key,
                                            null=null,
@@ -365,6 +365,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                                            attr_name=attr_name)
         self.attribute_values = {}
         self._set_attributes(**attrs)
+        self._raw = raw
 
     def __iter__(self):
         return iter(self.attribute_values)
@@ -446,6 +447,10 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
             attr_value = _get_value_for_deserialize(v)
             deserialized_dict[k] = attr_class.deserialize(attr_value)
         return deserialized_dict
+
+    @property
+    def is_raw(self):
+        return self._raw
 
 
 def _get_value_for_deserialize(value):

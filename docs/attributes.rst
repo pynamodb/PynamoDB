@@ -134,6 +134,7 @@ Map Attributes
 --------------
 
 DynamoDB map attributes are objects embedded inside of top level models. See the examples `here <https://github.com/jlafon/PynamoDB/tree/devel/examples/office_model.py>`_.
+While implementing a generic MapAttribute without subclassing it or specifying its structure, you have to add an attribute `raw=True`.
 When implementing your own MapAttribute you can simply extend ``MapAttribute`` and ignore writing serialization code.
 These attributes can then be used inside of Model classes just like any other attribute.
 

@@ -31,3 +31,4 @@ class Office(Model):
     office_id = NumberAttribute(hash_key=True)
     address = Location()
     employees = ListAttribute(of=OfficeEmployeeMap)
+    notes = MapAttribute(raw=True)
