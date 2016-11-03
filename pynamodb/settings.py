@@ -19,7 +19,7 @@ OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default
 
 override_settings = {}
 if os.path.isfile(OVERRIDE_SETTINGS_PATH):
-    override_settings = imp.load_source(OVERRIDE_SETTINGS_PATH, OVERRIDE_SETTINGS_PATH)
+    override_settings = imp.load_source('__pynamodb_override_settings__', OVERRIDE_SETTINGS_PATH)
     log.info('Override settings for pynamo available {0}'.format(OVERRIDE_SETTINGS_PATH))
 else:
     log.info('Override settings for pynamo not available {0}'.format(OVERRIDE_SETTINGS_PATH))
