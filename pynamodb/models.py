@@ -1204,9 +1204,12 @@ class Model(with_metaclass(MetaModel)):
                 elif null_check:
                     raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
             if isinstance(attr, MapAttribute):
-                if not value.validate():
-                    raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
-                value = value.get_values()
+                if not attr.is_raw:
+                    if type(attr) is MapAttribute:
+                        raise ValueError("MapAttribute '{0}' not subclassed nor marked as raw".format(attr.attr_name))
+                    if not value.validate():
+                        raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
+                    value = value.get_values()
             serialized = attr.serialize(value)
             if serialized is None:
                 continue

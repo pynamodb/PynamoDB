@@ -94,6 +94,20 @@ class GameModel(Model):
     opponent_time_index = GameOpponentTimeIndex()
 
 
+class ExplicitRawMapModel(Model):
+    class Meta:
+        table_name = 'ExplicitRawMapModel'
+
+    map_attr = MapAttribute(raw=True)
+
+
+class ImplicitRawMapModel(Model):
+    class Meta:
+        table_name = 'ImplicitRawMapModel'
+
+    map_attr = MapAttribute()
+
+
 class OldStyleModel(Model):
     _table_name = 'IndexedModel'
     user_name = UnicodeAttribute(hash_key=True)
@@ -2996,3 +3010,15 @@ class ModelTestCase(TestCase):
         rs = ResultSet(results=results, operation=operations, arguments=arguments)
         for k in rs:
             self.assertTrue(k in results)
+
+    def test_explicit_raw_map_serialize_pass(self):
+        map_native = {'foo': 'bar'}
+        map_serialized = {'M': {'foo': {'S': 'bar'}}}
+        instance = ExplicitRawMapModel(map_attr=map_native)
+        serialized = instance._serialize()
+        self.assertEqual(serialized['attributes']['map_attr'], map_serialized)
+
+    def test_implicit_map_serialize_raises(self):
+        instance = ImplicitRawMapModel(map_attr={'foo': 'bar'})
+        with self.assertRaises(ValueError):
+            instance._serialize()
