@@ -7,7 +7,7 @@ import six
 import copy
 import logging
 from six import with_metaclass
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, MapAttributeNotSubclassedError
 from pynamodb.throttle import NoThrottle
 from pynamodb.attributes import Attribute, MapAttribute, ListAttribute
 from pynamodb.attribute_dict import AttributeDict
@@ -1204,6 +1204,8 @@ class Model(with_metaclass(MetaModel)):
                 elif null_check:
                     raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
             if isinstance(attr, MapAttribute):
+                if not issubclass(attr, MapAttribute):
+                    raise MapAttributeNotSubclassedError(attr.attr_name)
                 if not value.validate():
                     raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
                 value = value.get_values()

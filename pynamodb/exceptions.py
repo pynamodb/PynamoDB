@@ -101,3 +101,19 @@ class VerboseClientError(botocore.exceptions.ClientError):
 
         super(VerboseClientError, self).__init__(error_response, operation_name)
 
+
+class MapAttributeNotSubclassedError(TypeError):
+    def __init__(self, attr_name):
+        super(MapAttributeNotSubclassedError, self).__init__(
+            'MapAttribute was not subclassed. attr_name={}'.format(
+                attr_name
+            )
+        )
+
+class AttributeSerializationError(TypeError):
+    def __init__(self, expected_type, actual_type):
+        super(AttributeSerializationError, self).__init__(
+            'Serialization failed: {} expected but passed {}'.format(
+                expected_type, actual_type
+            )
+        )

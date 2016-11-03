@@ -9,6 +9,7 @@ from delorean import Delorean
 from mock import patch
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.constants import UTC, DATETIME_FORMAT
+from pynamodb.exceptions import AttributeSerializationError
 from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
@@ -382,6 +383,20 @@ class UnicodeAttributeTestCase(TestCase):
         self.assertEqual(attr.attr_type, STRING_SET)
         attr = UnicodeSetAttribute(default=set([six.u('foo'), six.u('bar')]))
         self.assertEqual(attr.default, set([six.u('foo'), six.u('bar')]))
+
+    def test_unicode_attribute_raises(self):
+        """
+        UnicodeAttribute.raises
+        """
+        attr = UnicodeAttribute()
+        expected_message = 'Serialization failed: UnicodeAttribute expected but passed int'
+
+        with self.assertRaises(AttributeSerializationError):
+            attr.serialize(4)
+        try:
+            attr.serialize(4)
+        except AttributeSerializationError as e:
+            self.assertEquals(e.message, expected_message)
 
 
 class LegacyBooleanAttributeTestCase(TestCase):
