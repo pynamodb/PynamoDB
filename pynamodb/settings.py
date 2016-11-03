@@ -2,6 +2,7 @@ import imp
 import logging
 import os
 from os import getenv
+import re
 
 from botocore.vendored import requests
 
@@ -19,7 +20,7 @@ OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default
 
 override_settings = {}
 if os.path.isfile(OVERRIDE_SETTINGS_PATH):
-    override_settings = imp.load_source(OVERRIDE_SETTINGS_PATH.rpartition('.py')[0], OVERRIDE_SETTINGS_PATH)
+    override_settings = imp.load_source('pynamodb_override_settings', OVERRIDE_SETTINGS_PATH)
     log.info('Override settings for pynamo available {0}'.format(OVERRIDE_SETTINGS_PATH))
 else:
     log.info('Override settings for pynamo not available {0}'.format(OVERRIDE_SETTINGS_PATH))
