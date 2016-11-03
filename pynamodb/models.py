@@ -1205,7 +1205,7 @@ class Model(with_metaclass(MetaModel)):
                     raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
             if isinstance(attr, MapAttribute):
                 if attr.__class__.__name__ ==  MapAttribute.__name__:
-                    raise MapAttributeNotSubclassedError(attr.attr_name)
+                    raise MapAttributeNotSubclassedError(name)
                 if not value.validate():
                     raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
                 value = value.get_values()
