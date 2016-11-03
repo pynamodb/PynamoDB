@@ -2919,7 +2919,7 @@ class ModelTestCase(TestCase):
             item.save()
 
     def test_serialize_raises_when_passed_raw_map_attribute(self):
-        model = RawMapAttributeModel()
+        model = RawMapAttributeModel(str_attr='string', map_attr={})
         with self.assertRaises(MapAttributeNotSubclassedError):
             model._serialize()
 
