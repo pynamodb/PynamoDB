@@ -2,7 +2,6 @@ import imp
 import logging
 import os
 from os import getenv
-import re
 
 from botocore.vendored import requests
 
