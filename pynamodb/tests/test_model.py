@@ -96,20 +96,14 @@ class GameModel(Model):
 
 class ExplicitRawMapModel(Model):
     class Meta:
-        read_capacity_units = 1
-        write_capacity_units = 1
         table_name = 'ExplicitRawMapModel'
-        host = "http://localhost:8000"
 
     map_attr = MapAttribute(raw=True)
 
 
 class ImplicitRawMapModel(Model):
     class Meta:
-        read_capacity_units = 1
-        write_capacity_units = 1
         table_name = 'ImplicitRawMapModel'
-        host = "http://localhost:8000"
 
     map_attr = MapAttribute()
 
@@ -3018,7 +3012,6 @@ class ModelTestCase(TestCase):
             self.assertTrue(k in results)
 
     def test_explicit_raw_map_serialize_pass(self):
-        ExplicitRawMapModel.create_table()
         map_native = {'foo': 'bar'}
         map_serialized = {'M': {'foo': {'S': 'bar'}}}
         instance = ExplicitRawMapModel(map_attr=map_native)
@@ -3026,7 +3019,6 @@ class ModelTestCase(TestCase):
         self.assertEqual(serialized['attributes']['map_attr'], map_serialized)
 
     def test_implicit_map_serialize_raises(self):
-        ImplicitRawMapModel.create_table()
         instance = ImplicitRawMapModel(map_attr={'foo': 'bar'})
         with self.assertRaises(ValueError):
             instance._serialize()
