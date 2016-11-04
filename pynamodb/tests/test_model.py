@@ -3009,7 +3009,7 @@ class ModelTestCase(TestCase):
         map_serialized = {'M': {'foo': {'S': 'bar'}}}
         instance = ExplicitRawMapModel(map_attr=map_native)
         serialized = instance._serialize()
-        self.assertEqual(sorted(serialized['attributes']['map_attr']), sorted(map_serialized))
+        self.assertEqual(serialized['attributes']['map_attr'], map_serialized)
 
     def test_raw_map_serialize_fun_one(self):
         map_native = {
@@ -3017,18 +3017,40 @@ class ModelTestCase(TestCase):
             'other_b_type': False, 'floaty': 1.2, 'listy': [1,2,3],
             'mapy': {'baz': 'bongo'}
         }
-        map_serialized = {'M': {
-            'foo': {'S': 'bar'},
-            'num': {'N': 1},
-            'bool_type': {'BOOL': True},
-            'other_b_type': {'BOOL': False},
-            'floaty': {'N': 1.2},
-            'listy': {'L': [{'N': 1}, {'N', 2}, {'N': 3}]},
-            'mapy': {'M': {'baz': {'S': 'bongo'}}}
-        }
-        }
+        expected = {'M': {'foo': {'S': u'bar'},
+               'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '3'}]},
+               'num': {'N': '1'}, 'other_b_type': {'BOOL': False},
+               'floaty': {'N': '1.2'}, 'mapy': {'M': {'baz': {'S': u'bongo'}}},
+               'bool_type': {'BOOL': True}}}
+
         instance = ExplicitRawMapModel(map_attr=map_native)
         serialized = instance._serialize()
-        print(serialized)
-        self.assertEqual(sorted(serialized['attributes']['map_attr']), sorted(map_serialized))
+        actual = serialized['attributes']['map_attr']
+        self.assertEqual(expected, actual)
+
+    def test_raw_map_deserializes(self):
+        map_native = {
+            'foo': 'bar', 'num': 1, 'bool_type': True,
+            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 3],
+            'mapy': {'baz': 'bongo'}
+        }
+        map_serialized = {
+            'M': {
+                'foo': {'S': 'bar'},
+                'num': {'N': 1},
+                'bool_type': {'BOOL': True},
+                'other_b_type': {'BOOL': False},
+                'floaty': {'N': 1.2},
+                'listy': {'L': [{'N': 1}, {'N', 2}, {'N': 3}]},
+                'mapy': {'M': {'baz': {'S': 'bongo'}}}
+            }
+        }
+        instance = ExplicitRawMapModel(map_attr=map_native)
+        instance._deserialize(map_serialized)
+        actual = instance.map_attr
+        print('map attr')
+        print(instance.map_attr)
+        print('done')
+        for k,v in map_native.iteritems():
+            self.assertEqual(v, actual[k])
 
