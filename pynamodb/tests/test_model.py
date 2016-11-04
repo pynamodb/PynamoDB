@@ -3048,9 +3048,6 @@ class ModelTestCase(TestCase):
         instance = ExplicitRawMapModel(map_attr=map_native)
         instance._deserialize(map_serialized)
         actual = instance.map_attr
-        print('map attr')
-        print(instance.map_attr)
-        print('done')
-        for k,v in map_native.iteritems():
+        for k,v in six.iteritems(map_native):
             self.assertEqual(v, actual[k])
 
