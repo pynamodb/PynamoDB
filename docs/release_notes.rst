@@ -15,6 +15,7 @@ Fixes in this release:
  * allow unstructured map attributes (#186)
 
 Contributors to this release:
+
  * @danielhochman
  * @jmphilli
  * @bedge
