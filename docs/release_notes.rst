@@ -1,6 +1,25 @@
 Release Notes
 =============
 
+v2.0.1
+------
+
+:date: 2016-11-04
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+ * make "unprocessed keys for batch operation" log at info level (#180)
+ * fix RuntimeWarning during imp_load in custom settings file (#185)
+ * allow unstructured map attributes (#186)
+
+Contributors to this release:
+ * @danielhochman
+ * @jmphilli
+ * @bedge
+
+
 v2.0.0
 ------
 
