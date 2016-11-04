@@ -11,6 +11,7 @@ from pynamodb.constants import (
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
 )
 from pynamodb.attribute_dict import AttributeDict
+from pynamodb.exceptions import AttributeSerializationError
 import collections
 
 
@@ -198,12 +199,17 @@ class UnicodeAttribute(Attribute):
         """
         Returns a unicode string
         """
-        if value is None or not len(value):
-            return None
-        elif isinstance(value, six.text_type):
-            return value
-        else:
-            return six.u(value)
+        try:
+            if value is None or not len(value):
+                return None
+            elif isinstance(value, six.text_type):
+                return value
+            else:
+                return six.u(value)
+        except TypeError:
+            raise AttributeSerializationError(
+                self.__class__.__name__, value.__class__.__name__
+            )
 
 
 class JSONAttribute(Attribute):

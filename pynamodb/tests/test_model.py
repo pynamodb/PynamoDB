@@ -15,7 +15,7 @@ from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.tests.deep_eq import deep_eq
 from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
-from pynamodb.exceptions import TableError
+from pynamodb.exceptions import TableError, MapAttributeNotSubclassedError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, ITEM_COUNT,
@@ -395,6 +395,13 @@ class TreeModel(Model):
     left = TreeLeaf()
     right = TreeLeaf()
 
+
+class RawMapAttributeModel(Model):
+    class Meta:
+        table_name = 'RawMapAttributeModel'
+
+    map_attr = MapAttribute()
+    str_attr = UnicodeAttribute()
 
 class OverriddenSession(requests.Session):
     """
@@ -2910,6 +2917,12 @@ class ModelTestCase(TestCase):
             req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE
             item = BooleanConversionModel(user_name='justin', is_human=True)
             item.save()
+
+    def test_serialize_raises_when_passed_raw_map_attribute(self):
+        model = RawMapAttributeModel(str_attr='string', map_attr={})
+        with self.assertRaises(MapAttributeNotSubclassedError):
+            model._serialize()
+
 
     def test_deserializing_old_style_bool_false_works(self):
         fake_db = self.database_mocker(BooleanConversionModel, BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
