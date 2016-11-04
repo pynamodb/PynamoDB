@@ -3009,4 +3009,26 @@ class ModelTestCase(TestCase):
         map_serialized = {'M': {'foo': {'S': 'bar'}}}
         instance = ExplicitRawMapModel(map_attr=map_native)
         serialized = instance._serialize()
-        self.assertEqual(serialized['attributes']['map_attr'], map_serialized)
+        self.assertEqual(sorted(serialized['attributes']['map_attr']), sorted(map_serialized))
+
+    def test_raw_map_serialize_fun_one(self):
+        map_native = {
+            'foo': 'bar', 'num': 1, 'bool_type': True,
+            'other_b_type': False, 'floaty': 1.2, 'listy': [1,2,3],
+            'mapy': {'baz': 'bongo'}
+        }
+        map_serialized = {'M': {
+            'foo': {'S': 'bar'},
+            'num': {'N': 1},
+            'bool_type': {'BOOL': True},
+            'other_b_type': {'BOOL': False},
+            'floaty': {'N': 1.2},
+            'listy': {'L': [{'N': 1}, {'N', 2}, {'N': 3}]},
+            'mapy': {'M': {'baz': {'S': 'bongo'}}}
+        }
+        }
+        instance = ExplicitRawMapModel(map_attr=map_native)
+        serialized = instance._serialize()
+        print(serialized)
+        self.assertEqual(sorted(serialized['attributes']['map_attr']), sorted(map_serialized))
+
