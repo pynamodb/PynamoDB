@@ -396,6 +396,13 @@ class TreeModel(Model):
     right = TreeLeaf()
 
 
+class ExplicitRawMapModel(Model):
+    class Meta:
+        table_name = 'ExplicitRawMapModel'
+
+    map_attr = MapAttribute()
+
+
 class OverriddenSession(requests.Session):
     """
     A overridden session for test
@@ -2996,3 +3003,10 @@ class ModelTestCase(TestCase):
         rs = ResultSet(results=results, operation=operations, arguments=arguments)
         for k in rs:
             self.assertTrue(k in results)
+
+    def test_explicit_raw_map_serialize_pass(self):
+        map_native = {'foo': 'bar'}
+        map_serialized = {'M': {'foo': {'S': 'bar'}}}
+        instance = ExplicitRawMapModel(map_attr=map_native)
+        serialized = instance._serialize()
+        self.assertEqual(serialized['attributes']['map_attr'], map_serialized)
