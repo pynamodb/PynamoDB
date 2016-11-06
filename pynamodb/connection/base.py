@@ -35,7 +35,7 @@ from pynamodb.constants import (
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
-    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
+    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, FILTER_EXPRESSION)
 from pynamodb.settings import get_settings_value
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
@@ -929,6 +929,7 @@ class Connection(object):
              limit=None,
              conditional_operator=None,
              scan_filter=None,
+             filter_expression=None,
              return_consumed_capacity=None,
              exclusive_start_key=None,
              segment=None,
@@ -949,6 +950,8 @@ class Connection(object):
             operation_kwargs[SEGMENT] = segment
         if total_segments:
             operation_kwargs[TOTAL_SEGMENTS] = total_segments
+        if filter_expression:
+            operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if scan_filter:
             operation_kwargs[SCAN_FILTER] = {}
             for key, condition in scan_filter.items():
