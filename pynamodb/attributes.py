@@ -541,6 +541,7 @@ SERIALIZE_CLASS_MAP = {
     bool: BooleanAttribute(),
     float: NumberAttribute(),
     int: NumberAttribute(),
+    long: NumberAttribute(),
     str: UnicodeAttribute()
 }
 
@@ -552,6 +553,7 @@ SERIALIZE_KEY_MAP = {
     bool: BOOLEAN,
     float: NUMBER_SHORT,
     int: NUMBER_SHORT,
+    long: NUMBER_SHORT,
     str: STRING_SHORT
 }
 
