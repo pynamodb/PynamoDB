@@ -24,6 +24,7 @@ doc/
 .project
 .DS_Store
 .idea
+*.egg-info
 
 # Ignore auto-save files
 [#]*[#]

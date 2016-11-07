@@ -186,6 +186,7 @@ class SimpleUserModel(Model):
     custom_aliases = UnicodeSetAttribute(attr_name='aliases')
     icons = BinarySetAttribute()
     views = NumberAttribute(null=True)
+    is_active = BooleanAttribute(null=True)
 
 
 class ThrottledUserModel(Model):
@@ -1099,6 +1100,30 @@ class ModelTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL'
             }
             deep_eq(args, params, _assert=True)
+
+        with patch(PATCH_METHOD) as req:
+            item.update_item('is_active', True, action='put')
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'AttributeUpdates': {
+                    'is_active': {
+                        'Action': 'PUT',
+                        'Value': {
+                            'BOOL': True
+                        }
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
 
     def test_save(self):
         """
