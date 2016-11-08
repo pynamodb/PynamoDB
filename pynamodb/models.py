@@ -1279,7 +1279,7 @@ class Model(with_metaclass(MetaModel)):
         if serialized is None:
             if not attr.null:
                 raise ValueError("Attribute '{0}': cannot be None".format(attr.attr_name))
-            return {NULL: None}
+            return {NULL: True}
 
         return {ATTR_TYPE_MAP[attr.attr_type]: serialized}
 

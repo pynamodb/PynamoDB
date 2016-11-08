@@ -845,13 +845,13 @@ class ModelTestCase(TestCase):
                     'is_active': {
                         'Action': 'PUT',
                         'Value': {
-                            'NULL': None,
+                            'NULL': True,
                         },
                     },
                     'signature': {
                         'Action': 'PUT',
                         'Value': {
-                            'NULL': None,
+                            'NULL': True,
                         },
                     },
                 },
