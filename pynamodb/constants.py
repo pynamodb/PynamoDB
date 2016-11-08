@@ -93,8 +93,11 @@ BINARY = 'Binary'
 BINARY_SET = 'BinarySet'
 MAP = 'Map'
 LIST = 'List'
+NULL = 'NULL'
+NULL_SHORT = 'NULL'
+
 SHORT_ATTR_TYPES = [STRING_SHORT, STRING_SET_SHORT, NUMBER_SHORT, NUMBER_SET_SHORT,
-                    BINARY_SHORT, BINARY_SET_SHORT, MAP_SHORT, LIST_SHORT, BOOLEAN_SHORT]
+                    BINARY_SHORT, BINARY_SET_SHORT, MAP_SHORT, LIST_SHORT, BOOLEAN_SHORT, NULL_SHORT]
 ATTR_TYPE_MAP = {
     STRING: STRING_SHORT,
     STRING_SET: STRING_SET_SHORT,
@@ -110,7 +113,8 @@ ATTR_TYPE_MAP = {
     BINARY_SET_SHORT: BINARY_SET,
     MAP: MAP_SHORT,
     LIST: LIST_SHORT,
-    BOOLEAN: BOOLEAN_SHORT
+    BOOLEAN: BOOLEAN_SHORT,
+    NULL: NULL_SHORT,
 }
 # Constants needed for creating indexes
 LOCAL_SECONDARY_INDEX = 'LocalSecondaryIndex'
@@ -162,7 +166,7 @@ QUERY_OPERATOR_MAP = {
 # These are the valid select values for the Scan operation
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html#DDB-Scan-request-Select
 NOT_NULL = 'NOT_NULL'
-NULL = 'NULL'
+#NULL = 'NULL' # declared as a type above
 CONTAINS = 'CONTAINS'
 NOT_CONTAINS = 'NOT_CONTAINS'
 ALL_ATTRIBUTES = 'ALL_ATTRIBUTES'

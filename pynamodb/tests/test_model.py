@@ -188,6 +188,7 @@ class SimpleUserModel(Model):
     icons = BinarySetAttribute()
     views = NumberAttribute(null=True)
     is_active = BooleanAttribute(null=True)
+    signature = UnicodeAttribute(null=True)
 
 
 class ThrottledUserModel(Model):
@@ -794,6 +795,68 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
             args = req.call_args[0][1]
+            deep_eq(args, params, _assert=True)
+
+    def test_update(self):
+        """
+        Model.update
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = SIMPLE_MODEL_TABLE_DATA
+            item = SimpleUserModel('foo', is_active=True, email='foo@example.com', signature='foo')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item.save()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "email": {
+                        "S": "foo@example.com",
+                    },
+                    "is_active": {
+                        "NULL": None,
+                    },
+                }
+            }
+            item.update({
+                'email': {'value': 'foo@example.com', 'action': 'put'},
+                'is_active': {'value': None, 'action': 'put'},
+                'signature': {'value': None, 'action': 'put'},
+            })
+
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'AttributeUpdates': {
+                    'email': {
+                        'Action': 'PUT',
+                        'Value': {
+                            'S': 'foo@example.com',
+                        },
+                    },
+                    'is_active': {
+                        'Action': 'PUT',
+                        'Value': {
+                            'NULL': None,
+                        },
+                    },
+                    'signature': {
+                        'Action': 'PUT',
+                        'Value': {
+                            'NULL': None,
+                        },
+                    },
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
             deep_eq(args, params, _assert=True)
 
     def test_update_item(self):

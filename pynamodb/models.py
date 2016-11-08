@@ -323,6 +323,8 @@ class Model(with_metaclass(MetaModel)):
         :param action: The action to take if this item already exists.
             See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html#DDB-UpdateItem-request-AttributeUpdate
         """
+        DeprecationWarning("`Model.update_item` is deprecated in favour of `Model.update` now")
+
         self._conditional_operator_check(conditional_operator)
         args, save_kwargs = self._get_save_args(null_check=False)
         attribute_cls = None
@@ -353,6 +355,51 @@ class Model(with_metaclass(MetaModel)):
         self._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for name, value in data.get(ATTRIBUTES).items():
             attr = self._get_attributes().get(name, None)
+            if attr:
+                setattr(self, name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
+        return data
+
+
+    def update(self, attributes,  conditional_operator=None, **expected_values):
+        """
+        Updates an item using the UpdateItem operation.
+
+        :param attributes: A dictionary of attributes to update in the following format
+                            {
+                                attr_name: {'value': 10, 'action': 'ADD'},
+                                next_attr: {'value': True, 'action': 'PUT'},
+                            }
+        """
+        if not isinstance(attributes, dict):
+            raise TypeError("the value of `attributes` is expected to be a dictionary")
+
+        self._conditional_operator_check(conditional_operator)
+        args, save_kwargs = self._get_save_args(null_check=False)
+        kwargs = {
+            pythonic(RETURN_VALUES):  ALL_NEW,
+            pythonic(ATTR_UPDATES): {},
+            'conditional_operator': conditional_operator,
+        }
+
+        if pythonic(RANGE_KEY) in save_kwargs:
+            kwargs[pythonic(RANGE_KEY)] = save_kwargs[pythonic(RANGE_KEY)]
+
+        if expected_values:
+            kwargs['expected'] = self._build_expected_values(expected_values, UPDATE_FILTER_OPERATOR_MAP)
+
+        for attr, params in attributes.items():
+            attribute_cls = self._get_attributes()[attr]
+            action = params['action'] and params['action'].upper()
+            attr_values = {ACTION: action}
+            if action != DELETE:
+                attr_values[VALUE] = Model._serialize_value(attribute_cls, params['value'])
+
+            kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name] = attr_values
+
+        data = self._get_connection().update_item(*args, **kwargs)
+        self._throttle.add_record(data.get(CONSUMED_CAPACITY))
+        for name, value in data[ATTRIBUTES].items():
+            attr = self._get_attributes().get(name)
             if attr:
                 setattr(self, name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
@@ -1189,7 +1236,7 @@ class Model(with_metaclass(MetaModel)):
 
     def _serialize(self, attr_map=False, null_check=True):
         """
-        Serializes a value for use with DynamoDB
+        Serializes all model attributes for use with DynamoDB
 
         :param attr_map: If True, then attributes are returned
         :param null_check: If True, then attributes are checked for null
@@ -1211,19 +1258,30 @@ class Model(with_metaclass(MetaModel)):
             if serialized is None:
                 continue
             if attr_map:
-                attrs[attributes][attr.attr_name] = {
-                    ATTR_TYPE_MAP[attr.attr_type]: serialized
-                }
+                attrs[attributes][attr.attr_name] = Model._serialize_value(attr, value)
             else:
                 if attr.is_hash_key:
                     attrs[HASH] = serialized
                 elif attr.is_range_key:
                     attrs[RANGE] = serialized
                 else:
-                    attrs[attributes][attr.attr_name] = {
-                        ATTR_TYPE_MAP[attr.attr_type]: serialized
-                    }
+                    attrs[attributes][attr.attr_name] = Model._serialize_value(attr, value)
         return attrs
+
+    @classmethod
+    def _serialize_value(cls, attr, value):
+        """
+        Serializes a value for use with DynamoDB
+
+        :param value: a value to serialize
+        """
+        serialized = attr.serialize(value)
+        if serialized is None:
+            if not attr.null:
+                raise ValueError("Attribute '{0}': cannot be None".format(attr.attr_name))
+            return {NULL: None}
+
+        return {ATTR_TYPE_MAP[attr.attr_type]: serialized}
 
     @classmethod
     def _serialize_keys(cls, hash_key, range_key=None):
