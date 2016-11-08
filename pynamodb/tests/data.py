@@ -1192,3 +1192,50 @@ TREE_MODEL_ITEM_DATA = {
         }
     }
 }
+
+EXPLICIT_RAW_MAP_MODEL_TABLE_DATA = {
+    'Table': {
+        'ItemCount': 0, 'TableName': 'ExplicitRawMapModel',
+        'ProvisionedThroughput': {
+            'ReadCapacityUnits': 2,
+            'WriteCapacityUnits': 2,
+            'NumberOfDecreasesToday': 0
+        },
+        'CreationDateTime': 1391471876.86,
+        'TableStatus': 'ACTIVE',
+        'AttributeDefinitions': [
+            {
+                'AttributeName': 'map_id',
+                'AttributeType': 'N'
+            },
+            {
+                'AttributeName': 'map_attr',
+                'AttributeType': 'M'
+            }
+        ],
+        'KeySchema': [
+            {
+                'AttributeName': 'map_id', 'KeyType': 'HASH'
+            }
+        ],
+        'TableSizeBytes': 0
+    }
+}
+
+EXPLICIT_RAW_MAP_MODEL_ITEM_DATA = {
+    'Item': {
+        'map_id': {
+            'N': '123',
+        },
+        'map_attr': {'M': {
+                'foo': {'S': 'bar'},
+                'num': {'N': '1'},
+                'bool_type': {'BOOL': True},
+                'other_b_type': {'BOOL': False},
+                'floaty': {'N': '1.2'},
+                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '3'}]},
+                'mapy': {'M': {'baz': {'S': 'bongo'}}}
+            }
+        }
+    }
+}
