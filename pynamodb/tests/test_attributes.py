@@ -361,7 +361,7 @@ class UnicodeAttributeTestCase(TestCase):
             value
         )
 
-    def test_unicode_set_deserialize(self):
+    def test_unicode_set_deserialize_old(self):
         """
         UnicodeSetAttribute.deserialize old way
         """
