@@ -43,7 +43,8 @@ from pynamodb.tests.data import (
     BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
     BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
     BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
-    BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE, TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA
+    BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE, TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA,
+    EXPLICIT_RAW_MAP_MODEL_TABLE_DATA, EXPLICIT_RAW_MAP_MODEL_ITEM_DATA
 )
 
 if six.PY3:
@@ -400,7 +401,7 @@ class TreeModel(Model):
 class ExplicitRawMapModel(Model):
     class Meta:
         table_name = 'ExplicitRawMapModel'
-
+    map_id = NumberAttribute(hash_key=True, default=123)
     map_attr = MapAttribute()
 
 
@@ -3075,4 +3076,35 @@ class ModelTestCase(TestCase):
         actual = instance.map_attr
         for k,v in six.iteritems(map_native):
             self.assertEqual(v, actual[k])
+
+    def test_raw_map_from_raw_data_works(self):
+        map_native = {
+            'foo': 'bar', 'num': 1, 'bool_type': True,
+            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 3],
+            'mapy': {'baz': 'bongo'}
+        }
+        map_serialized = {
+
+            'M': {
+                'foo': {'S': 'bar'},
+                'num': {'N': 1},
+                'bool_type': {'BOOL': True},
+                'other_b_type': {'BOOL': False},
+                'floaty': {'N': 1.2},
+                'listy': {'L': [{'N': 1}, {'N': 2}, {'N': 3}]},
+                'mapy': {'M': {'baz': {'S': 'bongo'}}}
+            }
+        }
+        instance = ExplicitRawMapModel(map_attr=map_native, map_id=123)
+        fake_db = self.database_mocker(ExplicitRawMapModel,
+                                       EXPLICIT_RAW_MAP_MODEL_TABLE_DATA,
+                                       EXPLICIT_RAW_MAP_MODEL_ITEM_DATA,
+                                       'map_id', 'N',
+                                       '123')
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            item = ExplicitRawMapModel.get(123)
+            actual = item.map_attr
+            for k, v in six.iteritems(map_native):
+                self.assertEqual(v, actual[k])
+
 

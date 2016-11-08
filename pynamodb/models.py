@@ -438,7 +438,7 @@ class Model(with_metaclass(MetaModel)):
             attr = cls._get_attributes().get(name, None)
             if attr:
                 deserialized_attr = attr.deserialize(attr.get_value(value))
-                if isinstance(attr, MapAttribute):
+                if isinstance(attr, MapAttribute) and not type(attr) == MapAttribute:
                     deserialized_attr = type(attr)(**deserialized_attr)
                 kwargs[name] = deserialized_attr
         return cls(*args, **kwargs)
