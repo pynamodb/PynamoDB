@@ -37,7 +37,7 @@ from pynamodb.constants import (
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
 from pynamodb.settings import get_settings_value
-from requests import Request
+from botocore.vendored.requests import Request
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
@@ -239,10 +239,12 @@ class Connection(object):
         # part of the request session. In order to include the requests session headers inside
         # the request, we create a new request object, and call prepare_request with the newly
         # created request object
-        raw_request_with_params = Request(boto_prepared_request.method,
-                                boto_prepared_request.url,
-                                data=boto_prepared_request.body,
-                                headers=boto_prepared_request.headers)
+        raw_request_with_params = Request(
+            boto_prepared_request.method,
+            boto_prepared_request.url,
+            data=boto_prepared_request.body,
+            headers=boto_prepared_request.headers
+        )
 
         return self.requests_session.prepare_request(raw_request_with_params)
 
