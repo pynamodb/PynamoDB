@@ -6,6 +6,8 @@ import time
 import six
 import copy
 import logging
+import warnings
+
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
@@ -323,7 +325,7 @@ class Model(with_metaclass(MetaModel)):
         :param action: The action to take if this item already exists.
             See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html#DDB-UpdateItem-request-AttributeUpdate
         """
-        DeprecationWarning("`Model.update_item` is deprecated in favour of `Model.update` now")
+        warnings.warn("`Model.update_item` is deprecated in favour of `Model.update` now")
 
         self._conditional_operator_check(conditional_operator)
         args, save_kwargs = self._get_save_args(null_check=False)
