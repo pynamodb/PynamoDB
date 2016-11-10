@@ -37,6 +37,7 @@ from pynamodb.constants import (
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
 from pynamodb.settings import get_settings_value
+from requests import Request
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
@@ -228,6 +229,23 @@ class Connection(object):
         log.error("%s failed with status: %s, message: %s",
                   operation, response.status_code,response.content)
 
+    def _create_prepared_request(self, request_dict, operation_model):
+        """
+        Create a prepared request object from request_dict, and operation_model
+        """
+        boto_prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
+
+        # The call requests_session.send(final_prepared_request) ignores the headers which are
+        # part of the request session. In order to include the requests session headers inside
+        # the request, we create a new request object, and call prepare_request with the newly
+        # created request object
+        raw_request_with_params = Request(boto_prepared_request.method,
+                                boto_prepared_request.url,
+                                data=boto_prepared_request.body,
+                                headers=boto_prepared_request.headers)
+
+        return self.requests_session.prepare_request(raw_request_with_params)
+
     def dispatch(self, operation_name, operation_kwargs):
         """
         Dispatches `operation_name` with arguments `operation_kwargs`
@@ -259,7 +277,8 @@ class Connection(object):
             operation_kwargs,
             operation_model
         )
-        prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
+
+        prepared_request = self._create_prepared_request(request_dict, operation_model)
 
         for i in range(0, self._max_retry_attempts_exception + 1):
             attempt_number = i + 1
