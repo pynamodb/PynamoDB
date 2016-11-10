@@ -1703,11 +1703,12 @@ class ConnectionTestCase(TestCase):
                                             'http://lyft.com',
                                             data='data',
                                             headers={'s': 's'}).prepare()
-        session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
+        mock_client = session_mock.create_client.return_value
+        mock_client._endpoint.create_request.return_value = prepared_request
 
         c = Connection()
         c._max_retry_attempts_exception = 3
-        c._create_prepared_request({}, {})
+        c._create_prepared_request({'x': 'y'}, {'a': 'b'})
 
         self.assertEqual(len(requests_session_mock.mock_calls), 1)
 
@@ -1719,6 +1720,10 @@ class ConnectionTestCase(TestCase):
                                 prepared_request.url,
                                 data=prepared_request.body,
                                 headers=prepared_request.headers)
+
+        self.assertEqual(len(mock_client._endpoint.create_request.mock_calls), 1)
+        self.assertEqual(mock_client._endpoint.create_request.mock_calls[0],
+                         mock.call({'x': 'y'}, {'a': 'b'}))
 
         self.assertEqual(called_request_object.method, expected_request_object.method)
         self.assertEqual(called_request_object.url, expected_request_object.url)
