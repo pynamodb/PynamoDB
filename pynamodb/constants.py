@@ -166,7 +166,6 @@ QUERY_OPERATOR_MAP = {
 # These are the valid select values for the Scan operation
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html#DDB-Scan-request-Select
 NOT_NULL = 'NOT_NULL'
-#NULL = 'NULL' # declared as a type above
 CONTAINS = 'CONTAINS'
 NOT_CONTAINS = 'NOT_CONTAINS'
 ALL_ATTRIBUTES = 'ALL_ATTRIBUTES'
@@ -250,4 +249,3 @@ CONDITIONAL_OPERATOR = 'ConditionalOperator'
 AND = 'AND'
 OR = 'OR'
 CONDITIONAL_OPERATORS = [AND, OR]
-

@@ -103,7 +103,7 @@ This example will update a `Thread` item, if the `forum_name` attribute equals '
 
 .. code-block:: python
 
-    thread_item.update_item(
+    thread_item.update(
         conditional_operator='or',
         forum_name__eq='Some Forum',
         subject__null=False)
