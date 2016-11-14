@@ -291,9 +291,9 @@ atomically updating the view count of an item + updating the value of the last p
         })
 
 
-.. deprecated:: 2.0.2
+.. deprecated:: 2.0
 
-    :func:`update_item` is deprecated.
+    :func:`update_item` is replaced with :func:`update`
 
 
 .. code-block:: python
