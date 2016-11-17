@@ -3057,7 +3057,7 @@ class ModelTestCase(TestCase):
     def test_raw_map_deserializes(self):
         map_native = {
             'foo': 'bar', 'num': 1, 'bool_type': True,
-            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 3L],
+            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 12345678909876543211234234324234],
             'mapy': {'baz': 'bongo'}
         }
         map_serialized = {
@@ -3067,7 +3067,7 @@ class ModelTestCase(TestCase):
                 'bool_type': {'BOOL': True},
                 'other_b_type': {'BOOL': False},
                 'floaty': {'N': '1.2'},
-                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '3'}]},
+                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '12345678909876543211234234324234'}]},
                 'mapy': {'M': {'baz': {'S': 'bongo'}}}
             }
         }
@@ -3080,7 +3080,7 @@ class ModelTestCase(TestCase):
     def test_raw_map_from_raw_data_works(self):
         map_native = {
             'foo': 'bar', 'num': 1, 'bool_type': True,
-            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 3],
+            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 12345678909876543211234234324234],
             'mapy': {'baz': 'bongo'}
         }
         map_serialized = {
@@ -3091,7 +3091,7 @@ class ModelTestCase(TestCase):
                 'bool_type': {'BOOL': True},
                 'other_b_type': {'BOOL': False},
                 'floaty': {'N': 1.2},
-                'listy': {'L': [{'N': 1}, {'N': 2}, {'N': 3}]},
+                'listy': {'L': [{'N': 1}, {'N': 2}, {'N': 1234567890987654321}]},
                 'mapy': {'M': {'baz': {'S': 'bongo'}}}
             }
         }
@@ -3104,6 +3104,7 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=fake_db) as req:
             item = ExplicitRawMapModel.get(123)
             actual = item.map_attr
+            self.assertEqual(map_native.get('listy')[2], actual.get('listy')[2])
             for k, v in six.iteritems(map_native):
                 self.assertEqual(v, actual[k])
 
