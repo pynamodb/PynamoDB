@@ -1261,9 +1261,9 @@ class Model(with_metaclass(MetaModel)):
                 attrs[attributes][attr.attr_name] = serialized
             else:
                 if attr.is_hash_key:
-                    attrs[HASH] = serialized.values()[0]
+                    attrs[HASH] = list(serialized.values())[0]
                 elif attr.is_range_key:
-                    attrs[RANGE] = serialized.values()[0]
+                    attrs[RANGE] = list(serialized.values())[0]
                 else:
                     attrs[attributes][attr.attr_name] = serialized
 
