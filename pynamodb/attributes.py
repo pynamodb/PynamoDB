@@ -542,7 +542,6 @@ SERIALIZE_CLASS_MAP = {
     float: NumberAttribute(),
     int: NumberAttribute(),
     str: UnicodeAttribute(),
-    long: NumberAttribute(),
 }
 
 
@@ -554,10 +553,11 @@ SERIALIZE_KEY_MAP = {
     float: NUMBER_SHORT,
     int: NUMBER_SHORT,
     str: STRING_SHORT,
-    long: NUMBER_SHORT,
 }
 
 
 if six.PY2:
     SERIALIZE_CLASS_MAP[unicode] = UnicodeAttribute()
+    SERIALIZE_CLASS_MAP[long] = NumberAttribute()
     SERIALIZE_KEY_MAP[unicode] = STRING_SHORT
+    SERIALIZE_KEY_MAP[long] = NUMBER_SHORT
