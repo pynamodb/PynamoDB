@@ -1239,3 +1239,53 @@ EXPLICIT_RAW_MAP_MODEL_ITEM_DATA = {
         }
     }
 }
+
+EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA = {
+    'Table': {
+        'ItemCount': 0, 'TableName': 'ExplicitRawMapAsMemberOfSubClass',
+        'ProvisionedThroughput': {
+            'ReadCapacityUnits': 2,
+            'WriteCapacityUnits': 2,
+            'NumberOfDecreasesToday': 0
+        },
+        'CreationDateTime': 1391471876.86,
+        'TableStatus': 'ACTIVE',
+        'AttributeDefinitions': [
+            {
+                'AttributeName': 'map_id',
+                'AttributeType': 'N'
+            }
+        ],
+        'KeySchema': [
+            {
+                'AttributeName': 'map_id', 'KeyType': 'HASH'
+            }
+        ],
+        'TableSizeBytes': 0
+    }
+}
+
+EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA = {
+    'Item': {
+        'map_id': {
+            'N': '123'
+        },
+        'sub_attr': {
+            'M': {
+                'num_field': {'N': '37'},
+                'str_field': {'S': 'hi'},
+                'map_field': {
+                        'M': {
+                            'foo': {'S': 'bar'},
+                            'num': {'N': '1'},
+                            'bool_type': {'BOOL': True},
+                            'other_b_type': {'BOOL': False},
+                            'floaty': {'N': '1.2'},
+                            'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '3'}]},
+                            'mapy': {'M': {'baz': {'S': 'bongo'}}}
+                        }
+                }
+            }
+        }
+    }
+}
