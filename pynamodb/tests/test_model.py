@@ -3039,13 +3039,13 @@ class ModelTestCase(TestCase):
 
     def test_raw_map_serialize_fun_one(self):
         map_native = {
-            'foo': 'bar', 'num': 1383L, 'bool_type': True,
+            'foo': 'bar', 'num': 12345678909876543211234234324234, 'bool_type': True,
             'other_b_type': False, 'floaty': 1.2, 'listy': [1,2,3],
             'mapy': {'baz': 'bongo'}
         }
         expected = {'M': {'foo': {'S': u'bar'},
                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '3'}]},
-               'num': {'N': '1383'}, 'other_b_type': {'BOOL': False},
+               'num': {'N': '12345678909876543211234234324234'}, 'other_b_type': {'BOOL': False},
                'floaty': {'N': '1.2'}, 'mapy': {'M': {'baz': {'S': u'bongo'}}},
                'bool_type': {'BOOL': True}}}
 
