@@ -389,8 +389,9 @@ class Model(with_metaclass(MetaModel)):
         if expected_values:
             kwargs['expected'] = self._build_expected_values(expected_values, UPDATE_FILTER_OPERATOR_MAP)
 
+        attrs = self._get_attributes()
         for attr, params in attributes.items():
-            attribute_cls = self._get_attributes()[attr]
+            attribute_cls = attrs[attr]
             action = params['action'] and params['action'].upper()
             attr_values = {ACTION: action}
             if action != DELETE:
@@ -1247,40 +1248,44 @@ class Model(with_metaclass(MetaModel)):
         attrs = {attributes: {}}
         for name, attr in self._get_attributes().aliased_attrs():
             value = getattr(self, name)
-            if value is None:
-                if attr.null:
-                    continue
-                elif null_check:
-                    raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
             if isinstance(value, MapAttribute):
                 if not value.validate():
                     raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
                 value = value.get_values()
-            serialized = attr.serialize(value)
-            if serialized is None:
+
+            serialized = Model._serialize_value(attr, value, null_check)
+            if NULL in serialized:
                 continue
+
             if attr_map:
-                attrs[attributes][attr.attr_name] = Model._serialize_value(attr, value)
+                attrs[attributes][attr.attr_name] = serialized
             else:
                 if attr.is_hash_key:
-                    attrs[HASH] = serialized
+                    attrs[HASH] = serialized.values()[0]
                 elif attr.is_range_key:
-                    attrs[RANGE] = serialized
+                    attrs[RANGE] = serialized.values()[0]
                 else:
-                    attrs[attributes][attr.attr_name] = Model._serialize_value(attr, value)
+                    attrs[attributes][attr.attr_name] = serialized
+
         return attrs
 
     @classmethod
-    def _serialize_value(cls, attr, value):
+    def _serialize_value(cls, attr, value, null_check=True):
         """
         Serializes a value for use with DynamoDB
 
-        :param value: a value to serialize
+        :param attr: an instance of `Attribute` for serialization
+        :param value: a value to be serialized
+        :param null_check: If True, then attributes are checked for null
         """
-        serialized = attr.serialize(value)
+        if value is None:
+            serialized = None
+        else:
+            serialized = attr.serialize(value)
+
         if serialized is None:
-            if not attr.null:
-                raise ValueError("Attribute '{0}': cannot be None".format(attr.attr_name))
+            if not attr.null and null_check:
+                raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
             return {NULL: True}
 
         return {ATTR_TYPE_MAP[attr.attr_type]: serialized}

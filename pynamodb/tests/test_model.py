@@ -822,6 +822,7 @@ class ModelTestCase(TestCase):
             }
             item.update({
                 'email': {'value': 'foo@example.com', 'action': 'put'},
+                'views': {'action': 'delete'},
                 'is_active': {'value': None, 'action': 'put'},
                 'signature': {'value': None, 'action': 'put'},
             })
@@ -842,6 +843,9 @@ class ModelTestCase(TestCase):
                             'S': 'foo@example.com',
                         },
                     },
+                    'views': {
+                        'Action': 'DELETE',
+                    },
                     'is_active': {
                         'Action': 'PUT',
                         'Value': {
@@ -858,6 +862,8 @@ class ModelTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL'
             }
             deep_eq(args, params, _assert=True)
+
+            assert item.views is None
 
     def test_update_item(self):
         """
