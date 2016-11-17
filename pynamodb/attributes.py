@@ -394,7 +394,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         for attr_name, attr in self._get_attributes().aliased_attrs():
             if attr.attr_name in attrs:
                 value = attrs.get(attr_name)
-                if not isinstance(value, collections.Mapping) or isinstance(attr, MapAttribute):
+                if not isinstance(value, collections.Mapping) or type(attr) == MapAttribute:
                     setattr(self, attr_name, attrs.get(attr.attr_name))
                 else:
                     # it's a sub model which means we need to instantiate that type first
