@@ -258,6 +258,7 @@ class NumberAttributeTestCase(TestCase):
         attr = NumberAttribute()
         self.assertEqual(attr.serialize(3.141), '3.141')
         self.assertEqual(attr.serialize(1), '1')
+        self.assertEqual(attr.serialize(1234567890987654321L), '1234567890987654321')
 
     def test_number_deserialize(self):
         """
@@ -266,6 +267,7 @@ class NumberAttributeTestCase(TestCase):
         attr = NumberAttribute()
         self.assertEqual(attr.deserialize('1'), 1)
         self.assertEqual(attr.deserialize('3.141'), 3.141)
+        self.assertEqual(attr.deserialize('1234567890987654321'), 1234567890987654321L)
 
     def test_number_set_deserialize(self):
         """
@@ -518,7 +520,7 @@ class MapAttributeTestCase(TestCase):
     def test_attribute_children(self):
         person_attribute = {
             'name': 'Justin',
-            'age': 31,
+            'age': 31L,
             'height': 187.96
         }
         attr = MapAttribute()
