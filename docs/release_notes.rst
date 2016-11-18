@@ -1,6 +1,23 @@
 Release Notes
 =============
 
+v2.0.3
+------
+
+:date: 2016-11-18
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* Allow longs as members of maps + lists in python 2 (#200)
+* Allow raw map attributes in subclassed map attributes (#199)
+
+Contributors to this release:
+
+* @jmphilli
+
+
 v2.0.2
 ------
 
