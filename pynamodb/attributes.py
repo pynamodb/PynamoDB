@@ -393,12 +393,13 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         """
         for attr_name, attr in self._get_attributes().aliased_attrs():
             if attr.attr_name in attrs:
-                if not isinstance(attrs.get(attr_name), collections.Mapping):
+                value = attrs.get(attr_name)
+                if not isinstance(value, collections.Mapping) or type(attr) == MapAttribute:
                     setattr(self, attr_name, attrs.get(attr.attr_name))
                 else:
                     # it's a sub model which means we need to instantiate that type first
                     # pass in the attributes of that model, then set the field on this object to point to that model
-                    sub_model = attrs.get(attr_name)
+                    sub_model = value
                     instance = type(attr)(**sub_model)
                     setattr(self, attr_name, instance)
 
