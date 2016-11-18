@@ -1233,7 +1233,7 @@ EXPLICIT_RAW_MAP_MODEL_ITEM_DATA = {
                 'bool_type': {'BOOL': True},
                 'other_b_type': {'BOOL': False},
                 'floaty': {'N': '1.2'},
-                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '3'}]},
+                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '12345678909876543211234234324234'}]},
                 'mapy': {'M': {'baz': {'S': 'bongo'}}}
             }
         }
