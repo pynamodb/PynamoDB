@@ -254,7 +254,7 @@ class Model(with_metaclass(MetaModel)):
             if len(keys_to_get) == BATCH_GET_PAGE_LIMIT:
                 while keys_to_get:
                     page, unprocessed_keys = cls._batch_get_page(keys_to_get, consistent_read=None,
-                                                                 attributes_to_get=None)
+                                                                 attributes_to_get=attributes_to_get)
                     for batch_item in page:
                         yield cls.from_raw_data(batch_item)
                     if unprocessed_keys:
@@ -275,7 +275,8 @@ class Model(with_metaclass(MetaModel)):
                 })
 
         while keys_to_get:
-            page, unprocessed_keys = cls._batch_get_page(keys_to_get, consistent_read=None, attributes_to_get=None)
+            page, unprocessed_keys = cls._batch_get_page(keys_to_get, consistent_read=None, 
+                                                         attributes_to_get=attributes_to_get)
             for batch_item in page:
                 yield cls.from_raw_data(batch_item)
             if unprocessed_keys:
