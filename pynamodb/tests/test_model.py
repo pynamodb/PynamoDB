@@ -30,7 +30,7 @@ from pynamodb.indexes import (
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
-    BooleanAttribute, ListAttribute, JSONAttribute)
+    BooleanAttribute, ListAttribute)
 from pynamodb.tests.data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
@@ -44,7 +44,8 @@ from pynamodb.tests.data import (
     BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
     BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
     BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE, TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA,
-    EXPLICIT_RAW_MAP_MODEL_TABLE_DATA, EXPLICIT_RAW_MAP_MODEL_ITEM_DATA
+    EXPLICIT_RAW_MAP_MODEL_TABLE_DATA, EXPLICIT_RAW_MAP_MODEL_ITEM_DATA,
+    EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA, EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA
 )
 
 if six.PY3:
@@ -404,6 +405,19 @@ class ExplicitRawMapModel(Model):
         table_name = 'ExplicitRawMapModel'
     map_id = NumberAttribute(hash_key=True, default=123)
     map_attr = MapAttribute()
+
+
+class MapAttrSubClassWithRawMapAttr(MapAttribute):
+    num_field = NumberAttribute()
+    str_field = UnicodeAttribute()
+    map_field = MapAttribute()
+
+
+class ExplicitRawMapAsMemberOfSubClass(Model):
+    class Meta:
+        table_name = 'ExplicitRawMapAsMemberOfSubClass'
+    map_id = NumberAttribute(hash_key=True)
+    sub_attr = MapAttrSubClassWithRawMapAttr()
 
 
 class OverriddenSession(requests.Session):
@@ -3108,13 +3122,13 @@ class ModelTestCase(TestCase):
 
     def test_raw_map_serialize_fun_one(self):
         map_native = {
-            'foo': 'bar', 'num': 1, 'bool_type': True,
+            'foo': 'bar', 'num': 12345678909876543211234234324234, 'bool_type': True,
             'other_b_type': False, 'floaty': 1.2, 'listy': [1,2,3],
             'mapy': {'baz': 'bongo'}
         }
         expected = {'M': {'foo': {'S': u'bar'},
                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '3'}]},
-               'num': {'N': '1'}, 'other_b_type': {'BOOL': False},
+               'num': {'N': '12345678909876543211234234324234'}, 'other_b_type': {'BOOL': False},
                'floaty': {'N': '1.2'}, 'mapy': {'M': {'baz': {'S': u'bongo'}}},
                'bool_type': {'BOOL': True}}}
 
@@ -3126,17 +3140,17 @@ class ModelTestCase(TestCase):
     def test_raw_map_deserializes(self):
         map_native = {
             'foo': 'bar', 'num': 1, 'bool_type': True,
-            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 3],
+            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 12345678909876543211234234324234],
             'mapy': {'baz': 'bongo'}
         }
         map_serialized = {
             'M': {
                 'foo': {'S': 'bar'},
-                'num': {'N': 1},
+                'num': {'N': '1'},
                 'bool_type': {'BOOL': True},
                 'other_b_type': {'BOOL': False},
-                'floaty': {'N': 1.2},
-                'listy': {'L': [{'N': 1}, {'N': 2}, {'N': 3}]},
+                'floaty': {'N': '1.2'},
+                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '12345678909876543211234234324234'}]},
                 'mapy': {'M': {'baz': {'S': 'bongo'}}}
             }
         }
@@ -3149,18 +3163,17 @@ class ModelTestCase(TestCase):
     def test_raw_map_from_raw_data_works(self):
         map_native = {
             'foo': 'bar', 'num': 1, 'bool_type': True,
-            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 3],
+            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 12345678909876543211234234324234],
             'mapy': {'baz': 'bongo'}
         }
         map_serialized = {
-
             'M': {
                 'foo': {'S': 'bar'},
                 'num': {'N': 1},
                 'bool_type': {'BOOL': True},
                 'other_b_type': {'BOOL': False},
                 'floaty': {'N': 1.2},
-                'listy': {'L': [{'N': 1}, {'N': 2}, {'N': 3}]},
+                'listy': {'L': [{'N': 1}, {'N': 2}, {'N': 1234567890987654321}]},
                 'mapy': {'M': {'baz': {'S': 'bongo'}}}
             }
         }
@@ -3173,7 +3186,78 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=fake_db) as req:
             item = ExplicitRawMapModel.get(123)
             actual = item.map_attr
+            self.assertEqual(map_native.get('listy')[2], actual.get('listy')[2])
             for k, v in six.iteritems(map_native):
                 self.assertEqual(v, actual[k])
+
+    def test_raw_map_as_sub_map_serialize_pass(self):
+        map_native = {'a': 'dict', 'lives': [123, 456], 'here': True}
+        map_serialized = {
+            'M': {
+                'a': {'S': 'dict'},
+                'lives': {'L': [{'N': '123'}, {'N': '456'}]},
+                'here': {'BOOL': True}
+            }
+        }
+        instance = ExplicitRawMapAsMemberOfSubClass(
+            map_id=123,
+            sub_attr=MapAttrSubClassWithRawMapAttr(
+                num_field=37, str_field='hi',
+                map_field=map_native
+            )
+        )
+        serialized = instance._serialize()
+        self.assertEqual(serialized['attributes']['sub_attr']['M']['map_field'], map_serialized)
+
+    def _get_raw_map_as_sub_map_test_data(self):
+        map_native = {
+            'foo': 'bar', 'num': 1, 'bool_type': True,
+            'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 3],
+            'mapy': {'baz': 'bongo'}
+        }
+        map_serialized = {
+            'M': {
+                'foo': {'S': 'bar'},
+                'num': {'N': 1},
+                'bool_type': {'BOOL': True},
+                'other_b_type': {'BOOL': False},
+                'floaty': {'N': 1.2},
+                'listy': {'L': [{'N': 1}, {'N': 2}, {'N': 3}]},
+                'mapy': {'M': {'baz': {'S': 'bongo'}}}
+            }
+        }
+
+        sub_attr = MapAttrSubClassWithRawMapAttr(
+            num_field=37, str_field='hi', map_field=map_native
+        )
+
+        instance = ExplicitRawMapAsMemberOfSubClass(
+            map_id=123,
+            sub_attr=sub_attr
+        )
+        return map_native, map_serialized, sub_attr, instance
+
+    def test_raw_map_as_sub_map_deserializes(self):
+        map_native, map_serialized, sub_attr, instance = self._get_raw_map_as_sub_map_test_data()
+        instance._deserialize(map_serialized)
+        actual = instance.sub_attr
+        self.assertEqual(sub_attr, actual)
+        self.assertEqual(sub_attr.map_field.get('floaty'), map_native.get('floaty'))
+        self.assertEqual(sub_attr.map_field.get('mapy', {}).get('baz'), map_native.get('mapy', {}).get('baz'))
+
+    def test_raw_map_as_sub_map_from_raw_data_works(self):
+        map_native, map_serialized, sub_attr, instance = self._get_raw_map_as_sub_map_test_data()
+        fake_db = self.database_mocker(ExplicitRawMapAsMemberOfSubClass,
+                                       EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA,
+                                       EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA,
+                                       'map_id', 'N',
+                                       '123')
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            item = ExplicitRawMapAsMemberOfSubClass.get(123)
+            actual = item.sub_attr
+            self.assertEqual(sub_attr.map_field.get('floaty'),
+                             map_native.get('floaty'))
+            self.assertEqual(sub_attr.map_field.get('mapy', {}).get('baz'),
+                             map_native.get('mapy', {}).get('baz'))
 
 

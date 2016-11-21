@@ -1,6 +1,43 @@
 Release Notes
 =============
 
+v2.0.3
+------
+
+:date: 2016-11-18
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* Allow longs as members of maps + lists in python 2 (#200)
+* Allow raw map attributes in subclassed map attributes (#199)
+
+Contributors to this release:
+
+* @jmphilli
+
+
+v2.0.2
+------
+
+:date: 2016-11-10
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* add BOOL into SHORT_ATTR_TYPES (#190)
+* deserialize map attributes correctly (#192)
+* prepare request with requests session so session properties are applied (#197)
+
+Contributors to this release:
+
+* @anandswaminathan
+* @jmphilli
+* @yedpodtrzitko
+
+
 v2.0.1
 ------
 

@@ -1695,6 +1695,42 @@ class ConnectionTestCase(TestCase):
 
         assert rand_int_mock.call_args_list == [mock.call(0, 25), mock.call(0, 50)]
 
+
+    @mock.patch('pynamodb.connection.Connection.session')
+    @mock.patch('pynamodb.connection.Connection.requests_session')
+    def test_create_prepared_request(self, requests_session_mock, session_mock):
+        prepared_request = requests.Request('POST',
+                                            'http://lyft.com',
+                                            data='data',
+                                            headers={'s': 's'}).prepare()
+        mock_client = session_mock.create_client.return_value
+        mock_client._endpoint.create_request.return_value = prepared_request
+
+        c = Connection()
+        c._max_retry_attempts_exception = 3
+        c._create_prepared_request({'x': 'y'}, {'a': 'b'})
+
+        self.assertEqual(len(requests_session_mock.mock_calls), 1)
+
+        self.assertEqual(requests_session_mock.mock_calls[0][:2][0],
+                         'prepare_request')
+
+        called_request_object = requests_session_mock.mock_calls[0][:2][1][0]
+        expected_request_object = requests.Request(prepared_request.method,
+                                prepared_request.url,
+                                data=prepared_request.body,
+                                headers=prepared_request.headers)
+
+        self.assertEqual(len(mock_client._endpoint.create_request.mock_calls), 1)
+        self.assertEqual(mock_client._endpoint.create_request.mock_calls[0],
+                         mock.call({'x': 'y'}, {'a': 'b'}))
+
+        self.assertEqual(called_request_object.method, expected_request_object.method)
+        self.assertEqual(called_request_object.url, expected_request_object.url)
+        self.assertEqual(called_request_object.data, expected_request_object.data)
+        self.assertEqual(called_request_object.headers, expected_request_object.headers)
+
+
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_make_api_call_retries_properly(self, requests_session_mock, session_mock):
@@ -1707,7 +1743,6 @@ class ConnectionTestCase(TestCase):
         bad_response.status_code = 503
 
         prepared_request = requests.Request('GET', 'http://lyft.com').prepare()
-        session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
 
         requests_session_mock.send.side_effect = [
             bad_response,
@@ -1717,9 +1752,12 @@ class ConnectionTestCase(TestCase):
         ]
         c = Connection()
         c._max_retry_attempts_exception = 3
+        c._create_prepared_request = mock.Mock()
+        c._create_prepared_request.return_value = prepared_request
 
         c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
         self.assertEqual(len(requests_session_mock.mock_calls), 4)
+
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
 
@@ -1728,7 +1766,6 @@ class ConnectionTestCase(TestCase):
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_make_api_call_throws_when_retries_exhausted(self, requests_session_mock, session_mock):
         prepared_request = requests.Request('GET', 'http://lyft.com').prepare()
-        session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
 
         requests_session_mock.send.side_effect = [
             requests.ConnectionError('problems!'),
@@ -1738,6 +1775,8 @@ class ConnectionTestCase(TestCase):
         ]
         c = Connection()
         c._max_retry_attempts_exception = 3
+        c._create_prepared_request = mock.Mock()
+        c._create_prepared_request.return_value = prepared_request
 
         with self.assertRaises(requests.Timeout):
             c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
@@ -1753,12 +1792,14 @@ class ConnectionTestCase(TestCase):
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_make_api_call_throws_retry_disabled(self, requests_session_mock, session_mock, rand_int_mock):
         prepared_request = requests.Request('GET', 'http://lyft.com').prepare()
-        session_mock.create_client.return_value._endpoint.create_request.return_value = prepared_request
 
         requests_session_mock.send.side_effect = [
             requests.Timeout('problems!'),
         ]
         c = Connection(request_timeout_seconds=11, base_backoff_ms=3, max_retry_attempts=0)
+        c._create_prepared_request = mock.Mock()
+        c._create_prepared_request.return_value = prepared_request
+
         assert c._base_backoff_ms == 3
         with self.assertRaises(requests.Timeout):
             c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
