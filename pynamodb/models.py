@@ -395,7 +395,7 @@ class Model(with_metaclass(MetaModel)):
             action = params['action'] and params['action'].upper()
             attr_values = {ACTION: action}
             if action != DELETE:
-                attr_values[VALUE] = Model._serialize_value(attribute_cls, params['value'])
+                attr_values[VALUE] = self._serialize_value(attribute_cls, params['value'])
 
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name] = attr_values
 
@@ -1253,7 +1253,7 @@ class Model(with_metaclass(MetaModel)):
                     raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
                 value = value.get_values()
 
-            serialized = Model._serialize_value(attr, value, null_check)
+            serialized = self._serialize_value(attr, value, null_check)
             if NULL in serialized:
                 continue
 
