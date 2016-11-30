@@ -2,10 +2,12 @@
 DynamoDB Models for PynamoDB
 """
 import json
+import math
 import time
 import six
 import copy
 import logging
+from botocore.exceptions import ClientError
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
@@ -32,7 +34,7 @@ from pynamodb.constants import (
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
     STREAM_ENABLED, EQ, NE)
-
+from pynamodb.exceptions import ScanError
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
@@ -583,6 +585,115 @@ class Model(with_metaclass(MetaModel)):
                     limit -= 1
                 yield cls.from_raw_data(item)
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+
+    @classmethod
+    def ratelimited_scan(cls,
+             segment=None,
+             total_segments=None,
+             limit=None,
+             conditional_operator=None,
+             last_evaluated_key=None,
+             page_size=None,
+             time_out_seconds=None,
+             read_capacity_to_consume_per_second=10,
+             max_seconds_to_pause=10,
+             max_consecutive_exceptions=30,
+             **filters):
+        """
+        Iterates through all items in the table
+
+        :param segment: If set, then scans the segment
+        :param total_segments: If set, then specifies total segments
+        :param limit: Used to limit the number of results returned
+        :param conditional_operator:
+        :param last_evaluated_key: If set, provides the starting point for scan.
+        :param page_size: Page size of the scan to DynamoDB
+        :param filters: A list of item filters
+        :param time_out_seconds: Timeout value for the scan method, to prevent it from running
+            infinitely
+        :param read_capacity_to_consume_per_second: Amount of read capacity to consume
+            every second
+        """
+        read_capacity_to_consume_per_ms = read_capacity_to_consume_per_second / 1000
+        total_consumed_read_capacity = 0
+        start_time = time.time()
+
+        cls._conditional_operator_check(conditional_operator)
+        key_filter, scan_filter = cls._build_filters(
+            SCAN_OPERATOR_MAP,
+            non_key_operator_map=SCAN_OPERATOR_MAP,
+            key_attribute_classes=cls._get_attributes(),
+            filters=filters
+        )
+        key_filter.update(scan_filter)
+        if page_size is None:
+            page_size = read_capacity_to_consume_per_second
+
+        rate_available = True
+        latest_scan_consumed_capacity = 0
+        successive_provision_throughput_exceeded_ex = 0
+        while True:
+            log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
+
+            if rate_available:
+                try:
+                    data = cls._get_connection().scan(
+                        exclusive_start_key=last_evaluated_key,
+                        limit=page_size,
+                        scan_filter=key_filter,
+                        segment=segment,
+                        total_segments=total_segments
+                    )
+                    for item in data.get(ITEMS):
+                        yield cls.from_raw_data(item)
+                        if limit is not None:
+                            limit -= 1
+                            if not limit:
+                                return
+                    latest_scan_consumed_capacity = data.get(CONSUMED_CAPACITY)
+                    last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+                    cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
+                    successive_provision_throughput_exceeded_ex = 0
+                except ScanError as e:
+                    if isinstance(e.cause, ClientError):
+                        code = e.cause.response['Error'].get('Code')
+                        if code == "ProvisionedThroughputExceededException":
+                            successive_provision_throughput_exceeded_ex += 1
+
+            current_time = time.time()
+            # elapsed_time_ms indicates the time taken in ms from the start of the
+            # throttled_scan call.
+            elapsed_time_ms = round((current_time - start_time) * 1000)
+            # has_exceeded_throughput indicates if ProvisionedThroughputExceededException has happened.
+            # ProvisionedThroughputExceededException can occur if:
+            #    - The rate to consume is passed incorrectly.
+            #    - External factors, even if the current scan is within limits.
+
+            if successive_provision_throughput_exceeded_ex > max_consecutive_exceptions:
+                return
+
+            if successive_provision_throughput_exceeded_ex == 0:
+                total_consumed_read_capacity += latest_scan_consumed_capacity
+                consumed_rate = round(total_consumed_read_capacity / elapsed_time_ms)
+                rate_available = read_capacity_to_consume_per_ms - consumed_rate
+
+            if not rate_available or (successive_provision_throughput_exceeded_ex > 0):
+                elapsed_time_s = math.ceil(elapsed_time_ms / 1000)
+                # Sleep proportional to the ratio of --consumed capacity-- to --capacity to consume--
+                # Minimum value is 1 second.
+                time_to_sleep = round((total_consumed_read_capacity/ elapsed_time_s) \
+                                       / (read_capacity_to_consume_per_second))
+
+                # At any moment if the time_out_seconds hits, then return
+                if time_out_seconds and (elapsed_time_s + time_to_sleep) > time_out_seconds:
+                    return
+
+                time.sleep(min(math.ceil(time_to_sleep), max_seconds_to_pause))
+                # Reset the latest_scan_consumed_capacity, as no scan operation was performed.
+                latest_scan_consumed_capacity = 0
+
+            if not last_evaluated_key:
+                return
 
     @classmethod
     def scan(cls,
