@@ -180,6 +180,18 @@ print(thread_item.update_item(
     subject__null=False)
 )
 
+# DynamoDB will atomically update the attributes `replies` (increase value by 1),
+# and `last_post_datetime` (set value to the current datetime)
+print(thread_item.update({
+    'replies': {
+        'action': 'add',
+        'value': 1,
+    },
+    'last_post_datetime': {
+        'action': 'put',
+        'value': datetime.now(),
+    },
+}))
 
 # DynamoDB will delete the item, only if the views attribute is equal to one
 print(thread_item.delete(views__eq=1))

@@ -275,7 +275,26 @@ You can update an item with the latest data from your table:
     >>> thread_item.refresh()
 
 Updates to table items are supported too, even atomic updates. Here is an example of
-atomically updating the view count of an item:
+atomically updating the view count of an item + updating the value of the last post.
+
+.. code-block:: python
+
+    >>> thread_item.update({
+            'views': {
+                'action': 'add',
+                'value': 1,
+            },
+            'last_post_datetime': {
+                'action': 'put',
+                'value': datetime.now(),
+            },
+        })
+
+
+.. deprecated:: 2.0
+
+    :func:`update_item` is replaced with :func:`update`
+
 
 .. code-block:: python
 
