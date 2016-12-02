@@ -6,7 +6,6 @@ import time
 import six
 import copy
 import logging
-from botocore.exceptions import ClientError
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
@@ -33,7 +32,7 @@ from pynamodb.constants import (
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
     STREAM_ENABLED, EQ, NE)
-from pynamodb.exceptions import ScanError
+
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
