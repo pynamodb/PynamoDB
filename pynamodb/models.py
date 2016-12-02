@@ -186,6 +186,12 @@ class MetaModel(type):
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
 
+            if 'DoesNotExist' not in attrs:
+                exception_attrs = {'__module__': attrs.get('__module__')}
+                if hasattr(cls, '__qualname__'):  # On Python 3, ensure its MyModel.DoesNotExist
+                    exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'DoesNotExist')
+                cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
+
 
 class Model(with_metaclass(MetaModel)):
     """
