@@ -3,6 +3,7 @@ Lowest level connection
 """
 from base64 import b64decode
 import logging
+import math
 import random
 import time
 
@@ -922,6 +923,103 @@ class Connection(object):
             return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise GetError("Failed to get item: {0}".format(e), e)
+
+    def rate_limited_scan(self,
+                          table_name,
+                          attributes_to_get=None,
+                          page_size=None,
+                          limit=None,
+                          conditional_operator=None,
+                          scan_filter=None,
+                          exclusive_start_key=None,
+                          segment=None,
+                          total_segments=None,
+                          model_cls=None,
+                          time_out_seconds=None,
+                          read_capacity_to_consume_per_second=10,
+                          max_sleep_between_retry=10,
+                          max_consecutive_exceptions=10):
+
+        read_capacity_to_consume_per_ms = float(read_capacity_to_consume_per_second) / 1000
+        total_consumed_read_capacity = 0
+        last_evaluated_key = None
+        rate_available = True
+        latest_scan_consumed_capacity = 0
+        consecutive_provision_throughput_exceeded_ex = 0
+        start_time = time.time()
+
+        if page_size is None:
+            page_size = read_capacity_to_consume_per_second
+
+        while True:
+            if rate_available:
+                try:
+                    data = self.scan(
+                        table_name,
+                        exclusive_start_key=last_evaluated_key,
+                        limit=page_size,
+                        return_consumed_capacity=TOTAL,
+                        scan_filter=scan_filter,
+                        segment=segment,
+                        total_segments=total_segments
+                    )
+                    for item in data.get(ITEMS):
+                        if model_cls:
+                            yield model_cls.from_raw_data(item)
+                        else:
+                            yield item
+                        if limit is not None:
+                            limit -= 1
+                            if not limit:
+                                return
+                    latest_scan_consumed_capacity = data.get(CONSUMED_CAPACITY)
+                    last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+                    consecutive_provision_throughput_exceeded_ex = 0
+                except ScanError as e:
+                    # Only retry if provision throughput is exceeded.
+                    if isinstance(e.cause, ClientError):
+                        code = e.cause.response['Error'].get('Code')
+                        if code == "ProvisionedThroughputExceededException":
+                            consecutive_provision_throughput_exceeded_ex += 1
+                        else:
+                            raise
+                    else:
+                        raise
+
+            current_time = time.time()
+            # elapsed_time_ms indicates the time taken in ms from the start of the
+            # throttled_scan call.
+            elapsed_time_ms = round((current_time - start_time) * 1000)
+            # has_exceeded_throughput indicates if ProvisionedThroughputExceededException has happened.
+            # ProvisionedThroughputExceededException can occur if:
+            #    - The rate to consume is passed incorrectly.
+            #    - External factors, even if the current scan is within limits.
+
+            if consecutive_provision_throughput_exceeded_ex > max_consecutive_exceptions:
+                return
+
+            if consecutive_provision_throughput_exceeded_ex == 0:
+                total_consumed_read_capacity += latest_scan_consumed_capacity
+                consumed_rate = round(total_consumed_read_capacity / elapsed_time_ms)
+                rate_available = read_capacity_to_consume_per_ms - consumed_rate
+
+            if not rate_available or (consecutive_provision_throughput_exceeded_ex > 0):
+                elapsed_time_s = math.ceil(elapsed_time_ms / 1000)
+                # Sleep proportional to the ratio of --consumed capacity-- to --capacity to consume--
+                # Minimum value is 1 second.
+                time_to_sleep = round((total_consumed_read_capacity/ elapsed_time_s) \
+                                       / (read_capacity_to_consume_per_second))
+
+                # At any moment if the time_out_seconds hits, then return
+                if time_out_seconds and (elapsed_time_s + time_to_sleep) > time_out_seconds:
+                    return
+
+                time.sleep(min(math.ceil(time_to_sleep), max_sleep_between_retry))
+                # Reset the latest_scan_consumed_capacity, as no scan operation was performed.
+                latest_scan_consumed_capacity = 0
+
+            if not last_evaluated_key:
+                return
 
     def scan(self,
              table_name,
