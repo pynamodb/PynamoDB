@@ -939,39 +939,49 @@ class Connection(object):
                           read_capacity_to_consume_per_second=10,
                           max_sleep_between_retry=10,
                           max_consecutive_exceptions=10):
-
+        """
+        Performs a rate limited scan of the table.
+        """
         read_capacity_to_consume_per_ms = float(read_capacity_to_consume_per_second) / 1000
-        total_consumed_read_capacity = 0
-        last_evaluated_key = None
+        total_consumed_read_capacity = 0.0
+        last_evaluated_key = exclusive_start_key
         rate_available = True
         latest_scan_consumed_capacity = 0
         consecutive_provision_throughput_exceeded_ex = 0
         start_time = time.time()
 
         if page_size is None:
-            page_size = read_capacity_to_consume_per_second
+            if limit and read_capacity_to_consume_per_second > limit:
+                page_size = limit
+            else:
+                page_size = read_capacity_to_consume_per_second
 
         while True:
             if rate_available:
                 try:
                     data = self.scan(
                         table_name,
+                        attributes_to_get=attributes_to_get,
                         exclusive_start_key=last_evaluated_key,
                         limit=page_size,
+                        conditional_operator=conditional_operator,
                         return_consumed_capacity=TOTAL,
                         scan_filter=scan_filter,
                         segment=segment,
                         total_segments=total_segments
                     )
                     for item in data.get(ITEMS):
-                        if model_cls:
-                            yield model_cls.from_raw_data(item)
-                        else:
-                            yield item
+                        item_to_return = item
+                        if model_cls is not None:
+                            item_to_return = model_cls.from_raw_data(item)
+
+                        yield item_to_return
+
                         if limit is not None:
                             limit -= 1
                             if not limit:
                                 return
+
                     latest_scan_consumed_capacity = data.get(CONSUMED_CAPACITY)
                     last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
                     consecutive_provision_throughput_exceeded_ex = 0
@@ -981,45 +991,53 @@ class Connection(object):
                         code = e.cause.response['Error'].get('Code')
                         if code == "ProvisionedThroughputExceededException":
                             consecutive_provision_throughput_exceeded_ex += 1
+                            if consecutive_provision_throughput_exceeded_ex > max_consecutive_exceptions:
+                                raise # Max threshold reached
                         else:
-                            raise
+                            raise # Different exception, other than ProvisionedThroughputExceededException
                     else:
-                        raise
+                        raise # Not a Client error
+
+            # No throttling, and no more scans needed. Just return
+            if not last_evaluated_key and consecutive_provision_throughput_exceeded_ex == 0:
+                return
 
             current_time = time.time()
+
             # elapsed_time_ms indicates the time taken in ms from the start of the
             # throttled_scan call.
             elapsed_time_ms = round((current_time - start_time) * 1000)
-            # has_exceeded_throughput indicates if ProvisionedThroughputExceededException has happened.
-            # ProvisionedThroughputExceededException can occur if:
-            #    - The rate to consume is passed incorrectly.
-            #    - External factors, even if the current scan is within limits.
-
-            if consecutive_provision_throughput_exceeded_ex > max_consecutive_exceptions:
-                return
+            # elapsed_time_ms can be 0 or negative if there is a clock drift
+            if elapsed_time_ms < 1:
+                elapsed_time_ms = 1
 
             if consecutive_provision_throughput_exceeded_ex == 0:
                 total_consumed_read_capacity += latest_scan_consumed_capacity
-                consumed_rate = round(total_consumed_read_capacity / elapsed_time_ms)
-                rate_available = read_capacity_to_consume_per_ms - consumed_rate
+                consumed_rate = total_consumed_read_capacity / elapsed_time_ms
+                rate_available = (read_capacity_to_consume_per_ms - consumed_rate) >= 0
 
+            # consecutive_provision_throughput_exceeded_ex > 0 indicates ProvisionedThroughputExceededException occurred.
+            # ProvisionedThroughputExceededException can occur if:
+            #    - The rate to consume is passed incorrectly.
+            #    - External factors, even if the current scan is within limits.
             if not rate_available or (consecutive_provision_throughput_exceeded_ex > 0):
+                # Minimum value is 1 second.
                 elapsed_time_s = math.ceil(elapsed_time_ms / 1000)
                 # Sleep proportional to the ratio of --consumed capacity-- to --capacity to consume--
-                # Minimum value is 1 second.
                 time_to_sleep = round((total_consumed_read_capacity/ elapsed_time_s) \
                                        / (read_capacity_to_consume_per_second))
 
+                # Always sleep at least for 1s.
+                if time_to_sleep == 0:
+                    time_to_sleep = 1
+
                 # At any moment if the time_out_seconds hits, then return
                 if time_out_seconds and (elapsed_time_s + time_to_sleep) > time_out_seconds:
-                    return
+                    raise ScanError('Input timeout value {} has expired'.format(time_out_seconds))
 
                 time.sleep(min(math.ceil(time_to_sleep), max_sleep_between_retry))
                 # Reset the latest_scan_consumed_capacity, as no scan operation was performed.
                 latest_scan_consumed_capacity = 0
-
-            if not last_evaluated_key:
-                return
 
     def scan(self,
              table_name,

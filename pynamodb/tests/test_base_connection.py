@@ -7,7 +7,7 @@ import six
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import Connection
 from botocore.vendored import requests
-from pynamodb.exceptions import (
+from pynamodb.exceptions import (VerboseClientError,
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
 from pynamodb.constants import DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
@@ -1456,6 +1456,127 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
+    def test_rate_limited_scan(self):
+        """
+        Connection.rate_limited_scan
+        """
+        conn = Connection()
+        table_name = 'Thread'
+        SCAN_METHOD_TO_PATCH = 'pynamodb.connection.Connection.scan'
+
+        def verify_scan_call_args(call_args,
+                                  table_name,
+                                  exclusive_start_key=None,
+                                  total_segments=None,
+                                  attributes_to_get=None,
+                                  conditional_operator=None,
+                                  limit=10,
+                                  return_consumed_capacity='TOTAL',
+                                  scan_filter=None,
+                                  segment=None):
+            self.assertEqual(call_args[0][0], table_name)
+            self.assertEqual(call_args[1]['exclusive_start_key'], exclusive_start_key)
+            self.assertEqual(call_args[1]['total_segments'], total_segments)
+            self.assertEqual(call_args[1]['attributes_to_get'], attributes_to_get)
+            self.assertEqual(call_args[1]['conditional_operator'], conditional_operator)
+            self.assertEqual(call_args[1]['limit'], limit)
+            self.assertEqual(call_args[1]['return_consumed_capacity'], return_consumed_capacity)
+            self.assertEqual(call_args[1]['scan_filter'], scan_filter)
+            self.assertEqual(call_args[1]['segment'], segment)
+
+        with patch(SCAN_METHOD_TO_PATCH) as req:
+            req.return_value = {'Items': [], 'ConsumedCapacity': 10 }
+            resp = conn.rate_limited_scan(
+                table_name
+            )
+            values = list(resp)
+            self.assertEqual(0, len(values))
+            verify_scan_call_args(req.call_args, table_name)
+
+        with patch(SCAN_METHOD_TO_PATCH) as req:
+            req.return_value = {'Items': [], 'ConsumedCapacity': 10 }
+            resp = conn.rate_limited_scan(
+                table_name,
+                limit=10,
+                segment=20,
+                total_segments=22,
+            )
+
+            values = list(resp)
+            self.assertEqual(0, len(values))
+            verify_scan_call_args(req.call_args,
+                                  table_name,
+                                  segment=20,
+                                  total_segments=22,
+                                  limit=10)
+
+        with patch(SCAN_METHOD_TO_PATCH) as req:
+            req.return_value = {'Items': [], 'ConsumedCapacity': 10 }
+            scan_filter = {
+                'ForumName': {
+                    'AttributeValueList': [
+                        {'S': 'Foo'}
+                    ],
+                    'ComparisonOperator': 'BEGINS_WITH'
+                },
+                'Subject': {
+                    'AttributeValueList': [
+                        {'S': 'Foo'}
+                    ],
+                    'ComparisonOperator': 'CONTAINS'
+                }
+            }
+
+            resp = conn.rate_limited_scan(
+                table_name,
+                exclusive_start_key='FooForum',
+                page_size=1,
+                segment=2,
+                total_segments=4,
+                scan_filter=scan_filter,
+                conditional_operator='AND',
+                attributes_to_get=['ForumName']
+            )
+
+            values = list(resp)
+            self.assertEqual(0, len(values))
+            verify_scan_call_args(req.call_args,
+                                  table_name,
+                                  exclusive_start_key='FooForum',
+                                  limit=1,
+                                  segment=2,
+                                  total_segments=4,
+                                  attributes_to_get=['ForumName'],
+                                  scan_filter=scan_filter,
+                                  conditional_operator='AND')
+
+        with patch(SCAN_METHOD_TO_PATCH) as req:
+            req.return_value = {'Items': [], 'ConsumedCapacity': 10 }
+            resp = conn.rate_limited_scan(
+                table_name,
+                page_size=5,
+                limit=10,
+                read_capacity_to_consume_per_second=2
+            )
+            values = list(resp)
+            self.assertEqual(0, len(values))
+            verify_scan_call_args(req.call_args,
+                                  table_name,
+                                  limit=5)
+
+        with patch(SCAN_METHOD_TO_PATCH) as req:
+            req.return_value = {'Items': [], 'ConsumedCapacity': 10 }
+            resp = conn.rate_limited_scan(
+                table_name,
+                limit=10,
+                read_capacity_to_consume_per_second=4
+            )
+            values = list(resp)
+            self.assertEqual(0, len(values))
+            verify_scan_call_args(req.call_args,
+                                  table_name,
+                                  limit=4)
+
     def test_scan(self):
         """
         Connection.scan
@@ -1639,6 +1760,190 @@ class ConnectionTestCase(TestCase):
                 conn.scan,
                 table_name,
                 **kwargs)
+
+    @mock.patch('time.time')
+    @mock.patch('pynamodb.connection.Connection.scan')
+    def test_ratelimited_scan_with_pagination_ends(self, scan_mock, time_mock):
+        c = Connection()
+        time_mock.side_effect = [1, 10, 20, 30, 40]
+        scan_mock.side_effect = [
+            {'Items': ['Item-1'], 'ConsumedCapacity': 1, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': 1 }
+        ]
+        resp = c.rate_limited_scan('Table_1')
+        values = list(resp)
+        self.assertEqual(2, len(values))
+        self.assertEqual(None, scan_mock.call_args_list[0][1]['exclusive_start_key'])
+        self.assertEqual('XX', scan_mock.call_args_list[1][1]['exclusive_start_key'])
+
+    @mock.patch('time.time')
+    @mock.patch('time.sleep')
+    @mock.patch(PATCH_METHOD)
+    def test_ratelimited_scan_retries_on_throttling(self, api_mock, sleep_mock, time_mock):
+        c = Connection()
+        botocore_expected_format = {'Error': {'Message': 'm', 'Code': 'ProvisionedThroughputExceededException'}}
+
+        api_mock.side_effect = [
+            VerboseClientError(botocore_expected_format, 'operation_name', {}),
+            {'Items': ['Item-1', 'Item-2'], 'ConsumedCapacity': 40 }
+        ]
+        resp = c.rate_limited_scan('Table_1')
+        values = list(resp)
+        self.assertEqual(2, len(values))
+        self.assertEqual(1, len(sleep_mock.call_args_list))
+        self.assertEqual(1.0, sleep_mock.call_args[0][0])
+
+    @mock.patch('time.time')
+    @mock.patch('time.sleep')
+    @mock.patch(PATCH_METHOD)
+    def test_ratelimited_scan_exception_on_max_threshold(self, api_mock, sleep_mock, time_mock):
+        c = Connection()
+        botocore_expected_format = {'Error': {'Message': 'm', 'Code': 'ProvisionedThroughputExceededException'}}
+
+        api_mock.side_effect = VerboseClientError(botocore_expected_format, 'operation_name', {})
+
+        with self.assertRaises(ScanError):
+            resp = c.rate_limited_scan('Table_1', max_consecutive_exceptions=1)
+            values = list(resp)
+            self.assertEqual(0, len(values))
+        self.assertEqual(1, len(sleep_mock.call_args_list))
+        self.assertEqual(2, len(api_mock.call_args_list))
+
+    @mock.patch('time.time')
+    @mock.patch('time.sleep')
+    @mock.patch(PATCH_METHOD)
+    def test_ratelimited_scan_raises_other_client_errors(self, api_mock, sleep_mock, time_mock):
+        c = Connection()
+        botocore_expected_format = {'Error': {'Message': 'm', 'Code': 'ConditionCheckFailedException'}}
+
+        api_mock.side_effect = VerboseClientError(botocore_expected_format, 'operation_name', {})
+
+        with self.assertRaises(ScanError):
+            resp = c.rate_limited_scan('Table_1')
+            values = list(resp)
+            self.assertEqual(0, len(values))
+
+        self.assertEqual(1, len(api_mock.call_args_list))
+        self.assertEqual(0, len(sleep_mock.call_args_list))
+
+    @mock.patch('time.time')
+    @mock.patch('time.sleep')
+    @mock.patch(PATCH_METHOD)
+    def test_ratelimited_scan_raises_non_client_error(self, api_mock, sleep_mock, time_mock):
+        c = Connection()
+
+        api_mock.side_effect = ScanError('error')
+
+        with self.assertRaises(ScanError):
+            resp = c.rate_limited_scan('Table_1')
+            values = list(resp)
+            self.assertEqual(0, len(values))
+
+        self.assertEqual(1, len(api_mock.call_args_list))
+        self.assertEqual(0, len(sleep_mock.call_args_list))
+
+    @mock.patch('time.time')
+    @mock.patch('time.sleep')
+    @mock.patch('pynamodb.connection.Connection.scan')
+    def test_rate_limited_scan_retries_on_rate_unavailable(self, scan_mock, sleep_mock, time_mock):
+        c = Connection()
+        sleep_mock.return_value = 1
+        time_mock.side_effect = [1, 4, 6, 12]
+        scan_mock.side_effect = [
+            {'Items': ['Item-1'], 'ConsumedCapacity': 80, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': 41 }
+        ]
+        resp = c.rate_limited_scan('Table_1')
+        values = list(resp)
+
+        self.assertEqual(2, len(values))
+        self.assertEqual(2, len(scan_mock.call_args_list))
+        self.assertEqual(2, len(sleep_mock.call_args_list))
+        self.assertEqual(3.0, sleep_mock.call_args_list[0][0][0])
+        self.assertEqual(2.0, sleep_mock.call_args_list[1][0][0])
+
+    @mock.patch('time.time')
+    @mock.patch('time.sleep')
+    @mock.patch('pynamodb.connection.Connection.scan')
+    def test_rate_limited_scan_retries_on_rate_unavailable_within_s(self, scan_mock, sleep_mock, time_mock):
+        c = Connection()
+        sleep_mock.return_value = 1
+        time_mock.side_effect = [1.0, 1.5, 4.0]
+        scan_mock.side_effect = [
+            {'Items': ['Item-1'], 'ConsumedCapacity': 10, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': 11 }
+        ]
+        resp = c.rate_limited_scan('Table_1', read_capacity_to_consume_per_second=5)
+        values = list(resp)
+
+        self.assertEqual(2, len(values))
+        self.assertEqual(2, len(scan_mock.call_args_list))
+        self.assertEqual(1, len(sleep_mock.call_args_list))
+        self.assertEqual(2.0, sleep_mock.call_args_list[0][0][0])
+
+    @mock.patch('time.time')
+    @mock.patch('time.sleep')
+    @mock.patch('pynamodb.connection.Connection.scan')
+    def test_rate_limited_scan_retries_max_sleep(self, scan_mock, sleep_mock, time_mock):
+        c = Connection()
+        sleep_mock.return_value = 1
+        time_mock.side_effect = [1.0, 1.5, 250, 350]
+        scan_mock.side_effect = [
+            {'Items': ['Item-1'], 'ConsumedCapacity': 1000, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': 11 }
+        ]
+        resp = c.rate_limited_scan(
+            'Table_1',
+            read_capacity_to_consume_per_second=5,
+            max_sleep_between_retry=8
+        )
+        values = list(resp)
+
+        self.assertEqual(2, len(values))
+        self.assertEqual(2, len(scan_mock.call_args_list))
+        self.assertEqual(1, len(sleep_mock.call_args_list))
+        self.assertEqual(8.0, sleep_mock.call_args_list[0][0][0])
+
+    @mock.patch('time.time')
+    @mock.patch('time.sleep')
+    @mock.patch('pynamodb.connection.Connection.scan')
+    def test_rate_limited_scan_retries_min_sleep(self, scan_mock, sleep_mock, time_mock):
+        c = Connection()
+        sleep_mock.return_value = 1
+        time_mock.side_effect = [1, 2, 3, 4]
+        scan_mock.side_effect = [
+            {'Items': ['Item-1'], 'ConsumedCapacity': 10, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': 11 }
+        ]
+        resp = c.rate_limited_scan('Table_1', read_capacity_to_consume_per_second=8)
+        values = list(resp)
+
+        self.assertEqual(2, len(values))
+        self.assertEqual(2, len(scan_mock.call_args_list))
+        self.assertEqual(1, len(sleep_mock.call_args_list))
+        self.assertEqual(1.0, sleep_mock.call_args_list[0][0][0])
+
+    @mock.patch('time.time')
+    @mock.patch('time.sleep')
+    @mock.patch('pynamodb.connection.Connection.scan')
+    def test_rate_limited_scan_retries_timeout(self, scan_mock, sleep_mock, time_mock):
+        c = Connection()
+        sleep_mock.return_value = 1
+        time_mock.side_effect = [1, 20, 30, 40]
+        scan_mock.side_effect = [
+            {'Items': ['Item-1'], 'ConsumedCapacity': 1000, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': 11 }
+        ]
+        resp = c.rate_limited_scan(
+            'Table_1',
+            read_capacity_to_consume_per_second=1,
+            time_out_seconds=15
+        )
+        with self.assertRaises(ScanError):
+            values = list(resp)
+            self.assertEqual(0, len(values))
+
+        self.assertEqual(0, len(sleep_mock.call_args_list))
 
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
