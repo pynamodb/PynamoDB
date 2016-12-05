@@ -1781,6 +1781,8 @@ class ConnectionTestCase(TestCase):
     @mock.patch(PATCH_METHOD)
     def test_ratelimited_scan_retries_on_throttling(self, api_mock, sleep_mock, time_mock):
         c = Connection()
+        time_mock.side_effect = [1, 2, 3, 4, 5]
+
         botocore_expected_format = {'Error': {'Message': 'm', 'Code': 'ProvisionedThroughputExceededException'}}
 
         api_mock.side_effect = [
@@ -1798,6 +1800,7 @@ class ConnectionTestCase(TestCase):
     @mock.patch(PATCH_METHOD)
     def test_ratelimited_scan_exception_on_max_threshold(self, api_mock, sleep_mock, time_mock):
         c = Connection()
+        time_mock.side_effect = [1, 2, 3, 4, 5]
         botocore_expected_format = {'Error': {'Message': 'm', 'Code': 'ProvisionedThroughputExceededException'}}
 
         api_mock.side_effect = VerboseClientError(botocore_expected_format, 'operation_name', {})
