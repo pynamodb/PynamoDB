@@ -1929,7 +1929,7 @@ class ModelTestCase(TestCase):
             try:
                 UserModel.get('foo')
             except SimpleUserModel.DoesNotExist:
-                assert False  # DoesNotExist exceptions must be distinct per-model
+                self.fail('DoesNotExist exceptions must be distinct per-model')
             except UserModel.DoesNotExist:
                 pass
 
@@ -1940,7 +1940,7 @@ class ModelTestCase(TestCase):
             except DoesNotExist:
                 pass
             except UserModel.DoesNotExist:
-                assert False  # UserModel.Exception must derive from pynamodb.Exceptions.DoesNotExist
+                self.fail('UserModel.Exception must derive from pynamodb.Exceptions.DoesNotExist')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
