@@ -1031,7 +1031,7 @@ class Connection(object):
 
                 # At any moment if the time_out_seconds hits, then return
                 if time_out_seconds and (elapsed_time_s + time_to_sleep) > time_out_seconds:
-                    raise ScanError('Input timeout value {} has expired'.format(time_out_seconds))
+                    raise ScanError("Input timeout value {0} has expired".format(time_out_seconds))
 
                 time.sleep(min(math.ceil(time_to_sleep), max_sleep_between_retry))
                 # Reset the latest_scan_consumed_capacity, as no scan operation was performed.
