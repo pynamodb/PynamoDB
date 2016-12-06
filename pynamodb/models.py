@@ -586,20 +586,22 @@ class Model(with_metaclass(MetaModel)):
 
     @classmethod
     def rate_limited_scan(cls,
-             segment=None,
-             total_segments=None,
-             limit=None,
-             conditional_operator=None,
-             last_evaluated_key=None,
-             page_size=None,
-             time_out_seconds=None,
-             read_capacity_to_consume_per_second=10,
-             max_sleep_between_retry=10,
-             max_consecutive_exceptions=30,
-             **filters):
+            attributes_to_get=None,
+            segment=None,
+            total_segments=None,
+            limit=None,
+            conditional_operator=None,
+            last_evaluated_key=None,
+            page_size=None,
+            time_out_seconds=None,
+            read_capacity_to_consume_per_second=10,
+            max_sleep_between_retry=10,
+            max_consecutive_exceptions=30,
+            **filters):
         """
         Iterates through all items in the table
 
+        :param attributes_to_get: A list of attributes to return.
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
         :param limit: Used to limit the number of results returned
@@ -611,6 +613,10 @@ class Model(with_metaclass(MetaModel)):
             infinitely
         :param read_capacity_to_consume_per_second: Amount of read capacity to consume
             every second
+        :param max_sleep_between_retry: Max value for sleep in seconds in between scans during
+            throttling/rate limit scenarios
+        :param max_consecutive_exceptions: Max number of consecutive provision throughput exceeded
+            exceptions for scan to exit
         """
 
         cls._conditional_operator_check(conditional_operator)
@@ -622,13 +628,15 @@ class Model(with_metaclass(MetaModel)):
         )
         key_filter.update(scan_filter)
 
-        cls._get_connection().rate_limited_scan(
+        return cls._get_connection().rate_limited_scan(
+            attributes_to_get=attributes_to_get,
             page_size=page_size,
             limit=limit,
             conditional_operator=conditional_operator,
             scan_filter=key_filter,
             segment=segment,
             total_segments=total_segments,
+            model_cls=cls,
             exclusive_start_key=last_evaluated_key,
             time_out_seconds=time_out_seconds,
             read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,

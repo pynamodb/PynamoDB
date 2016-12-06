@@ -1,6 +1,7 @@
 """
 Lowest level connection
 """
+from __future__ import division
 from base64 import b64decode
 import logging
 import math
@@ -1006,10 +1007,7 @@ class Connection(object):
 
             # elapsed_time_ms indicates the time taken in ms from the start of the
             # throttled_scan call.
-            elapsed_time_ms = round((current_time - start_time) * 1000)
-            # elapsed_time_ms can be 0 or negative if there is a clock drift
-            if elapsed_time_ms < 1:
-                elapsed_time_ms = 1
+            elapsed_time_ms = max(1, round((current_time - start_time) * 1000))
 
             if consecutive_provision_throughput_exceeded_ex == 0:
                 total_consumed_read_capacity += latest_scan_consumed_capacity
