@@ -935,7 +935,6 @@ class Connection(object):
                           exclusive_start_key=None,
                           segment=None,
                           total_segments=None,
-                          model_cls=None,
                           time_out_seconds=None,
                           read_capacity_to_consume_per_second=10,
                           max_sleep_between_retry=10,
@@ -972,11 +971,7 @@ class Connection(object):
                         total_segments=total_segments
                     )
                     for item in data.get(ITEMS):
-                        item_to_return = item
-                        if model_cls is not None:
-                            item_to_return = model_cls.from_raw_data(item)
-
-                        yield item_to_return
+                        yield item
 
                         if limit is not None:
                             limit -= 1

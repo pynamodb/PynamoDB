@@ -1766,7 +1766,13 @@ class ModelTestCase(TestCase):
         Model.rate_limited_scan
         """
         with patch('pynamodb.connection.Connection.rate_limited_scan') as req:
-            req.return_value = [{'Items': 'items'}]
+            items = []
+
+            item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+            item['user_id'] = {STRING_SHORT: '11232'}
+            items.append(item)
+
+            req.return_value = items
             result = UserModel.rate_limited_scan(
                 segment=1,
                 total_segments=12,
@@ -1780,7 +1786,7 @@ class ModelTestCase(TestCase):
                 max_consecutive_exceptions=22,
                 attributes_to_get=['X1', 'X2']
             )
-            self.assertEqual(1, len(result))
+            self.assertEqual(1, len(list(result)))
             self.assertEqual('UserModel', req.call_args[0][0])
             params = {
                 'segment': 1,
@@ -1790,7 +1796,6 @@ class ModelTestCase(TestCase):
                 'exclusive_start_key': 'XXX',
                 'page_size': 11,
                 'time_out_seconds': 21,
-                'model_cls': UserModel,
                 'scan_filter': {},
                 'attributes_to_get': ['X1', 'X2'],
                 'read_capacity_to_consume_per_second': 33,
@@ -1808,10 +1813,10 @@ class ModelTestCase(TestCase):
             req.return_value = {'Items': items}
             scanned_items = []
 
-            for item in UserModel.rate_limited_scan():
+            for item in UserModel.rate_limited_scan(limit=5):
                 scanned_items.append(item._serialize().get(RANGE))
             self.assertListEqual(
-                [item.get('user_id').get(STRING_SHORT) for item in items],
+                [item.get('user_id').get(STRING_SHORT) for item in items[:5]],
                 scanned_items
             )
 

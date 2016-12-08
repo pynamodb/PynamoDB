@@ -628,7 +628,7 @@ class Model(with_metaclass(MetaModel)):
         )
         key_filter.update(scan_filter)
 
-        return cls._get_connection().rate_limited_scan(
+        scan_result = cls._get_connection().rate_limited_scan(
             attributes_to_get=attributes_to_get,
             page_size=page_size,
             limit=limit,
@@ -636,7 +636,6 @@ class Model(with_metaclass(MetaModel)):
             scan_filter=key_filter,
             segment=segment,
             total_segments=total_segments,
-            model_cls=cls,
             exclusive_start_key=last_evaluated_key,
             time_out_seconds=time_out_seconds,
             read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
@@ -644,6 +643,9 @@ class Model(with_metaclass(MetaModel)):
             max_consecutive_exceptions=max_consecutive_exceptions,
         )
 
+
+        for item in scan_result:
+            yield cls.from_raw_data(item)
 
     @classmethod
     def scan(cls,
