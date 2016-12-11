@@ -5,7 +5,8 @@ import six
 from six import with_metaclass
 import json
 from base64 import b64encode, b64decode
-from delorean import Delorean, parse
+from dateutil.parser import parse
+from dateutil.tz import tzutc
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
@@ -329,14 +330,16 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a datetime object and returns a string
         """
-        fmt = Delorean(value, timezone=UTC).datetime.strftime(DATETIME_FORMAT)
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=tzutc())
+        fmt = value.astimezone(tzutc()).strftime(DATETIME_FORMAT)
         return six.u(fmt)
 
     def deserialize(self, value):
         """
         Takes a UTC datetime string and returns a datetime object
         """
-        return parse(value, dayfirst=False).datetime
+        return parse(value)
 
 
 class NullAttribute(Attribute):

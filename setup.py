@@ -12,7 +12,6 @@ if sys.argv[-1] == 'publish':
     sys.exit()
 
 install_requires = [
-    'Delorean',
     'six',
     'botocore>=1.0.0'
 ]

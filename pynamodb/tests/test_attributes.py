@@ -143,7 +143,7 @@ class UTCDateTimeAttributeTestCase(TestCase):
         with patch('pynamodb.attributes.parse') as parse:
             attr.deserialize(Delorean(tstamp, timezone=UTC).datetime.strftime(DATETIME_FORMAT))
 
-            parse.assert_called_with(tstamp.strftime(DATETIME_FORMAT), dayfirst=False)
+            parse.assert_called_with(tstamp.strftime(DATETIME_FORMAT))
 
     def test_utc_date_time_serialize(self):
         """
