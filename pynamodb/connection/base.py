@@ -1017,12 +1017,8 @@ class Connection(object):
                 # Minimum value is 1 second.
                 elapsed_time_s = math.ceil(elapsed_time_ms / 1000)
                 # Sleep proportional to the ratio of --consumed capacity-- to --capacity to consume--
-                time_to_sleep = round((total_consumed_read_capacity/ elapsed_time_s) \
-                                       / (read_capacity_to_consume_per_second))
-
-                # Always sleep at least for 1s.
-                if time_to_sleep == 0:
-                    time_to_sleep = 1
+                time_to_sleep = max(1, round((total_consumed_read_capacity/ elapsed_time_s) \
+                                       / (read_capacity_to_consume_per_second)))
 
                 # At any moment if the time_out_seconds hits, then return
                 if time_out_seconds and (elapsed_time_s + time_to_sleep) > time_out_seconds:
