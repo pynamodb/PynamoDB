@@ -599,7 +599,8 @@ class Model(with_metaclass(MetaModel)):
             max_consecutive_exceptions=30,
             **filters):
         """
-        Iterates through all items in the table
+        Scans the items in the table at a definite rate.
+        Invokes the low level rate_limited_scan API.
 
         :param attributes_to_get: A list of attributes to return.
         :param segment: If set, then scans the segment
@@ -609,7 +610,7 @@ class Model(with_metaclass(MetaModel)):
         :param last_evaluated_key: If set, provides the starting point for scan.
         :param page_size: Page size of the scan to DynamoDB
         :param filters: A list of item filters
-        :param time_out_seconds: Timeout value for the scan method, to prevent it from running
+        :param time_out_seconds: Timeout value for the rate_limited_scan method, to prevent it from running
             infinitely
         :param read_capacity_to_consume_per_second: Amount of read capacity to consume
             every second
@@ -642,7 +643,6 @@ class Model(with_metaclass(MetaModel)):
             max_sleep_between_retry=max_sleep_between_retry,
             max_consecutive_exceptions=max_consecutive_exceptions,
         )
-
 
         for item in scan_result:
             yield cls.from_raw_data(item)

@@ -940,7 +940,27 @@ class Connection(object):
                           max_sleep_between_retry=10,
                           max_consecutive_exceptions=10):
         """
-        Performs a rate limited scan of the table.
+        Performs a rate limited scan on the table. The API uses the scan API to fetch items from
+        DynamoDB. The rate_limited_scan uses the 'ConsumedCapacity' value returned from DynamoDB to
+        limit the rate of the scan. 'ProvisionedThroughputExceededException' is also handled and retried.
+
+        :param table_name: Name of the table to perform scan on.
+        :param attributes_to_get: A list of attributes to return.
+        :param page_size: Page size of the scan to DynamoDB
+        :param limit: Used to limit the number of results returned
+        :param conditional_operator:
+        :param scan_filter: A map indicating the condition that evaluates the scan results
+        :param exclusive_start_key: If set, provides the starting point for scan.
+        :param segment: If set, then scans the segment
+        :param total_segments: If set, then specifies total segments
+        :param time_out_seconds: Timeout value for the rate_limited_scan method, to prevent it from running
+            infinitely
+        :param read_capacity_to_consume_per_second: Amount of read capacity to consume
+            every second
+        :param max_sleep_between_retry: Max value for sleep in seconds in between scans during
+            throttling/rate limit scenarios
+        :param max_consecutive_exceptions: Max number of consecutive ProvisionedThroughputExceededException
+            exception for scan to exit
         """
         read_capacity_to_consume_per_ms = float(read_capacity_to_consume_per_second) / 1000
         total_consumed_read_capacity = 0.0
@@ -988,11 +1008,14 @@ class Connection(object):
                         if code == "ProvisionedThroughputExceededException":
                             consecutive_provision_throughput_exceeded_ex += 1
                             if consecutive_provision_throughput_exceeded_ex > max_consecutive_exceptions:
-                                raise # Max threshold reached
+                                # Max threshold reached
+                                raise
                         else:
-                            raise # Different exception, other than ProvisionedThroughputExceededException
+                            # Different exception, other than ProvisionedThroughputExceededException
+                            raise
                     else:
-                        raise # Not a Client error
+                        # Not a Client error
+                        raise
 
             # No throttling, and no more scans needed. Just return
             if not last_evaluated_key and consecutive_provision_throughput_exceeded_ex == 0:
@@ -1018,7 +1041,7 @@ class Connection(object):
                 elapsed_time_s = math.ceil(elapsed_time_ms / 1000)
                 # Sleep proportional to the ratio of --consumed capacity-- to --capacity to consume--
                 time_to_sleep = max(1, round((total_consumed_read_capacity/ elapsed_time_s) \
-                                       / (read_capacity_to_consume_per_second)))
+                                       / read_capacity_to_consume_per_second))
 
                 # At any moment if the time_out_seconds hits, then return
                 if time_out_seconds and (elapsed_time_s + time_to_sleep) > time_out_seconds:
