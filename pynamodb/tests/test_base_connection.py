@@ -1940,7 +1940,7 @@ class ConnectionTestCase(TestCase):
         resp = c.rate_limited_scan(
             'Table_1',
             read_capacity_to_consume_per_second=1,
-            time_out_seconds=15
+            timeout_seconds=15
         )
         with self.assertRaises(ScanError):
             values = list(resp)

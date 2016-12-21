@@ -593,7 +593,7 @@ class Model(with_metaclass(MetaModel)):
             conditional_operator=None,
             last_evaluated_key=None,
             page_size=None,
-            time_out_seconds=None,
+            timeout_seconds=None,
             read_capacity_to_consume_per_second=10,
             max_sleep_between_retry=10,
             max_consecutive_exceptions=30,
@@ -610,7 +610,7 @@ class Model(with_metaclass(MetaModel)):
         :param last_evaluated_key: If set, provides the starting point for scan.
         :param page_size: Page size of the scan to DynamoDB
         :param filters: A list of item filters
-        :param time_out_seconds: Timeout value for the rate_limited_scan method, to prevent it from running
+        :param timeout_seconds: Timeout value for the rate_limited_scan method, to prevent it from running
             infinitely
         :param read_capacity_to_consume_per_second: Amount of read capacity to consume
             every second
@@ -638,7 +638,7 @@ class Model(with_metaclass(MetaModel)):
             segment=segment,
             total_segments=total_segments,
             exclusive_start_key=last_evaluated_key,
-            time_out_seconds=time_out_seconds,
+            timeout_seconds=timeout_seconds,
             read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
             max_sleep_between_retry=max_sleep_between_retry,
             max_consecutive_exceptions=max_consecutive_exceptions,

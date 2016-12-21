@@ -478,7 +478,7 @@ class ConnectionTestCase(TestCase):
                 segment=2,
                 total_segments=4,
                 exclusive_start_key='EX',
-                time_out_seconds=11,
+                timeout_seconds=11,
                 read_capacity_to_consume_per_second=12,
                 max_sleep_between_retry=3,
                 max_consecutive_exceptions=7
@@ -493,7 +493,7 @@ class ConnectionTestCase(TestCase):
                 'segment': 2,
                 'total_segments': 4,
                 'exclusive_start_key': 'EX',
-                'time_out_seconds': 11,
+                'timeout_seconds': 11,
                 'read_capacity_to_consume_per_second': 12,
                 'max_sleep_between_retry': 3,
                 'max_consecutive_exceptions': 7

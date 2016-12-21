@@ -935,7 +935,7 @@ class Connection(object):
                           exclusive_start_key=None,
                           segment=None,
                           total_segments=None,
-                          time_out_seconds=None,
+                          timeout_seconds=None,
                           read_capacity_to_consume_per_second=10,
                           max_sleep_between_retry=10,
                           max_consecutive_exceptions=10):
@@ -953,7 +953,7 @@ class Connection(object):
         :param exclusive_start_key: If set, provides the starting point for scan.
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
-        :param time_out_seconds: Timeout value for the rate_limited_scan method, to prevent it from running
+        :param timeout_seconds: Timeout value for the rate_limited_scan method, to prevent it from running
             infinitely
         :param read_capacity_to_consume_per_second: Amount of read capacity to consume
             every second
@@ -1043,9 +1043,9 @@ class Connection(object):
                 time_to_sleep = max(1, round((total_consumed_read_capacity/ elapsed_time_s) \
                                        / read_capacity_to_consume_per_second))
 
-                # At any moment if the time_out_seconds hits, then return
-                if time_out_seconds and (elapsed_time_s + time_to_sleep) > time_out_seconds:
-                    raise ScanError("Input timeout value {0} has expired".format(time_out_seconds))
+                # At any moment if the timeout_seconds hits, then return
+                if timeout_seconds and (elapsed_time_s + time_to_sleep) > timeout_seconds:
+                    raise ScanError("Input timeout value {0} has expired".format(timeout_seconds))
 
                 time.sleep(min(math.ceil(time_to_sleep), max_sleep_between_retry))
                 # Reset the latest_scan_consumed_capacity, as no scan operation was performed.

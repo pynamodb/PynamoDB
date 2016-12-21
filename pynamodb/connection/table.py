@@ -140,7 +140,7 @@ class TableConnection(object):
              segment=None,
              total_segments=None,
              exclusive_start_key=None,
-             time_out_seconds=None,
+             timeout_seconds=None,
              read_capacity_to_consume_per_second=None,
              max_sleep_between_retry=None,
              max_consecutive_exceptions=None):
@@ -157,7 +157,7 @@ class TableConnection(object):
             segment=segment,
             total_segments=total_segments,
             exclusive_start_key=exclusive_start_key,
-            time_out_seconds=time_out_seconds,
+            timeout_seconds=timeout_seconds,
             read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
             max_sleep_between_retry=max_sleep_between_retry,
             max_consecutive_exceptions=max_consecutive_exceptions)
