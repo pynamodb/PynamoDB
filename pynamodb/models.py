@@ -635,6 +635,69 @@ class Model(with_metaclass(MetaModel)):
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
     @classmethod
+    def rate_limited_scan(cls,
+            attributes_to_get=None,
+            segment=None,
+            total_segments=None,
+            limit=None,
+            conditional_operator=None,
+            last_evaluated_key=None,
+            page_size=None,
+            timeout_seconds=None,
+            read_capacity_to_consume_per_second=10,
+            max_sleep_between_retry=10,
+            max_consecutive_exceptions=30,
+            **filters):
+        """
+        Scans the items in the table at a definite rate.
+        Invokes the low level rate_limited_scan API.
+
+        :param attributes_to_get: A list of attributes to return.
+        :param segment: If set, then scans the segment
+        :param total_segments: If set, then specifies total segments
+        :param limit: Used to limit the number of results returned
+        :param conditional_operator:
+        :param last_evaluated_key: If set, provides the starting point for scan.
+        :param page_size: Page size of the scan to DynamoDB
+        :param filters: A list of item filters
+        :param timeout_seconds: Timeout value for the rate_limited_scan method, to prevent it from running
+            infinitely
+        :param read_capacity_to_consume_per_second: Amount of read capacity to consume
+            every second
+        :param max_sleep_between_retry: Max value for sleep in seconds in between scans during
+            throttling/rate limit scenarios
+        :param max_consecutive_exceptions: Max number of consecutive provision throughput exceeded
+            exceptions for scan to exit
+        """
+
+        cls._conditional_operator_check(conditional_operator)
+        key_filter, scan_filter = cls._build_filters(
+            SCAN_OPERATOR_MAP,
+            non_key_operator_map=SCAN_OPERATOR_MAP,
+            key_attribute_classes=cls._get_attributes(),
+            filters=filters
+        )
+        key_filter.update(scan_filter)
+
+        scan_result = cls._get_connection().rate_limited_scan(
+            attributes_to_get=attributes_to_get,
+            page_size=page_size,
+            limit=limit,
+            conditional_operator=conditional_operator,
+            scan_filter=key_filter,
+            segment=segment,
+            total_segments=total_segments,
+            exclusive_start_key=last_evaluated_key,
+            timeout_seconds=timeout_seconds,
+            read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
+            max_sleep_between_retry=max_sleep_between_retry,
+            max_consecutive_exceptions=max_consecutive_exceptions,
+        )
+
+        for item in scan_result:
+            yield cls.from_raw_data(item)
+
+    @classmethod
     def scan(cls,
              segment=None,
              total_segments=None,
@@ -689,7 +752,8 @@ class Model(with_metaclass(MetaModel)):
                 limit=page_size,
                 scan_filter=key_filter,
                 segment=segment,
-                total_segments=total_segments
+                total_segments=total_segments,
+                conditional_operator=conditional_operator
             )
             for item in data.get(ITEMS):
                 yield cls.from_raw_data(item)

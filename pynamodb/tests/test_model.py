@@ -1870,6 +1870,145 @@ class ModelTestCase(TestCase):
                 )
             self.assertTrue(len(queried) == len(items))
 
+    def test_rate_limited_scan(self):
+        """
+        Model.rate_limited_scan
+        """
+        with patch('pynamodb.connection.Connection.rate_limited_scan') as req:
+            items = []
+
+            item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+            item['user_id'] = {STRING_SHORT: '11232'}
+            items.append(item)
+
+            req.return_value = items
+            result = UserModel.rate_limited_scan(
+                segment=1,
+                total_segments=12,
+                limit=16,
+                conditional_operator='AND',
+                last_evaluated_key='XXX',
+                page_size=11,
+                timeout_seconds=21,
+                read_capacity_to_consume_per_second=33,
+                max_sleep_between_retry=4,
+                max_consecutive_exceptions=22,
+                attributes_to_get=['X1', 'X2']
+            )
+            self.assertEqual(1, len(list(result)))
+            self.assertEqual('UserModel', req.call_args[0][0])
+            params = {
+                'segment': 1,
+                'total_segments': 12,
+                'limit': 16,
+                'conditional_operator': 'AND',
+                'exclusive_start_key': 'XXX',
+                'page_size': 11,
+                'timeout_seconds': 21,
+                'scan_filter': {},
+                'attributes_to_get': ['X1', 'X2'],
+                'read_capacity_to_consume_per_second': 33,
+                'max_sleep_between_retry': 4,
+                'max_consecutive_exceptions': 22
+            }
+            self.assertEqual(params, req.call_args[1])
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            scanned_items = []
+
+            for item in UserModel.rate_limited_scan(limit=5):
+                scanned_items.append(item._serialize().get(RANGE))
+            self.assertListEqual(
+                [item.get('user_id').get(STRING_SHORT) for item in items[:5]],
+                scanned_items
+            )
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            scan_result = UserModel.rate_limited_scan(
+                user_id__contains='tux',
+                zip_code__null=False, 
+                email__null=True,
+                read_capacity_to_consume_per_second=13
+            )
+
+            for item in scan_result:
+                self.assertIsNotNone(item)
+            params = {
+                'Limit': 13,
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ScanFilter': {
+                    'user_id': {
+                        'AttributeValueList': [
+                            {'S': 'tux'}
+                        ],
+                        'ComparisonOperator': 'CONTAINS'
+                    },
+                    'zip_code': {
+                        'ComparisonOperator': 'NOT_NULL'
+                    },
+                    'email': {
+                        'ComparisonOperator': 'NULL'
+                    }
+                },
+                'TableName': 'UserModel'
+            }
+            self.assertEquals(params, req.call_args[0][1])
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            for item in UserModel.scan(
+                    user_id__contains='tux',
+                    zip_code__null=False,
+                    conditional_operator='OR',
+                    email__null=True,
+                    page_size=12):
+                self.assertIsNotNone(item)
+            params = {
+                'Limit': 12,
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ScanFilter': {
+                    'user_id': {
+                        'AttributeValueList': [
+                            {'S': 'tux'}
+                        ],
+                        'ComparisonOperator': 'CONTAINS'
+                    },
+                    'zip_code': {
+                        'ComparisonOperator': 'NOT_NULL'
+                    },
+                    'email': {
+                        'ComparisonOperator': 'NULL'
+                    },
+                },
+                'ConditionalOperator': 'OR',
+                'TableName': 'UserModel'
+            }
+
+            self.assertEquals(params, req.call_args[0][1])
+
+        # you cannot scan with multiple conditions against the same key
+        self.assertRaises(
+            ValueError,
+            lambda: list(UserModel.scan(user_id__contains='tux', user_id__beginswith='penguin'))
+        )
+
     def test_scan(self):
         """
         Model.scan

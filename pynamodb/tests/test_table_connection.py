@@ -462,3 +462,40 @@ class ConnectionTestCase(TestCase):
                 'TableName': self.test_table_name
             }
             self.assertEqual(req.call_args[0][1], params)
+
+    def test_rate_limited_scan(self):
+        """
+        TableConnection.rate_limited_scan
+        """
+        conn = TableConnection(self.test_table_name)
+        with patch('pynamodb.connection.Connection.rate_limited_scan') as req:
+            req.return_value = {}
+            conn.rate_limited_scan(attributes_to_get='attributes_to_get',
+                page_size=1,
+                limit=2,
+                conditional_operator='AND',
+                scan_filter={'filter': 'X'},
+                segment=2,
+                total_segments=4,
+                exclusive_start_key='EX',
+                timeout_seconds=11,
+                read_capacity_to_consume_per_second=12,
+                max_sleep_between_retry=3,
+                max_consecutive_exceptions=7
+            )
+            self.assertEqual(self.test_table_name, req.call_args[0][0])
+            params = {
+                'attributes_to_get': 'attributes_to_get',
+                'page_size': 1,
+                'limit': 2,
+                'conditional_operator': 'AND',
+                'scan_filter': {'filter': 'X'},
+                'segment': 2,
+                'total_segments': 4,
+                'exclusive_start_key': 'EX',
+                'timeout_seconds': 11,
+                'read_capacity_to_consume_per_second': 12,
+                'max_sleep_between_retry': 3,
+                'max_consecutive_exceptions': 7
+            }
+            self.assertEqual(params, req.call_args[1])

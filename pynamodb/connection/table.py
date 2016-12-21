@@ -131,6 +131,37 @@ class TableConnection(object):
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get)
 
+    def rate_limited_scan(self,
+             attributes_to_get=None,
+             page_size=None,
+             limit=None,
+             conditional_operator=None,
+             scan_filter=None,
+             segment=None,
+             total_segments=None,
+             exclusive_start_key=None,
+             timeout_seconds=None,
+             read_capacity_to_consume_per_second=None,
+             max_sleep_between_retry=None,
+             max_consecutive_exceptions=None):
+        """
+        Performs the scan operation with rate limited
+        """
+        return self.connection.rate_limited_scan(
+            self.table_name,
+            attributes_to_get=attributes_to_get,
+            page_size=page_size,
+            limit=limit,
+            conditional_operator=conditional_operator,
+            scan_filter=scan_filter,
+            segment=segment,
+            total_segments=total_segments,
+            exclusive_start_key=exclusive_start_key,
+            timeout_seconds=timeout_seconds,
+            read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
+            max_sleep_between_retry=max_sleep_between_retry,
+            max_consecutive_exceptions=max_consecutive_exceptions)
+
     def scan(self,
              attributes_to_get=None,
              limit=None,
