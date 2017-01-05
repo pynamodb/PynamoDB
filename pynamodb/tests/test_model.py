@@ -3408,7 +3408,9 @@ class ModelInitTestCase(TestCase):
             'bar': 'baz'
         }
         actual = ExplicitRawMapModel(map_id=3, map_attr=attribute)
-        self.assertEquals(actual.map_attr['foo'], attribute['foo'])
+        print(attribute['foo'])
+        print(actual.map_attr.foo)
+        self.assertEquals(actual.map_attr.foo, attribute['foo'])
 
     def test_raw_map_attribute_with_initialized_instance_init(self):
         attribute = {
@@ -3416,8 +3418,9 @@ class ModelInitTestCase(TestCase):
             'bar': 'baz'
         }
         initialized_instance = MapAttribute(**attribute)
-        with self.assertRaises(AttributeError):
-            ExplicitRawMapModel(map_id=3, map_attr=initialized_instance)
+        actual = ExplicitRawMapModel(map_id=3, map_attr=initialized_instance)
+        self.assertEquals(actual.map_attr.foo, initialized_instance.foo)
+        self.assertEquals(actual.map_attr.foo, attribute['foo'])
 
     def test_subclassed_map_attribute_with_dict_init(self):
         attribute = {

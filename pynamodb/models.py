@@ -1239,12 +1239,9 @@ class Model(with_metaclass(MetaModel)):
                 attribute_name = attr_name
             if attribute_name is not None:
                 attribute_to_set = attrs.get(attribute_name)
-                if isinstance(attribute_to_set, MapAttribute):
-                    if attribute_to_set.__class__ is MapAttribute:
-                        raise AttributeError('Cannot initialize with non subclassed MapAttribute')
                 if isinstance(attribute_to_set, Mapping):
                     kls = getattr(self.__class__, attribute_name).__class__
-                    if kls is not MapAttribute and kls is not None.__class__ and attribute_to_set is not None:
+                    if kls is not None.__class__ and attribute_to_set is not None:
                         attribute_to_set = kls(**attribute_to_set)
                 setattr(self, attr_name, attribute_to_set)
 
