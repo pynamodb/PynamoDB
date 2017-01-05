@@ -1240,9 +1240,9 @@ class Model(with_metaclass(MetaModel)):
             if attribute_name is not None:
                 attribute_to_set = attrs.get(attribute_name)
                 if isinstance(attribute_to_set, Mapping):
-                    cls = getattr(self, attribute_name)
-                    if cls is not MapAttribute:
-                        attribute_to_set = cls(**attribute_to_set)
+                    kls = getattr(self.__class__, attribute_name).__class__
+                    if kls is not MapAttribute and kls is not None.__class__ and attribute_to_set is not None:
+                        attribute_to_set = kls(**attribute_to_set)
                 setattr(self, attr_name, attribute_to_set)
 
     @classmethod
