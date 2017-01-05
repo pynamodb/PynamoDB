@@ -3297,7 +3297,7 @@ class ModelTestCase(TestCase):
         instance._deserialize(map_serialized)
         actual = instance.map_attr
         for k,v in six.iteritems(map_native):
-            self.assertEqual(v, actual[k])
+            self.assertEqual(v, getattr(actual, k))
 
     def test_raw_map_from_raw_data_works(self):
         map_native = {
@@ -3325,9 +3325,9 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=fake_db) as req:
             item = ExplicitRawMapModel.get(123)
             actual = item.map_attr
-            self.assertEqual(map_native.get('listy')[2], actual.get('listy')[2])
+            self.assertEqual(map_native.get('listy')[2], actual.listy[2])
             for k, v in six.iteritems(map_native):
-                self.assertEqual(v, actual[k])
+                self.assertEqual(v, getattr(actual, k))
 
     def test_raw_map_as_sub_map_serialize_pass(self):
         map_native = {'a': 'dict', 'lives': [123, 456], 'here': True}
