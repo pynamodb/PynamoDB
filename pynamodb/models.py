@@ -1241,7 +1241,8 @@ class Model(with_metaclass(MetaModel)):
                 attribute_to_set = getattr(self, attr_name)
                 if isinstance(attribute_to_set, Mapping):
                     cls = getattr(self, attribute_name)
-                    attribute_to_set = cls(**attribute_to_set)
+                    if cls is not MapAttribute:
+                        attribute_to_set = cls(**attribute_to_set)
                 setattr(self, attr_name, attribute_to_set)
 
     @classmethod
