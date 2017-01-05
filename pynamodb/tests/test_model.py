@@ -3400,3 +3400,88 @@ class ModelTestCase(TestCase):
                              map_native.get('mapy', {}).get('baz'))
 
 
+class ModelInitTestCase(TestCase):
+
+    def test_raw_map_attribute_with_dict_init(self):
+        attribute = {
+            'foo': 123,
+            'bar': 'baz'
+        }
+        actual = ExplicitRawMapModel(map_id=3, map_attr=attribute)
+        self.assertEquals(actual.map_attr, attribute)
+        self.assertEquals(actual.map_attr.get('foo'), attribute.get('foo'))
+        self.assertIsNotNone(actual.map_attr.get('foo'))
+
+    def test_raw_map_attribute_with_initialized_instance_init(self):
+        attribute = {
+            'foo': 123,
+            'bar': 'baz'
+        }
+        initialized_instance = MapAttribute(**attribute)
+        actual = ExplicitRawMapModel(map_id=3, map_attr=initialized_instance)
+        self.assertEquals(actual.map_attr.get('foo'), attribute.get('foo'))
+        self.assertIsNotNone(actual.map_attr.get('foo'))
+        self.assertEquals(attribute, actual.map_attr)
+
+    def test_subclassed_map_attribute_with_dict_init(self):
+        attribute = {
+            'make': 'Volkswagen',
+            'model': 'Super Beetle'
+        }
+        expected_model = CarInfoMap(**attribute)
+        actual = CarModel(car_id=1, car_info=attribute)
+        self.assertEquals(expected_model.make, actual.car_info.make)
+        self.assertEquals(expected_model.model, actual.car_info.model)
+
+    def test_subclassed_map_attribute_with_initialized_instance_init(self):
+        attribute = {
+            'make': 'Volkswagen',
+            'model': 'Super Beetle'
+        }
+        expected_model = CarInfoMap(**attribute)
+        actual = CarModel(car_id=1, car_info=expected_model)
+        self.assertEquals(expected_model.make, actual.car_info.make)
+        self.assertEquals(expected_model.model, actual.car_info.model)
+
+    def _get_bin_tree(self, multiplier=1):
+        return {
+            'value': 5 * multiplier,
+            'left': {
+                'value': 2 * multiplier,
+                'left': {
+                    'value': 1 * multiplier
+                },
+                'right': {
+                    'value': 3 * multiplier
+                }
+            },
+            'right': {
+                'value': 7 * multiplier,
+                'left': {
+                    'value': 6 * multiplier
+                },
+                'right': {
+                    'value': 8 * multiplier
+                }
+            }
+        }
+
+    def test_subclassed_map_attribute_with_map_attributes_member_with_dict_init(self):
+        left = self._get_bin_tree()
+        right = self._get_bin_tree(multiplier=2)
+        actual = TreeModel(tree_key='key', left=left, right=right)
+        self.assertEquals(actual.left.left.right.value, 3)
+        self.assertEquals(actual.left.left.value, 2)
+        self.assertEquals(actual.right.right.left.value, 12)
+        self.assertEquals(actual.right.right.value, 14)
+
+    def test_subclassed_map_attribute_with_map_apttribute_member_with_initialized_instance_init(self):
+        left = self._get_bin_tree()
+        right = self._get_bin_tree(multiplier=2)
+        left_instance = TreeLeaf(**left)
+        right_instance = TreeLeaf(**right)
+        actual = TreeModel(tree_key='key', left=left_instance, right=right_instance)
+        self.assertEquals(actual.left.left.right.value, left_instance.left.right.value)
+        self.assertEquals(actual.left.left.value, left_instance.left.value)
+        self.assertEquals(actual.right.right.left.value, right_instance.right.left.value)
+        self.assertEquals(actual.right.right.value, right_instance.right.value)
