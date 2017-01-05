@@ -391,9 +391,10 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         """
         Sets the attributes for this object
         """
-        class_attributes = self._get_attributes().aliased_attrs()
+        class_attributes = self._get_attributes()
+        aliased_attributes = class_attributes.aliased_attrs()
         if len(class_attributes) > 0:
-            for attr_name, attr in class_attributes:
+            for attr_name, attr in aliased_attributes:
                 if attr.attr_name in attrs:
                     value = attrs.get(attr_name)
                     if not isinstance(value, collections.Mapping) or type(attr) == MapAttribute:
@@ -409,6 +410,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                     setattr(self, attr_name, attrs.get(attr_name))
         else:  # it's a raw MapAttribute
             for in_memory_attribute_name, in_memory_attribute_value in six.iteritems(attrs):
+                class_attributes[in_memory_attribute_name] = SERIALIZE_CLASS_MAP.get(type(in_memory_attribute_value))
                 setattr(self, in_memory_attribute_name, in_memory_attribute_value)
 
     def get_values(self):
