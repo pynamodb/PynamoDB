@@ -387,6 +387,14 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                 cls._attributes[item] = instance
         return cls._attributes
 
+    def _get_in_memory_attributes(self):
+        try:
+            in_memory_attributes = getattr(self, 'in_memory_attributes')
+        except AttributeError:
+            self.in_memory_attributes = AttributeDict()
+            in_memory_attributes = self.in_memory_attributes
+        return in_memory_attributes
+
     def _set_attributes(self, **attrs):
         """
         Sets the attributes for this object
@@ -409,12 +417,14 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                 elif attr_name in attrs:
                     setattr(self, attr_name, attrs.get(attr_name))
         else:  # it's a raw MapAttribute
+            in_memory_attributes = self._get_in_memory_attributes()
             for in_memory_attribute_name, in_memory_attribute_value in six.iteritems(attrs):
-                class_attributes[in_memory_attribute_name] = SERIALIZE_CLASS_MAP.get(type(in_memory_attribute_value))
+                in_memory_attributes[in_memory_attribute_name] = SERIALIZE_CLASS_MAP.get(type(in_memory_attribute_value))
                 setattr(self, in_memory_attribute_name, in_memory_attribute_value)
 
     def get_values(self):
         attributes = self._get_attributes()
+        attributes.update(self._get_in_memory_attributes())
         result = {}
         for k, v in six.iteritems(attributes):
             result[k] = getattr(self, k)
