@@ -1238,7 +1238,7 @@ class Model(with_metaclass(MetaModel)):
             elif attr_name in attrs:
                 attribute_name = attr_name
             if attribute_name is not None:
-                attribute_to_set = getattr(self, attr_name)
+                attribute_to_set = attrs.get(attribute_name)
                 if isinstance(attribute_to_set, Mapping):
                     cls = getattr(self, attribute_name)
                     if cls is not MapAttribute:
