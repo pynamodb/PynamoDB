@@ -8,6 +8,7 @@ import copy
 import logging
 import warnings
 
+from collections import Mapping
 from six import with_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
@@ -1231,10 +1232,17 @@ class Model(with_metaclass(MetaModel)):
         Sets the attributes for this object
         """
         for attr_name, attr in self._get_attributes().aliased_attrs():
+            attribute_name = None
             if attr.attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr.attr_name))
+                attribute_name = attr.attr_name
             elif attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr_name))
+                attribute_name = attr_name
+            if attribute_name is not None:
+                attribute_to_set = getattr(self, attr_name)
+                if isinstance(attribute_to_set, Mapping):
+                    cls = getattr(self, attribute_name)
+                    attribute_to_set = cls(**attribute_to_set)
+                setattr(self, attr_name, attribute_to_set)
 
     @classmethod
     def add_throttle_record(cls, records):
