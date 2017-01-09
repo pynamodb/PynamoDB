@@ -388,12 +388,10 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         return cls._attributes
 
     def _get_in_memory_attributes(self):
-        try:
-            in_memory_attributes = getattr(self, 'in_memory_attributes')
-        except AttributeError:
-            self.in_memory_attributes = AttributeDict()
-            in_memory_attributes = self.in_memory_attributes
-        return in_memory_attributes
+        if hasattr(self, 'in_memory_attributes'):
+            return self.in_memory_attributes
+        self.in_memory_attributes = AttributeDict()
+        return self.in_memory_attributes
 
     def _set_attributes(self, **attrs):
         """
@@ -401,7 +399,7 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
         """
         class_attributes = self._get_attributes()
         aliased_attributes = class_attributes.aliased_attrs()
-        if len(class_attributes) > 0:
+        if class_attributes:
             for attr_name, attr in aliased_attributes:
                 if attr.attr_name in attrs:
                     value = attrs.get(attr_name)
