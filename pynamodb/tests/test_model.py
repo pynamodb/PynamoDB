@@ -3297,7 +3297,7 @@ class ModelTestCase(TestCase):
         instance._deserialize(map_serialized)
         actual = instance.map_attr
         for k,v in six.iteritems(map_native):
-            self.assertEqual(v, actual[k])
+            self.assertEqual(v, getattr(actual, k))
 
     def test_raw_map_from_raw_data_works(self):
         map_native = {
@@ -3325,9 +3325,9 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=fake_db) as req:
             item = ExplicitRawMapModel.get(123)
             actual = item.map_attr
-            self.assertEqual(map_native.get('listy')[2], actual.get('listy')[2])
+            self.assertEqual(map_native.get('listy')[2], actual.listy[2])
             for k, v in six.iteritems(map_native):
-                self.assertEqual(v, actual[k])
+                self.assertEqual(v, getattr(actual, k))
 
     def test_raw_map_as_sub_map_serialize_pass(self):
         map_native = {'a': 'dict', 'lives': [123, 456], 'here': True}
@@ -3400,3 +3400,87 @@ class ModelTestCase(TestCase):
                              map_native.get('mapy', {}).get('baz'))
 
 
+class ModelInitTestCase(TestCase):
+
+    def test_raw_map_attribute_with_dict_init(self):
+        attribute = {
+            'foo': 123,
+            'bar': 'baz'
+        }
+        actual = ExplicitRawMapModel(map_id=3, map_attr=attribute)
+        print(attribute['foo'])
+        print(actual.map_attr.foo)
+        self.assertEquals(actual.map_attr.foo, attribute['foo'])
+
+    def test_raw_map_attribute_with_initialized_instance_init(self):
+        attribute = {
+            'foo': 123,
+            'bar': 'baz'
+        }
+        initialized_instance = MapAttribute(**attribute)
+        actual = ExplicitRawMapModel(map_id=3, map_attr=initialized_instance)
+        self.assertEquals(actual.map_attr.foo, initialized_instance.foo)
+        self.assertEquals(actual.map_attr.foo, attribute['foo'])
+
+    def test_subclassed_map_attribute_with_dict_init(self):
+        attribute = {
+            'make': 'Volkswagen',
+            'model': 'Super Beetle'
+        }
+        expected_model = CarInfoMap(**attribute)
+        actual = CarModel(car_id=1, car_info=attribute)
+        self.assertEquals(expected_model.make, actual.car_info.make)
+        self.assertEquals(expected_model.model, actual.car_info.model)
+
+    def test_subclassed_map_attribute_with_initialized_instance_init(self):
+        attribute = {
+            'make': 'Volkswagen',
+            'model': 'Super Beetle'
+        }
+        expected_model = CarInfoMap(**attribute)
+        actual = CarModel(car_id=1, car_info=expected_model)
+        self.assertEquals(expected_model.make, actual.car_info.make)
+        self.assertEquals(expected_model.model, actual.car_info.model)
+
+    def _get_bin_tree(self, multiplier=1):
+        return {
+            'value': 5 * multiplier,
+            'left': {
+                'value': 2 * multiplier,
+                'left': {
+                    'value': 1 * multiplier
+                },
+                'right': {
+                    'value': 3 * multiplier
+                }
+            },
+            'right': {
+                'value': 7 * multiplier,
+                'left': {
+                    'value': 6 * multiplier
+                },
+                'right': {
+                    'value': 8 * multiplier
+                }
+            }
+        }
+
+    def test_subclassed_map_attribute_with_map_attributes_member_with_dict_init(self):
+        left = self._get_bin_tree()
+        right = self._get_bin_tree(multiplier=2)
+        actual = TreeModel(tree_key='key', left=left, right=right)
+        self.assertEquals(actual.left.left.right.value, 3)
+        self.assertEquals(actual.left.left.value, 2)
+        self.assertEquals(actual.right.right.left.value, 12)
+        self.assertEquals(actual.right.right.value, 14)
+
+    def test_subclassed_map_attribute_with_map_apttribute_member_with_initialized_instance_init(self):
+        left = self._get_bin_tree()
+        right = self._get_bin_tree(multiplier=2)
+        left_instance = TreeLeaf(**left)
+        right_instance = TreeLeaf(**right)
+        actual = TreeModel(tree_key='key', left=left_instance, right=right_instance)
+        self.assertEquals(actual.left.left.right.value, left_instance.left.right.value)
+        self.assertEquals(actual.left.left.value, left_instance.left.value)
+        self.assertEquals(actual.right.right.left.value, right_instance.right.left.value)
+        self.assertEquals(actual.right.right.value, right_instance.right.value)

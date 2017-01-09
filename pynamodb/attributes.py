@@ -387,27 +387,42 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
                 cls._attributes[item] = instance
         return cls._attributes
 
+    def _get_in_memory_attributes(self):
+        if hasattr(self, 'in_memory_attributes'):
+            return self.in_memory_attributes
+        self.in_memory_attributes = AttributeDict()
+        return self.in_memory_attributes
+
     def _set_attributes(self, **attrs):
         """
         Sets the attributes for this object
         """
-        for attr_name, attr in self._get_attributes().aliased_attrs():
-            if attr.attr_name in attrs:
-                value = attrs.get(attr_name)
-                if not isinstance(value, collections.Mapping) or type(attr) == MapAttribute:
-                    setattr(self, attr_name, attrs.get(attr.attr_name))
-                else:
-                    # it's a sub model which means we need to instantiate that type first
-                    # pass in the attributes of that model, then set the field on this object to point to that model
-                    sub_model = value
-                    instance = type(attr)(**sub_model)
-                    setattr(self, attr_name, instance)
+        class_attributes = self._get_attributes()
+        aliased_attributes = class_attributes.aliased_attrs()
+        if class_attributes:
+            for attr_name, attr in aliased_attributes:
+                if attr.attr_name in attrs:
+                    value = attrs.get(attr_name)
+                    if not isinstance(value, collections.Mapping) or type(attr) == MapAttribute:
+                        setattr(self, attr_name, attrs.get(attr.attr_name))
+                    else:
+                        # it's a sub model which means we need to instantiate that type first
+                        # pass in the attributes of that model, then set the field on this object to point to that model
+                        sub_model = value
+                        instance = type(attr)(**sub_model)
+                        setattr(self, attr_name, instance)
 
-            elif attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr_name))
+                elif attr_name in attrs:
+                    setattr(self, attr_name, attrs.get(attr_name))
+        else:  # it's a raw MapAttribute
+            in_memory_attributes = self._get_in_memory_attributes()
+            for in_memory_attribute_name, in_memory_attribute_value in six.iteritems(attrs):
+                in_memory_attributes[in_memory_attribute_name] = SERIALIZE_CLASS_MAP.get(type(in_memory_attribute_value))
+                setattr(self, in_memory_attribute_name, in_memory_attribute_value)
 
     def get_values(self):
         attributes = self._get_attributes()
+        attributes.update(self._get_in_memory_attributes())
         result = {}
         for k, v in six.iteritems(attributes):
             result[k] = getattr(self, k)
