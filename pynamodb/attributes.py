@@ -2,7 +2,7 @@
 PynamoDB attributes
 """
 import six
-from six import with_metaclass
+from six import add_metaclass
 import json
 from base64 import b64encode, b64decode
 from delorean import Delorean, parse
@@ -10,7 +10,6 @@ from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
 )
-from pynamodb.attribute_dict import AttributeDict
 import collections
 
 
@@ -62,6 +61,49 @@ class Attribute(object):
     def get_value(self, value):
         serialized_dynamo_type = ATTR_TYPE_MAP[self.attr_type]
         return value.get(serialized_dynamo_type)
+
+
+class AttributeContainer(object):
+
+    _attributes = None
+    _dynamo_to_python_attrs = None
+
+    @classmethod
+    def _initialize_attributes(cls):
+        """
+        Initialize attributes on the class.
+        """
+        cls._attributes = {}
+        cls._dynamo_to_python_attrs = {}
+        for item_name, instance in six.iteritems(cls.__dict__):
+            if issubclass(type(instance), (Attribute,)):
+                cls._attributes[item_name] = instance
+                if instance.attr_name is not None:
+                    cls._dynamo_to_python_attrs[instance.attr_name] = item_name
+                else:
+                    instance.attr_name = item_name
+
+    @classmethod
+    def _get_attributes(cls):
+        """
+        Returns the attributes of this class as a mapping from `python_attr_name` => `attribute`.
+
+        :rtype: dict[str, Attribute]
+        """
+        if cls._attributes is None:
+            cls._initialize_attributes()
+        return cls._attributes
+
+    @classmethod
+    def _dynamo_to_python_attr(cls, dynamo_key):
+        """
+        Convert a DynamoDB attribute name to the internal Python name.
+
+        This covers cases where an attribute name has been overridden via "attr_name".
+        """
+        if cls._attributes is None:
+            cls._initialize_attributes()
+        return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
 
 class SetMixin(object):
@@ -354,7 +396,8 @@ class MapAttributeMeta(type):
         setattr(cls, '_attributes', None)
 
 
-class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
+@add_metaclass(MapAttributeMeta)
+class MapAttribute(AttributeContainer, Attribute):
     attr_type = MAP
 
     def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, **attrs):
@@ -372,26 +415,11 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
     def __getitem__(self, item):
         return self.attribute_values[item]
 
-    @classmethod
-    def _get_attributes(cls):
-        """
-        Returns the list of attributes for this class
-        """
-        if cls._attributes is None:
-            cls._attributes = AttributeDict()
-            class_attribute_variables = [attr for attr in vars(cls) if isinstance(getattr(cls, attr), Attribute)]
-            for item in class_attribute_variables:
-                instance = getattr(cls, item)
-                if instance.attr_name is None:
-                    instance.attr_name = item
-                cls._attributes[item] = instance
-        return cls._attributes
-
     def _set_attributes(self, **attrs):
         """
         Sets the attributes for this object
         """
-        for attr_name, attr in self._get_attributes().aliased_attrs():
+        for attr_name, attr in self._get_attributes().items():
             if attr.attr_name in attrs:
                 value = attrs.get(attr_name)
                 if not isinstance(value, collections.Mapping) or type(attr) == MapAttribute:
@@ -432,7 +460,12 @@ class MapAttribute(with_metaclass(MapAttributeMeta, Attribute)):
             attr_key = _get_key_for_serialize(v)
             if attr_class is None:
                 continue
-            rval[k] = {attr_key: attr_class.serialize(v)}
+
+            # If this is a subclassed MapAttribute, there may be an alternate attr name
+            attr = self._get_attributes().get(k)
+            attr_name = attr.attr_name if attr else k
+
+            rval[attr_name] = {attr_key: attr_class.serialize(v)}
 
         return rval
 
