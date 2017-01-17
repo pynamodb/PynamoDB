@@ -675,6 +675,15 @@ class ModelTestCase(TestCase):
         self.assertEqual(OverriddenSessionModel._connection.connection._base_backoff_ms, 4120)
         self.assertTrue(type(OverriddenSessionModel._connection.connection.requests_session) is OverriddenSession)
 
+    def test_overridden_attr_name(self):
+        user = UserModel(custom_user_name="bob")
+        self.assertEqual(user.custom_user_name, "bob")
+        self.assertRaises(AttributeError, getattr, user, "user_name")
+
+        self.assertRaises(ValueError, UserModel, user_name="bob")
+
+        self.assertRaises(ValueError, list, CustomAttrNameModel.query("bob", foo_attr="bar"))
+
     def test_refresh(self):
         """
         Model.refresh
@@ -691,7 +700,7 @@ class ModelTestCase(TestCase):
             req.return_value = GET_MODEL_ITEM_DATA
             item.refresh()
             self.assertEqual(
-                item.user_name,
+                item.custom_user_name,
                 GET_MODEL_ITEM_DATA.get(ITEM).get('user_name').get(STRING_SHORT))
 
     def test_complex_key(self):
@@ -823,6 +832,8 @@ class ModelTestCase(TestCase):
             req.return_value = {}
             item.save()
 
+        self.assertRaises(TypeError, item.update, ["not", "a", "dict"])
+
         with patch(PATCH_METHOD) as req:
             req.return_value = {
                 ATTRIBUTES: {
@@ -832,6 +843,9 @@ class ModelTestCase(TestCase):
                     "is_active": {
                         "NULL": None,
                     },
+                    "aliases": {
+                        "SS": set(["bob"]),
+                    }
                 }
             }
             item.update({
@@ -839,6 +853,7 @@ class ModelTestCase(TestCase):
                 'views': {'action': 'delete'},
                 'is_active': {'value': None, 'action': 'put'},
                 'signature': {'value': None, 'action': 'put'},
+                'custom_aliases': {'value': set(['bob']), 'action': 'put'},
             })
 
             args = req.call_args[0][1]
@@ -872,12 +887,19 @@ class ModelTestCase(TestCase):
                             'NULL': True,
                         },
                     },
+                    'aliases': {
+                        'Action': 'PUT',
+                        'Value': {
+                            'SS': set(['bob']),
+                        },
+                    },
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
             }
             deep_eq(args, params, _assert=True)
 
             assert item.views is None
+            self.assertEquals(set(['bob']), item.custom_aliases)
 
     def test_update_item(self):
         """
@@ -900,6 +922,9 @@ class ModelTestCase(TestCase):
                 }
             }
             self.assertRaises(ValueError, item.update_item, 'views', 10)
+
+        self.assertRaises(ValueError, item.update_item, 'nonexistent', 5)
+        self.assertRaises(ValueError, item.update_item, 'views', 10, action='add', nonexistent__not_contains='-')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {
@@ -1163,6 +1188,13 @@ class ModelTestCase(TestCase):
             deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "aliases": {
+                        "SS": set(["lita"])
+                    }
+                }
+            }
             item.update_item('custom_aliases', set(['lita']), action='add')
             args = req.call_args[0][1]
             params = {
@@ -1184,6 +1216,7 @@ class ModelTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL'
             }
             deep_eq(args, params, _assert=True)
+            self.assertEqual(set(["lita"]), item.custom_aliases)
 
         with patch(PATCH_METHOD) as req:
             item.update_item('is_active', True, action='put')
@@ -1305,7 +1338,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
-            item.save(user_name='bar', zip_code__null=True, email__contains='@', conditional_operator='OR')
+            item.save(custom_user_name='bar', zip_code__null=True, email__contains='@', conditional_operator='OR')
             args = req.call_args[0][1]
             params = {
                 'Item': {
@@ -1417,7 +1450,7 @@ class ModelTestCase(TestCase):
         """
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 42}
-            res = CustomAttrNameModel.uid_index.count('foo', limit=2, user_name__begins_with='bar')
+            res = CustomAttrNameModel.uid_index.count('foo', limit=2, overidden_user_name__begins_with='bar')
             self.assertEqual(res, 42)
             args = req.call_args[0][1]
             params = {
@@ -2510,7 +2543,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Items': items}
             queried = []
 
-            for item in CustomAttrNameModel.uid_index.query('foo', limit=2, user_name__begins_with='bar'):
+            for item in CustomAttrNameModel.uid_index.query('foo', limit=2, overidden_user_name__begins_with='bar'):
                 queried.append(item._serialize())
 
             params = {

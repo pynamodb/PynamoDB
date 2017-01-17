@@ -35,6 +35,11 @@ class AttributeTestModel(Model):
     json_attr = JSONAttribute()
 
 
+class CustomAttrMap(MapAttribute):
+    overridden_number_attr = NumberAttribute(attr_name="number_attr")
+    overridden_unicode_attr = UnicodeAttribute(attr_name="unicode_attr")
+
+
 class AttributeDescriptorTestCase(TestCase):
     """
     Test Attribute Descriptors
@@ -538,6 +543,25 @@ class MapAttributeTestCase(TestCase):
         attr = MapAttribute()
         serialized = attr.serialize(attribute)
         self.assertEqual(attr.deserialize(serialized), attribute)
+
+    def test_map_overridden_attrs_accessors(self):
+        attr = CustomAttrMap(**{
+            'overridden_number_attr': 10,
+            'overridden_unicode_attr': "Hello"
+        })
+
+        self.assertEqual(10, attr.overridden_number_attr)
+        self.assertEqual("Hello", attr.overridden_unicode_attr)
+
+    def test_map_overridden_attrs_serialize(self):
+        attribute = {
+            'overridden_number_attr': 10,
+            'overridden_unicode_attr': "Hello"
+        }
+        self.assertEqual(
+            {'number_attr': {'N': '10'}, 'unicode_attr': {'S': six.u('Hello')}},
+            CustomAttrMap().serialize(attribute)
+        )
 
 
 class MapAndListAttributeTestCase(TestCase):

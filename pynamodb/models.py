@@ -8,11 +8,10 @@ import copy
 import logging
 import warnings
 
-from six import with_metaclass
+from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
-from pynamodb.attributes import Attribute, MapAttribute, ListAttribute
-from pynamodb.attribute_dict import AttributeDict
+from pynamodb.attributes import Attribute, AttributeContainer, MapAttribute, ListAttribute
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -189,7 +188,8 @@ class MetaModel(type):
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
 
 
-class Model(with_metaclass(MetaModel)):
+@add_metaclass(MetaModel)
+class Model(AttributeContainer):
     """
     Defines a `PynamoDB` Model
 
@@ -200,7 +200,6 @@ class Model(with_metaclass(MetaModel)):
     # These attributes are named to avoid colliding with user defined
     # DynamoDB attributes
     _meta_table = None
-    _attributes = None
     _indexes = None
     _connection = None
     _index_classes = None
@@ -216,20 +215,19 @@ class Model(with_metaclass(MetaModel)):
         self.attribute_values = {}
         self._set_defaults()
         if hash_key is not None:
-            attrs[self._get_meta_data().hash_keyname] = hash_key
+            attrs[self._dynamo_to_python_attr(self._get_meta_data().hash_keyname)] = hash_key
         if range_key is not None:
             range_keyname = self._get_meta_data().range_keyname
             if range_keyname is None:
                 raise ValueError(
                     "This table has no range key, but a range key value was provided: {0}".format(range_key)
                 )
-            attrs[range_keyname] = range_key
+            attrs[self._dynamo_to_python_attr(range_keyname)] = range_key
         self._set_attributes(**attrs)
 
     @classmethod
     def has_map_or_list_attributes(cls):
-        for attr_name in cls._get_attributes()._values:
-            attr_value = cls._get_attributes().get(attr_name)
+        for attr_value in cls._get_attributes().values():
             if isinstance(attr_value, MapAttribute) or isinstance(attr_value, ListAttribute):
                 return True
         return False
@@ -335,6 +333,8 @@ class Model(with_metaclass(MetaModel)):
                 value = attr_cls.serialize(value)
                 attribute_cls = attr_cls
                 break
+        if not attribute_cls:
+            raise ValueError("Attribute {0} specified does not exist".format(attr_name))
         if save_kwargs.get(pythonic(RANGE_KEY)):
             kwargs = {pythonic(RANGE_KEY): save_kwargs.get(pythonic(RANGE_KEY))}
         else:
@@ -355,14 +355,15 @@ class Model(with_metaclass(MetaModel)):
             **kwargs
         )
         self._throttle.add_record(data.get(CONSUMED_CAPACITY))
+
         for name, value in data.get(ATTRIBUTES).items():
-            attr = self._get_attributes().get(name, None)
+            attr_name = self._dynamo_to_python_attr(name)
+            attr = self._get_attributes().get(attr_name)
             if attr:
-                setattr(self, name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
+                setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
-
-    def update(self, attributes,  conditional_operator=None, **expected_values):
+    def update(self, attributes, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -402,9 +403,10 @@ class Model(with_metaclass(MetaModel)):
         data = self._get_connection().update_item(*args, **kwargs)
         self._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for name, value in data[ATTRIBUTES].items():
-            attr = self._get_attributes().get(name)
+            attr_name = self._dynamo_to_python_attr(name)
+            attr = self._get_attributes().get(attr_name)
             if attr:
-                setattr(self, name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
+                setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
     def save(self, conditional_operator=None, **expected_values):
@@ -475,22 +477,25 @@ class Model(with_metaclass(MetaModel)):
         range_keyname = cls._get_meta_data().range_keyname
         hash_key_type = cls._get_meta_data().get_attribute_type(hash_keyname)
         hash_key = mutable_data.pop(hash_keyname).get(hash_key_type)
-        hash_key_attr = cls._get_attributes().get(hash_keyname)
+
+        hash_key_attr = cls._get_attributes().get(cls._dynamo_to_python_attr(hash_keyname))
+
         hash_key = hash_key_attr.deserialize(hash_key)
         args = (hash_key,)
         kwargs = {}
         if range_keyname:
-            range_key_attr = cls._get_attributes().get(range_keyname)
+            range_key_attr = cls._get_attributes().get(cls._dynamo_to_python_attr(range_keyname))
             range_key_type = cls._get_meta_data().get_attribute_type(range_keyname)
             range_key = mutable_data.pop(range_keyname).get(range_key_type)
             kwargs['range_key'] = range_key_attr.deserialize(range_key)
         for name, value in mutable_data.items():
-            attr = cls._get_attributes().get(name, None)
+            attr_name = cls._dynamo_to_python_attr(name)
+            attr = cls._get_attributes().get(attr_name, None)
             if attr:
                 deserialized_attr = attr.deserialize(attr.get_value(value))
                 if isinstance(attr, MapAttribute) and not type(attr) == MapAttribute:
                     deserialized_attr = type(attr)(**deserialized_attr)
-                kwargs[name] = deserialized_attr
+                kwargs[attr_name] = deserialized_attr
         return cls(*args, **kwargs)
 
     @classmethod
@@ -518,8 +523,8 @@ class Model(with_metaclass(MetaModel)):
             non_key_attribute_classes = cls._get_attributes()
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
-            non_key_attribute_classes = AttributeDict()
-            key_attribute_classes = AttributeDict()
+            non_key_attribute_classes = dict(cls._get_attributes())
+            key_attribute_classes = dict(cls._get_attributes())
             for name, attr in cls._get_attributes().items():
                 if attr.is_range_key or attr.is_hash_key:
                     key_attribute_classes[name] = attr
@@ -578,8 +583,8 @@ class Model(with_metaclass(MetaModel)):
             non_key_attribute_classes = cls._get_attributes()
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
-            non_key_attribute_classes = AttributeDict()
-            key_attribute_classes = AttributeDict()
+            non_key_attribute_classes = {}
+            key_attribute_classes = {}
             for name, attr in cls._get_attributes().items():
                 if attr.is_range_key or attr.is_hash_key:
                     key_attribute_classes[name] = attr
@@ -1104,25 +1109,6 @@ class Model(with_metaclass(MetaModel)):
                         cls._indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
         return cls._indexes
 
-    @classmethod
-    def _get_attributes(cls):
-        """
-        Returns the list of attributes for this class
-        """
-        if cls._attributes is None:
-            cls._attributes = AttributeDict()
-            for item in dir(cls):
-                try:
-                    item_cls = getattr(getattr(cls, item), "__class__", None)
-                except AttributeError:
-                    continue
-                if item_cls is None:
-                    continue
-                if issubclass(item_cls, (Attribute, )):
-                    instance = getattr(cls, item)
-                    cls._attributes[item] = instance
-        return cls._attributes
-
     def _get_json(self):
         """
         Returns a Python object suitable for serialization
@@ -1164,7 +1150,7 @@ class Model(with_metaclass(MetaModel)):
         attributes = cls._get_attributes()
         range_keyname = cls._get_meta_data().range_keyname
         if range_keyname:
-            attr = attributes[range_keyname]
+            attr = attributes[cls._dynamo_to_python_attr(range_keyname)]
         else:
             attr = None
         return attr
@@ -1176,7 +1162,7 @@ class Model(with_metaclass(MetaModel)):
         """
         attributes = cls._get_attributes()
         hash_keyname = cls._get_meta_data().hash_keyname
-        return attributes[hash_keyname]
+        return attributes[cls._dynamo_to_python_attr(hash_keyname)]
 
     def _get_keys(self):
         """
@@ -1217,7 +1203,7 @@ class Model(with_metaclass(MetaModel)):
         """
         Sets and fields that provide a default value
         """
-        for name, attr in self._get_attributes().aliased_attrs():
+        for name, attr in self._get_attributes().items():
             default = attr.default
             if callable(default):
                 value = default()
@@ -1230,11 +1216,10 @@ class Model(with_metaclass(MetaModel)):
         """
         Sets the attributes for this object
         """
-        for attr_name, attr in self._get_attributes().aliased_attrs():
-            if attr.attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr.attr_name))
-            elif attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr_name))
+        for attr_name, attr_value in six.iteritems(attrs):
+            if attr_name not in self._get_attributes():
+                raise ValueError("Attribute {0} specified does not exist".format(attr_name))
+            setattr(self, attr_name, attr_value)
 
     @classmethod
     def add_throttle_record(cls, records):
@@ -1310,7 +1295,7 @@ class Model(with_metaclass(MetaModel)):
         """
         attributes = pythonic(ATTRIBUTES)
         attrs = {attributes: {}}
-        for name, attr in self._get_attributes().aliased_attrs():
+        for name, attr in self._get_attributes().items():
             value = getattr(self, name)
             if isinstance(value, MapAttribute):
                 if not value.validate():
