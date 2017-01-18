@@ -40,6 +40,10 @@ class CustomAttrMap(MapAttribute):
     overridden_unicode_attr = UnicodeAttribute(attr_name="unicode_attr")
 
 
+class DefaultsMap(MapAttribute):
+    map_field = MapAttribute(default={})
+
+
 class AttributeDescriptorTestCase(TestCase):
     """
     Test Attribute Descriptors
@@ -562,6 +566,15 @@ class MapAttributeTestCase(TestCase):
             {'number_attr': {'N': '10'}, 'unicode_attr': {'S': six.u('Hello')}},
             CustomAttrMap().serialize(attribute)
         )
+
+    def test_defaults(self):
+        item = DefaultsMap()
+        self.assertTrue(item.validate())
+        self.assertEquals(DefaultsMap().serialize(item), {
+            'map_field': {
+                'M': {}
+            }
+        })
 
 
 class MapAndListAttributeTestCase(TestCase):

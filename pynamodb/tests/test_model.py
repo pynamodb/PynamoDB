@@ -3338,18 +3338,6 @@ class ModelTestCase(TestCase):
             'other_b_type': False, 'floaty': 1.2, 'listy': [1, 2, 12345678909876543211234234324234],
             'mapy': {'baz': 'bongo'}
         }
-        map_serialized = {
-            'M': {
-                'foo': {'S': 'bar'},
-                'num': {'N': 1},
-                'bool_type': {'BOOL': True},
-                'other_b_type': {'BOOL': False},
-                'floaty': {'N': 1.2},
-                'listy': {'L': [{'N': 1}, {'N': 2}, {'N': 1234567890987654321}]},
-                'mapy': {'M': {'baz': {'S': 'bongo'}}}
-            }
-        }
-        instance = ExplicitRawMapModel(map_attr=map_native, map_id=123)
         fake_db = self.database_mocker(ExplicitRawMapModel,
                                        EXPLICIT_RAW_MAP_MODEL_TABLE_DATA,
                                        EXPLICIT_RAW_MAP_MODEL_ITEM_DATA,
@@ -3426,10 +3414,7 @@ class ModelTestCase(TestCase):
                                        '123')
         with patch(PATCH_METHOD, new=fake_db) as req:
             item = ExplicitRawMapAsMemberOfSubClass.get(123)
-            actual = item.sub_attr
             self.assertEqual(sub_attr.map_field.get('floaty'),
                              map_native.get('floaty'))
             self.assertEqual(sub_attr.map_field.get('mapy', {}).get('baz'),
                              map_native.get('mapy', {}).get('baz'))
-
-
