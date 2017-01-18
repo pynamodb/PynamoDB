@@ -33,6 +33,7 @@ class AttributeTestModel(Model):
     datetime_attr = UTCDateTimeAttribute()
     bool_attr = BooleanAttribute()
     json_attr = JSONAttribute()
+    map_attr = MapAttribute()
 
 
 class CustomAttrMap(MapAttribute):
@@ -575,6 +576,62 @@ class MapAttributeTestCase(TestCase):
                 'M': {}
             }
         })
+
+    def test_raw_map_from_dict(self):
+        item = AttributeTestModel(
+            map_attr={
+                "foo": "bar",
+                "num": 3,
+                "nested": {
+                    "nestedfoo": "nestedbar"
+                }
+            }
+        )
+
+        self.assertEqual(item.map_attr['foo'], 'bar')
+        self.assertEqual(item.map_attr['num'], 3)
+
+    def test_raw_map_access(self):
+        raw = {
+            "foo": "bar",
+            "num": 3,
+            "nested": {
+                "nestedfoo": "nestedbar"
+            }
+        }
+        attr = MapAttribute(**raw)
+
+        for k, v in six.iteritems(raw):
+            self.assertEquals(attr[k], v)
+
+    def test_raw_map_json_serialize(self):
+        raw = {
+            "foo": "bar",
+            "num": 3,
+            "nested": {
+                "nestedfoo": "nestedbar"
+            }
+        }
+
+        serialized_raw = json.dumps(raw)
+        self.assertEqual(json.dumps(AttributeTestModel(map_attr=raw).map_attr.as_dict()),
+                         serialized_raw)
+        self.assertEqual(json.dumps(AttributeTestModel(map_attr=MapAttribute(**raw)).map_attr.as_dict()),
+                         serialized_raw)
+
+    def test_typed_and_raw_map_json_serialize(self):
+        class TypedMap(MapAttribute):
+            map_attr = MapAttribute()
+
+        class SomeModel(Model):
+            typed_map = TypedMap()
+
+        item = SomeModel(
+            typed_map=TypedMap(map_attr={'foo': 'bar'})
+        )
+
+        self.assertEqual(json.dumps({'map_attr': {'foo': 'bar'}}),
+                         json.dumps(item.typed_map.as_dict()))
 
 
 class MapAndListAttributeTestCase(TestCase):
