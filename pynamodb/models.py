@@ -301,6 +301,14 @@ class Model(AttributeContainer):
                 msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
+    def __eq__(self, other):
+        return (
+            isinstance(other, self.__class__) and
+            all(
+                getattr(self, name) == getattr(other, name) for name, attr in
+                self._get_attributes().aliased_attrs())
+        )
+
     def delete(self, conditional_operator=None, **expected_values):
         """
         Deletes this object from dynamodb

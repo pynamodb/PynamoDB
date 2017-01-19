@@ -481,6 +481,14 @@ class MapAttribute(AttributeContainer, Attribute):
             deserialized_dict[k] = attr_class.deserialize(attr_value)
         return deserialized_dict
 
+    def __eq__(self, other):
+        return (
+            isinstance(other, self.__class__) and
+            all(
+                getattr(self, name) == getattr(other, name) for name, attr in
+                self._get_attributes().aliased_attrs())
+        )
+
 
 def _get_value_for_deserialize(value):
     return value[list(value.keys())[0]]
