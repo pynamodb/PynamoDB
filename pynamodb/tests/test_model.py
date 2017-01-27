@@ -1791,6 +1791,40 @@ class ModelTestCase(TestCase):
             self.assertEqual(params, req.call_args[0][1])
             self.assertTrue(len(queried) == len(items))
 
+
+    def test_query_with_limit_and_get_key(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(5):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            # first response will return LastEvaluatedKey, ie. there is more
+            # data past limit sent.
+            req.return_value = {'Items': items, 'LastEvaluatedKey': 'abc'}
+
+            # first query call with small limit than no. of rows
+            results = list(UserModel.query('foo', limit=2))
+            self.assertEqual(len(results), 2)
+            self.assertEqual(UserModel.get_last_query_evaluated_key(), 'abc')
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 2)
+            self.assertTrue('ExclusiveStartKey' not in req.mock_calls[0][1][1])
+
+            # second time query call to get next set of rows, this call
+            # should take ExclusiveStartKey or prev page.
+            results2 = list(UserModel.query(
+                'foo', limit=2,
+                last_evaluated_key=UserModel.get_last_query_evaluated_key()))
+            self.assertEqual(len(results2), 2)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 2)
+            self.assertEquals(req.mock_calls[1][1][1]['ExclusiveStartKey'],
+                              {'user_name': {'S': 'abc'}})
+
     def test_scan_limit_with_page_size(self):
         with patch(PATCH_METHOD) as req:
             items = []
