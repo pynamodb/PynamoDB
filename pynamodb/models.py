@@ -186,6 +186,8 @@ class MetaModel(type):
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
 
+            # create a custom Model.DoesNotExist derived from pynamodb.exceptions.DoesNotExist,
+            # so that "except Model.DoesNotExist:" would not catch other models' exceptions
             if 'DoesNotExist' not in attrs:
                 exception_attrs = {'__module__': attrs.get('__module__')}
                 if hasattr(cls, '__qualname__'):  # On Python 3, Model.DoesNotExist
