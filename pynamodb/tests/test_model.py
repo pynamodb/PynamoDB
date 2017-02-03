@@ -15,7 +15,7 @@ from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.tests.deep_eq import deep_eq
 from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
-from pynamodb.exceptions import TableError
+from pynamodb.exceptions import DoesNotExist, TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, ITEM_COUNT,
@@ -2204,6 +2204,24 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
             self.assertRaises(UserModel.DoesNotExist, UserModel.get, 'foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            try:
+                UserModel.get('foo')
+            except SimpleUserModel.DoesNotExist:
+                self.fail('DoesNotExist exceptions must be distinct per-model')
+            except UserModel.DoesNotExist:
+                pass
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            try:
+                UserModel.get('foo')
+            except DoesNotExist:
+                pass
+            except UserModel.DoesNotExist:
+                self.fail('UserModel.Exception must derive from pynamodb.Exceptions.DoesNotExist')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
