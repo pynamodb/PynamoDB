@@ -105,6 +105,19 @@ class AttributeContainer(object):
             cls._initialize_attributes()
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
+    def _set_defaults(self):
+        """
+        Sets and fields that provide a default value
+        """
+        for name, attr in self._get_attributes().items():
+            default = attr.default
+            if callable(default):
+                value = default()
+            else:
+                value = default
+            if value is not None:
+                setattr(self, name, value)
+
 
 class SetMixin(object):
     """
@@ -407,6 +420,7 @@ class MapAttribute(AttributeContainer, Attribute):
                                            default=default,
                                            attr_name=attr_name)
         self.attribute_values = {}
+        self._set_defaults()
         self._set_attributes(**attrs)
 
     def __iter__(self):
@@ -441,16 +455,17 @@ class MapAttribute(AttributeContainer, Attribute):
             result[k] = getattr(self, k)
         return result
 
-    def is_type_safe(self, key, value):
-        can_be_null = value.null
-        if can_be_null and getattr(self, key) is None:
+    def is_correctly_typed(self, key, attr):
+        can_be_null = attr.null
+        value = getattr(self, key)
+        if can_be_null and value is None:
             return True
-        if getattr(self, key) is None:
+        if value is None:
             raise ValueError("Attribute '{0}' cannot be None".format(key))
-        return getattr(self, key) and type(getattr(self, key)) is not type(value)
+        return True  # TODO: check that the actual type of `value` meets requirements of `attr`
 
     def validate(self):
-        return all(self.is_type_safe(k, v) for k, v in six.iteritems(self._get_attributes()))
+        return all(self.is_correctly_typed(k, v) for k, v in six.iteritems(self._get_attributes()))
 
     def serialize(self, values):
         rval = {}

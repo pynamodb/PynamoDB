@@ -1207,19 +1207,6 @@ class Model(AttributeContainer):
         unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.Meta.table_name, {}).get(KEYS, None)
         return item_data, unprocessed_items
 
-    def _set_defaults(self):
-        """
-        Sets and fields that provide a default value
-        """
-        for name, attr in self._get_attributes().items():
-            default = attr.default
-            if callable(default):
-                value = default()
-            else:
-                value = default
-            if value is not None:
-                setattr(self, name, value)
-
     def _set_attributes(self, **attrs):
         """
         Sets the attributes for this object
