@@ -500,10 +500,7 @@ class Model(AttributeContainer):
             attr_name = cls._dynamo_to_python_attr(name)
             attr = cls._get_attributes().get(attr_name, None)
             if attr:
-                deserialized_attr = attr.deserialize(attr.get_value(value))
-                if isinstance(attr, MapAttribute) and not type(attr) == MapAttribute:
-                    deserialized_attr = type(attr)(**deserialized_attr)
-                kwargs[attr_name] = deserialized_attr
+                kwargs[attr_name] = attr.deserialize(attr.get_value(value))
         return cls(*args, **kwargs)
 
     @classmethod
@@ -1295,7 +1292,6 @@ class Model(AttributeContainer):
             if isinstance(value, MapAttribute):
                 if not value.validate():
                     raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
-                value = value.get_values()
 
             serialized = self._serialize_value(attr, value, null_check)
             if NULL in serialized:

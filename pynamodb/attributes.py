@@ -419,6 +419,7 @@ class MapAttribute(AttributeContainer, Attribute):
                                            null=null,
                                            default=default,
                                            attr_name=attr_name)
+        self._get_attributes()  # Ensure attributes are always inited
         self.attribute_values = {}
         self._set_defaults()
         self._set_attributes(**attrs)
@@ -429,38 +430,33 @@ class MapAttribute(AttributeContainer, Attribute):
     def __getitem__(self, item):
         return self.attribute_values[item]
 
+    def __getattr__(self, attr):
+        return self.attribute_values[attr]
+
+    def __set__(self, instance, value):
+        if isinstance(value, collections.Mapping):
+            value = type(self)(**value)
+        return super(MapAttribute, self).__set__(instance, value)
+
     def _set_attributes(self, **attrs):
         """
         Sets the attributes for this object
         """
-        for attr_name, attr in self._get_attributes().items():
-            if attr.attr_name in attrs:
-                value = attrs.get(attr_name)
-                if not isinstance(value, collections.Mapping) or type(attr) == MapAttribute:
-                    setattr(self, attr_name, attrs.get(attr.attr_name))
-                else:
-                    # it's a sub model which means we need to instantiate that type first
-                    # pass in the attributes of that model, then set the field on this object to point to that model
-                    sub_model = value
-                    instance = type(attr)(**sub_model)
-                    setattr(self, attr_name, instance)
-
-            elif attr_name in attrs:
-                setattr(self, attr_name, attrs.get(attr_name))
-
-    def get_values(self):
-        attributes = self._get_attributes()
-        result = {}
-        for k, v in six.iteritems(attributes):
-            result[k] = getattr(self, k)
-        return result
+        for attr_name, value in six.iteritems(attrs):
+            attribute = self._get_attributes().get(attr_name)
+            if self.is_raw():
+                self.attribute_values[attr_name] = value
+            elif not attribute:
+                raise AttributeError("Attribute {0} specified does not exist".format(attr_name))
+            else:
+                setattr(self, attr_name, value)
 
     def is_correctly_typed(self, key, attr):
         can_be_null = attr.null
         value = getattr(self, key)
         if can_be_null and value is None:
             return True
-        if value is None:
+        if getattr(self, key) is None:
             raise ValueError("Attribute '{0}' cannot be None".format(key))
         return True  # TODO: check that the actual type of `value` meets requirements of `attr`
 
@@ -486,16 +482,37 @@ class MapAttribute(AttributeContainer, Attribute):
 
     def deserialize(self, values):
         """
-        Decode numbers from list of AttributeValue types.
+        Decode as a dict.
         """
         deserialized_dict = dict()
         for k in values:
             v = values[k]
-            attr_class = _get_class_for_deserialize(v)
             attr_value = _get_value_for_deserialize(v)
-            deserialized_dict[k] = attr_class.deserialize(attr_value)
+            key = self._dynamo_to_python_attr(k)
+            attr_class = self._get_deserialize_class(key, v)
+
+            deserialized_dict[key] = attr_class.deserialize(attr_value)
+
+        # If this is a subclass of a MapAttribute (i.e typed), instantiate an instance
+        if not self.is_raw():
+            return type(self)(**deserialized_dict)
         return deserialized_dict
 
+    @classmethod
+    def is_raw(cls):
+        return cls == MapAttribute
+
+    def as_dict(self):
+        result = {}
+        for key, value in six.iteritems(self.attribute_values):
+            result[key] = value.as_dict() if isinstance(value, MapAttribute) else value
+        return result
+
+    @classmethod
+    def _get_deserialize_class(cls, key, value):
+        if not cls.is_raw():
+            return cls._get_attributes().get(key)
+        return _get_class_for_deserialize(value)
 
 def _get_value_for_deserialize(value):
     return value[list(value.keys())[0]]
@@ -562,17 +579,10 @@ class ListAttribute(Attribute):
         """
         deserialized_lst = []
         for v in values:
-            attr_class = _get_class_for_deserialize(v)
+            class_for_deserialize = self.element_type() if self.element_type else _get_class_for_deserialize(v)
             attr_value = _get_value_for_deserialize(v)
-            deserialized_lst.append(attr_class.deserialize(attr_value))
-
-        if not self.element_type:
-            return deserialized_lst
-
-        lst_of_type = []
-        for item in deserialized_lst:
-            lst_of_type.append(self.element_type(**item))
-        return lst_of_type
+            deserialized_lst.append(class_for_deserialize.deserialize(attr_value))
+        return deserialized_lst
 
 DESERIALIZE_CLASS_MAP = {
     LIST_SHORT: ListAttribute(),

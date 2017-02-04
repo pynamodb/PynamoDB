@@ -447,6 +447,11 @@ class ModelTestCase(TestCase):
     """
     Tests for the models API
     """
+    @staticmethod
+    def init_table_meta(model_clz, table_data):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = table_data
+            model_clz._get_meta_data()
 
     def assert_dict_lists_equal(self, list1, list2):
         """
@@ -3347,7 +3352,7 @@ class ModelTestCase(TestCase):
         instance = ExplicitRawMapModel(map_attr=map_native)
         instance._deserialize(map_serialized)
         actual = instance.map_attr
-        for k,v in six.iteritems(map_native):
+        for k, v in six.iteritems(map_native):
             self.assertEqual(v, actual[k])
 
     def test_raw_map_from_raw_data_works(self):
@@ -3361,10 +3366,10 @@ class ModelTestCase(TestCase):
                                        EXPLICIT_RAW_MAP_MODEL_ITEM_DATA,
                                        'map_id', 'N',
                                        '123')
-        with patch(PATCH_METHOD, new=fake_db) as req:
+        with patch(PATCH_METHOD, new=fake_db):
             item = ExplicitRawMapModel.get(123)
             actual = item.map_attr
-            self.assertEqual(map_native.get('listy')[2], actual.get('listy')[2])
+            self.assertEqual(map_native.get('listy')[2], actual['listy'][2])
             for k, v in six.iteritems(map_native):
                 self.assertEqual(v, actual[k])
 
@@ -3396,11 +3401,11 @@ class ModelTestCase(TestCase):
         map_serialized = {
             'M': {
                 'foo': {'S': 'bar'},
-                'num': {'N': 1},
+                'num': {'N': '1'},
                 'bool_type': {'BOOL': True},
                 'other_b_type': {'BOOL': False},
-                'floaty': {'N': 1.2},
-                'listy': {'L': [{'N': 1}, {'N': 2}, {'N': 3}]},
+                'floaty': {'N': '1.2'},
+                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '3'}]},
                 'mapy': {'M': {'baz': {'S': 'bongo'}}}
             }
         }
@@ -3415,13 +3420,22 @@ class ModelTestCase(TestCase):
         )
         return map_native, map_serialized, sub_attr, instance
 
-    def test_raw_map_as_sub_map_deserializes(self):
+    def test_raw_map_as_sub_map(self):
         map_native, map_serialized, sub_attr, instance = self._get_raw_map_as_sub_map_test_data()
-        instance._deserialize(map_serialized)
         actual = instance.sub_attr
         self.assertEqual(sub_attr, actual)
-        self.assertEqual(sub_attr.map_field.get('floaty'), map_native.get('floaty'))
-        self.assertEqual(sub_attr.map_field.get('mapy', {}).get('baz'), map_native.get('mapy', {}).get('baz'))
+        self.assertEqual(actual.map_field['floaty'], map_native.get('floaty'))
+        self.assertEqual(actual.map_field['mapy']['baz'], map_native.get('mapy').get('baz'))
+
+    def test_raw_map_as_sub_map_deserialize(self):
+        map_native, map_serialized, _, _ = self._get_raw_map_as_sub_map_test_data()
+
+        actual = MapAttrSubClassWithRawMapAttr().deserialize({
+            "map_field": map_serialized
+        })
+
+        for k, v in six.iteritems(map_native):
+            self.assertEqual(actual.map_field[k], v)
 
     def test_raw_map_as_sub_map_from_raw_data_works(self):
         map_native, map_serialized, sub_attr, instance = self._get_raw_map_as_sub_map_test_data()
@@ -3430,9 +3444,94 @@ class ModelTestCase(TestCase):
                                        EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA,
                                        'map_id', 'N',
                                        '123')
-        with patch(PATCH_METHOD, new=fake_db) as req:
+        with patch(PATCH_METHOD, new=fake_db):
             item = ExplicitRawMapAsMemberOfSubClass.get(123)
-            self.assertEqual(sub_attr.map_field.get('floaty'),
+            actual = item.sub_attr
+            self.assertEqual(sub_attr.map_field['floaty'],
                              map_native.get('floaty'))
-            self.assertEqual(sub_attr.map_field.get('mapy', {}).get('baz'),
-                             map_native.get('mapy', {}).get('baz'))
+            self.assertEqual(actual.map_field['mapy']['baz'],
+                             map_native.get('mapy').get('baz'))
+
+
+class ModelInitTestCase(TestCase):
+
+    def test_raw_map_attribute_with_dict_init(self):
+        attribute = {
+            'foo': 123,
+            'bar': 'baz'
+        }
+        actual = ExplicitRawMapModel(map_id=3, map_attr=attribute)
+        self.assertEquals(actual.map_attr['foo'], attribute['foo'])
+
+    def test_raw_map_attribute_with_initialized_instance_init(self):
+        attribute = {
+            'foo': 123,
+            'bar': 'baz'
+        }
+        initialized_instance = MapAttribute(**attribute)
+        actual = ExplicitRawMapModel(map_id=3, map_attr=initialized_instance)
+        self.assertEquals(actual.map_attr['foo'], initialized_instance['foo'])
+        self.assertEquals(actual.map_attr['foo'], attribute['foo'])
+
+    def test_subclassed_map_attribute_with_dict_init(self):
+        attribute = {
+            'make': 'Volkswagen',
+            'model': 'Super Beetle'
+        }
+        expected_model = CarInfoMap(**attribute)
+        actual = CarModel(car_id=1, car_info=attribute)
+        self.assertEquals(expected_model.make, actual.car_info.make)
+        self.assertEquals(expected_model.model, actual.car_info.model)
+
+    def test_subclassed_map_attribute_with_initialized_instance_init(self):
+        attribute = {
+            'make': 'Volkswagen',
+            'model': 'Super Beetle'
+        }
+        expected_model = CarInfoMap(**attribute)
+        actual = CarModel(car_id=1, car_info=expected_model)
+        self.assertEquals(expected_model.make, actual.car_info.make)
+        self.assertEquals(expected_model.model, actual.car_info.model)
+
+    def _get_bin_tree(self, multiplier=1):
+        return {
+            'value': 5 * multiplier,
+            'left': {
+                'value': 2 * multiplier,
+                'left': {
+                    'value': 1 * multiplier
+                },
+                'right': {
+                    'value': 3 * multiplier
+                }
+            },
+            'right': {
+                'value': 7 * multiplier,
+                'left': {
+                    'value': 6 * multiplier
+                },
+                'right': {
+                    'value': 8 * multiplier
+                }
+            }
+        }
+
+    def test_subclassed_map_attribute_with_map_attributes_member_with_dict_init(self):
+        left = self._get_bin_tree()
+        right = self._get_bin_tree(multiplier=2)
+        actual = TreeModel(tree_key='key', left=left, right=right)
+        self.assertEquals(actual.left.left.right.value, 3)
+        self.assertEquals(actual.left.left.value, 2)
+        self.assertEquals(actual.right.right.left.value, 12)
+        self.assertEquals(actual.right.right.value, 14)
+
+    def test_subclassed_map_attribute_with_map_attribute_member_with_initialized_instance_init(self):
+        left = self._get_bin_tree()
+        right = self._get_bin_tree(multiplier=2)
+        left_instance = TreeLeaf(**left)
+        right_instance = TreeLeaf(**right)
+        actual = TreeModel(tree_key='key', left=left_instance, right=right_instance)
+        self.assertEquals(actual.left.left.right.value, left_instance.left.right.value)
+        self.assertEquals(actual.left.left.value, left_instance.left.value)
+        self.assertEquals(actual.right.right.left.value, right_instance.right.left.value)
+        self.assertEquals(actual.right.right.value, right_instance.right.value)
