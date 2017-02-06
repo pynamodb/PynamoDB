@@ -80,8 +80,22 @@ but here is a low level example to demonstrate the point:
             }
         ]
     }
-    conn.create_table('tablename', **kwargs)
+    conn.create_table('table_name', **kwargs)
 
+You can also use `update_table` to change the Provisioned Throughput capacity of Global Secondary Indexes:
+
+.. code-block:: python
+
+    >>> kwargs = {
+        'global_secondary_index_updates': [
+            {
+                'index_name': 'index_name',
+                'read_capacity_units': 10,
+                'write_capacity_units': 10
+            }
+        ]
+    }
+    >>> conn.update_table('table_name', **kwargs)
 
 Modifying items
 ^^^^^^^^^^^^^^^
