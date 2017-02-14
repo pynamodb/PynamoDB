@@ -1,6 +1,41 @@
 Release Notes
 =============
 
+v2.1.4
+------
+
+:date: 2017-02-14
+
+This is a minor release, with some changes to `MapAttribute` handling. Previously,
+when accessing a `MapAttribute` via `item.attr`, the type of the object used during
+instantiation would determine the return value. `Model(attr={...})` would return
+a `dict` on access. `Model(attr=MapAttribute(...))` would return an instance of
+`MapAttribute`. After #223, a `MapAttribute` will always be returned during
+item access regardless of the type of the object used during instantiation. For
+convenience, a `dict` version can be accessed using `.as_dict()` on the `MapAttribute`.
+
+New features in this release:
+
+* Support multiple attribute update (#194)
+* Rate-limited scan (#205)
+* Always create map attributes when setting a dict (#223)
+
+Fixes in this release:
+
+* Remove AttributeDict and require explicit attr names (#220)
+* Add distinct DoesNotExist classes per model (#206)
+* Ensure defaults are respected for MapAttribute (#221)
+* Add docs for GSI throughput changes (#224)
+
+Contributors to this release:
+
+* @anandswaminathan
+* @garrettheel
+* @ikonst
+* @jasonfriedland
+* @yedpodtrzitko
+
+
 v2.0.3
 ------
 
