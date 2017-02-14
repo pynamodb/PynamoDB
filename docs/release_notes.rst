@@ -1,6 +1,35 @@
 Release Notes
 =============
 
+v2.1.4
+------
+
+:date: 2017-02-14
+
+This is a backwards compatible, minor release.
+
+New features in this release:
+
+* Support multiple attribute update (#194)
+* Rate-limited scan (#205)
+
+Fixes in this release:
+
+* Remove AttributeDict and require explicit attr names (#220)
+* Add distinct DoesNotExist classes per model (#206)
+* Ensure defaults are respected for MapAttribute (#221)
+* Always create map attributes when setting a dict (#223)
+* Add docs for GSI throughput changes (#224)
+
+Contributors to this release:
+
+* @anandswaminathan
+* @garrettheel
+* @ikonst
+* @jasonfriedland
+* @yedpodtrzitko
+
+
 v2.0.3
 ------
 
