@@ -4,8 +4,6 @@ PynamoDB
 
 .. image:: https://img.shields.io/pypi/v/pynamodb.svg
     :target: https://pypi.python.org/pypi/pynamodb/
-.. image:: https://img.shields.io/pypi/dm/pynamodb.svg
-    :target: https://pypi.python.org/pypi/pynamodb/
 .. image:: https://travis-ci.org/jlafon/PynamoDB.png?branch=devel
     :target: https://travis-ci.org/jlafon/PynamoDB
 .. image:: https://coveralls.io/repos/jlafon/PynamoDB/badge.png?branch=devel
