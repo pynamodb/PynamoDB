@@ -7,6 +7,7 @@ import logging
 import math
 import random
 import time
+from threading import local
 
 import six
 from six.moves import range
@@ -181,7 +182,7 @@ class Connection(object):
                  request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None):
         self._tables = {}
         self.host = host
-        self._session = None
+        self._session = local()
         self._requests_session = None
         self._client = None
         if region:
@@ -393,9 +394,9 @@ class Connection(object):
         """
         Returns a valid botocore session
         """
-        if self._session is None:
-            self._session = get_session()
-        return self._session
+        if getattr(self._session, "session", None) is None:
+            self._session.session = get_session()
+        return self._session.session
 
     @property
     def requests_session(self):
