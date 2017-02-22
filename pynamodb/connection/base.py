@@ -1019,7 +1019,7 @@ class Connection(object):
                             if not limit:
                                 return
 
-                    latest_scan_consumed_capacity = data.get(CONSUMED_CAPACITY)
+                    latest_scan_consumed_capacity = data.get(CONSUMED_CAPACITY).get(CAPACITY_UNITS)
                     last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
                     consecutive_provision_throughput_exceeded_ex = 0
                 except ScanError as e:
