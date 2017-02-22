@@ -1973,7 +1973,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Items': items, 'ConsumedCapacity': {'TableName': 'UserModel', 'CapacityUnits': 10}}
             scan_result = UserModel.rate_limited_scan(
                 user_id__contains='tux',
                 zip_code__null=False, 

@@ -1485,7 +1485,7 @@ class ConnectionTestCase(TestCase):
             self.assertEqual(call_args[1]['segment'], segment)
 
         with patch(SCAN_METHOD_TO_PATCH) as req:
-            req.return_value = {'Items': [], 'ConsumedCapacity': 10 }
+            req.return_value = {'Items': [], 'ConsumedCapacity': {'TableName': table_name, 'CapacityUnits': 10.0}}
             resp = conn.rate_limited_scan(
                 table_name
             )
@@ -1494,7 +1494,7 @@ class ConnectionTestCase(TestCase):
             verify_scan_call_args(req.call_args, table_name)
 
         with patch(SCAN_METHOD_TO_PATCH) as req:
-            req.return_value = {'Items': [], 'ConsumedCapacity': 10 }
+            req.return_value = {'Items': [], 'ConsumedCapacity': {'TableName': table_name, 'CapacityUnits': 10.0}}
             resp = conn.rate_limited_scan(
                 table_name,
                 limit=10,
@@ -1511,7 +1511,7 @@ class ConnectionTestCase(TestCase):
                                   limit=10)
 
         with patch(SCAN_METHOD_TO_PATCH) as req:
-            req.return_value = {'Items': [], 'ConsumedCapacity': 10 }
+            req.return_value = {'Items': [], 'ConsumedCapacity': {'TableName': table_name, 'CapacityUnits': 10.0}}
             scan_filter = {
                 'ForumName': {
                     'AttributeValueList': [
@@ -1551,7 +1551,7 @@ class ConnectionTestCase(TestCase):
                                   conditional_operator='AND')
 
         with patch(SCAN_METHOD_TO_PATCH) as req:
-            req.return_value = {'Items': [], 'ConsumedCapacity': 10 }
+            req.return_value = {'Items': [], 'ConsumedCapacity': {'TableName': table_name, 'CapacityUnits': 10.0}}
             resp = conn.rate_limited_scan(
                 table_name,
                 page_size=5,
@@ -1565,7 +1565,7 @@ class ConnectionTestCase(TestCase):
                                   limit=5)
 
         with patch(SCAN_METHOD_TO_PATCH) as req:
-            req.return_value = {'Items': [], 'ConsumedCapacity': 10 }
+            req.return_value = {'Items': [], 'ConsumedCapacity': {'TableName': table_name, 'CapacityUnits': 10.0}}
             resp = conn.rate_limited_scan(
                 table_name,
                 limit=10,
@@ -1767,8 +1767,8 @@ class ConnectionTestCase(TestCase):
         c = Connection()
         time_mock.side_effect = [1, 10, 20, 30, 40]
         scan_mock.side_effect = [
-            {'Items': ['Item-1'], 'ConsumedCapacity': 1, 'LastEvaluatedKey': 'XX' },
-            {'Items': ['Item-2'], 'ConsumedCapacity': 1 }
+            {'Items': ['Item-1'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 1}, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 1}}
         ]
         resp = c.rate_limited_scan('Table_1')
         values = list(resp)
@@ -1787,7 +1787,7 @@ class ConnectionTestCase(TestCase):
 
         api_mock.side_effect = [
             VerboseClientError(botocore_expected_format, 'operation_name', {}),
-            {'Items': ['Item-1', 'Item-2'], 'ConsumedCapacity': 40 }
+            {'Items': ['Item-1', 'Item-2'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 40}}
         ]
         resp = c.rate_limited_scan('Table_1')
         values = list(resp)
@@ -1853,8 +1853,8 @@ class ConnectionTestCase(TestCase):
         sleep_mock.return_value = 1
         time_mock.side_effect = [1, 4, 6, 12]
         scan_mock.side_effect = [
-            {'Items': ['Item-1'], 'ConsumedCapacity': 80, 'LastEvaluatedKey': 'XX' },
-            {'Items': ['Item-2'], 'ConsumedCapacity': 41 }
+            {'Items': ['Item-1'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 80}, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 41}}
         ]
         resp = c.rate_limited_scan('Table_1')
         values = list(resp)
@@ -1873,8 +1873,8 @@ class ConnectionTestCase(TestCase):
         sleep_mock.return_value = 1
         time_mock.side_effect = [1.0, 1.5, 4.0]
         scan_mock.side_effect = [
-            {'Items': ['Item-1'], 'ConsumedCapacity': 10, 'LastEvaluatedKey': 'XX' },
-            {'Items': ['Item-2'], 'ConsumedCapacity': 11 }
+            {'Items': ['Item-1'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 10}, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 11}}
         ]
         resp = c.rate_limited_scan('Table_1', read_capacity_to_consume_per_second=5)
         values = list(resp)
@@ -1892,8 +1892,8 @@ class ConnectionTestCase(TestCase):
         sleep_mock.return_value = 1
         time_mock.side_effect = [1.0, 1.5, 250, 350]
         scan_mock.side_effect = [
-            {'Items': ['Item-1'], 'ConsumedCapacity': 1000, 'LastEvaluatedKey': 'XX' },
-            {'Items': ['Item-2'], 'ConsumedCapacity': 11 }
+            {'Items': ['Item-1'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 1000}, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 11}}
         ]
         resp = c.rate_limited_scan(
             'Table_1',
@@ -1915,8 +1915,8 @@ class ConnectionTestCase(TestCase):
         sleep_mock.return_value = 1
         time_mock.side_effect = [1, 2, 3, 4]
         scan_mock.side_effect = [
-            {'Items': ['Item-1'], 'ConsumedCapacity': 10, 'LastEvaluatedKey': 'XX' },
-            {'Items': ['Item-2'], 'ConsumedCapacity': 11 }
+            {'Items': ['Item-1'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 10}, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 11}}
         ]
         resp = c.rate_limited_scan('Table_1', read_capacity_to_consume_per_second=8)
         values = list(resp)
@@ -1934,8 +1934,8 @@ class ConnectionTestCase(TestCase):
         sleep_mock.return_value = 1
         time_mock.side_effect = [1, 20, 30, 40]
         scan_mock.side_effect = [
-            {'Items': ['Item-1'], 'ConsumedCapacity': 1000, 'LastEvaluatedKey': 'XX' },
-            {'Items': ['Item-2'], 'ConsumedCapacity': 11 }
+            {'Items': ['Item-1'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 1000}, 'LastEvaluatedKey': 'XX' },
+            {'Items': ['Item-2'], 'ConsumedCapacity': {'TableName': 'Table_1', 'CapacityUnits': 11}}
         ]
         resp = c.rate_limited_scan(
             'Table_1',
