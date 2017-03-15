@@ -332,9 +332,10 @@ class Connection(object):
                     if is_last_attempt_for_exceptions:
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise
-                    elif response.status_code < 500:
-                        # We don't retry on a ConditionalCheckFailedException or other 4xx because we assume they will
-                        # fail in perpetuity. Retrying when there is already contention could cause other problems
+                    elif response.status_code < 500 and code != 'ProvisionedThroughputExceededException':
+                        # We don't retry on a ConditionalCheckFailedException or other 4xx (except for
+                        # throughput related errors) because we assume they will fail in perpetuity.
+                        # Retrying when there is already contention could cause other problems
                         # in part due to unnecessary consumption of throughput.
                         raise
                     else:
