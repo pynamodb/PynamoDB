@@ -12,10 +12,12 @@ Fixes in this release:
 
 * Apply retry to ProvisionedThroughputExceeded (#222)
 * rate_limited_scan fix to handle consumed capacity (#235)
+* Fix for test when dict ordering differs (#237)
 
 Contributors to this release:
 
 * @anandswaminathan
+* @jasonfriedland
 * @JohnEmhoff
 
 
