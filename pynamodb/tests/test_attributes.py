@@ -613,11 +613,11 @@ class MapAttributeTestCase(TestCase):
             }
         }
 
-        serialized_raw = json.dumps(raw)
-        self.assertEqual(json.dumps(AttributeTestModel(map_attr=raw).map_attr.as_dict()),
-                         serialized_raw)
-        self.assertEqual(json.dumps(AttributeTestModel(map_attr=MapAttribute(**raw)).map_attr.as_dict()),
-                         serialized_raw)
+        serialized_raw = json.dumps(raw, sort_keys=True)
+        self.assertEqual(json.dumps(AttributeTestModel(map_attr=raw).map_attr.as_dict(),
+                         sort_keys=True), serialized_raw)
+        self.assertEqual(json.dumps(AttributeTestModel(map_attr=MapAttribute(**raw)).map_attr.as_dict(),
+                         sort_keys=True), serialized_raw)
 
     def test_typed_and_raw_map_json_serialize(self):
         class TypedMap(MapAttribute):
