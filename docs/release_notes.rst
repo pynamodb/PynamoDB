@@ -1,6 +1,24 @@
 Release Notes
 =============
 
+v2.1.5
+------
+
+:date: 2017-03-16
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* Apply retry to ProvisionedThroughputExceeded (#222)
+* rate_limited_scan fix to handle consumed capacity (#235)
+
+Contributors to this release:
+
+* @anandswaminathan
+* @JohnEmhoff
+
+
 v2.1.4
 ------
 
