@@ -11,6 +11,7 @@ from pynamodb.constants import (
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
 )
 import collections
+from datetime import datetime
 
 
 class Attribute(object):
@@ -601,6 +602,7 @@ SERIALIZE_CLASS_MAP = {
     float: NumberAttribute(),
     int: NumberAttribute(),
     str: UnicodeAttribute(),
+    datetime: UTCDateTimeAttribute(),
 }
 
 
@@ -612,6 +614,7 @@ SERIALIZE_KEY_MAP = {
     float: NUMBER_SHORT,
     int: NUMBER_SHORT,
     str: STRING_SHORT,
+    datetime: STRING_SHORT,
 }
 
 
