@@ -159,7 +159,7 @@ class UTCDateTimeAttributeTestCase(TestCase):
         """
         tstamp = datetime.now()
         attr = UTCDateTimeAttribute()
-        self.assertEqual(attr.serialize(tstamp), tstamp.strftime(DATETIME_FORMAT))
+        self.assertEqual(attr.serialize(tstamp), tstamp.replace(tzinfo=UTC).strftime(DATETIME_FORMAT))
 
 
 class BinaryAttributeTestCase(TestCase):
