@@ -14,7 +14,7 @@ if sys.argv[-1] == 'publish':
 install_requires = [
     'six',
     'botocore>=1.0.0',
-    'python-dateutil>=2.6.0',
+    'python-dateutil>=2.1,<3.0.0',
 ]
 
 setup(
