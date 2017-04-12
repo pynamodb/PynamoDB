@@ -12,9 +12,9 @@ if sys.argv[-1] == 'publish':
     sys.exit()
 
 install_requires = [
-    'Delorean',
     'six',
-    'botocore>=1.0.0'
+    'botocore>=1.0.0',
+    'python-dateutil>=2.1,<3.0.0',
 ]
 
 setup(

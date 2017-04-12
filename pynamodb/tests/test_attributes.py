@@ -1,21 +1,29 @@
 """
 pynamodb attributes tests
 """
-import six
 import json
+import six
+
 from base64 import b64encode
 from datetime import datetime
-from delorean import Delorean
+
+from dateutil.parser import parse
+from dateutil.tz import tzutc
+
 from mock import patch
+
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.models import Model
+
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
     MapAttribute, ListAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, MAP, LIST, BOOLEAN)
+
+UTC = tzutc()
 
 
 class AttributeTestModel(Model):
@@ -136,24 +144,24 @@ class UTCDateTimeAttributeTestCase(TestCase):
         """
         UTCDateTimeAttribute.deserialize
         """
-        tstamp = Delorean(timezone=UTC).datetime
+        tstamp = datetime.now(UTC)
         attr = UTCDateTimeAttribute()
         self.assertEqual(
             tstamp,
-            attr.deserialize(Delorean(tstamp, timezone=UTC).datetime.strftime(DATETIME_FORMAT)),
+            attr.deserialize(tstamp.strftime(DATETIME_FORMAT)),
         )
 
     def test_utc_date_time_deserialize_parse_args(self):
         """
         UTCDateTimeAttribute.deserialize
         """
-        tstamp = Delorean(timezone=UTC).datetime
+        tstamp = datetime.now(UTC)
         attr = UTCDateTimeAttribute()
 
         with patch('pynamodb.attributes.parse') as parse:
-            attr.deserialize(Delorean(tstamp, timezone=UTC).datetime.strftime(DATETIME_FORMAT))
+            attr.deserialize(tstamp.strftime(DATETIME_FORMAT))
 
-            parse.assert_called_with(tstamp.strftime(DATETIME_FORMAT), dayfirst=False)
+            parse.assert_called_with(tstamp.strftime(DATETIME_FORMAT))
 
     def test_utc_date_time_serialize(self):
         """
@@ -161,7 +169,7 @@ class UTCDateTimeAttributeTestCase(TestCase):
         """
         tstamp = datetime.now()
         attr = UTCDateTimeAttribute()
-        self.assertEqual(attr.serialize(tstamp), Delorean(tstamp, timezone=UTC).datetime.strftime(DATETIME_FORMAT))
+        self.assertEqual(attr.serialize(tstamp), tstamp.replace(tzinfo=UTC).strftime(DATETIME_FORMAT))
 
 
 class BinaryAttributeTestCase(TestCase):
