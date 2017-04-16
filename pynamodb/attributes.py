@@ -27,7 +27,8 @@ class Attribute(object):
                  range_key=False,
                  null=None,
                  default=None,
-                 attr_name=None
+                 attr_name=None,
+                 serialized=True
                  ):
         self.default = default
         if null is not None:
@@ -36,6 +37,7 @@ class Attribute(object):
         self.is_range_key = range_key
         if attr_name is not None:
             self.attr_name = attr_name
+        self.serialized = serialized
 
     def __set__(self, instance, value):
         if instance:
@@ -137,7 +139,10 @@ class SetMixin(object):
             except TypeError:
                 value = [value]
             if len(value):
-                return [json.dumps(val) for val in sorted(value)]
+                if self.serialized:
+                    return [json.dumps(val) for val in sorted(value)]
+                else:
+                    return value
         return None
 
     def deserialize(self, value):
@@ -145,7 +150,10 @@ class SetMixin(object):
         Deserializes a set
         """
         if value and len(value):
-            return set([json.loads(val) for val in value])
+            if self.serialized:
+                return set([json.loads(val) for val in value])
+            else:
+                return set(value)
 
 
 class BinaryAttribute(Attribute):
