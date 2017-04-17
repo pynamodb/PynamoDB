@@ -487,7 +487,7 @@ class MapAttribute(AttributeContainer, Attribute):
         rval = {}
         for k in values:
             v = values[k]
-            attr_class = _get_class_for_serialize(v)
+            attr_class = self._get_serialize_class(k, v)
             attr_key = _get_key_for_serialize(v)
             if attr_class is None:
                 continue
@@ -530,6 +530,12 @@ class MapAttribute(AttributeContainer, Attribute):
         for key, value in six.iteritems(self.attribute_values):
             result[key] = value.as_dict() if isinstance(value, MapAttribute) else value
         return result
+
+    @classmethod
+    def _get_serialize_class(cls, key, value):
+        if not cls.is_raw():
+            return cls._get_attributes().get(key)
+        return _get_class_for_serialize(value)
 
     @classmethod
     def _get_deserialize_class(cls, key, value):
@@ -595,9 +601,11 @@ class ListAttribute(Attribute):
         """
         rval = []
         for v in values:
-            attr_class = _get_class_for_serialize(v)
+            class_for_serialize = (self.element_type()
+                                   if self.element_type
+                                   else _get_class_for_serialize(v))
             attr_key = _get_key_for_serialize(v)
-            rval.append({attr_key: attr_class.serialize(v)})
+            rval.append({attr_key: class_for_serialize.serialize(v)})
         return rval
 
     def deserialize(self, values):
