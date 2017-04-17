@@ -696,6 +696,7 @@ class MapAndListAttributeTestCase(TestCase):
         class Person(MapAttribute):
             name = UnicodeAttribute()
             age = NumberAttribute()
+            extra_arbitrary_data = JSONAttribute()
 
             def __lt__(self, other):
                 return self.name < other.name
@@ -707,10 +708,14 @@ class MapAndListAttributeTestCase(TestCase):
         person1 = Person()
         person1.name = 'john'
         person1.age = 40
+        person1.extra_arbitrary_data = {'married': True}
 
         person2 = Person()
         person2.name = 'Dana'
         person2.age = 41
+        person2.extra_arbitrary_data = {'net_income': 200000,
+                                        'dog': 'Fido'}
+
         inp = [person1, person2]
 
         list_attribute = ListAttribute(default=[], of=Person)
