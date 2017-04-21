@@ -542,16 +542,25 @@ class Model(AttributeContainer):
             non_key_attribute_classes=non_key_attribute_classes,
             filters=filters)
 
-        data = cls._get_connection().query(
-            hash_key,
-            index_name=index_name,
-            consistent_read=consistent_read,
-            key_conditions=key_conditions,
-            query_filters=query_filters,
-            limit=limit,
-            select=COUNT
-        )
-        return data.get(CAMEL_COUNT)
+        count_buffer = 0
+        last_evaluated_key = None
+        started = False
+        while not started or last_evaluated_key:
+            started = True
+            data = cls._get_connection().query(
+                hash_key,
+                index_name=index_name,
+                consistent_read=consistent_read,
+                key_conditions=key_conditions,
+                query_filters=query_filters,
+                exclusive_start_key=last_evaluated_key,
+                limit=limit,
+                select=COUNT
+            )
+            count_buffer += data.get(CAMEL_COUNT)
+            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+
+        return count_buffer
 
     @classmethod
     def query(cls,
