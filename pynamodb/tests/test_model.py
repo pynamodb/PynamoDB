@@ -1477,6 +1477,40 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
+    def test_index_multipage_count(self):
+        with patch(PATCH_METHOD) as req:
+            last_evaluated_key = {
+                'user_name': {'S': u'user'},
+                'user_id': {'S': '1234'},
+            }
+            req.side_effect = [
+                {'Count': 1000, 'LastEvaluatedKey': last_evaluated_key},
+                {'Count': 42}
+            ]
+            res = CustomAttrNameModel.uid_index.count('foo')
+            self.assertEqual(res, 1042)
+
+            args_one = req.call_args_list[0][0][1]
+            params_one = {
+                'KeyConditions': {
+                    'user_id': {
+                        'ComparisonOperator': 'EQ',
+                        'AttributeValueList': [{'S': u'foo'}]
+                    }
+                },
+                'IndexName': 'uid_index',
+                'TableName': 'CustomAttrModel',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Select': 'COUNT'
+            }
+
+            args_two = req.call_args_list[1][0][1]
+            params_two = copy.deepcopy(params_one)
+            params_two['ExclusiveStartKey'] = last_evaluated_key
+
+            deep_eq(args_one, params_one, _assert=True)
+            deep_eq(args_two, params_two, _assert=True)
+
     def test_query_limit_greater_than_available_items_single_page(self):
         with patch(PATCH_METHOD) as req:
             req.return_value = MODEL_TABLE_DATA
