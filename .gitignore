@@ -53,3 +53,7 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+
+# Ignore Cache
+.cache/
