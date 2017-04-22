@@ -36,6 +36,8 @@ class TestModel(Model):
     thread = UnicodeAttribute(range_key=True)
     view_index = ViewIndex()
     view = NumberAttribute(default=0)
+    num_chars = NumberAttribute(default=0)
+    num_comments = NumberAttribute(default=0)
 
 if not TestModel.exists():
     TestModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
@@ -43,12 +45,23 @@ if not TestModel.exists():
 # Create an item
 item = TestModel('forum-example', 'thread-example')
 item.view = 1
+item.num_chars = item.num_comments = 0
 item.save()
+
+item2 = TestModel('forum-example-2', 'thread-example-2')
+item2.num_comments = 0
+item2.num_chars = 1235
+item2.save()
 
 # Indexes can be queried easily using the index's hash key
 for item in TestModel.view_index.query(1):
     print("Item queried from index: {0}".format(item))
 
+# This return 2 items since item1.num_comments == item2.num_comments == 0
+assert len(list(TestModel.scan(num_comments__eq=0))) == 2
+
+# This should return 2 items since item1.num_comments == item2.num_comments == 0
+assert len(list(TestModel.scan(num_comments__eq=0, num_chars__eq=0, conditional_operator='or'))) == 2
 
 class GamePlayerOpponentIndex(LocalSecondaryIndex):
     class Meta:
