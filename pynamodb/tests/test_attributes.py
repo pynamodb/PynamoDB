@@ -641,6 +641,20 @@ class MapAttributeTestCase(TestCase):
         self.assertEqual(json.dumps({'map_attr': {'foo': 'bar'}}),
                          json.dumps(item.typed_map.as_dict()))
 
+    def test_serialize_datetime(self):
+
+        class CustomMapAttribute(MapAttribute):
+            date_attr = UTCDateTimeAttribute()
+
+        cm = CustomMapAttribute(date_attr=datetime(2017, 1, 1))
+        serialized_datetime = cm.serialize(cm)
+        expected_serialized_value = {
+            'date_attr': {
+                'S': u'2017-01-01T00:00:00.000000+0000'
+            }
+        }
+        self.assertEquals(serialized_datetime, expected_serialized_value)
+
 
 class MapAndListAttributeTestCase(TestCase):
 
