@@ -434,7 +434,11 @@ class MapAttribute(AttributeContainer, Attribute):
         return self.attribute_values[item]
 
     def __getattr__(self, attr):
-        return self.attribute_values[attr]
+        try:
+            return self.attribute_values[attr]
+        except KeyError:
+            raise AttributeError("%r object has no attribute %r" % (
+                self.__class__.__name__, attr))
 
     def __set__(self, instance, value):
         if isinstance(value, collections.Mapping):

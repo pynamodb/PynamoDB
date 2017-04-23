@@ -641,6 +641,17 @@ class MapAttributeTestCase(TestCase):
         self.assertEqual(json.dumps({'map_attr': {'foo': 'bar'}}),
                          json.dumps(item.typed_map.as_dict()))
 
+    def test_attribute_error(self):
+
+        class CustomMapAttribute(MapAttribute):
+            name = UnicodeAttribute()
+
+        test_obj = CustomMapAttribute(name='test')
+
+        # Accessing an undefined attriute should raise AttributeError
+        with self.assertRaises(AttributeError):
+            test_obj.should_not_have_this_attr
+
 
 class MapAndListAttributeTestCase(TestCase):
 
