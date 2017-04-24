@@ -11,7 +11,7 @@ env:
   - AWS_SECRET_ACCESS_KEY=fake_key AWS_ACCESS_KEY_ID=fake_id
 
 install:
-  - pip install -r requirements.txt
+  - pip install -r requirements-dev.txt
 
 script:
   - py.test --cov=pynamodb pynamodb/tests/
