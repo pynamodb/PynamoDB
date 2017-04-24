@@ -46,7 +46,6 @@ pip-log.txt
 .coverage
 cover/
 .tox
-nosetests.xml
 
 # Translations
 *.mo
@@ -58,3 +57,6 @@ nosetests.xml
 
 # PyCharm
 .idea/
+
+# Ignore Cache
+.cache/
