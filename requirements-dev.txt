@@ -1,0 +1,5 @@
+-rrequirements.txt
+pytest==3.0.7
+pytest-cov==2.4.0
+python-coveralls==2.5.0
+mock==1.0.1
