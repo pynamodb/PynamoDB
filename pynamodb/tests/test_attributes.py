@@ -370,6 +370,18 @@ class UnicodeAttributeTestCase(TestCase):
             attr.deserialize(attr.serialize(orig))
         )
 
+    def test_round_trip_unicode_set_12(self):
+        """
+        Round trip a unicode set
+        """
+        attr = UnicodeSetAttribute()
+        orig = set([six.u('foo'), six.u('bar')])
+        print attr.serialize(orig)
+        self.assertEqual(
+            ["foo", "bar"],
+            attr.serialize(orig)
+        )
+
     def test_unicode_set_deserialize(self):
         """
         UnicodeSetAttribute.deserialize
