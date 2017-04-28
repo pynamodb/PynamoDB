@@ -44,7 +44,6 @@ pip-log.txt
 
 # Unit test / coverage reports
 .coverage
-cover/
 .tox
 nosetests.xml
 
@@ -58,3 +57,6 @@ nosetests.xml
 
 # PyCharm
 .idea/
+
+# Ignore Cache
+.cache/
