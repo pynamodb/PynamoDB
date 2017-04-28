@@ -1,9 +1,4 @@
 sphinx-rtd-theme==0.1.8
-<<<<<<< HEAD
-mock==1.0.1
-=======
-Delorean==0.4.5
->>>>>>> 3d2c422... remove test libraries
 botocore==1.1.2
 requests==2.7.0
 six==1.8.0
