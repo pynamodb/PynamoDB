@@ -213,6 +213,7 @@ class Model(AttributeContainer):
     _index_classes = None
     _throttle = NoThrottle()
     DoesNotExist = DoesNotExist
+    _last_query_evaluated_key = None
 
     def __init__(self, hash_key=None, range_key=None, **attrs):
         """
@@ -632,6 +633,7 @@ class Model(AttributeContainer):
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
 
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        cls._set_last_query_evaluated_key(last_evaluated_key)
 
         for item in data.get(ITEMS):
             if limit is not None:
@@ -652,6 +654,7 @@ class Model(AttributeContainer):
                     limit -= 1
                 yield cls.from_raw_data(item)
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+            cls._set_last_query_evaluated_key(last_evaluated_key)
 
     @classmethod
     def rate_limited_scan(cls,
@@ -1236,6 +1239,22 @@ class Model(AttributeContainer):
                 if record.get(TABLE_NAME) == cls.Meta.table_name:
                     cls._throttle.add_record(record.get(CAPACITY_UNITS))
                     break
+
+    @classmethod
+    def _set_last_query_evaluated_key(cls, key):
+        """
+        Sets _last_query_evaluated_key attribute value.
+        :param key: _last_evaluated_key string from last execution data
+        """
+        cls._last_query_evaluated_key = key
+
+    @classmethod
+    def get_last_query_evaluated_key(cls):
+        """
+        Returns the _last_query_evaluated_key from last query() on this
+        model
+        """
+        return cls._last_query_evaluated_key
 
     @classmethod
     def get_throttle(cls):
