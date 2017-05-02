@@ -270,7 +270,7 @@ class Model(AttributeContainer):
                     else:
                         keys_to_get = []
             item = items.pop()
-            if range_keyname:
+            if range_keyname and item[1] is not None:
                 hash_key, range_key = cls._serialize_keys(item[0], item[1])
                 keys_to_get.append({
                     hash_keyname: hash_key,
