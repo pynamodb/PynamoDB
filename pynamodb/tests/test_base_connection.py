@@ -1493,6 +1493,17 @@ class ConnectionTestCase(TestCase):
             self.assertEqual(0, len(values))
             verify_scan_call_args(req.call_args, table_name)
 
+        # test that we successfully execute when ConsumedCapacity is not returned; required for correct operation
+        # with DynamoDBLocal
+        with patch(SCAN_METHOD_TO_PATCH) as req:
+            req.return_value = {'Items': []}
+            resp = conn.rate_limited_scan(
+                table_name
+            )
+            values = list(resp)
+            self.assertEqual(0, len(values))
+            verify_scan_call_args(req.call_args, table_name)
+
         with patch(SCAN_METHOD_TO_PATCH) as req:
             req.return_value = {'Items': [], 'ConsumedCapacity': {'TableName': table_name, 'CapacityUnits': 10.0}}
             resp = conn.rate_limited_scan(
