@@ -1020,7 +1020,15 @@ class Connection(object):
                             if not limit:
                                 return
 
-                    latest_scan_consumed_capacity = data.get(CONSUMED_CAPACITY).get(CAPACITY_UNITS)
+                    if CONSUMED_CAPACITY in data:
+                        latest_scan_consumed_capacity = data.get(CONSUMED_CAPACITY, {}).get(CAPACITY_UNITS)
+                    else:
+                        # DynamoDBLocal does not support returning consumed capacity information. If we do
+                        # not receive this information back, we assume we are not operating against a real
+                        # DynamoDB instance and that disabling rate limiting is okay. Thus, pretend 0 capacity
+                        # was consumed.
+                        latest_scan_consumed_capacity = 0
+
                     last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
                     consecutive_provision_throughput_exceeded_ex = 0
                 except ScanError as e:
