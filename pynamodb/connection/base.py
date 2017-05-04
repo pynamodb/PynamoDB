@@ -1021,7 +1021,7 @@ class Connection(object):
                                 return
 
                     if CONSUMED_CAPACITY in data:
-                        latest_scan_consumed_capacity = data.get(CONSUMED_CAPACITY, {}).get(CAPACITY_UNITS)
+                        latest_scan_consumed_capacity = data.get(CONSUMED_CAPACITY).get(CAPACITY_UNITS)
                     else:
                         # DynamoDBLocal does not support returning consumed capacity information. If we do
                         # not receive this information back, we assume we are not operating against a real
