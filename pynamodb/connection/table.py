@@ -48,6 +48,25 @@ class TableConnection(object):
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics)
 
+    def update_item_2(self,
+                      hash_key,
+                      range_key=None,
+                      return_values=None,
+                      update_expression=None,
+                      expression_attribute_names=None,
+                      expression_attribute_values=None):
+        """
+        Performs the UpdateItem operation using the new api
+        """
+        return self.connection.update_item_2(
+            self.table_name,
+            hash_key=hash_key,
+            range_key=range_key,
+            return_values=return_values,
+            update_expression=update_expression,
+            expression_attribute_names=expression_attribute_names,
+            expression_attribute_values=expression_attribute_values)
+
     def update_item(self,
                     hash_key,
                     range_key=None,

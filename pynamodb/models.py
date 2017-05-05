@@ -371,8 +371,16 @@ class Model(AttributeContainer):
                 setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
-    def update_2(self, update_expression=None):
-        data = self._get_connection().update_item(*args, **kwargs)
+    def update_2(self, update_expression=None,
+                 expression_attribute_names=None,
+                 expression_attribute_values=None):
+        serialized = self._serialize(null_check=False)
+        data = self._get_connection().update_item_2(
+            hash_key=serialized.get(HASH),
+            range_key=serialized.get(RANGE, None),
+            update_expression=update_expression,
+            expression_attribute_names=expression_attribute_names,
+            expression_attribute_values=expression_attribute_values)
         return self.__process_update_response(data)
 
     def update(self, attributes, conditional_operator=None, **expected_values):
