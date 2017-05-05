@@ -371,6 +371,10 @@ class Model(AttributeContainer):
                 setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
+    def update_2(self, update_expression=None):
+        data = self._get_connection().update_item(*args, **kwargs)
+        return self.__process_update_response(data)
+
     def update(self, attributes, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
@@ -409,12 +413,16 @@ class Model(AttributeContainer):
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name] = attr_values
 
         data = self._get_connection().update_item(*args, **kwargs)
+        return self.__process_update_response(data)
+
+    def __process_update_response(self, data):
         self._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for name, value in data[ATTRIBUTES].items():
             attr_name = self._dynamo_to_python_attr(name)
             attr = self._get_attributes().get(attr_name)
             if attr:
-                setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
+                setattr(self, attr_name, attr.deserialize(
+                    value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
     def save(self, conditional_operator=None, **expected_values):
