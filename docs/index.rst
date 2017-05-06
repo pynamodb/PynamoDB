@@ -18,7 +18,7 @@ Features
 * Support for Global and Local Secondary Indexes
 * Batch operations with automatic pagination
 * Iterators for working with Query and Scan operations
-* `Fully tested <https://coveralls.io/r/jlafon/PynamoDB>`_
+* `Fully tested <https://coveralls.io/r/pynamodb/PynamoDB>`_
 
 Topics
 ======
@@ -57,4 +57,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

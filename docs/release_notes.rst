@@ -390,7 +390,7 @@ This is a backward compatible, minor bug fix release, fixing the following issue
 Other minor improvements
 
 * New API for backing up and restoring tables
-* Better support for custom attributes (https://github.com/jlafon/PynamoDB/commit/0c2ba5894a532ed14b6c14e5059e97dbb653ff12)
+* Better support for custom attributes (https://github.com/pynamodb/PynamoDB/commit/0c2ba5894a532ed14b6c14e5059e97dbb653ff12)
 * Explicit Travis CI testing of Python 2.6, 2.7, 3.3, 3.4, and PyPy
 * Tests added for round tripping unicode values
 

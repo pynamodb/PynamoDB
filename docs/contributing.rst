@@ -1,7 +1,7 @@
 Contributing
 ============
 
-Pull requests are welcome, forking from the ``devel`` branch. If you are new to GitHub, be sure and check out
+Pull requests are welcome, forking from the ``master`` branch. If you are new to GitHub, be sure and check out
 GitHub's `Hello World <https://guides.github.com/activities/hello-world/>`_ tutorial.
 
 Make sure that your contribution meets the following requirements:
@@ -24,4 +24,4 @@ by using ``tox``::
 
 Once you've opened a pull request on GitHub, Travis-ci will run the test suite as well.
 
-Don't forget to add yourself to `AUTHORS.rst <https://github.com/jlafon/PynamoDB/blob/devel/AUTHORS.rst>`_.
+Don't forget to add yourself to `AUTHORS.rst <https://github.com/pynamodb/PynamoDB/blob/devel/AUTHORS.rst>`_.
