@@ -1035,7 +1035,7 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
-        # Reproduces https://github.com/jlafon/PynamoDB/issues/59
+        # Reproduces https://github.com/pynamodb/PynamoDB/issues/59
         with patch(PATCH_METHOD) as req:
             user = UserModel("test_hash", "test_range")
             req.return_value = {
@@ -1065,7 +1065,7 @@ class ModelTestCase(TestCase):
                     }
                 }
             }
-            # Reproduces https://github.com/jlafon/PynamoDB/issues/34
+            # Reproduces https://github.com/pynamodb/PynamoDB/issues/34
             item.email = None
             item.update_item('views', 10, action='add')
             args = req.call_args[0][1]
@@ -1152,7 +1152,7 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
-        # Reproduces https://github.com/jlafon/PynamoDB/issues/102
+        # Reproduces https://github.com/pynamodb/PynamoDB/issues/102
         with patch(PATCH_METHOD) as req:
             req.return_value = {
                 ATTRIBUTES: {
@@ -2010,7 +2010,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Items': items, 'ConsumedCapacity': {'TableName': 'UserModel', 'CapacityUnits': 10}}
             scan_result = UserModel.rate_limited_scan(
                 user_id__contains='tux',
-                zip_code__null=False, 
+                zip_code__null=False,
                 email__null=True,
                 read_capacity_to_consume_per_second=13
             )
