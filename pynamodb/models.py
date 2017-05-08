@@ -379,6 +379,7 @@ class Model(AttributeContainer):
             hash_key=serialized.get(HASH),
             range_key=serialized.get(RANGE, None),
             update_expression=update_expression,
+            return_values=ALL_NEW,
             expression_attribute_names=expression_attribute_names,
             expression_attribute_values=expression_attribute_values)
         return self.__process_update_response(data)
