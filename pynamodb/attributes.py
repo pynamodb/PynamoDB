@@ -518,6 +518,9 @@ class MapAttribute(AttributeContainer, Attribute):
         return _get_class_for_deserialize(value)
 
 def _get_value_for_deserialize(value):
+    key = list(value.keys())[0]
+    if key is NULL:
+        return None
     return value[list(value.keys())[0]]
 
 
