@@ -3,6 +3,7 @@ Release Notes
 
 v2.1.6
 ------
+
 :date: 2017-05-10
 
 This is a backwards compatible, minor release.
@@ -22,6 +23,7 @@ Contributors to this release:
 * @garrettheel
 * @lita
 * @jmphilli
+
 
 v2.1.5
 ------
