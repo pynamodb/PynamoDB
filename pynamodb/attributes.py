@@ -493,8 +493,11 @@ class MapAttribute(AttributeContainer, Attribute):
             attr_value = _get_value_for_deserialize(v)
             key = self._dynamo_to_python_attr(k)
             attr_class = self._get_deserialize_class(key, v)
+            deserialized_value = None
+            if attr_value is not None:
+                deserialized_value = attr_class.deserialize(attr_value)
 
-            deserialized_dict[key] = attr_class.deserialize(attr_value)
+            deserialized_dict[key] = deserialized_value
 
         # If this is a subclass of a MapAttribute (i.e typed), instantiate an instance
         if not self.is_raw():
@@ -517,8 +520,12 @@ class MapAttribute(AttributeContainer, Attribute):
             return cls._get_attributes().get(key)
         return _get_class_for_deserialize(value)
 
+
 def _get_value_for_deserialize(value):
-    return value[list(value.keys())[0]]
+    key = next(iter(value.keys()))
+    if key == NULL:
+        return None
+    return value[key]
 
 
 def _get_class_for_deserialize(value):

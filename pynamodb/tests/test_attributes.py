@@ -21,7 +21,7 @@ from pynamodb.attributes import (
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
     MapAttribute, ListAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY, MAP, LIST, BOOLEAN)
+    BINARY, MAP, LIST, BOOLEAN, _get_value_for_deserialize)
 
 UTC = tzutc()
 
@@ -640,6 +640,19 @@ class MapAttributeTestCase(TestCase):
 
         self.assertEqual(json.dumps({'map_attr': {'foo': 'bar'}}),
                          json.dumps(item.typed_map.as_dict()))
+
+
+class ValueDeserializeTestCase(TestCase):
+    def test__get_value_for_deserialize(self):
+        expected = '3'
+        data = {'N': '3'}
+        actual = _get_value_for_deserialize(data)
+        self.assertEquals(expected, actual)
+
+    def test__get_value_for_deserialize_null(self):
+        data = {'NULL': 'True'}
+        actual = _get_value_for_deserialize(data)
+        self.assertIsNone(actual)
 
 
 class MapAndListAttributeTestCase(TestCase):
