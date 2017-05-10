@@ -14,6 +14,7 @@ Fixes in this release:
 * Update mock lib (#262)
 * Use pytest instead of nose (#263)
 * Documentation changes (#269)
+* Fix null deserialization in MapAttributes (##272)
 
 Contributors to this release:
 
