@@ -399,6 +399,43 @@ GET_OFFICE_EMPLOYEE_ITEM_DATA = {
     }
 }
 
+GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL = {
+    'Item': {
+        'office_employee_id': {
+            'N': '123'
+        },
+        'person': {
+            'M': {
+                'firstName': {
+                    'S': 'Justin'
+                },
+                'lname': {
+                    'S': 'Phillips'
+                },
+                'age': {
+                    'NULL': True
+                },
+                'is_dude': {
+                    'NULL': True
+                }
+            }
+        },
+        'office_location': {
+            'M': {
+                'latitude': {
+                    'N': '37.77461'
+                },
+                'longitude': {
+                    'N': '122.3957216'
+                },
+                'name': {
+                    'S': 'Lyft HQ'
+                }
+            }
+        }
+    }
+}
+
 GET_GROCERY_LIST_ITEM_DATA = {
     'Item': {
         'store_name': {
