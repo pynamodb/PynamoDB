@@ -522,7 +522,7 @@ class MapAttribute(AttributeContainer, Attribute):
 
 
 def _get_value_for_deserialize(value):
-    key = list(value.keys())[0]
+    key = next(iter(value.keys()))
     if key == NULL:
         return None
     return value[key]
