@@ -1,6 +1,6 @@
 ========
 PynamoDB
-======== s
+======== 
 
 .. image:: https://img.shields.io/pypi/v/pynamodb.svg
     :target: https://pypi.python.org/pypi/pynamodb/
