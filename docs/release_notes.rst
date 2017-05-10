@@ -1,6 +1,27 @@
 Release Notes
 =============
 
+v2.1.6
+------
+:date: 2017-05-10
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* Replace Delorean with dateutil (#208)
+* Fix a bug with count -- consume all pages in paginated response (#256)
+* Update mock lib (#262)
+* Use pytest instead of nose (#263)
+* Documentation changes (#269)
+
+Contributors to this release:
+
+* @funkybob
+* @garrettheel
+* @lita
+* @jmphilli
+
 v2.1.5
 ------
 
