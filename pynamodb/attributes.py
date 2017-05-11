@@ -395,7 +395,9 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a UTC datetime string and returns a datetime object
         """
-        #  First attempt to parse the datetime with the
+        # First attempt to parse the datetime with the datetime format used
+        # by default when storing UTCDateTimeAttributes.  This is signifantly
+        # faster than always going through dateutil.
         try:
             return datetime.strptime(value, DATETIME_FORMAT)
         except ValueError:
