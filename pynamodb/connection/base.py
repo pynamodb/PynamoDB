@@ -7,6 +7,7 @@ import logging
 import math
 import random
 import time
+import uuid
 
 import six
 from six.moves import range
@@ -16,6 +17,7 @@ from botocore.client import ClientError
 from botocore.vendored import requests
 
 from pynamodb.connection.util import pythonic
+from pynamodb.connection.signals import pre_boto_send, post_boto_send
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.exceptions import (
@@ -281,7 +283,7 @@ class Connection(object):
             operation_kwargs,
             operation_model
         )
-
+        table_name = operation_kwargs.get(TABLE_NAME)
         prepared_request = self._create_prepared_request(request_dict, operation_model)
 
         for i in range(0, self._max_retry_attempts_exception + 1):
@@ -289,12 +291,15 @@ class Connection(object):
             is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
 
             try:
+                req_uuid = uuid.uuid4()
+                _pre_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
                 response = self.requests_session.send(
                     prepared_request,
                     timeout=self._request_timeout_seconds,
                     proxies=self.client._endpoint.proxies,
                 )
                 data = response.json()
+                _post_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
             except (requests.RequestException, ValueError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
