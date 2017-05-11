@@ -1,6 +1,9 @@
 """
 Implements signals based on blinker if available, otherwise
 falls silently back to a noop.
+
+This implementation was taken from Flask:
+https://github.com/pallets/flask/blob/master/flask/signals.py
 """
 signals_available = False
 try:
