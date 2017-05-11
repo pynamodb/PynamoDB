@@ -5,6 +5,7 @@ import six
 from six import add_metaclass
 import json
 from base64 import b64encode, b64decode
+from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import tzutc
 from pynamodb.constants import (
@@ -394,7 +395,13 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a UTC datetime string and returns a datetime object
         """
-        return parse(value)
+        # First attempt to parse the datetime with the datetime format used
+        # by default when storing UTCDateTimeAttributes.  This is signifantly
+        # faster than always going through dateutil.
+        try:
+            return datetime.strptime(value, DATETIME_FORMAT)
+        except ValueError:
+            return parse(value)
 
 
 class NullAttribute(Attribute):
