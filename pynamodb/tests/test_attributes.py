@@ -151,17 +151,31 @@ class UTCDateTimeAttributeTestCase(TestCase):
             attr.deserialize(tstamp.strftime(DATETIME_FORMAT)),
         )
 
-    def test_utc_date_time_deserialize_parse_args(self):
+    def test_dateutil_parser_fallback(self):
+        """
+        UTCDateTimeAttribute.deserialize
+        """
+        expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=tzutc())
+        attr = UTCDateTimeAttribute()
+        self.assertEqual(
+            expected_value,
+            attr.deserialize('January 6, 2047 at 8:21:00AM UTC'),
+        )
+
+    @patch('pynamodb.attributes.datetime')
+    @patch('pynamodb.attributes.parse')
+    def test_utc_date_time_deserialize_parse_args(self, parse_mock, datetime_mock):
         """
         UTCDateTimeAttribute.deserialize
         """
         tstamp = datetime.now(UTC)
         attr = UTCDateTimeAttribute()
 
-        with patch('pynamodb.attributes.parse') as parse:
-            attr.deserialize(tstamp.strftime(DATETIME_FORMAT))
+        tstamp_str = tstamp.strftime(DATETIME_FORMAT)
+        attr.deserialize(tstamp_str)
 
-            parse.assert_called_with(tstamp.strftime(DATETIME_FORMAT))
+        parse_mock.assert_not_called()
+        datetime_mock.strptime.assert_called_once_with(tstamp_str, DATETIME_FORMAT)
 
     def test_utc_date_time_serialize(self):
         """
