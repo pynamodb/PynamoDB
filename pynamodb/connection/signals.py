@@ -1,5 +1,7 @@
-__all__ = ('dispatch')
-
+"""
+Implements signals based on blinker if available, otherwise
+falls silently back to a noop.
+"""
 signals_available = False
 try:
     from blinker import Namespace
@@ -12,7 +14,8 @@ except ImportError:
 
 
     class _FakeSignal(object):
-        """If blinker is unavailable, create a fake class with the same
+        """
+        If blinker is unavailable, create a fake class with the same
         interface that allows sending of signals but will fail with an
         error on anything else.  Instead of doing anything on send, it
         will just ignore the arguments and do nothing instead.
