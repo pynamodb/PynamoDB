@@ -292,14 +292,14 @@ class Connection(object):
 
             try:
                 req_uuid = uuid.uuid4()
-                _pre_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
+                pre_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
                 response = self.requests_session.send(
                     prepared_request,
                     timeout=self._request_timeout_seconds,
                     proxies=self.client._endpoint.proxies,
                 )
                 data = response.json()
-                _post_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
+                post_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
             except (requests.RequestException, ValueError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
