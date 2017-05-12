@@ -1,10 +1,10 @@
-import json
+import sys
 
 import mock
 import pytest
-import requests
 
 from pynamodb.connection import Connection
+from pynamodb.connection.signals import _FakeNamespace
 from pynamodb.connection.signals import pre_boto_send, post_boto_send
 
 try:
@@ -12,12 +12,14 @@ try:
 except ImportError:
     blinker = None
 
+
 pytestmark = pytest.mark.skipif(
     blinker is None,
     reason='Signals require the blinker library.'
 )
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
+
 
 @mock.patch(PATCH_METHOD)
 @mock.patch('pynamodb.connection.base.uuid')
@@ -44,3 +46,11 @@ def test_signal(mock_uuid, mock_req):
     finally:
         pre_boto_send.disconnect(record_pre_boto_send)
         post_boto_send.disconnect(record_post_boto_send)
+
+
+def test_fake_signals():
+    with pytest.raises(RuntimeError):
+        _signals = _FakeNamespace()
+
+        pre_boto_send = _signals.signal('pre_boto_send')
+        pre_boto_send.connect(lambda x: x)
