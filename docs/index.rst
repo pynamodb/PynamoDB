@@ -41,6 +41,7 @@ Topics
    contributing
    release_notes
    versioning
+   settings
 
 API docs
 ========

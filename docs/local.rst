@@ -10,7 +10,8 @@ PynamoDB has been tested with two DynamoDB compatible servers, `DynamoDB Local <
 and `dynalite <https://github.com/mhart/dynalite>`_.
 
 All you need to do is set the ``host`` attribute on your ``Model``'s ``Meta`` class to the hostname and port
-that your server is listening on.
+that your server is listening on. If you use `rate_limited_scan` on your models with DymamoDB, you must also
+set `allow_rate_limited_scan_without_consumed_capacity` to `True` in the `settings file <settings.rst>`_.
 
 .. note::
 

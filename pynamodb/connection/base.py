@@ -959,6 +959,7 @@ class Connection(object):
                           total_segments=None,
                           timeout_seconds=None,
                           read_capacity_to_consume_per_second=10,
+                          allow_rate_limited_scan_without_consumed_capacity=None,
                           max_sleep_between_retry=10,
                           max_consecutive_exceptions=10):
         """
@@ -979,12 +980,18 @@ class Connection(object):
             infinitely
         :param read_capacity_to_consume_per_second: Amount of read capacity to consume
             every second
+        :param allow_rate_limited_scan_without_consumed_capacity: If set, proceeds without rate limiting if
+            the server does not support returning consumed capacity in responses.
         :param max_sleep_between_retry: Max value for sleep in seconds in between scans during
             throttling/rate limit scenarios
         :param max_consecutive_exceptions: Max number of consecutive ProvisionedThroughputExceededException
             exception for scan to exit
         """
         read_capacity_to_consume_per_ms = float(read_capacity_to_consume_per_second) / 1000
+        if allow_rate_limited_scan_without_consumed_capacity is None:
+            allow_rate_limited_scan_without_consumed_capacity = get_settings_value(
+                'allow_rate_limited_scan_without_consumed_capacity'
+            )
         total_consumed_read_capacity = 0.0
         last_evaluated_key = exclusive_start_key
         rate_available = True
@@ -1023,11 +1030,15 @@ class Connection(object):
                     if CONSUMED_CAPACITY in data:
                         latest_scan_consumed_capacity = data.get(CONSUMED_CAPACITY).get(CAPACITY_UNITS)
                     else:
-                        # DynamoDBLocal does not support returning consumed capacity information. If we do
-                        # not receive this information back, we assume we are not operating against a real
-                        # DynamoDB instance and that disabling rate limiting is okay. Thus, pretend 0 capacity
-                        # was consumed.
-                        latest_scan_consumed_capacity = 0
+                        if allow_rate_limited_scan_without_consumed_capacity:
+                            latest_scan_consumed_capacity = 0
+                        else:
+                            raise ScanError('Rate limited scan not possible because the server did not send back'
+                                            'consumed capacity information. If you wish scans to complete anwyay'
+                                            'without functioning rate limiting, set '
+                                            'allow_rate_limited_scan_without_consumed_capacity to True in settings.'
+                                            'This may be required, for example, in testing environments using'
+                                            'DynamoDB Local. Alternatively, you may consider using dynalite.')
 
                     last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
                     consecutive_provision_throughput_exceeded_ex = 0
