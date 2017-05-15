@@ -37,7 +37,8 @@ from pynamodb.tests.data import (
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
-    GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
+    GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
+    GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
     CAR_MODEL_TABLE_DATA, FULL_CAR_MODEL_ITEM_DATA, CAR_MODEL_WITH_NULL_ITEM_DATA, INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA,
     BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
@@ -294,8 +295,8 @@ class Location(MapAttribute):
 class Person(MapAttribute):
 
     fname = UnicodeAttribute(attr_name='firstName')
-    lname = UnicodeAttribute()
-    age = NumberAttribute()
+    lname = UnicodeAttribute(null=True)
+    age = NumberAttribute(null=True)
     is_male = BooleanAttribute(attr_name='is_dude')
 
     def foo(self):
@@ -1035,7 +1036,7 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
-        # Reproduces https://github.com/jlafon/PynamoDB/issues/59
+        # Reproduces https://github.com/pynamodb/PynamoDB/issues/59
         with patch(PATCH_METHOD) as req:
             user = UserModel("test_hash", "test_range")
             req.return_value = {
@@ -1065,7 +1066,7 @@ class ModelTestCase(TestCase):
                     }
                 }
             }
-            # Reproduces https://github.com/jlafon/PynamoDB/issues/34
+            # Reproduces https://github.com/pynamodb/PynamoDB/issues/34
             item.email = None
             item.update_item('views', 10, action='add')
             args = req.call_args[0][1]
@@ -1152,7 +1153,7 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
-        # Reproduces https://github.com/jlafon/PynamoDB/issues/102
+        # Reproduces https://github.com/pynamodb/PynamoDB/issues/102
         with patch(PATCH_METHOD) as req:
             req.return_value = {
                 ATTRIBUTES: {
@@ -2010,7 +2011,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Items': items, 'ConsumedCapacity': {'TableName': 'UserModel', 'CapacityUnits': 10}}
             scan_result = UserModel.rate_limited_scan(
                 user_id__contains='tux',
-                zip_code__null=False, 
+                zip_code__null=False,
                 email__null=True,
                 read_capacity_to_consume_per_second=13
             )
@@ -3136,6 +3137,21 @@ class ModelTestCase(TestCase):
                 item.person.fname,
                 GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
+
+    def test_model_with_maps_with_nulls_retrieve_from_db(self):
+        fake_db = self.database_mocker(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+                                       GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL, 'office_employee_id', 'N',
+                                 '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL
+            item = OfficeEmployee.get(123)
+            self.assertEqual(
+                item.person.fname,
+                GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL.get(ITEM).get('person').get(
+                    MAP_SHORT).get('firstName').get(STRING_SHORT))
+            self.assertIsNone(item.person.age)
+            self.assertIsNone(item.person.is_dude)
 
     def test_model_with_list_retrieve_from_db(self):
         fake_db = self.database_mocker(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,
