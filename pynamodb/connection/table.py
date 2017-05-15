@@ -142,6 +142,7 @@ class TableConnection(object):
              exclusive_start_key=None,
              timeout_seconds=None,
              read_capacity_to_consume_per_second=None,
+             allow_rate_limited_scan_without_consumed_capacity=None,
              max_sleep_between_retry=None,
              max_consecutive_exceptions=None):
         """
@@ -159,6 +160,7 @@ class TableConnection(object):
             exclusive_start_key=exclusive_start_key,
             timeout_seconds=timeout_seconds,
             read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
+            allow_rate_limited_scan_without_consumed_capacity=allow_rate_limited_scan_without_consumed_capacity,
             max_sleep_between_retry=max_sleep_between_retry,
             max_consecutive_exceptions=max_consecutive_exceptions)
 

@@ -480,6 +480,7 @@ class ConnectionTestCase(TestCase):
                 exclusive_start_key='EX',
                 timeout_seconds=11,
                 read_capacity_to_consume_per_second=12,
+                allow_rate_limited_scan_without_consumed_capacity=False,
                 max_sleep_between_retry=3,
                 max_consecutive_exceptions=7
             )
@@ -495,6 +496,7 @@ class ConnectionTestCase(TestCase):
                 'exclusive_start_key': 'EX',
                 'timeout_seconds': 11,
                 'read_capacity_to_consume_per_second': 12,
+                'allow_rate_limited_scan_without_consumed_capacity': False,
                 'max_sleep_between_retry': 3,
                 'max_consecutive_exceptions': 7
             }

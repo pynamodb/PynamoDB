@@ -1964,6 +1964,7 @@ class ModelTestCase(TestCase):
                 page_size=11,
                 timeout_seconds=21,
                 read_capacity_to_consume_per_second=33,
+                allow_rate_limited_scan_without_consumed_capacity=False,
                 max_sleep_between_retry=4,
                 max_consecutive_exceptions=22,
                 attributes_to_get=['X1', 'X2']
@@ -1981,6 +1982,7 @@ class ModelTestCase(TestCase):
                 'scan_filter': {},
                 'attributes_to_get': ['X1', 'X2'],
                 'read_capacity_to_consume_per_second': 33,
+                'allow_rate_limited_scan_without_consumed_capacity': False,
                 'max_sleep_between_retry': 4,
                 'max_consecutive_exceptions': 22
             }
