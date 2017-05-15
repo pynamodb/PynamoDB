@@ -35,6 +35,7 @@ Topics
    local
    backup_restore
    examples
+   settings
    low_level
    awsaccess
    logging
