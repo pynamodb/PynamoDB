@@ -1326,3 +1326,30 @@ EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA = {
         }
     }
 }
+
+DOG_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "name",
+                "AttributeType": "S"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 42,
+        "KeySchema": [
+            {
+                "AttributeName": "name",
+                "KeyType": "HASH"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "Dog",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}

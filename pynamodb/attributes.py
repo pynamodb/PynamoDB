@@ -77,8 +77,18 @@ class AttributeContainer(object):
         """
         cls._attributes = {}
         cls._dynamo_to_python_attrs = {}
-        for item_name, instance in six.iteritems(cls.__dict__):
-            if issubclass(type(instance), (Attribute,)):
+
+        for item_name in dir(cls):
+            try:
+                item_cls = getattr(getattr(cls, item_name), "__class__", None)
+            except AttributeError:
+                continue
+
+            if item_cls is None:
+                continue
+
+            if issubclass(item_cls, (Attribute, )):
+                instance = getattr(cls, item_name)
                 cls._attributes[item_name] = instance
                 if instance.attr_name is not None:
                     cls._dynamo_to_python_attrs[instance.attr_name] = item_name
