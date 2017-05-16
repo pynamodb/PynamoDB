@@ -59,14 +59,7 @@ Default: ``False``
 
 If ``True``, ``rate_limited_scan()`` will proceed silently (without
 rate limiting) if the DynamoDB server does not return consumed
-capacity information. This can be useful when running tests against an
-implementation that does not support returning consumed capacity
-information, such as `DynamoDB Local
-<http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html>`_.
-
-You may wish to consider use of `dynalite
-<https://github.com/mhart/dynalite>`_ as an alterantive to DynamoDB
-Local that supports this feature.
+capacity information in responses.
 
 Overriding settings
 ~~~~~~~~~~~~~~~~~~~
