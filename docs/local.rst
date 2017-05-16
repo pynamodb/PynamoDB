@@ -12,7 +12,7 @@ and `dynalite <https://github.com/mhart/dynalite>`_.
 To use a local server, you need to set the ``host`` attribute on your ``Model``'s ``Meta`` class to the hostname and port
 that your server is listening on. If you are using DynamoDB Local and also use ``rate_limited_scan`` on your models, you must also
 set ``allow_rate_limited_scan_without_consumed_capacity`` to ``True`` in the
-``settings file <settings.rst#allow_rate_limited_scan_without_consumed_capacity>``_ (dynalite does not require
+`settings file <settings.rst#allow_rate_limited_scan_without_consumed_capacity>`_ (dynalite does not require
 this step because it implements returning of consumed capacity in responses, which is used by ``rate_limited_scan``).
 
 .. note::
