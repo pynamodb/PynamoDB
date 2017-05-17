@@ -34,7 +34,7 @@ from pynamodb.attributes import (
 from pynamodb.tests.data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
-    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
+    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
@@ -444,6 +444,17 @@ class OverriddenSessionModel(Model):
     random_attr = UnicodeAttribute(attr_name='random_attr_1', null=True)
 
 
+class Animal(Model):
+    name = UnicodeAttribute(hash_key=True)
+
+
+class Dog(Animal):
+    class Meta:
+        table_name = 'Dog'
+
+    breed = UnicodeAttribute()
+
+
 class ModelTestCase(TestCase):
     """
     Tests for the models API
@@ -588,7 +599,7 @@ class ModelTestCase(TestCase):
             self.assertEquals(actual['TableName'], params['TableName'])
             self.assertEquals(actual['ProvisionedThroughput'], params['ProvisionedThroughput'])
             self.assert_dict_lists_equal(sorted(actual['KeySchema'], key=lambda x: x['AttributeName']),
-                                         sorted(actual['KeySchema'], key=lambda x: x['AttributeName']))
+                                         sorted(params['KeySchema'], key=lambda x: x['AttributeName']))
             # These come in random order
             self.assert_dict_lists_equal(sorted(actual['AttributeDefinitions'], key=lambda x: x['AttributeName']),
                                          sorted(params['AttributeDefinitions'], key=lambda x: x['AttributeName']))
@@ -3503,6 +3514,29 @@ class ModelTestCase(TestCase):
                              map_native.get('floaty'))
             self.assertEqual(actual.map_field['mapy']['baz'],
                              map_native.get('mapy').get('baz'))
+
+    def test_model_subclass_attributes_inherited_on_create(self):
+        scope_args = {'count': 0}
+
+        def fake_dynamodb(*args, **kwargs):
+            if scope_args['count'] == 0:
+                scope_args['count'] += 1
+                raise ClientError({'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Not Found'}},
+                                  "DescribeTable")
+            return {}
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            Dog.create_table(read_capacity_units=2, write_capacity_units=2)
+
+            actual = req.call_args_list[1][0][1]
+
+            self.assertEquals(actual['TableName'], DOG_TABLE_DATA['Table']['TableName'])
+            self.assert_dict_lists_equal(actual['KeySchema'], DOG_TABLE_DATA['Table']['KeySchema'])
+            self.assert_dict_lists_equal(actual['AttributeDefinitions'],
+                                         DOG_TABLE_DATA['Table']['AttributeDefinitions'])
 
 
 class ModelInitTestCase(TestCase):
