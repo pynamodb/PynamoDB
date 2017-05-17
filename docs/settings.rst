@@ -52,6 +52,14 @@ to DynamoDB.
 
 .. _Session: http://docs.python-requests.org/en/master/api/#request-sessions
 
+allow_rate_limited_scan_without_consumed_capacity
+-------------------------------------------------
+
+Default: ``False``
+
+If ``True``, ``rate_limited_scan()`` will proceed silently (without
+rate limiting) if the DynamoDB server does not return consumed
+capacity information in responses.
 
 Overriding settings
 ~~~~~~~~~~~~~~~~~~~

@@ -664,6 +664,7 @@ class Model(AttributeContainer):
             page_size=None,
             timeout_seconds=None,
             read_capacity_to_consume_per_second=10,
+            allow_rate_limited_scan_without_consumed_capacity=None,
             max_sleep_between_retry=10,
             max_consecutive_exceptions=30,
             **filters):
@@ -683,6 +684,8 @@ class Model(AttributeContainer):
             infinitely
         :param read_capacity_to_consume_per_second: Amount of read capacity to consume
             every second
+        :param allow_rate_limited_scan_without_consumed_capacity: If set, proceeds without rate limiting if
+            the server does not support returning consumed capacity in responses.
         :param max_sleep_between_retry: Max value for sleep in seconds in between scans during
             throttling/rate limit scenarios
         :param max_consecutive_exceptions: Max number of consecutive provision throughput exceeded
@@ -709,6 +712,7 @@ class Model(AttributeContainer):
             exclusive_start_key=last_evaluated_key,
             timeout_seconds=timeout_seconds,
             read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
+            allow_rate_limited_scan_without_consumed_capacity=allow_rate_limited_scan_without_consumed_capacity,
             max_sleep_between_retry=max_sleep_between_retry,
             max_consecutive_exceptions=max_consecutive_exceptions,
         )

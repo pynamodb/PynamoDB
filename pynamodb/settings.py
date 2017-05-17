@@ -12,7 +12,8 @@ default_settings_dict = {
     'max_retry_attempts': 3,
     'base_backoff_ms': 25,
     'region': 'us-east-1',
-    'session_cls': requests.Session
+    'session_cls': requests.Session,
+    'allow_rate_limited_scan_without_consumed_capacity': False,
 }
 
 OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default_settings.py')
