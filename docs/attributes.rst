@@ -134,7 +134,7 @@ Creating an untyped list is done like so:
     GroceryList(store_name='Haight Street Market',
                 groceries=['bread', 1, 'butter', 6, 'milk', 1])
 
-PynamoDB can provide type safety if it is required. Currently PynamoDB does not allow type checks on anything other than ``MapAttribute``. We're working on adding more generic type checking in a future version.
+PynamoDB can provide type safety if it is required. Currently PynamoDB does not allow type checks on anything other than ``MapAttribute`` and subclasses of ``MapAttribute``. We're working on adding more generic type checking in a future version.
 When defining your model use the ``of=`` kwarg and pass in a class. PynamoDB will check that all items in the list are of the type you require.
 
 .. code-block:: python
@@ -167,10 +167,16 @@ When defining your model use the ``of=`` kwarg and pass in a class. PynamoDB wil
         office_employee_id=126,
         person='garrett'
     )
-    return Office(
+
+    Office(
         office_id=3,
         employees=[emp1, emp2, emp3]
-    )
+    ).save()  # persists fine
+
+    Office(
+        office_id=3,
+        employees=['justin', 'lita', 'garrett']
+    ).save()  # raises ValueError
 
 Map Attributes
 --------------
