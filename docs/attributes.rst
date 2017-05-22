@@ -116,19 +116,64 @@ List Attributes
 ---------------
 
 DynamoDB list attributes are simply lists of other attributes. DynamoDB asserts no requirements about the types embedded within the list.
-DynamoDB is perfectly content with a list of ``UnicodeAttribute`` and ``NumberAttributes`` mixed together. Pynamo can provide type safety if it is required.
-When defining your model use the ``of=`` kwarg and pass in a class. Pynamo will check that all items in the list are of the type you require.
+If you want to make a list of mixed types you can do something like this
 
 .. code-block:: python
 
     from pynamodb.attributes import ListAttribute, NumberAttribute, UnicodeAttribute
 
+    class GroceryList(Model):
+        class Meta:
+            table_name = 'GroceryListModel'
+
+        store_name = UnicodeAttribute(hash_key=True)
+        groceries = ListAttribute()
+
+This class can then be instantiated and persisted like this :
+
+.. code-block:: python
+
+    GroceryList(store_name='Haight Street Market',
+                groceries=['bread', 1, 'butter', 6, 'milk', 1])
+
+Pynamo can provide type safety if it is required.
+When defining your model use the ``of=`` kwarg and pass in a class. Pynamo will check that all items in the list are of the type you require.
+
+.. code-block:: python
+
+    from pynamodb.attributes import ListAttribute, NumberAttribute
+
+
+    class OfficeEmployeeMap(MapAttribute):
+        office_employee_id = NumberAttribute()
+        person = UnicodeAttribute()
+
+
     class Office(Model):
         class Meta:
             table_name = 'OfficeModel'
         office_id = NumberAttribute(hash_key=True)
-        employees = ListAttribute(of=UnicodeAttribute)
+        employees = ListAttribute(of=OfficeEmployeeMap)
 
+Which can then be used like so :
+
+.. code-block:: python
+    emp1 = OfficeEmployeeMap(
+        office_employee_id=123,
+        person='justin'
+    )
+    emp2 = OfficeEmployeeMap(
+        office_employee_id=125,
+        person='lita'
+    )
+    emp4 = OfficeEmployeeMap(
+        office_employee_id=126,
+        person='garrett'
+    )
+    return Office(
+        office_id=3,
+        employees=[emp1, emp2, emp3]
+    )
 
 Map Attributes
 --------------
