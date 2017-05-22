@@ -171,7 +171,7 @@ When defining your model use the ``of=`` kwarg and pass in a class. PynamoDB wil
     Office(
         office_id=3,
         employees=[emp1, emp2, emp3]
-    ).save()  # persists fine
+    ).save()  # persists
 
     Office(
         office_id=3,
