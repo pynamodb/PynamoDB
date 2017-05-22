@@ -116,7 +116,7 @@ List Attributes
 ---------------
 
 DynamoDB list attributes are simply lists of other attributes. DynamoDB asserts no requirements about the types embedded within the list.
-If you want to make a list of mixed types you can do something like this
+Creating an untyped list is done like so:
 
 .. code-block:: python
 
@@ -129,14 +129,12 @@ If you want to make a list of mixed types you can do something like this
         store_name = UnicodeAttribute(hash_key=True)
         groceries = ListAttribute()
 
-This class can then be instantiated and persisted like this :
-
-.. code-block:: python
+    # Example usage:
 
     GroceryList(store_name='Haight Street Market',
                 groceries=['bread', 1, 'butter', 6, 'milk', 1])
 
-Pynamo can provide type safety if it is required. Currently pynamo does not allow type checks on anything other than ``MapAttribute``. We're working on adding more generic type checking in a future version.
+Pynamo can provide type safety if it is required. Currently Pynamo does not allow type checks on anything other than ``MapAttribute``. We're working on adding more generic type checking in a future version.
 When defining your model use the ``of=`` kwarg and pass in a class. Pynamo will check that all items in the list are of the type you require.
 
 .. code-block:: python
@@ -155,9 +153,7 @@ When defining your model use the ``of=`` kwarg and pass in a class. Pynamo will 
         office_id = NumberAttribute(hash_key=True)
         employees = ListAttribute(of=OfficeEmployeeMap)
 
-Which can then be used like so :
-
-.. code-block:: python
+    # Example usage:
 
     emp1 = OfficeEmployeeMap(
         office_employee_id=123,
