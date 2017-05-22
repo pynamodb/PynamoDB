@@ -158,6 +158,7 @@ When defining your model use the ``of=`` kwarg and pass in a class. Pynamo will 
 Which can then be used like so :
 
 .. code-block:: python
+
     emp1 = OfficeEmployeeMap(
         office_employee_id=123,
         person='justin'
