@@ -136,8 +136,8 @@ This class can then be instantiated and persisted like this :
     GroceryList(store_name='Haight Street Market',
                 groceries=['bread', 1, 'butter', 6, 'milk', 1])
 
-Pynamo can provide type safety if it is required. Currently pynamo does not allow type checks on anything other than ``MapAttribute``s. We're working on adding more generic type checking in a future version.
-When defining your model use the `of=` kwarg and pass in a class. Pynamo will check that all items in the list are of the type you require.
+Pynamo can provide type safety if it is required. Currently pynamo does not allow type checks on anything other than ``MapAttribute``. We're working on adding more generic type checking in a future version.
+When defining your model use the ``of=`` kwarg and pass in a class. Pynamo will check that all items in the list are of the type you require.
 
 .. code-block:: python
 
