@@ -265,9 +265,10 @@ class Connection(object):
 
         table_name = operation_kwargs.get(TABLE_NAME)
         req_uuid = uuid.uuid4()
-        pre_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
+
+        self.send_pre_boto_callback(operation_name, req_uuid, table_name)
         data = self._make_api_call(operation_name, operation_kwargs)
-        post_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
+        self.send_post_boto_callback(operation_name, req_uuid, table_name)
 
         if data and CONSUMED_CAPACITY in data:
             capacity = data.get(CONSUMED_CAPACITY)
@@ -275,6 +276,20 @@ class Connection(object):
                 capacity = capacity.get(CAPACITY_UNITS)
             log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
+
+    def send_post_boto_callback(self, operation_name, req_uuid, table_name):
+        try:
+            post_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
+        except Exception as e:
+            log.error("signal that was sent threw an exception. {}".format(repr(e)))
+            pass
+
+    def send_pre_boto_callback(self, operation_name, req_uuid, table_name):
+        try:
+            pre_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
+        except Exception as e:
+            log.error("signal that was sent threw an exception. {}".format(repr(e)))
+            pass
 
     def _make_api_call(self, operation_name, operation_kwargs):
         """
