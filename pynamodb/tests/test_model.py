@@ -837,6 +837,20 @@ class ModelTestCase(TestCase):
             args = req.call_args[0][1]
             deep_eq(args, params, _assert=True)
 
+    def test_delete_doesnt_do_validation_on_null_attributes(self):
+        """
+        Model.delete
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = CAR_MODEL_TABLE_DATA
+            CarModel('foo').delete()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = CAR_MODEL_TABLE_DATA
+            with CarModel.batch_write() as batch:
+                car = CarModel('foo')
+                batch.delete(car)
+
     def test_update(self):
         """
         Model.update
