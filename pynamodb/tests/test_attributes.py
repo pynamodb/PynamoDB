@@ -10,7 +10,7 @@ from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import tzutc
 
-from mock import patch
+from mock import patch, Mock, call
 
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.constants import UTC, DATETIME_FORMAT
@@ -19,7 +19,7 @@ from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
-    MapAttribute, ListAttribute,
+    MapAttribute, ListAttribute, Attribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, MAP, LIST, BOOLEAN, _get_value_for_deserialize)
 
@@ -655,6 +655,20 @@ class MapAttributeTestCase(TestCase):
         self.assertEqual(json.dumps({'map_attr': {'foo': 'bar'}}),
                          json.dumps(item.typed_map.as_dict()))
 
+    def test_serialize_datetime(self):
+
+        class CustomMapAttribute(MapAttribute):
+            date_attr = UTCDateTimeAttribute()
+
+        cm = CustomMapAttribute(date_attr=datetime(2017, 1, 1))
+        serialized_datetime = cm.serialize(cm)
+        expected_serialized_value = {
+            'date_attr': {
+                'S': u'2017-01-01T00:00:00.000000+0000'
+            }
+        }
+        self.assertEquals(serialized_datetime, expected_serialized_value)
+
 
 class ValueDeserializeTestCase(TestCase):
     def test__get_value_for_deserialize(self):
@@ -723,6 +737,7 @@ class MapAndListAttributeTestCase(TestCase):
         class Person(MapAttribute):
             name = UnicodeAttribute()
             age = NumberAttribute()
+            extra_arbitrary_data = JSONAttribute()
 
             def __lt__(self, other):
                 return self.name < other.name
@@ -734,16 +749,68 @@ class MapAndListAttributeTestCase(TestCase):
         person1 = Person()
         person1.name = 'john'
         person1.age = 40
+        person1.extra_arbitrary_data = {'married': True}
 
         person2 = Person()
         person2.name = 'Dana'
         person2.age = 41
+        person2.extra_arbitrary_data = {'net_income': 200000,
+                                        'dog': 'Fido'}
+
         inp = [person1, person2]
 
         list_attribute = ListAttribute(default=[], of=Person)
         serialized = list_attribute.serialize(inp)
         deserialized = list_attribute.deserialize(serialized)
         self.assertEqual(sorted(deserialized), sorted(inp))
+
+    def test_list_of_map_with_of_and_custom_attribute(self):
+
+        # Create a couple of mock functions to use
+        # to test that the CustomAttribute serialize/deserialize are called
+        serialize_mock = Mock()
+        deserialize_mock = Mock()
+
+        class CustomAttribute(Attribute):
+            attr_type = STRING
+
+            def serialize(self, value):
+                serialize_mock(value)
+                return value.upper()
+
+            def deserialize(self, value):
+                deserialize_mock(value)
+                return value.lower()
+
+        class CustomMapAttribute(MapAttribute):
+            custom = CustomAttribute()
+
+            def __eq__(self, other):
+                return self.custom == other.custom
+
+        attribute1 = CustomMapAttribute()
+        attribute1.custom = 'test-value1'
+
+        attribute2 = CustomMapAttribute()
+        attribute2.custom = 'test-value2'
+
+        inp = [attribute1, attribute2]
+
+        list_attribute = ListAttribute(default=[], of=CustomMapAttribute)
+        serialized = list_attribute.serialize(inp)
+        deserialized = list_attribute.deserialize(serialized)
+        assert deserialized == inp
+
+        # Confirm that the the serialize/deserialize are called
+        # with the expected values
+        serialize_mock.assert_has_calls([
+            call('test-value1'),
+            call('test-value2'),
+        ])
+        deserialize_mock.assert_has_calls([
+            call('TEST-VALUE1'),
+            call('TEST-VALUE2'),
+        ])
 
     def test_list_of_unicode_with_of(self):
         with self.assertRaises(ValueError):
