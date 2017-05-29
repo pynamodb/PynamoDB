@@ -21,7 +21,7 @@ from pynamodb.attributes import (
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
     MapAttribute, ListAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY, MAP, LIST, BOOLEAN)
+    BINARY, MAP, LIST, BOOLEAN, _get_value_for_deserialize)
 
 UTC = tzutc()
 
@@ -151,17 +151,31 @@ class UTCDateTimeAttributeTestCase(TestCase):
             attr.deserialize(tstamp.strftime(DATETIME_FORMAT)),
         )
 
-    def test_utc_date_time_deserialize_parse_args(self):
+    def test_dateutil_parser_fallback(self):
+        """
+        UTCDateTimeAttribute.deserialize
+        """
+        expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=tzutc())
+        attr = UTCDateTimeAttribute()
+        self.assertEqual(
+            expected_value,
+            attr.deserialize('January 6, 2047 at 8:21:00AM UTC'),
+        )
+
+    @patch('pynamodb.attributes.datetime')
+    @patch('pynamodb.attributes.parse')
+    def test_utc_date_time_deserialize_parse_args(self, parse_mock, datetime_mock):
         """
         UTCDateTimeAttribute.deserialize
         """
         tstamp = datetime.now(UTC)
         attr = UTCDateTimeAttribute()
 
-        with patch('pynamodb.attributes.parse') as parse:
-            attr.deserialize(tstamp.strftime(DATETIME_FORMAT))
+        tstamp_str = tstamp.strftime(DATETIME_FORMAT)
+        attr.deserialize(tstamp_str)
 
-            parse.assert_called_with(tstamp.strftime(DATETIME_FORMAT))
+        parse_mock.assert_not_called()
+        datetime_mock.strptime.assert_called_once_with(tstamp_str, DATETIME_FORMAT)
 
     def test_utc_date_time_serialize(self):
         """
@@ -640,6 +654,19 @@ class MapAttributeTestCase(TestCase):
 
         self.assertEqual(json.dumps({'map_attr': {'foo': 'bar'}}),
                          json.dumps(item.typed_map.as_dict()))
+
+
+class ValueDeserializeTestCase(TestCase):
+    def test__get_value_for_deserialize(self):
+        expected = '3'
+        data = {'N': '3'}
+        actual = _get_value_for_deserialize(data)
+        self.assertEquals(expected, actual)
+
+    def test__get_value_for_deserialize_null(self):
+        data = {'NULL': 'True'}
+        actual = _get_value_for_deserialize(data)
+        self.assertIsNone(actual)
 
 
 class MapAndListAttributeTestCase(TestCase):

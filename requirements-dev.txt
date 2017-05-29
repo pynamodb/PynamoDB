@@ -1,0 +1,11 @@
+-rrequirements.txt
+coverage==3.7.1
+pytest==3.0.7
+pytest-cov==2.4.0
+python-coveralls==2.5.0
+tox==2.1.1
+flake8==2.4.1
+requests==2.7.0
+# Pinned because latest version requires Python 2.7+ (https://github.com/sphinx-doc/sphinx/issues/2919).
+sphinx==1.5.6
+sphinx-rtd-theme==0.1.8

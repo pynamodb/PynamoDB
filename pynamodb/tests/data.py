@@ -399,6 +399,43 @@ GET_OFFICE_EMPLOYEE_ITEM_DATA = {
     }
 }
 
+GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL = {
+    'Item': {
+        'office_employee_id': {
+            'N': '123'
+        },
+        'person': {
+            'M': {
+                'firstName': {
+                    'S': 'Justin'
+                },
+                'lname': {
+                    'S': 'Phillips'
+                },
+                'age': {
+                    'NULL': True
+                },
+                'is_dude': {
+                    'NULL': True
+                }
+            }
+        },
+        'office_location': {
+            'M': {
+                'latitude': {
+                    'N': '37.77461'
+                },
+                'longitude': {
+                    'N': '122.3957216'
+                },
+                'name': {
+                    'S': 'Lyft HQ'
+                }
+            }
+        }
+    }
+}
+
 GET_GROCERY_LIST_ITEM_DATA = {
     'Item': {
         'store_name': {
@@ -1287,5 +1324,32 @@ EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA = {
                 }
             }
         }
+    }
+}
+
+DOG_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "name",
+                "AttributeType": "S"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 42,
+        "KeySchema": [
+            {
+                "AttributeName": "name",
+                "KeyType": "HASH"
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "Dog",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
     }
 }

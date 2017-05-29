@@ -34,10 +34,11 @@ from pynamodb.attributes import (
 from pynamodb.tests.data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
-    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
+    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
-    GET_OFFICE_EMPLOYEE_ITEM_DATA, GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
+    GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
+    GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
     CAR_MODEL_TABLE_DATA, FULL_CAR_MODEL_ITEM_DATA, CAR_MODEL_WITH_NULL_ITEM_DATA, INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA,
     BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
@@ -294,8 +295,8 @@ class Location(MapAttribute):
 class Person(MapAttribute):
 
     fname = UnicodeAttribute(attr_name='firstName')
-    lname = UnicodeAttribute()
-    age = NumberAttribute()
+    lname = UnicodeAttribute(null=True)
+    age = NumberAttribute(null=True)
     is_male = BooleanAttribute(attr_name='is_dude')
 
     def foo(self):
@@ -443,6 +444,17 @@ class OverriddenSessionModel(Model):
     random_attr = UnicodeAttribute(attr_name='random_attr_1', null=True)
 
 
+class Animal(Model):
+    name = UnicodeAttribute(hash_key=True)
+
+
+class Dog(Animal):
+    class Meta:
+        table_name = 'Dog'
+
+    breed = UnicodeAttribute()
+
+
 class ModelTestCase(TestCase):
     """
     Tests for the models API
@@ -587,7 +599,7 @@ class ModelTestCase(TestCase):
             self.assertEquals(actual['TableName'], params['TableName'])
             self.assertEquals(actual['ProvisionedThroughput'], params['ProvisionedThroughput'])
             self.assert_dict_lists_equal(sorted(actual['KeySchema'], key=lambda x: x['AttributeName']),
-                                         sorted(actual['KeySchema'], key=lambda x: x['AttributeName']))
+                                         sorted(params['KeySchema'], key=lambda x: x['AttributeName']))
             # These come in random order
             self.assert_dict_lists_equal(sorted(actual['AttributeDefinitions'], key=lambda x: x['AttributeName']),
                                          sorted(params['AttributeDefinitions'], key=lambda x: x['AttributeName']))
@@ -825,6 +837,20 @@ class ModelTestCase(TestCase):
             args = req.call_args[0][1]
             deep_eq(args, params, _assert=True)
 
+    def test_delete_doesnt_do_validation_on_null_attributes(self):
+        """
+        Model.delete
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = CAR_MODEL_TABLE_DATA
+            CarModel('foo').delete()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = CAR_MODEL_TABLE_DATA
+            with CarModel.batch_write() as batch:
+                car = CarModel('foo')
+                batch.delete(car)
+
     def test_update(self):
         """
         Model.update
@@ -1035,7 +1061,7 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
-        # Reproduces https://github.com/jlafon/PynamoDB/issues/59
+        # Reproduces https://github.com/pynamodb/PynamoDB/issues/59
         with patch(PATCH_METHOD) as req:
             user = UserModel("test_hash", "test_range")
             req.return_value = {
@@ -1065,7 +1091,7 @@ class ModelTestCase(TestCase):
                     }
                 }
             }
-            # Reproduces https://github.com/jlafon/PynamoDB/issues/34
+            # Reproduces https://github.com/pynamodb/PynamoDB/issues/34
             item.email = None
             item.update_item('views', 10, action='add')
             args = req.call_args[0][1]
@@ -1152,7 +1178,7 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
-        # Reproduces https://github.com/jlafon/PynamoDB/issues/102
+        # Reproduces https://github.com/pynamodb/PynamoDB/issues/102
         with patch(PATCH_METHOD) as req:
             req.return_value = {
                 ATTRIBUTES: {
@@ -1963,6 +1989,7 @@ class ModelTestCase(TestCase):
                 page_size=11,
                 timeout_seconds=21,
                 read_capacity_to_consume_per_second=33,
+                allow_rate_limited_scan_without_consumed_capacity=False,
                 max_sleep_between_retry=4,
                 max_consecutive_exceptions=22,
                 attributes_to_get=['X1', 'X2']
@@ -1980,6 +2007,7 @@ class ModelTestCase(TestCase):
                 'scan_filter': {},
                 'attributes_to_get': ['X1', 'X2'],
                 'read_capacity_to_consume_per_second': 33,
+                'allow_rate_limited_scan_without_consumed_capacity': False,
                 'max_sleep_between_retry': 4,
                 'max_consecutive_exceptions': 22
             }
@@ -2010,7 +2038,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Items': items, 'ConsumedCapacity': {'TableName': 'UserModel', 'CapacityUnits': 10}}
             scan_result = UserModel.rate_limited_scan(
                 user_id__contains='tux',
-                zip_code__null=False, 
+                zip_code__null=False,
                 email__null=True,
                 read_capacity_to_consume_per_second=13
             )
@@ -3137,6 +3165,21 @@ class ModelTestCase(TestCase):
                 GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
 
+    def test_model_with_maps_with_nulls_retrieve_from_db(self):
+        fake_db = self.database_mocker(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+                                       GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL, 'office_employee_id', 'N',
+                                 '123')
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL
+            item = OfficeEmployee.get(123)
+            self.assertEqual(
+                item.person.fname,
+                GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL.get(ITEM).get('person').get(
+                    MAP_SHORT).get('firstName').get(STRING_SHORT))
+            self.assertIsNone(item.person.age)
+            self.assertIsNone(item.person.is_dude)
+
     def test_model_with_list_retrieve_from_db(self):
         fake_db = self.database_mocker(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,
                                        GET_GROCERY_LIST_ITEM_DATA, 'store_name', 'S',
@@ -3485,6 +3528,29 @@ class ModelTestCase(TestCase):
                              map_native.get('floaty'))
             self.assertEqual(actual.map_field['mapy']['baz'],
                              map_native.get('mapy').get('baz'))
+
+    def test_model_subclass_attributes_inherited_on_create(self):
+        scope_args = {'count': 0}
+
+        def fake_dynamodb(*args, **kwargs):
+            if scope_args['count'] == 0:
+                scope_args['count'] += 1
+                raise ClientError({'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Not Found'}},
+                                  "DescribeTable")
+            return {}
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            Dog.create_table(read_capacity_units=2, write_capacity_units=2)
+
+            actual = req.call_args_list[1][0][1]
+
+            self.assertEquals(actual['TableName'], DOG_TABLE_DATA['Table']['TableName'])
+            self.assert_dict_lists_equal(actual['KeySchema'], DOG_TABLE_DATA['Table']['KeySchema'])
+            self.assert_dict_lists_equal(actual['AttributeDefinitions'],
+                                         DOG_TABLE_DATA['Table']['AttributeDefinitions'])
 
 
 class ModelInitTestCase(TestCase):

@@ -4,10 +4,10 @@ PynamoDB
 
 .. image:: https://img.shields.io/pypi/v/pynamodb.svg
     :target: https://pypi.python.org/pypi/pynamodb/
-.. image:: https://travis-ci.org/jlafon/PynamoDB.png?branch=devel
-    :target: https://travis-ci.org/jlafon/PynamoDB
-.. image:: https://coveralls.io/repos/jlafon/PynamoDB/badge.png?branch=devel
-    :target: https://coveralls.io/r/jlafon/PynamoDB
+.. image:: https://img.shields.io/travis/pynamodb/PynamoDB/master.svg
+    :target: https://travis-ci.org/pynamodb/PynamoDB
+.. image:: https://img.shields.io/coveralls/pynamodb/PynamoDB.svg
+    :target: https://coveralls.io/r/pynamodb/PynamoDB
 
 A Pythonic interface for Amazon's `DynamoDB <http://aws.amazon.com/dynamodb/>`_ that supports
 Python 2 and 3.
@@ -29,7 +29,7 @@ From PyPi::
 
 From GitHub::
 
-    $ pip install git+https://github.com/jlafon/PynamoDB#egg=pynamodb
+    $ pip install git+https://github.com/pynamodb/PynamoDB#egg=pynamodb
 
 Basic Usage
 ^^^^^^^^^^^
@@ -184,4 +184,3 @@ Features
 * Support for Global and Local Secondary Indexes
 * Batch operations with automatic pagination
 * Iterators for working with Query and Scan operations
-

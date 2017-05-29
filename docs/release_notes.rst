@@ -1,6 +1,30 @@
 Release Notes
 =============
 
+v2.1.6
+------
+
+:date: 2017-05-10
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* Replace Delorean with dateutil (#208)
+* Fix a bug with count -- consume all pages in paginated response (#256)
+* Update mock lib (#262)
+* Use pytest instead of nose (#263)
+* Documentation changes (#269)
+* Fix null deserialization in MapAttributes (#272)
+
+Contributors to this release:
+
+* @funkybob
+* @garrettheel
+* @lita
+* @jmphilli
+
+
 v2.1.5
 ------
 
@@ -390,7 +414,7 @@ This is a backward compatible, minor bug fix release, fixing the following issue
 Other minor improvements
 
 * New API for backing up and restoring tables
-* Better support for custom attributes (https://github.com/jlafon/PynamoDB/commit/0c2ba5894a532ed14b6c14e5059e97dbb653ff12)
+* Better support for custom attributes (https://github.com/pynamodb/PynamoDB/commit/0c2ba5894a532ed14b6c14e5059e97dbb653ff12)
 * Explicit Travis CI testing of Python 2.6, 2.7, 3.3, 3.4, and PyPy
 * Tests added for round tripping unicode values
 

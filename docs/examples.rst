@@ -1,7 +1,7 @@
 PynamoDB Examples
 =================
 
-An directory of examples is available with the PynamoDB source on `GitHub <https://github.com/jlafon/PynamoDB/tree/devel/examples>`__.
+An directory of examples is available with the PynamoDB source on `GitHub <https://github.com/pynamodb/PynamoDB/tree/devel/examples>`__.
 The examples are configured to use `http://localhost:8000` as the DynamoDB endpoint. For information on how to run DynamoDB locally,
 see : :ref:`local`.
 
@@ -23,7 +23,7 @@ Getting the examples
 
 You can clone the PynamoDB repository to get the examples::
 
-    $ git clone https://github.com/jlafon/PynamoDB.git
+    $ git clone https://github.com/pynamodb/PynamoDB.git
 
 Running the examples
 ^^^^^^^^^^^^^^^^^^^^
@@ -45,5 +45,3 @@ Running an example
 Each example file can be executed as a script by a Python interpreter::
 
     $ python model.py
-
-

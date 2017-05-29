@@ -1493,6 +1493,18 @@ class ConnectionTestCase(TestCase):
             self.assertEqual(0, len(values))
             verify_scan_call_args(req.call_args, table_name)
 
+        # Attempts to use rate limited scanning should fail with a ScanError if the DynamoDB implementation
+        # does not return ConsumedCapacity (e.g. DynamoDB Local).
+        with patch(SCAN_METHOD_TO_PATCH) as req:
+            req.return_value = {'Items': []}
+            self.assertRaises(ScanError, lambda: list(conn.rate_limited_scan(table_name)))
+
+        # ... unless explicitly indicated that it's okay to proceed without rate limiting through an explicit parameter
+        # (or through settings, which isn't tested here).
+        with patch(SCAN_METHOD_TO_PATCH) as req:
+            req.return_value = {'Items': []}
+            list(conn.rate_limited_scan(table_name, allow_rate_limited_scan_without_consumed_capacity=True))
+
         with patch(SCAN_METHOD_TO_PATCH) as req:
             req.return_value = {'Items': [], 'ConsumedCapacity': {'TableName': table_name, 'CapacityUnits': 10.0}}
             resp = conn.rate_limited_scan(
