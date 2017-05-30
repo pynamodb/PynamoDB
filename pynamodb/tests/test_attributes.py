@@ -785,6 +785,9 @@ class MapAndListAttributeTestCase(TestCase):
         class CustomMapAttribute(MapAttribute):
             custom = CustomAttribute()
 
+            def __lt__(self, other):
+                return self.custom < other.custom
+
             def __eq__(self, other):
                 return self.custom == other.custom
 
@@ -799,7 +802,7 @@ class MapAndListAttributeTestCase(TestCase):
         list_attribute = ListAttribute(default=[], of=CustomMapAttribute)
         serialized = list_attribute.serialize(inp)
         deserialized = list_attribute.deserialize(serialized)
-        assert deserialized == inp
+        self.assertEqual(sorted(deserialized), sorted(inp))
 
         # Confirm that the the serialize/deserialize are called
         # with the expected values
