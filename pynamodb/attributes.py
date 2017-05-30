@@ -628,6 +628,7 @@ SERIALIZE_CLASS_MAP = {
     float: NumberAttribute(),
     int: NumberAttribute(),
     str: UnicodeAttribute(),
+    datetime: UTCDateTimeAttribute()
 }
 
 
@@ -639,6 +640,7 @@ SERIALIZE_KEY_MAP = {
     float: NUMBER_SHORT,
     int: NUMBER_SHORT,
     str: STRING_SHORT,
+    datetime: STRING_SHORT
 }
 
 
