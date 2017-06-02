@@ -12,12 +12,6 @@ try:
 except ImportError:
     blinker = None
 
-
-pytestmark = pytest.mark.skipif(
-    blinker is None,
-    reason='Signals require the blinker library.'
-)
-
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
 
