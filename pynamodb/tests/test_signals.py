@@ -5,7 +5,7 @@ import pytest
 
 from pynamodb.connection import Connection
 from pynamodb.connection.signals import _FakeNamespace
-from pynamodb.connection.signals import pre_boto_send, post_boto_send
+from pynamodb.connection.signals import pre_dynamo_send, post_dynamo_send
 
 try:
     import blinker
@@ -28,14 +28,14 @@ def test_signal(mock_uuid, mock_req):
     post_recorded = []
     UUID = '123-abc'
 
-    def record_pre_boto_send(sender, operation_name, table_name, req_uuid):
+    def record_pre_dynamo_send(sender, operation_name, table_name, req_uuid):
         pre_recorded.append((operation_name, table_name, req_uuid))
 
-    def record_post_boto_send(sender, operation_name, table_name, req_uuid):
+    def record_post_dynamo_send(sender, operation_name, table_name, req_uuid):
         post_recorded.append((operation_name, table_name, req_uuid))
 
-    pre_boto_send.connect(record_pre_boto_send)
-    post_boto_send.connect(record_post_boto_send)
+    pre_dynamo_send.connect(record_pre_dynamo_send)
+    post_dynamo_send.connect(record_post_dynamo_send)
     try:
         mock_uuid.uuid4.return_value = UUID
         mock_req.return_value = {'TableDescription': {'TableName': 'table', 'TableStatus': 'Creating'}}
@@ -44,8 +44,8 @@ def test_signal(mock_uuid, mock_req):
         assert ('CreateTable', 'MyTable', UUID) == pre_recorded[0]
         assert ('CreateTable', 'MyTable', UUID) == post_recorded[0]
     finally:
-        pre_boto_send.disconnect(record_pre_boto_send)
-        post_boto_send.disconnect(record_post_boto_send)
+        pre_dynamo_send.disconnect(record_pre_dynamo_send)
+        post_dynamo_send.disconnect(record_post_dynamo_send)
 
 
 @mock.patch(PATCH_METHOD)
@@ -54,14 +54,14 @@ def test_signal_exception_pre_signal(mock_uuid, mock_req):
     post_recorded = []
     UUID = '123-abc'
 
-    def record_pre_boto_send(sender, operation_name, table_name, req_uuid):
+    def record_pre_dynamo_send(sender, operation_name, table_name, req_uuid):
         raise ValueError()
 
-    def record_post_boto_send(sender, operation_name, table_name, req_uuid):
+    def record_post_dynamo_send(sender, operation_name, table_name, req_uuid):
         post_recorded.append((operation_name, table_name, req_uuid))
 
-    pre_boto_send.connect(record_pre_boto_send)
-    post_boto_send.connect(record_post_boto_send)
+    pre_dynamo_send.connect(record_pre_dynamo_send)
+    post_dynamo_send.connect(record_post_dynamo_send)
     try:
         mock_uuid.uuid4.return_value = UUID
         mock_req.return_value = {'TableDescription': {'TableName': 'table', 'TableStatus': 'Creating'}}
@@ -69,8 +69,8 @@ def test_signal_exception_pre_signal(mock_uuid, mock_req):
         c.dispatch('CreateTable', {'TableName': 'MyTable'})
         assert ('CreateTable', 'MyTable', UUID) == post_recorded[0]
     finally:
-        pre_boto_send.disconnect(record_pre_boto_send)
-        post_boto_send.disconnect(record_post_boto_send)
+        pre_dynamo_send.disconnect(record_pre_dynamo_send)
+        post_dynamo_send.disconnect(record_post_dynamo_send)
 
 
 @mock.patch(PATCH_METHOD)
@@ -79,14 +79,14 @@ def test_signal_exception_post_signal(mock_uuid, mock_req):
     pre_recorded = []
     UUID = '123-abc'
 
-    def record_pre_boto_send(sender, operation_name, table_name, req_uuid):
+    def record_pre_dynamo_send(sender, operation_name, table_name, req_uuid):
         pre_recorded.append((operation_name, table_name, req_uuid))
 
-    def record_post_boto_send(sender, operation_name, table_name, req_uuid):
+    def record_post_dynamo_send(sender, operation_name, table_name, req_uuid):
         raise ValueError()
 
-    pre_boto_send.connect(record_pre_boto_send)
-    post_boto_send.connect(record_post_boto_send)
+    pre_dynamo_send.connect(record_pre_dynamo_send)
+    post_dynamo_send.connect(record_post_dynamo_send)
     try:
         mock_uuid.uuid4.return_value = UUID
         mock_req.return_value = {'TableDescription': {'TableName': 'table', 'TableStatus': 'Creating'}}
@@ -94,13 +94,13 @@ def test_signal_exception_post_signal(mock_uuid, mock_req):
         c.dispatch('CreateTable', {'TableName': 'MyTable'})
         assert ('CreateTable', 'MyTable', UUID) == pre_recorded[0]
     finally:
-        pre_boto_send.disconnect(record_pre_boto_send)
-        post_boto_send.disconnect(record_post_boto_send)
+        pre_dynamo_send.disconnect(record_pre_dynamo_send)
+        post_dynamo_send.disconnect(record_post_dynamo_send)
 
 
 def test_fake_signals():
+    _signals = _FakeNamespace()
+    pre_dynamo_send = _signals.signal('pre_dynamo_send')
     with pytest.raises(RuntimeError):
-        _signals = _FakeNamespace()
-
-        pre_boto_send = _signals.signal('pre_boto_send')
-        pre_boto_send.connect(lambda x: x)
+        pre_dynamo_send.connect(lambda x: x)
+    pre_dynamo_send.send(object, operation_name="UPDATE", table_name="TEST", req_uuid="something")

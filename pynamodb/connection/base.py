@@ -17,7 +17,7 @@ from botocore.client import ClientError
 from botocore.vendored import requests
 
 from pynamodb.connection.util import pythonic
-from pynamodb.connection.signals import pre_boto_send, post_boto_send
+from pynamodb.connection.signals import pre_dynamo_send, post_dynamo_send
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.exceptions import (
@@ -279,15 +279,15 @@ class Connection(object):
 
     def send_post_boto_callback(self, operation_name, req_uuid, table_name):
         try:
-            post_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
+            post_dynamo_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
         except Exception as e:
-            log.error("post_boto callback threw an exception. {0}".format(e))
+            log.exception("post_boto callback threw an exception.")
 
     def send_pre_boto_callback(self, operation_name, req_uuid, table_name):
         try:
-            pre_boto_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
+            pre_dynamo_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
         except Exception as e:
-            log.error("pre_boto callback threw an exception. {0}".format(e))
+            log.exception("pre_boto callback threw an exception.")
 
     def _make_api_call(self, operation_name, operation_kwargs):
         """

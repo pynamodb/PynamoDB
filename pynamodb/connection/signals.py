@@ -46,5 +46,5 @@ except ImportError: # pragma: no cover
 # not put signals in here.  Create your own namespace instead.
 _signals = Namespace()
 
-pre_boto_send = _signals.signal('pre_boto_send')
-post_boto_send = _signals.signal('post_boto_send')
+pre_dynamo_send = _signals.signal('pre_dynamo_send')
+post_dynamo_send = _signals.signal('post_dynamo_send')
