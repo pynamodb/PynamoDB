@@ -395,7 +395,7 @@ class UnicodeAttributeTestCase(TestCase):
             value
         )
 
-    def test_unicode_set_deserialize(self):
+    def test_unicode_set_deserialize_old_way(self):
         """
         UnicodeSetAttribute.deserialize old way
         """
@@ -756,8 +756,8 @@ class MapAndListAttributeTestCase(TestCase):
                 return self.name < other.name
 
             def __eq__(self, other):
-                return self.name == other.name and \
-                       self.age == other.age
+                return (self.name == other.name and
+                        self.age == other.age)
 
         person1 = Person()
         person1.name = 'john'
