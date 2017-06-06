@@ -11,8 +11,8 @@ from dateutil.parser import parse
 from dateutil.tz import tzutc
 
 from mock import patch, Mock, call
+import pytest
 
-from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.models import Model
 
@@ -53,11 +53,11 @@ class DefaultsMap(MapAttribute):
     map_field = MapAttribute(default={})
 
 
-class AttributeDescriptorTestCase(TestCase):
+class TestAttributeDescriptor:
     """
     Test Attribute Descriptors
     """
-    def setUp(self):
+    def setup(self):
         self.instance = AttributeTestModel()
 
     def test_binary_attr(self):
@@ -65,42 +65,42 @@ class AttributeDescriptorTestCase(TestCase):
         Binary attribute descriptor
         """
         self.instance.binary_attr = b'test'
-        self.assertEqual(self.instance.binary_attr, b'test')
+        assert self.instance.binary_attr == b'test'
 
     def test_binary_set_attr(self):
         """
         Binary set attribute descriptor
         """
         self.instance.binary_set_attr = set([b'test', b'test2'])
-        self.assertEqual(self.instance.binary_set_attr, set([b'test', b'test2']))
+        assert self.instance.binary_set_attr == set([b'test', b'test2'])
 
     def test_number_attr(self):
         """
         Number attribute descriptor
         """
         self.instance.number_attr = 42
-        self.assertEqual(self.instance.number_attr, 42)
+        assert self.instance.number_attr == 42
 
     def test_number_set_attr(self):
         """
         Number set attribute descriptor
         """
         self.instance.number_set_attr = set([1, 2])
-        self.assertEqual(self.instance.number_set_attr, set([1, 2]))
+        assert self.instance.number_set_attr == set([1, 2])
 
     def test_unicode_attr(self):
         """
         Unicode attribute descriptor
         """
         self.instance.unicode_attr = u"test"
-        self.assertEqual(self.instance.unicode_attr, u"test")
+        assert self.instance.unicode_attr == u"test"
 
     def test_unicode_set_attr(self):
         """
         Unicode set attribute descriptor
         """
         self.instance.unicode_set_attr = set([u"test", u"test2"])
-        self.assertEqual(self.instance.unicode_set_attr, set([u"test", u"test2"]))
+        assert self.instance.unicode_set_attr == set([u"test", u"test2"])
 
     def test_datetime_attr(self):
         """
@@ -108,24 +108,24 @@ class AttributeDescriptorTestCase(TestCase):
         """
         now = datetime.now()
         self.instance.datetime_attr = now
-        self.assertEqual(self.instance.datetime_attr, now)
+        assert self.instance.datetime_attr == now
 
     def test_bool_attr(self):
         """
         Boolean attribute descriptor
         """
         self.instance.bool_attr = True
-        self.assertEqual(self.instance.bool_attr, True)
+        assert self.instance.bool_attr is True
 
     def test_json_attr(self):
         """
         JSON attribute descriptor
         """
         self.instance.json_attr = {'foo': 'bar', 'bar': 42}
-        self.assertEqual(self.instance.json_attr, {'foo': 'bar', 'bar': 42})
+        assert self.instance.json_attr == {'foo': 'bar', 'bar': 42}
 
 
-class UTCDateTimeAttributeTestCase(TestCase):
+class TestUTCDateTimeAttribute:
     """
     Tests UTCDateTime attributes
     """
@@ -134,11 +134,11 @@ class UTCDateTimeAttributeTestCase(TestCase):
         UTCDateTimeAttribute.default
         """
         attr = UTCDateTimeAttribute()
-        self.assertIsNotNone(attr)
-        self.assertEqual(attr.attr_type, STRING)
+        assert attr is not None
+        assert attr.attr_type == STRING
         tstamp = datetime.now()
         attr = UTCDateTimeAttribute(default=tstamp)
-        self.assertEqual(attr.default, tstamp)
+        assert attr.default == tstamp
 
     def test_utc_date_time_deserialize(self):
         """
@@ -146,10 +146,7 @@ class UTCDateTimeAttributeTestCase(TestCase):
         """
         tstamp = datetime.now(UTC)
         attr = UTCDateTimeAttribute()
-        self.assertEqual(
-            tstamp,
-            attr.deserialize(tstamp.strftime(DATETIME_FORMAT)),
-        )
+        assert attr.deserialize(tstamp.strftime(DATETIME_FORMAT)) == tstamp
 
     def test_dateutil_parser_fallback(self):
         """
@@ -157,10 +154,7 @@ class UTCDateTimeAttributeTestCase(TestCase):
         """
         expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=tzutc())
         attr = UTCDateTimeAttribute()
-        self.assertEqual(
-            expected_value,
-            attr.deserialize('January 6, 2047 at 8:21:00AM UTC'),
-        )
+        assert attr.deserialize('January 6, 2047 at 8:21:00AM UTC') == expected_value
 
     @patch('pynamodb.attributes.datetime')
     @patch('pynamodb.attributes.parse')
@@ -183,10 +177,10 @@ class UTCDateTimeAttributeTestCase(TestCase):
         """
         tstamp = datetime.now()
         attr = UTCDateTimeAttribute()
-        self.assertEqual(attr.serialize(tstamp), tstamp.replace(tzinfo=UTC).strftime(DATETIME_FORMAT))
+        assert attr.serialize(tstamp) == tstamp.replace(tzinfo=UTC).strftime(DATETIME_FORMAT)
 
 
-class BinaryAttributeTestCase(TestCase):
+class TestBinaryAttribute:
     """
     Tests binary attributes
     """
@@ -195,11 +189,11 @@ class BinaryAttributeTestCase(TestCase):
         BinaryAttribute.default
         """
         attr = BinaryAttribute()
-        self.assertIsNotNone(attr)
-        self.assertEqual(attr.attr_type, BINARY)
+        assert attr is not None
+        assert attr.attr_type == BINARY
 
         attr = BinaryAttribute(default=b'foo')
-        self.assertEqual(attr.default, b'foo')
+        assert attr.default == b'foo'
 
     def test_binary_round_trip(self):
         """
@@ -208,7 +202,7 @@ class BinaryAttributeTestCase(TestCase):
         attr = BinaryAttribute()
         value = b'foo'
         serial = attr.serialize(value)
-        self.assertEqual(attr.deserialize(serial), value)
+        assert attr.deserialize(serial) == value
 
     def test_binary_serialize(self):
         """
@@ -216,7 +210,7 @@ class BinaryAttributeTestCase(TestCase):
         """
         attr = BinaryAttribute()
         serial = b64encode(b'foo').decode(DEFAULT_ENCODING)
-        self.assertEqual(attr.serialize(b'foo'), serial)
+        assert attr.serialize(b'foo') == serial
 
     def test_binary_deserialize(self):
         """
@@ -224,18 +218,18 @@ class BinaryAttributeTestCase(TestCase):
         """
         attr = BinaryAttribute()
         serial = b64encode(b'foo').decode(DEFAULT_ENCODING)
-        self.assertEqual(attr.deserialize(serial), b'foo')
+        assert attr.deserialize(serial) == b'foo'
 
     def test_binary_set_serialize(self):
         """
         BinarySetAttribute.serialize
         """
         attr = BinarySetAttribute()
-        self.assertEqual(attr.attr_type, BINARY_SET)
-        self.assertEqual(
-            attr.serialize(set([b'foo', b'bar'])),
-            [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(set([b'foo', b'bar']))])
-        self.assertEqual(attr.serialize(None), None)
+        assert attr.attr_type == BINARY_SET
+        assert attr.serialize(set([b'foo', b'bar'])) == [
+            b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(set([b'foo', b'bar']))
+        ]
+        assert attr.serialize(None) is None
 
     def test_binary_set_round_trip(self):
         """
@@ -244,7 +238,7 @@ class BinaryAttributeTestCase(TestCase):
         attr = BinarySetAttribute()
         value = set([b'foo', b'bar'])
         serial = attr.serialize(value)
-        self.assertEqual(attr.deserialize(serial), value)
+        assert attr.deserialize(serial) == value
 
     def test_binary_set_deserialize(self):
         """
@@ -252,23 +246,22 @@ class BinaryAttributeTestCase(TestCase):
         """
         attr = BinarySetAttribute()
         value = set([b'foo', b'bar'])
-        self.assertEqual(
-            attr.deserialize([b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]),
-            value
-        )
+        assert attr.deserialize(
+            [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]
+        ) == value
 
     def test_binary_set_attribute(self):
         """
         BinarySetAttribute.serialize
         """
         attr = BinarySetAttribute()
-        self.assertIsNotNone(attr)
+        assert attr is not None
 
         attr = BinarySetAttribute(default=set([b'foo', b'bar']))
-        self.assertEqual(attr.default, set([b'foo', b'bar']))
+        assert attr.default == set([b'foo', b'bar'])
 
 
-class NumberAttributeTestCase(TestCase):
+class TestNumberAttribute:
     """
     Tests number attributes
     """
@@ -277,58 +270,58 @@ class NumberAttributeTestCase(TestCase):
         NumberAttribute.default
         """
         attr = NumberAttribute()
-        self.assertIsNotNone(attr)
-        self.assertEqual(attr.attr_type, NUMBER)
+        assert attr is not None
+        assert attr.attr_type == NUMBER
 
         attr = NumberAttribute(default=1)
-        self.assertEqual(attr.default, 1)
+        assert attr.default == 1
 
     def test_number_serialize(self):
         """
         NumberAttribute.serialize
         """
         attr = NumberAttribute()
-        self.assertEqual(attr.serialize(3.141), '3.141')
-        self.assertEqual(attr.serialize(1), '1')
-        self.assertEqual(attr.serialize(12345678909876543211234234324234), '12345678909876543211234234324234')
+        assert attr.serialize(3.141) == '3.141'
+        assert attr.serialize(1) == '1'
+        assert attr.serialize(12345678909876543211234234324234) == '12345678909876543211234234324234'
 
     def test_number_deserialize(self):
         """
         NumberAttribute.deserialize
         """
         attr = NumberAttribute()
-        self.assertEqual(attr.deserialize('1'), 1)
-        self.assertEqual(attr.deserialize('3.141'), 3.141)
-        self.assertEqual(attr.deserialize('12345678909876543211234234324234'), 12345678909876543211234234324234)
+        assert attr.deserialize('1') == 1
+        assert attr.deserialize('3.141') == 3.141
+        assert attr.deserialize('12345678909876543211234234324234') == 12345678909876543211234234324234
 
     def test_number_set_deserialize(self):
         """
         NumberSetAttribute.deserialize
         """
         attr = NumberSetAttribute()
-        self.assertEqual(attr.attr_type, NUMBER_SET)
-        self.assertEqual(attr.deserialize([json.dumps(val) for val in sorted(set([1, 2]))]), set([1, 2]))
+        assert attr.attr_type == NUMBER_SET
+        assert attr.deserialize([json.dumps(val) for val in sorted(set([1, 2]))]) == set([1, 2])
 
     def test_number_set_serialize(self):
         """
         NumberSetAttribute.serialize
         """
         attr = NumberSetAttribute()
-        self.assertEqual(attr.serialize(set([1, 2])), [json.dumps(val) for val in sorted(set([1, 2]))])
-        self.assertEqual(attr.serialize(None), None)
+        assert attr.serialize(set([1, 2])) == [json.dumps(val) for val in sorted(set([1, 2]))]
+        assert attr.serialize(None) is None
 
     def test_number_set_attribute(self):
         """
         NumberSetAttribute.default
         """
         attr = NumberSetAttribute()
-        self.assertIsNotNone(attr)
+        assert attr is not None
 
         attr = NumberSetAttribute(default=set([1, 2]))
-        self.assertEqual(attr.default, set([1, 2]))
+        assert attr.default == set([1, 2])
 
 
-class UnicodeAttributeTestCase(TestCase):
+class TestUnicodeAttribute:
     """
     Tests unicode attributes
     """
@@ -337,41 +330,40 @@ class UnicodeAttributeTestCase(TestCase):
         UnicodeAttribute.default
         """
         attr = UnicodeAttribute()
-        self.assertIsNotNone(attr)
-        self.assertEqual(attr.attr_type, STRING)
+        assert attr is not None
+        assert attr.attr_type == STRING
 
         attr = UnicodeAttribute(default=six.u('foo'))
-        self.assertEqual(attr.default, six.u('foo'))
+        assert attr.default == six.u('foo')
 
     def test_unicode_serialize(self):
         """
         UnicodeAttribute.serialize
         """
         attr = UnicodeAttribute()
-        self.assertEqual(attr.serialize('foo'), six.u('foo'))
-        self.assertEqual(attr.serialize(u'foo'), six.u('foo'))
-        self.assertEqual(attr.serialize(u''), None)
-        self.assertEqual(attr.serialize(None), None)
+        assert attr.serialize('foo') == six.u('foo')
+        assert attr.serialize(u'foo') == six.u('foo')
+        assert attr.serialize(u'') is None
+        assert attr.serialize(None) is None
 
     def test_unicode_deserialize(self):
         """
         UnicodeAttribute.deserialize
         """
         attr = UnicodeAttribute()
-        self.assertEqual(attr.deserialize('foo'), six.u('foo'))
-        self.assertEqual(attr.deserialize(u'foo'), six.u('foo'))
+        assert attr.deserialize('foo') == six.u('foo')
+        assert attr.deserialize(u'foo') == six.u('foo')
 
     def test_unicode_set_serialize(self):
         """
         UnicodeSetAttribute.serialize
         """
         attr = UnicodeSetAttribute()
-        self.assertEqual(attr.attr_type, STRING_SET)
-        self.assertEqual(attr.deserialize(None), None)
-        self.assertEqual(
-            attr.serialize(set([six.u('foo'), six.u('bar')])),
-            sorted([six.u('foo'), six.u('bar')])
-        )
+        assert attr.attr_type == STRING_SET
+        assert attr.deserialize(None) is None
+
+        expected = sorted([six.u('foo'), six.u('bar')])
+        assert attr.serialize(set([six.u('foo'), six.u('bar')])) == expected
 
     def test_round_trip_unicode_set(self):
         """
@@ -379,10 +371,7 @@ class UnicodeAttributeTestCase(TestCase):
         """
         attr = UnicodeSetAttribute()
         orig = set([six.u('foo'), six.u('bar')])
-        self.assertEqual(
-            orig,
-            attr.deserialize(attr.serialize(orig))
-        )
+        assert orig == attr.deserialize(attr.serialize(orig))
 
     def test_unicode_set_deserialize(self):
         """
@@ -390,10 +379,7 @@ class UnicodeAttributeTestCase(TestCase):
         """
         attr = UnicodeSetAttribute()
         value = set([six.u('foo'), six.u('bar')])
-        self.assertEqual(
-            attr.deserialize(value),
-            value
-        )
+        assert attr.deserialize(value) == value
 
     def test_unicode_set_deserialize_old_way(self):
         """
@@ -402,33 +388,30 @@ class UnicodeAttributeTestCase(TestCase):
         attr = UnicodeSetAttribute()
         value = set([six.u('foo'), six.u('bar')])
         old_value = set([json.dumps(val) for val in value])
-        self.assertEqual(
-            attr.deserialize(old_value),
-            value
-        )
+        assert attr.deserialize(old_value) == value
 
     def test_unicode_set_attribute(self):
         """
         UnicodeSetAttribute.default
         """
         attr = UnicodeSetAttribute()
-        self.assertIsNotNone(attr)
-        self.assertEqual(attr.attr_type, STRING_SET)
+        assert attr is not None
+        assert attr.attr_type == STRING_SET
         attr = UnicodeSetAttribute(default=set([six.u('foo'), six.u('bar')]))
-        self.assertEqual(attr.default, set([six.u('foo'), six.u('bar')]))
+        assert attr.default == set([six.u('foo'), six.u('bar')])
 
 
-class LegacyBooleanAttributeTestCase(TestCase):
+class TestLegacyBooleanAttribute:
     def test_legacy_boolean_attribute_can_read_future_boolean_attributes(self):
         """
         LegacyBooleanAttribute.deserialize
         :return:
         """
         attr = LegacyBooleanAttribute()
-        self.assertEqual(attr.deserialize('1'), True)
-        self.assertEqual(attr.deserialize('0'), False)
-        self.assertEqual(attr.deserialize(json.dumps(True)), True)
-        self.assertEqual(attr.deserialize(json.dumps(False)), False)
+        assert attr.deserialize('1') is True
+        assert attr.deserialize('0') is False
+        assert attr.deserialize(json.dumps(True)) is True
+        assert attr.deserialize(json.dumps(False)) is False
 
     def test_legacy_boolean_attribute_get_value_can_read_both(self):
         """
@@ -436,29 +419,29 @@ class LegacyBooleanAttributeTestCase(TestCase):
         :return:
         """
         attr = LegacyBooleanAttribute()
-        self.assertEqual(attr.get_value({'N': '1'}), '1')
-        self.assertEqual(attr.get_value({'N': '0'}), '0')
-        self.assertEqual(attr.get_value({'BOOL': True}), json.dumps(True))
-        self.assertEqual(attr.get_value({'BOOL': False}), json.dumps(False))
+        assert attr.get_value({'N': '1'}) == '1'
+        assert attr.get_value({'N': '0'}) == '0'
+        assert attr.get_value({'BOOL': True}) == json.dumps(True)
+        assert attr.get_value({'BOOL': False}) == json.dumps(False)
 
     def test_legacy_boolean_attribute_get_value_and_deserialize_work_together(self):
         attr = LegacyBooleanAttribute()
-        self.assertEqual(attr.deserialize(attr.get_value({'N': '1'})), True)
-        self.assertEqual(attr.deserialize(attr.get_value({'N': '0'})), False)
-        self.assertEqual(attr.deserialize(attr.get_value({'BOOL': True})), True)
-        self.assertEqual(attr.deserialize(attr.get_value({'BOOL': False})), False)
+        assert attr.deserialize(attr.get_value({'N': '1'})) is True
+        assert attr.deserialize(attr.get_value({'N': '0'})) is False
+        assert attr.deserialize(attr.get_value({'BOOL': True})) is True
+        assert attr.deserialize(attr.get_value({'BOOL': False})) is False
 
     def test_legacy_boolean_attribute_serialize(self):
         """
         LegacyBooleanAttribute.serialize
         """
         attr = LegacyBooleanAttribute()
-        self.assertEqual(attr.serialize(True), '1')
-        self.assertEqual(attr.serialize(False), '0')
-        self.assertEqual(attr.serialize(None), None)
+        assert attr.serialize(True) == '1'
+        assert attr.serialize(False) == '0'
+        assert attr.serialize(None) is None
 
 
-class BooleanAttributeTestCase(TestCase):
+class TestBooleanAttribute:
     """
     Tests boolean attributes
     """
@@ -467,54 +450,54 @@ class BooleanAttributeTestCase(TestCase):
         BooleanAttribute.default
         """
         attr = BooleanAttribute()
-        self.assertIsNotNone(attr)
+        assert attr is not None
 
-        self.assertEqual(attr.attr_type, BOOLEAN)
+        assert attr.attr_type == BOOLEAN
         attr = BooleanAttribute(default=True)
-        self.assertEqual(attr.default, True)
+        assert attr.default is True
 
     def test_boolean_serialize(self):
         """
         BooleanAttribute.serialize
         """
         attr = BooleanAttribute()
-        self.assertEqual(attr.serialize(True), True)
-        self.assertEqual(attr.serialize(False), False)
-        self.assertEqual(attr.serialize(None), None)
+        assert attr.serialize(True) is True
+        assert attr.serialize(False) is False
+        assert attr.serialize(None) is None
 
     def test_boolean_deserialize(self):
         """
         BooleanAttribute.deserialize
         """
         attr = BooleanAttribute()
-        self.assertEqual(attr.deserialize('1'), True)
-        self.assertEqual(attr.deserialize('0'), True)
-        self.assertEqual(attr.deserialize(True), True)
-        self.assertEqual(attr.deserialize(False), False)
+        assert attr.deserialize('1') is True
+        assert attr.deserialize('0') is True
+        assert attr.deserialize(True) is True
+        assert attr.deserialize(False) is False
 
 
-class JSONAttributeTestCase(TestCase):
+class TestJSONAttribute:
     """
     Tests json attributes
     """
     def test_quoted_json(self):
         attr = JSONAttribute()
         serialized = attr.serialize('\\t')
-        self.assertEqual(attr.deserialize(serialized), '\\t')
+        assert attr.deserialize(serialized) == '\\t'
 
         serialized = attr.serialize('"')
-        self.assertEqual(attr.deserialize(serialized), '"')
+        assert attr.deserialize(serialized) == '"'
 
     def test_json_attribute(self):
         """
         JSONAttribute.default
         """
         attr = JSONAttribute()
-        self.assertIsNotNone(attr)
+        assert attr is not None
 
-        self.assertEqual(attr.attr_type, STRING)
+        assert attr.attr_type == STRING
         attr = JSONAttribute(default={})
-        self.assertEqual(attr.default, {})
+        assert attr.default == {}
 
     def test_json_serialize(self):
         """
@@ -522,9 +505,9 @@ class JSONAttributeTestCase(TestCase):
         """
         attr = JSONAttribute()
         item = {'foo': 'bar', 'bool': True, 'number': 3.141}
-        self.assertEqual(attr.serialize(item), six.u(json.dumps(item)))
-        self.assertEqual(attr.serialize({}), six.u('{}'))
-        self.assertEqual(attr.serialize(None), None)
+        assert attr.serialize(item) == six.u(json.dumps(item))
+        assert attr.serialize({}) == six.u('{}')
+        assert attr.serialize(None) is None
 
     def test_json_deserialize(self):
         """
@@ -533,7 +516,7 @@ class JSONAttributeTestCase(TestCase):
         attr = JSONAttribute()
         item = {'foo': 'bar', 'bool': True, 'number': 3.141}
         encoded = six.u(json.dumps(item))
-        self.assertEqual(attr.deserialize(encoded), item)
+        assert attr.deserialize(encoded) == item
 
     def test_control_chars(self):
         """
@@ -542,10 +525,10 @@ class JSONAttributeTestCase(TestCase):
         attr = JSONAttribute()
         item = {'foo\t': 'bar\n', 'bool': True, 'number': 3.141}
         encoded = six.u(json.dumps(item))
-        self.assertEqual(attr.deserialize(encoded), item)
+        assert attr.deserialize(encoded) == item
 
 
-class MapAttributeTestCase(TestCase):
+class TestMapAttribute:
     """
     Tests map with str, int, float
     """
@@ -557,7 +540,7 @@ class MapAttributeTestCase(TestCase):
         }
         attr = MapAttribute()
         serialized = attr.serialize(person_attribute)
-        self.assertEqual(attr.deserialize(serialized), person_attribute)
+        assert attr.deserialize(serialized) == person_attribute
 
     def test_map_of_map(self):
         attribute = {
@@ -569,7 +552,7 @@ class MapAttributeTestCase(TestCase):
         }
         attr = MapAttribute()
         serialized = attr.serialize(attribute)
-        self.assertEqual(attr.deserialize(serialized), attribute)
+        assert attr.deserialize(serialized) == attribute
 
     def test_map_overridden_attrs_accessors(self):
         attr = CustomAttrMap(**{
@@ -577,27 +560,25 @@ class MapAttributeTestCase(TestCase):
             'overridden_unicode_attr': "Hello"
         })
 
-        self.assertEqual(10, attr.overridden_number_attr)
-        self.assertEqual("Hello", attr.overridden_unicode_attr)
+        assert attr.overridden_number_attr == 10
+        assert attr.overridden_unicode_attr == "Hello"
 
     def test_map_overridden_attrs_serialize(self):
         attribute = {
             'overridden_number_attr': 10,
             'overridden_unicode_attr': "Hello"
         }
-        self.assertEqual(
-            {'number_attr': {'N': '10'}, 'unicode_attr': {'S': six.u('Hello')}},
-            CustomAttrMap().serialize(attribute)
-        )
+        expected = {'number_attr': {'N': '10'}, 'unicode_attr': {'S': six.u('Hello')}}
+        assert CustomAttrMap().serialize(attribute) == expected
 
     def test_defaults(self):
         item = DefaultsMap()
-        self.assertTrue(item.validate())
-        self.assertEquals(DefaultsMap().serialize(item), {
+        assert item.validate()
+        assert DefaultsMap().serialize(item) == {
             'map_field': {
                 'M': {}
             }
-        })
+        }
 
     def test_raw_map_from_dict(self):
         item = AttributeTestModel(
@@ -610,8 +591,8 @@ class MapAttributeTestCase(TestCase):
             }
         )
 
-        self.assertEqual(item.map_attr['foo'], 'bar')
-        self.assertEqual(item.map_attr['num'], 3)
+        assert item.map_attr['foo'] == 'bar'
+        assert item.map_attr['num'] == 3
 
     def test_raw_map_access(self):
         raw = {
@@ -624,7 +605,7 @@ class MapAttributeTestCase(TestCase):
         attr = MapAttribute(**raw)
 
         for k, v in six.iteritems(raw):
-            self.assertEquals(attr[k], v)
+            assert attr[k] == v
 
     def test_raw_map_json_serialize(self):
         raw = {
@@ -636,10 +617,15 @@ class MapAttributeTestCase(TestCase):
         }
 
         serialized_raw = json.dumps(raw, sort_keys=True)
-        self.assertEqual(json.dumps(AttributeTestModel(map_attr=raw).map_attr.as_dict(),
-                         sort_keys=True), serialized_raw)
-        self.assertEqual(json.dumps(AttributeTestModel(map_attr=MapAttribute(**raw)).map_attr.as_dict(),
-                         sort_keys=True), serialized_raw)
+        serialized_attr_from_raw = json.dumps(
+            AttributeTestModel(map_attr=raw).map_attr.as_dict(),
+            sort_keys=True)
+        serialized_attr_from_map = json.dumps(
+            AttributeTestModel(map_attr=MapAttribute(**raw)).map_attr.as_dict(),
+            sort_keys=True)
+
+        assert serialized_attr_from_raw == serialized_raw
+        assert serialized_attr_from_map == serialized_raw
 
     def test_typed_and_raw_map_json_serialize(self):
         class TypedMap(MapAttribute):
@@ -652,8 +638,7 @@ class MapAttributeTestCase(TestCase):
             typed_map=TypedMap(map_attr={'foo': 'bar'})
         )
 
-        self.assertEqual(json.dumps({'map_attr': {'foo': 'bar'}}),
-                         json.dumps(item.typed_map.as_dict()))
+        assert json.dumps({'map_attr': {'foo': 'bar'}}) == json.dumps(item.typed_map.as_dict())
 
     def test_json_serialize(self):
         class JSONMapAttribute(MapAttribute):
@@ -666,9 +651,9 @@ class MapAttributeTestCase(TestCase):
         json_map = JSONMapAttribute(arbitrary_data=item)
         serialized = json_map.serialize(json_map)
         deserialized = json_map.deserialize(serialized)
-        self.assertTrue(isinstance(deserialized, JSONMapAttribute))
-        self.assertEqual(deserialized, json_map)
-        self.assertEqual(deserialized.arbitrary_data, item)
+        assert isinstance(deserialized, JSONMapAttribute)
+        assert deserialized == json_map
+        assert deserialized.arbitrary_data == item
 
     def test_serialize_datetime(self):
         class CustomMapAttribute(MapAttribute):
@@ -681,23 +666,36 @@ class MapAttributeTestCase(TestCase):
                 'S': u'2017-01-01T00:00:00.000000+0000'
             }
         }
-        self.assertEquals(serialized_datetime, expected_serialized_value)
+        assert serialized_datetime == expected_serialized_value
+
+    def test_serialize_datetime(self):
+        class CustomMapAttribute(MapAttribute):
+            date_attr = UTCDateTimeAttribute()
+
+        cm = CustomMapAttribute(date_attr=datetime(2017, 1, 1))
+        serialized_datetime = cm.serialize(cm)
+        expected_serialized_value = {
+            'date_attr': {
+                'S': u'2017-01-01T00:00:00.000000+0000'
+            }
+        }
+        assert serialized_datetime == expected_serialized_value
 
 
-class ValueDeserializeTestCase(TestCase):
+class TestValueDeserialize:
     def test__get_value_for_deserialize(self):
         expected = '3'
         data = {'N': '3'}
         actual = _get_value_for_deserialize(data)
-        self.assertEquals(expected, actual)
+        assert expected == actual
 
     def test__get_value_for_deserialize_null(self):
         data = {'NULL': 'True'}
         actual = _get_value_for_deserialize(data)
-        self.assertIsNone(actual)
+        assert actual is None
 
 
-class MapAndListAttributeTestCase(TestCase):
+class TestMapAndListAttribute:
 
     def test_map_of_list(self):
         grocery_list = {
@@ -705,7 +703,7 @@ class MapAndListAttributeTestCase(TestCase):
             'veggies': ['broccoli', 'potatoes', 5]
         }
         serialized = MapAttribute().serialize(grocery_list)
-        self.assertEqual(MapAttribute().deserialize(serialized), grocery_list)
+        assert MapAttribute().deserialize(serialized) == grocery_list
 
     def test_map_of_list_of_map(self):
         family_attributes = {
@@ -745,7 +743,7 @@ class MapAndListAttributeTestCase(TestCase):
             ]
         }
         serialized = MapAttribute().serialize(family_attributes)
-        self.assertDictEqual(MapAttribute().deserialize(serialized), family_attributes)
+        assert MapAttribute().deserialize(serialized) == family_attributes
 
     def test_list_of_map_with_of(self):
         class Person(MapAttribute):
@@ -772,66 +770,31 @@ class MapAndListAttributeTestCase(TestCase):
         list_attribute = ListAttribute(default=[], of=Person)
         serialized = list_attribute.serialize(inp)
         deserialized = list_attribute.deserialize(serialized)
-        self.assertEqual(sorted(deserialized), sorted(inp))
+        assert sorted(deserialized) == sorted(inp)
 
-    def test_list_of_map_with_of_and_custom_attribute(self):
-
-        # Create a couple of mock functions to use
-        # to test that the CustomAttribute serialize/deserialize are called
-        serialize_mock = Mock()
-        deserialize_mock = Mock()
-
-        class CustomAttribute(Attribute):
-            attr_type = STRING
-
-            def serialize(self, value):
-                serialize_mock(value)
-                return value.upper()
-
-            def deserialize(self, value):
-                deserialize_mock(value)
-                return value.lower()
+    def test_list_of_map_with_of_and_custom_attribute(self, mocker):
 
         class CustomMapAttribute(MapAttribute):
-            custom = CustomAttribute()
-
-            def __lt__(self, other):
-                return self.custom < other.custom
+            custom = NumberAttribute()
 
             def __eq__(self, other):
                 return self.custom == other.custom
 
+        serialize_mock = mocker.spy(CustomMapAttribute.custom, 'serialize',)
+        deserialize_mock = mocker.spy(CustomMapAttribute.custom, 'deserialize')
+
         attribute1 = CustomMapAttribute()
-        attribute1.custom = 'test-value1'
+        attribute1.custom = 1
 
         attribute2 = CustomMapAttribute()
-        attribute2.custom = 'test-value2'
+        attribute2.custom = 2
 
         inp = [attribute1, attribute2]
 
         list_attribute = ListAttribute(default=[], of=CustomMapAttribute)
         serialized = list_attribute.serialize(inp)
         deserialized = list_attribute.deserialize(serialized)
-        self.assertEqual(sorted(deserialized), sorted(inp))
 
-        # Confirm that the the serialize/deserialize are called
-        # with the expected values
-        serialize_mock.assert_has_calls([
-            call('test-value1'),
-            call('test-value2'),
-        ])
-        deserialize_mock.assert_has_calls([
-            call('TEST-VALUE1'),
-            call('TEST-VALUE2'),
-        ])
-
-    def test_list_of_unicode_with_of(self):
-        with self.assertRaises(ValueError):
-            ListAttribute(default=[], of=UnicodeAttribute)
-
-    def test_list_of_unicode(self):
-        list_attribute = ListAttribute()
-        inp = ['rome', 'berlin']
-        serialized = list_attribute.serialize(inp)
-        deserialized = list_attribute.deserialize(serialized)
-        self.assertEqual(sorted(deserialized), sorted(inp))
+        assert deserialized == inp
+        assert serialize_mock.call_args_list == [call(1), call(2)]
+        assert deserialize_mock.call_args_list == [call('1'), call('2')]
