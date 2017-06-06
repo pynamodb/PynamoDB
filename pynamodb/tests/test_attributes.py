@@ -655,8 +655,22 @@ class MapAttributeTestCase(TestCase):
         self.assertEqual(json.dumps({'map_attr': {'foo': 'bar'}}),
                          json.dumps(item.typed_map.as_dict()))
 
-    def test_serialize_datetime(self):
+    def test_json_serialize(self):
+        class JSONMapAttribute(MapAttribute):
+            arbitrary_data = JSONAttribute()
 
+            def __eq__(self, other):
+                return self.arbitrary_data == other.arbitrary_data
+
+        item = {'foo': 'bar', 'bool': True, 'number': 3.141}
+        json_map = JSONMapAttribute(arbitrary_data=item)
+        serialized = json_map.serialize(json_map)
+        deserialized = json_map.deserialize(serialized)
+        self.assertTrue(isinstance(deserialized, JSONMapAttribute))
+        self.assertEqual(deserialized, json_map)
+        self.assertEqual(deserialized.arbitrary_data, item)
+
+    def test_serialize_datetime(self):
         class CustomMapAttribute(MapAttribute):
             date_attr = UTCDateTimeAttribute()
 
@@ -737,7 +751,6 @@ class MapAndListAttributeTestCase(TestCase):
         class Person(MapAttribute):
             name = UnicodeAttribute()
             age = NumberAttribute()
-            extra_arbitrary_data = JSONAttribute()
 
             def __lt__(self, other):
                 return self.name < other.name
@@ -749,13 +762,10 @@ class MapAndListAttributeTestCase(TestCase):
         person1 = Person()
         person1.name = 'john'
         person1.age = 40
-        person1.extra_arbitrary_data = {'married': True}
 
         person2 = Person()
         person2.name = 'Dana'
         person2.age = 41
-        person2.extra_arbitrary_data = {'net_income': 200000,
-                                        'dog': 'Fido'}
 
         inp = [person1, person2]
 
