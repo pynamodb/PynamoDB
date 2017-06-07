@@ -458,7 +458,7 @@ class MapAttribute(AttributeContainer, Attribute):
         try:
             return self.attribute_values[attr]
         except KeyError:
-            raise AttributeError("'{0}' has no attribute '{0}'".format(self.__class__.__name__, attr))
+            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, attr))
 
     def __set__(self, instance, value):
         if isinstance(value, collections.Mapping):
