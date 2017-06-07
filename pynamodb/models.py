@@ -245,7 +245,6 @@ class Model(AttributeContainer):
         if conditional_operator is not None and cls.has_map_or_list_attributes():
             raise NotImplementedError('Map and List attribute do not support conditional_operator yet')
 
-
     @classmethod
     def batch_get(cls, items, consistent_read=None, attributes_to_get=None):
         """

@@ -19,6 +19,7 @@ class Attribute(object):
     """
     An attribute of a model
     """
+    field_name = None
     attr_name = None
     attr_type = None
     null = False
@@ -40,11 +41,11 @@ class Attribute(object):
 
     def __set__(self, instance, value):
         if instance:
-            instance.attribute_values[self.attr_name] = value
+            instance.attribute_values[self.field_name] = value
 
     def __get__(self, instance, owner):
         if instance:
-            return instance.attribute_values.get(self.attr_name, None)
+            return instance.attribute_values.get(self.field_name, None)
         else:
             return self
 
@@ -89,6 +90,7 @@ class AttributeContainer(object):
 
             if issubclass(item_cls, (Attribute, )):
                 instance = getattr(cls, item_name)
+                instance.field_name = item_name
                 cls._attributes[item_name] = instance
                 if instance.attr_name is not None:
                     cls._dynamo_to_python_attrs[instance.attr_name] = item_name
@@ -451,7 +453,12 @@ class MapAttribute(AttributeContainer, Attribute):
         return self.attribute_values[item]
 
     def __getattr__(self, attr):
-        return self.attribute_values[attr]
+        # Should only be called for non-subclassed, otherwise we would go through
+        # the descriptor instead.
+        try:
+            return self.attribute_values[attr]
+        except KeyError:
+            raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, attr))
 
     def __set__(self, instance, value):
         if isinstance(value, collections.Mapping):

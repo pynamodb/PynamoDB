@@ -3178,7 +3178,7 @@ class ModelTestCase(TestCase):
                 GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL.get(ITEM).get('person').get(
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
             self.assertIsNone(item.person.age)
-            self.assertIsNone(item.person.is_dude)
+            self.assertIsNone(item.person.is_male)
 
     def test_model_with_list_retrieve_from_db(self):
         fake_db = self.database_mocker(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,
