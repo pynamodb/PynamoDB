@@ -11,7 +11,7 @@ env:
   - AWS_SECRET_ACCESS_KEY=fake_key AWS_ACCESS_KEY_ID=fake_id
 
 before_install:
-  - pip install six==1.8.0
+  - pip install six==1.9.0
 
 install:
   - pip install -r requirements-dev.txt
