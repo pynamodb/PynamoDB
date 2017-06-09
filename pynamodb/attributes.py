@@ -19,7 +19,6 @@ class Attribute(object):
     """
     An attribute of a model
     """
-    field_name = None
     attr_name = None
     attr_type = None
     null = False
@@ -92,7 +91,6 @@ class AttributeContainer(object):
 
             if issubclass(item_cls, (Attribute, )):
                 instance = getattr(cls, item_name)
-                instance.field_name = item_name
                 cls._attributes[item_name] = instance
                 if instance.attr_name is not None:
                     cls._dynamo_to_python_attrs[instance.attr_name] = item_name
