@@ -8,19 +8,19 @@ v3.0.0
 
 This is a major release with breaking changes.
 
-`MapAttribute` now allows pythonic access when recursively defined.
-Previously defined non subclasesd `MapAttributes` that were members of a subclassed `MapAttribute` would have to be accessed like a dictionary.
+``MapAttribute`` now allows pythonic access when recursively defined.
+Previously defined non subclasesd ``MapAttributes`` that were members of a subclassed ``MapAttribute`` would have to be accessed like a dictionary.
 Now object access is possible and recommended. See [here](https://github.com/pynamodb/PynamoDB/blob/master/pynamodb/tests/test_attributes.py#L671) for a test example.
 
-`UnicodeSetAttributes` do not json serialize or deserialize anymore.
-If you have any `UnicodeSetAttributes` persisted in dynamo you will need to manage the json encoding and decoding in application if you were relying on that functionality.
+``UnicodeSetAttributes`` do not json serialize or deserialize anymore.
+If you have any ``UnicodeSetAttributes`` persisted in dynamo you will need to manage the json encoding and decoding in application if you were relying on that functionality.
 
-* Performance enhancements for the `UTCDateTimeAttribute` deserialize method. (#277)
+* Performance enhancements for the ``UTCDateTimeAttribute`` deserialize method. (#277)
 * Fix to ignore null checks for batch delete (#283)
-* Fix for `ListAttribute` and `MapAttribute` serialize (#286)
-* Fix for `MapAttribute` pythonic access (#292) This is a breaking change
-* Deprecated the json decode in `UnicodeSetAttribute` (#294)
-* Raise `TableDoesNotExist` error instead of letting json decoding `ValueErrors` raise (#296)
+* Fix for ``ListAttribute`` and ``MapAttribute`` serialize (#286)
+* Fix for ``MapAttribute`` pythonic access (#292) This is a breaking change
+* Deprecated the json decode in ``;UnicodeSetAttribute`` (#294)
+* Raise ``TableDoesNotExist`` error instead of letting json decoding ``ValueErrors`` raise (#296)
 
 Contributors to this release:
 
