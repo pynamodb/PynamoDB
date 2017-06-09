@@ -239,7 +239,8 @@ class UnicodeSetAttribute(SetMixin, Attribute):
 
         is_numeric = False
         try:
-            is_numeric = float(value) or int(value)
+            float(value)
+            is_numeric = True
         except ValueError:
             pass
         if is_numeric:
