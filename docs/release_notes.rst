@@ -16,7 +16,7 @@ Access via the ``attr_name``, also known as the DynamoDB name, will now throw an
 
 ``UnicodeSetAttributes`` do not json serialize or deserialize anymore.
 We deprecated the functionality of json serializing as of ``1.6.0`` but left the deserialization functionality in there so people could migrate away from the old functionality. 
-If you have any ``UnicodeSetAttributes`` persisted in dynamo you will need to migrate your data or manage the json encoding and decoding in application if you were relying on that functionality.
+If you have any ``UnicodeSetAttributes`` that have not been persisted since version ``1.6.0`` you will need to migrate your data or manage the json encoding and decoding with a custom attribute in application. 
 
 * Performance enhancements for the ``UTCDateTimeAttribute`` deserialize method. (#277)
 * Fix to ignore null checks for batch delete (#283)
