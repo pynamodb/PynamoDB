@@ -27,8 +27,9 @@ Contributors to this release:
 * @johnliu
 * @scode
 * @rowilla
-* @jmphilli
 * @lita
+* @garretheel
+* @jmphilli
 
 v2.1.6
 ------
