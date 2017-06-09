@@ -365,6 +365,9 @@ class TestUnicodeAttribute:
         expected = sorted([six.u('foo'), six.u('bar')])
         assert attr.serialize(set([six.u('foo'), six.u('bar')])) == expected
 
+        expected = sorted([six.u('True'), six.u('False')])
+        assert attr.serialize(set([six.u('True'), six.u('False')])) == expected
+
     def test_round_trip_unicode_set(self):
         """
         Round trip a unicode set
@@ -379,6 +382,9 @@ class TestUnicodeAttribute:
         """
         attr = UnicodeSetAttribute()
         value = set([six.u('foo'), six.u('bar')])
+        assert attr.deserialize(value) == value
+
+        value = set([six.u('True'), six.u('False')])
         assert attr.deserialize(value) == value
 
     def test_unicode_set_deserialize_old_way(self):
