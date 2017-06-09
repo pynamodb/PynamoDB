@@ -794,7 +794,8 @@ class Connection(object):
         """
         operation_kwargs = {TABLE_NAME: table_name}
         operation_kwargs.update(
-            self.get_identifier_map(table_name, hash_key, range_key))
+            self.get_identifier_map(table_name, hash_key, range_key)
+        )
         if return_values:
             operation_kwargs.update(self.get_return_values_map(return_values))
         if update_expression:

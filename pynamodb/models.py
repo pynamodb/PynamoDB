@@ -381,7 +381,8 @@ class Model(AttributeContainer):
             update_expression=update_expression,
             return_values=ALL_NEW,
             expression_attribute_names=expression_attribute_names,
-            expression_attribute_values=expression_attribute_values)
+            expression_attribute_values=expression_attribute_values
+        )
         return self.__process_update_response(data)
 
     def update(self, attributes, conditional_operator=None, **expected_values):
@@ -430,8 +431,11 @@ class Model(AttributeContainer):
             attr_name = self._dynamo_to_python_attr(name)
             attr = self._get_attributes().get(attr_name)
             if attr:
-                setattr(self, attr_name, attr.deserialize(
-                    value.get(ATTR_TYPE_MAP[attr.attr_type])))
+                setattr(
+                    self, attr_name, attr.deserialize(
+                        value.get(ATTR_TYPE_MAP[attr.attr_type])
+                    )
+                )
         return data
 
     def save(self, conditional_operator=None, **expected_values):

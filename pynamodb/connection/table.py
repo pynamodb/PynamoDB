@@ -65,7 +65,8 @@ class TableConnection(object):
             return_values=return_values,
             update_expression=update_expression,
             expression_attribute_names=expression_attribute_names,
-            expression_attribute_values=expression_attribute_values)
+            expression_attribute_values=expression_attribute_values
+        )
 
     def update_item(self,
                     hash_key,
