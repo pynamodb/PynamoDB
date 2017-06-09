@@ -44,6 +44,7 @@ class Attribute(object):
 
     def __get__(self, instance, owner):
         if instance:
+            print('in get {} {}'.format(type(self), self.attr_name))
             return instance.attribute_values.get(self.attr_name, None)
         else:
             return self
