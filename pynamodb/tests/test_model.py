@@ -3194,7 +3194,6 @@ class ModelTestCase(TestCase):
                 GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
                     MAP_SHORT).get('firstName').get(STRING_SHORT))
             assert item.person.is_male
-            print(item.__dict__)
             with pytest.raises(Exception):
                 item.person.is_dude
 

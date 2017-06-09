@@ -40,12 +40,13 @@ class Attribute(object):
 
     def __set__(self, instance, value):
         if instance:
-            instance.attribute_values[self.attr_name] = value
+            attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+            instance.attribute_values[attr_name] = value
 
     def __get__(self, instance, owner):
         if instance:
-            print('in get {} {}'.format(type(self), self.attr_name))
-            return instance.attribute_values.get(self.attr_name, None)
+            attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+            return instance.attribute_values.get(attr_name, None)
         else:
             return self
 
