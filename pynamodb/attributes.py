@@ -226,10 +226,6 @@ class UnicodeSetAttribute(SetMixin, Attribute):
         return six.u(str(value))
 
     def element_deserialize(self, value):
-        """
-        :param value:
-        :return:
-        """
         return value
 
     def serialize(self, value):
