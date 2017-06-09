@@ -379,6 +379,12 @@ class TestUnicodeAttribute:
         orig = set([six.u('foo'), six.u('bar')])
         assert orig == attr.deserialize(attr.serialize(orig))
 
+        orig = set([six.u('true'), six.u('false')])
+        assert orig == attr.deserialize(attr.serialize(orig))
+
+        orig = set([six.u('1'), six.u('2.8')])
+        assert orig == attr.deserialize(attr.serialize(orig))
+
     def test_unicode_set_deserialize(self):
         """
         UnicodeSetAttribute.deserialize
@@ -391,6 +397,9 @@ class TestUnicodeAttribute:
         assert attr.deserialize(value) == value
 
         value = set([six.u('true'), six.u('false')])
+        assert attr.deserialize(value) == value
+
+        value = set([six.u('1'), six.u('2.8')])
         assert attr.deserialize(value) == value
 
     def test_unicode_set_deserialize_old_way(self):

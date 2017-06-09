@@ -10,7 +10,8 @@ from dateutil.parser import parse
 from dateutil.tz import tzutc
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
+    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL,
+    JSON_BOOLEAN_FALSE, JSON_BOOLEAN_TRUE
 )
 import collections
 
@@ -233,13 +234,22 @@ class UnicodeSetAttribute(SetMixin, Attribute):
         :return:
         """
         result = value
+        if result == JSON_BOOLEAN_FALSE or result == JSON_BOOLEAN_TRUE:
+            return result
+
+        is_numeric = False
+        try:
+            is_numeric = float(value) or int(value)
+        except ValueError:
+            pass
+        if is_numeric:
+            return result
+
         try:
             result = json.loads(value)
         except ValueError:
             # it's serialized in the new way so pass
             pass
-        if not isinstance(result, six.string_types):
-            result = str(result)
         return result
 
     def serialize(self, value):
