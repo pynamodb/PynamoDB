@@ -1,12 +1,12 @@
 Release Notes
 =============
 
-v2.1.6
+v3.0.0
 ------
 
-:date: 2017-05-10
+:date: 2017-06-09
 
-This is a backwards compatible, minor release.
+This is a major release with breaking changes.
 
 Fixes in this release:
 
