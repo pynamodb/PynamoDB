@@ -365,12 +365,27 @@ class TestUnicodeAttribute:
         expected = sorted([six.u('foo'), six.u('bar')])
         assert attr.serialize(set([six.u('foo'), six.u('bar')])) == expected
 
+        expected = sorted([six.u('True'), six.u('False')])
+        assert attr.serialize(set([six.u('True'), six.u('False')])) == expected
+
+        expected = sorted([six.u('true'), six.u('false')])
+        assert attr.serialize(set([six.u('true'), six.u('false')])) == expected
+
     def test_round_trip_unicode_set(self):
         """
         Round trip a unicode set
         """
         attr = UnicodeSetAttribute()
         orig = set([six.u('foo'), six.u('bar')])
+        assert orig == attr.deserialize(attr.serialize(orig))
+
+        orig = set([six.u('true'), six.u('false')])
+        assert orig == attr.deserialize(attr.serialize(orig))
+
+        orig = set([six.u('1'), six.u('2.8')])
+        assert orig == attr.deserialize(attr.serialize(orig))
+
+        orig = set([six.u('[1,2,3]'), six.u('2.8')])
         assert orig == attr.deserialize(attr.serialize(orig))
 
     def test_unicode_set_deserialize(self):
@@ -381,14 +396,14 @@ class TestUnicodeAttribute:
         value = set([six.u('foo'), six.u('bar')])
         assert attr.deserialize(value) == value
 
-    def test_unicode_set_deserialize_old_way(self):
-        """
-        UnicodeSetAttribute.deserialize old way
-        """
-        attr = UnicodeSetAttribute()
-        value = set([six.u('foo'), six.u('bar')])
-        old_value = set([json.dumps(val) for val in value])
-        assert attr.deserialize(old_value) == value
+        value = set([six.u('True'), six.u('False')])
+        assert attr.deserialize(value) == value
+
+        value = set([six.u('true'), six.u('false')])
+        assert attr.deserialize(value) == value
+
+        value = set([six.u('1'), six.u('2.8')])
+        assert attr.deserialize(value) == value
 
     def test_unicode_set_attribute(self):
         """
