@@ -10,8 +10,9 @@ This is a major release with breaking changes.
 
 ``MapAttribute`` now allows pythonic access when recursively defined.
 If you were not using the ``attr_name=`` kwarg then you should have no problems upgrading.
-Previously defined non subclasesd ``MapAttributes`` that were members of a subclassed ``MapAttribute`` would have to be accessed like a dictionary.
+Previously defined non subclasesd ``MapAttributes`` (raw ``MapAttributes``) that were members of a subclassed ``MapAttribute`` (typed ``MapAttributes``) would have to be accessed like a dictionary.
 Now object access is possible and recommended. See [here](https://github.com/pynamodb/PynamoDB/blob/master/pynamodb/tests/test_attributes.py#L671) for a test example.
+Object notation with the ``attr_name`` also known as the DynamoDB name will now throw an ``AttributeError``.
 
 ``UnicodeSetAttributes`` do not json serialize or deserialize anymore.
 We deprecated the functionality of json serializing as of ``1.6.0`` but left the deserialization functionality in there so people could migrate away from the old functionality. 
