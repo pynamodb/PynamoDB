@@ -237,14 +237,11 @@ class UnicodeSetAttribute(SetMixin, Attribute):
         if result == JSON_BOOLEAN_FALSE or result == JSON_BOOLEAN_TRUE:
             return result
 
-        is_numeric = False
         try:
             float(value)
-            is_numeric = True
+            return result
         except ValueError:
             pass
-        if is_numeric:
-            return result
 
         try:
             result = json.loads(value)
