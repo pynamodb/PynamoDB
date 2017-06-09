@@ -41,11 +41,13 @@ class Attribute(object):
 
     def __set__(self, instance, value):
         if instance:
-            instance.attribute_values[self.attr_name] = value
+            attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+            instance.attribute_values[attr_name] = value
 
     def __get__(self, instance, owner):
         if instance:
-            return instance.attribute_values.get(self.attr_name, None)
+            attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+            return instance.attribute_values.get(attr_name, None)
         else:
             return self
 
@@ -442,7 +444,12 @@ class MapAttribute(AttributeContainer, Attribute):
         return self.attribute_values[item]
 
     def __getattr__(self, attr):
-        return self.attribute_values[attr]
+        # Should only be called for non-subclassed, otherwise we would go through
+        # the descriptor instead.
+        try:
+            return self.attribute_values[attr]
+        except KeyError:
+            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, attr))
 
     def __set__(self, instance, value):
         if isinstance(value, collections.Mapping):

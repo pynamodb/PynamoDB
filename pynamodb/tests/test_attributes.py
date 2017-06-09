@@ -683,18 +683,38 @@ class TestMapAttribute:
         }
         assert serialized_datetime == expected_serialized_value
 
-    def test_serialize_datetime(self):
-        class CustomMapAttribute(MapAttribute):
-            date_attr = UTCDateTimeAttribute()
+    def test_complex_map_accessors(self):
+        class NestedThing(MapAttribute):
+            double_nested = MapAttribute()
+            double_nested_renamed = MapAttribute(attr_name='something_else')
 
-        cm = CustomMapAttribute(date_attr=datetime(2017, 1, 1))
-        serialized_datetime = cm.serialize(cm)
-        expected_serialized_value = {
-            'date_attr': {
-                'S': u'2017-01-01T00:00:00.000000+0000'
-            }
-        }
-        assert serialized_datetime == expected_serialized_value
+        class ThingModel(Model):
+            nested = NestedThing()
+
+        t = ThingModel(nested=NestedThing(
+            double_nested={'hello': 'world'},
+            double_nested_renamed={'foo': 'bar'})
+        )
+
+        assert t.nested.double_nested.as_dict() == {'hello': 'world'}
+        assert t.nested.double_nested_renamed.as_dict() == {'foo': 'bar'}
+        assert t.nested.double_nested.hello == 'world'
+        assert t.nested.double_nested_renamed.foo == 'bar'
+        assert t.nested['double_nested'].as_dict() == {'hello': 'world'}
+        assert t.nested['double_nested_renamed'].as_dict() == {'foo': 'bar'}
+        assert t.nested['double_nested']['hello'] == 'world'
+        assert t.nested['double_nested_renamed']['foo'] == 'bar'
+
+        with pytest.raises(AttributeError):
+            bad = t.nested.double_nested.bad
+        with pytest.raises(AttributeError):
+            bad = t.nested.bad
+        with pytest.raises(AttributeError):
+            bad = t.nested.something_else
+        with pytest.raises(KeyError):
+            bad = t.nested.double_nested['bad']
+        with pytest.raises(KeyError):
+            bad = t.nested['something_else']
 
 
 class TestValueDeserialize:

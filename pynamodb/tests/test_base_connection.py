@@ -338,6 +338,12 @@ class ConnectionTestCase(TestCase):
                 conn = Connection(self.region)
                 conn.describe_table(self.test_table_name)
 
+        with self.assertRaises(TableDoesNotExist):
+            with patch(PATCH_METHOD) as req:
+                req.side_effect = ValueError()
+                conn = Connection(self.region)
+                conn.describe_table(self.test_table_name)
+
     def test_list_tables(self):
         """
         Connection.list_tables

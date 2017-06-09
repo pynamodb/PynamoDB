@@ -582,11 +582,13 @@ class Connection(object):
         """
         Performs the DescribeTable operation
         """
-        tbl = self.get_meta_table(table_name, refresh=True)
-        if tbl:
-            return tbl.data
-        else:
-            raise TableDoesNotExist(table_name)
+        try:
+            tbl = self.get_meta_table(table_name, refresh=True)
+            if tbl:
+                return tbl.data
+        except ValueError:
+            pass
+        raise TableDoesNotExist(table_name)
 
     def get_conditional_operator(self, operator):
         """
