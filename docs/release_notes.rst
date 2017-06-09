@@ -23,10 +23,12 @@ If you have any UnicodeSetAttributes persisted in dynamo you will need to manage
 
 Contributors to this release:
 
-* @lita
-* @jmphilli
-* @rowilla
+* @jcbertin
+* @johnliu
 * @scode
+* @rowilla
+* @jmphilli
+* @lita
 
 v2.1.6
 ------
