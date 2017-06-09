@@ -453,7 +453,12 @@ class MapAttribute(AttributeContainer, Attribute):
         return self.attribute_values[item]
 
     def __getattr__(self, attr):
-        return self.attribute_values[attr]
+        # Should only be called for raw, otherwise we would go through
+        # the descriptor instead.
+        try:
+            return self.attribute_values[attr]
+        except KeyError:
+            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, attr))
 
     def __set__(self, instance, value):
         if isinstance(value, collections.Mapping):
