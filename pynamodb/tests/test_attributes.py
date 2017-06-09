@@ -385,6 +385,9 @@ class TestUnicodeAttribute:
         orig = set([six.u('1'), six.u('2.8')])
         assert orig == attr.deserialize(attr.serialize(orig))
 
+        orig = set([six.u('[1,2,3]'), six.u('2.8')])
+        assert orig == attr.deserialize(attr.serialize(orig))
+
     def test_unicode_set_deserialize(self):
         """
         UnicodeSetAttribute.deserialize
@@ -401,15 +404,6 @@ class TestUnicodeAttribute:
 
         value = set([six.u('1'), six.u('2.8')])
         assert attr.deserialize(value) == value
-
-    def test_unicode_set_deserialize_old_way(self):
-        """
-        UnicodeSetAttribute.deserialize old way
-        """
-        attr = UnicodeSetAttribute()
-        value = set([six.u('foo'), six.u('bar')])
-        old_value = set([json.dumps(val) for val in value])
-        assert attr.deserialize(old_value) == value
 
     def test_unicode_set_attribute(self):
         """

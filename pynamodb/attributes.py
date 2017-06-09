@@ -226,29 +226,10 @@ class UnicodeSetAttribute(SetMixin, Attribute):
 
     def element_deserialize(self, value):
         """
-        This deserializes what we get from dynamo back into a str
-        Serialization previously json encoded strings. This caused them to have
-        extra double quote (") characters. That no longer happens.
-        This method allows both types of serialized values to be read
         :param value:
         :return:
         """
-        result = value
-        if result == JSON_BOOLEAN_FALSE or result == JSON_BOOLEAN_TRUE:
-            return result
-
-        try:
-            float(value)
-            return result
-        except ValueError:
-            pass
-
-        try:
-            result = json.loads(value)
-        except ValueError:
-            # it's serialized in the new way so pass
-            pass
-        return result
+        return value
 
     def serialize(self, value):
         if value is not None:
