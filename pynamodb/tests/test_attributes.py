@@ -681,6 +681,39 @@ class TestMapAttribute:
         }
         assert serialized_datetime == expected_serialized_value
 
+    def test_complex_map_accessors(self):
+        class NestedThing(MapAttribute):
+            double_nested = MapAttribute()
+            double_nested_renamed = MapAttribute(attr_name='something_else')
+
+        class ThingModel(Model):
+            nested = NestedThing()
+
+        t = ThingModel(nested=NestedThing(
+            double_nested={'hello': 'world'},
+            double_nested_renamed={'foo': 'bar'})
+        )
+
+        assert t.nested.double_nested.as_dict() == {'hello': 'world'}
+        assert t.nested.double_nested_renamed.as_dict() == {'foo': 'bar'}
+        assert t.nested.double_nested.hello == 'world'
+        assert t.nested.double_nested_renamed.foo == 'bar'
+        assert t.nested['double_nested'].as_dict() == {'hello': 'world'}
+        assert t.nested['double_nested_renamed'].as_dict() == {'foo': 'bar'}
+        assert t.nested['double_nested']['hello'] == 'world'
+        assert t.nested['double_nested_renamed']['foo'] == 'bar'
+
+        with pytest.raises(AttributeError):
+            bad = t.nested.double_nested.bad
+        with pytest.raises(AttributeError):
+            bad = t.nested.bad
+        with pytest.raises(AttributeError):
+            bad = t.nested.something_else
+        with pytest.raises(KeyError):
+            bad = t.nested.double_nested['bad']
+        with pytest.raises(KeyError):
+            bad = t.nested['something_else']
+
 
 class TestValueDeserialize:
     def test__get_value_for_deserialize(self):
