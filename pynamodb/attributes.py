@@ -225,7 +225,7 @@ class UnicodeSetAttribute(SetMixin, Attribute):
 
     def element_deserialize(self, value):
         """
-        This deserializes what we get from mongo back into a str
+        This deserializes what we get from dynamo back into a str
         Serialization previously json encoded strings. This caused them to have
         extra double quote (") characters. That no longer happens.
         This method allows both types of serialized values to be read
@@ -238,6 +238,8 @@ class UnicodeSetAttribute(SetMixin, Attribute):
         except ValueError:
             # it's serialized in the new way so pass
             pass
+        if not isinstance(result, six.string_types):
+            result = str(result)
         return result
 
     def serialize(self, value):
