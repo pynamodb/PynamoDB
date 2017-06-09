@@ -3180,6 +3180,32 @@ class ModelTestCase(TestCase):
             self.assertIsNone(item.person.age)
             self.assertIsNone(item.person.is_male)
 
+    def test_model_with_maps_with_pythonic_attributes(self):
+        fake_db = self.database_mocker(
+            OfficeEmployee,
+            OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+            GET_OFFICE_EMPLOYEE_ITEM_DATA,
+            'office_employee_id',
+            'N',
+            '123'
+        )
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            req.return_value = GET_OFFICE_EMPLOYEE_ITEM_DATA
+            item = OfficeEmployee.get(123)
+            self.assertEqual(
+                item.person.fname,
+                GET_OFFICE_EMPLOYEE_ITEM_DATA
+                    .get(ITEM)
+                    .get('person')
+                    .get(MAP_SHORT)
+                    .get('firstName')
+                    .get(STRING_SHORT)
+            )
+        assert item.person.is_male
+        with pytest.raises(AttributeError):
+            item.person.is_dude
+
     def test_model_with_list_retrieve_from_db(self):
         fake_db = self.database_mocker(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,
                                        GET_GROCERY_LIST_ITEM_DATA, 'store_name', 'S',
