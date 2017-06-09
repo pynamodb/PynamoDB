@@ -11,7 +11,7 @@ This is a major release with breaking changes.
 v2.1.6
 ------
 
-:date: 2017-05-10 
+:date: 2017-05-10
 
 This is a backwards compatible, minor release.
 
