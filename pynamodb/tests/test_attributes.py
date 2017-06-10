@@ -385,7 +385,7 @@ class TestUnicodeAttribute:
         orig = set([six.u('1'), six.u('2.8')])
         assert orig == attr.deserialize(attr.serialize(orig))
 
-        orig = set([six.u('[1,2,3]'), six.u('2.8')])
+        orig = set([six.u('[1,2,3]'), six.u('2.8'), six.u('s3://bucket/key')])
         assert orig == attr.deserialize(attr.serialize(orig))
 
     def test_unicode_set_deserialize(self):
