@@ -1,6 +1,40 @@
 Release Notes
 =============
 
+v3.0.1
+-----
+
+:date: 2017-06-09
+
+This is a major release with breaking changes.
+
+``MapAttribute`` now allows pythonic access when recursively defined.
+If you were not using the ``attr_name=`` kwarg then you should have no problems upgrading.
+Previously defined non subclassed ``MapAttributes`` (raw ``MapAttributes``) that were members of a subclassed ``MapAttribute`` (typed ``MapAttributes``) would have to be accessed like a dictionary.
+Now object access is possible and recommended. See [here](https://github.com/pynamodb/PynamoDB/blob/master/pynamodb/tests/test_attributes.py#L671) for a test example.
+Access via the ``attr_name``, also known as the DynamoDB name, will now throw an ``AttributeError``.
+
+``UnicodeSetAttributes`` do not json serialize or deserialize anymore.
+We deprecated the functionality of json serializing as of ``1.6.0`` but left the deserialization functionality in there so people could migrate away from the old functionality. 
+If you have any ``UnicodeSetAttributes`` that have not been persisted since version ``1.6.0`` you will need to migrate your data or manage the json encoding and decoding with a custom attribute in application. 
+
+* Performance enhancements for the ``UTCDateTimeAttribute`` deserialize method. (#277)
+* Fix to ignore null checks for batch delete (#283)
+* Fix for ``ListAttribute`` and ``MapAttribute`` serialize (#286)
+* Fix for ``MapAttribute`` pythonic access (#292) This is a breaking change.
+* Deprecated the json decode in ``UnicodeSetAttribute`` (#294) This is a breaking change.
+* Raise ``TableDoesNotExist`` error instead of letting json decoding ``ValueErrors`` raise (#296)
+
+Contributors to this release:
+
+* @jcbertin
+* @johnliu
+* @scode
+* @rowilla
+* @lita
+* @garretheel
+* @jmphilli
+
 v2.1.6
 ------
 

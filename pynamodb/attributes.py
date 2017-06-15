@@ -40,11 +40,13 @@ class Attribute(object):
 
     def __set__(self, instance, value):
         if instance:
-            instance.attribute_values[self.attr_name] = value
+            attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+            instance.attribute_values[attr_name] = value
 
     def __get__(self, instance, owner):
         if instance:
-            return instance.attribute_values.get(self.attr_name, None)
+            attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+            return instance.attribute_values.get(attr_name, None)
         else:
             return self
 
@@ -224,21 +226,7 @@ class UnicodeSetAttribute(SetMixin, Attribute):
         return six.u(str(value))
 
     def element_deserialize(self, value):
-        """
-        This deserializes what we get from mongo back into a str
-        Serialization previously json encoded strings. This caused them to have
-        extra double quote (") characters. That no longer happens.
-        This method allows both types of serialized values to be read
-        :param value:
-        :return:
-        """
-        result = value
-        try:
-            result = json.loads(value)
-        except ValueError:
-            # it's serialized in the new way so pass
-            pass
-        return result
+        return value
 
     def serialize(self, value):
         if value is not None:
@@ -451,7 +439,12 @@ class MapAttribute(AttributeContainer, Attribute):
         return self.attribute_values[item]
 
     def __getattr__(self, attr):
-        return self.attribute_values[attr]
+        # Should only be called for non-subclassed, otherwise we would go through
+        # the descriptor instead.
+        try:
+            return self.attribute_values[attr]
+        except KeyError:
+            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, attr))
 
     def __set__(self, instance, value):
         if isinstance(value, collections.Mapping):
@@ -487,10 +480,13 @@ class MapAttribute(AttributeContainer, Attribute):
         rval = {}
         for k in values:
             v = values[k]
-            attr_class = _get_class_for_serialize(v)
-            attr_key = _get_key_for_serialize(v)
+            attr_class = self._get_serialize_class(k, v)
             if attr_class is None:
                 continue
+            if attr_class.attr_type:
+                attr_key = ATTR_TYPE_MAP[attr_class.attr_type]
+            else:
+                attr_key = _get_key_for_serialize(v)
 
             # If this is a subclassed MapAttribute, there may be an alternate attr name
             attr = self._get_attributes().get(k)
@@ -530,6 +526,12 @@ class MapAttribute(AttributeContainer, Attribute):
         for key, value in six.iteritems(self.attribute_values):
             result[key] = value.as_dict() if isinstance(value, MapAttribute) else value
         return result
+
+    @classmethod
+    def _get_serialize_class(cls, key, value):
+        if not cls.is_raw():
+            return cls._get_attributes().get(key)
+        return _get_class_for_serialize(value)
 
     @classmethod
     def _get_deserialize_class(cls, key, value):
@@ -595,8 +597,13 @@ class ListAttribute(Attribute):
         """
         rval = []
         for v in values:
-            attr_class = _get_class_for_serialize(v)
-            attr_key = _get_key_for_serialize(v)
+            attr_class = (self.element_type()
+                          if self.element_type
+                          else _get_class_for_serialize(v))
+            if attr_class.attr_type:
+                attr_key = ATTR_TYPE_MAP[attr_class.attr_type]
+            else:
+                attr_key = _get_key_for_serialize(v)
             rval.append({attr_key: attr_class.serialize(v)})
         return rval
 

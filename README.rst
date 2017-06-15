@@ -6,7 +6,7 @@ PynamoDB
     :target: https://pypi.python.org/pypi/pynamodb/
 .. image:: https://img.shields.io/travis/pynamodb/PynamoDB/master.svg
     :target: https://travis-ci.org/pynamodb/PynamoDB
-.. image:: https://img.shields.io/coveralls/pynamodb/PynamoDB.svg
+.. image:: https://img.shields.io/coveralls/pynamodb/PynamoDB/master.svg
     :target: https://coveralls.io/r/pynamodb/PynamoDB
 
 A Pythonic interface for Amazon's `DynamoDB <http://aws.amazon.com/dynamodb/>`_ that supports
