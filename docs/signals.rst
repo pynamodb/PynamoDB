@@ -1,12 +1,10 @@
 Signals
 =======
-Starting with Pynamo 4.0.0, there is support for signalling in
-Pynamo.  This support is provided by the excellent `blinker`_ library and
-will gracefully fall back if it is not available. `blinker`_  is not installed by default.
+Starting with Pynamo 4.0.0, there is support for signalling in Pynamo.  This support is provided by the excellent `blinker`_ library and will gracefully fall back if it is not available. `blinker`_  is not installed by default, as we didn't want to additional overhead to network calls if it wasn't needed.
 
-Signals allow certain senders to notify subscribers that something happened. Signals are sent before and after every api call. You can subscribe to a signal in order to get events for every call to DynamoDB. 
+Signals allow certain senders to notify subscribers that something happened. PynamoDB only sends signals before and after every DynamoDB API call.
 
-We purposely only send the operation name and the table name to the callback, as we want to prevent users from doing business logic in the signal. Keep in mind that signals are intended to notify subscribers and should not encourage subscribers to modify data. Also, adding too much logic in the callback will degrade the performance of your database writes.
+We purposely only send the operation name and the table name to the callback, as we want to prevent users from doing business logic in the signal. Keep in mind that signals are intended to notify subscribers. Subscribers should not try to modify data or do database calls within the callback. Also, adding too much logic in the callback will degrade the performance of your database writes.
 
 
 Subscribing to Signals
