@@ -196,6 +196,77 @@ class MetaModel(type):
                 cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
 
 
+class Expression(object):
+    """Immutable"""
+
+    def __init__(self, raw=''):
+        self.raw = raw
+
+    def __eq__(self, other):
+        return Expression('{} = {}'.format(self.raw, other.raw))
+
+    def __lt__(self, other)
+        return Expression('{} < {}'.format(self.raw, other.raw))
+
+    def __gt__(self, other)
+        return Expression('{} > {}'.format(self.raw, other.raw))
+
+    def __or__(self, other):
+        pass  # Note: this would only override bitwise, not the "or" keyword
+
+
+class ExpressionContextManager(object):
+    def __init__(self, model):
+        self.auto_value_counter = 'a'
+        self.auto_name_counter = 'a'
+        self.model = model
+
+        self.expressions = []
+        self.expression_attribute_values = {}
+        self.expression_attribute_names = {}
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self):
+        # Execute the transaction
+        pass
+
+    def get_value_key(self):
+        name = self.auto_value_counter
+        self.auto_value_counter = chr(ord(name) + 1)  # TODO: support more than 26
+        return name
+
+    def get_name_key(self):
+        name = self.auto_name_counter
+        self.auto_name_counter = chr(ord(name) + 1)  # TODO: support more than 26
+        return name
+
+    def value(self, expr_value, key=None):
+        key = key or self.get_value_key()
+        self.expression_attribute_values[key] = expr_value
+        return key  # TODO: return an object here instead?
+
+    def name(self, expr_name, key=None):
+        key = key or self.get_name_key()
+        self.expression_attribute_names[key] = expr_name
+
+    def le_set(self, path, value):
+
+        # value _should_ be an object of type <?> returned from .value(), it's
+        # currently the key returned from .value()
+
+        # SET offsets.#offset = :hostname_and_healthcheck
+
+        self.expressions.append(
+            'SET {} = {}'.format(path, value)
+        )
+
+    def condition(self, expr_condition):
+        # TODO
+        pass
+
+
 @add_metaclass(MetaModel)
 class Model(AttributeContainer):
     """
@@ -390,6 +461,9 @@ class Model(AttributeContainer):
             expression_attribute_values=expression_attribute_values
         )
         return self.__process_update_response(data)
+
+    def update_2_cm(self):
+        return ExpressionContextManager(self)
 
     def update(self, attributes, conditional_operator=None, **expected_values):
         """
