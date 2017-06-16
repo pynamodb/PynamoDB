@@ -19,6 +19,7 @@ We deprecated the functionality of json serializing as of ``1.6.0`` but left the
 If you have any ``UnicodeSetAttributes`` that have not been persisted since version ``1.6.0`` you will need to migrate your data or manage the json encoding and decoding with a custom attribute in application. 
 
 * Performance enhancements for the ``UTCDateTimeAttribute`` deserialize method. (#277)
+* There was a regression with attribute discovery. Fixes attribute discovery for model classes with inheritance (#280)
 * Fix to ignore null checks for batch delete (#283)
 * Fix for ``ListAttribute`` and ``MapAttribute`` serialize (#286)
 * Fix for ``MapAttribute`` pythonic access (#292) This is a breaking change.
