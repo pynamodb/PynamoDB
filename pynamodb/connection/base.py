@@ -193,7 +193,7 @@ class Connection(object):
             self.session_cls = session_cls
         else:
             self.session_cls = get_settings_value('session_cls')
-
+        
         if request_timeout_seconds is not None:
             self._request_timeout_seconds = request_timeout_seconds
         else:
@@ -208,6 +208,9 @@ class Connection(object):
             self._base_backoff_ms = base_backoff_ms
         else:
             self._base_backoff_ms = get_settings_value('base_backoff_ms')
+        
+        if get_settings_value('json_module'):
+            requests.models.json = get_settings_value('json_module')
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
