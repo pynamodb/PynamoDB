@@ -247,13 +247,14 @@ class ExpressionContextManager(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         expression = self.generate_expression()
-        expression_attribute_names = self.generate_expression_attribute_names()
-        expression_attribute_values = self.generate_expression_attribute_values()
         self.model.update_2(
             update_expression=expression,
-            expression_attribute_names=expression_attribute_names,
-            expression_attribute_values=expression_attribute_values
+            expression_attribute_names=self.generate_expression_attribute_names(),
+            expression_attribute_values=self.generate_expression_values()
         )
+
+    def recursive_lookup(self, attribute_dictionary, path):
+        return attribute_dictionary.get(path)
 
     def generate_expression_attribute_names(self):
         return 1
@@ -261,8 +262,14 @@ class ExpressionContextManager(object):
     def generate_expression(self):
         return 1
 
-    def generate_expression_attribute_values(self):
-        return 1
+    def generate_expression_values(self):
+        result = []
+        for key, value in six.iteritems(self.expression_attribute_values):
+            model_path = self.expression_attribute_names[value]
+            attribute_cls = self.recursive_lookup(self.model._get_attributes(), model_path)
+
+            result.append(self.model._serialize_value(attribute_cls, value))
+        return result
 
     def get_value_key(self):
         name = self.auto_value_counter
