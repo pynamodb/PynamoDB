@@ -199,20 +199,37 @@ class MetaModel(type):
 class Expression(object):
     """Immutable"""
 
+    """
+    TODO between, IN, and NOT
+    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
+    """
+
     def __init__(self, raw=''):
         self.raw = raw
 
     def __eq__(self, other):
         return Expression('{} = {}'.format(self.raw, other.raw))
 
-    def __lt__(self, other)
+    def __lt__(self, other):
         return Expression('{} < {}'.format(self.raw, other.raw))
 
-    def __gt__(self, other)
+    def __le__(self, other):
+        return Expression('{} <= {}'.format(self.raw, other.raw))
+
+    def __gt__(self, other):
         return Expression('{} > {}'.format(self.raw, other.raw))
 
+    def __ge__(self, other):
+        return Expression('{} >= {}'.format(self.raw, other.raw))
+
     def __or__(self, other):
-        pass  # Note: this would only override bitwise, not the "or" keyword
+        return Expression('{} OR {}'.format(self.raw, other.raw))
+
+    def __and__(self, other):
+        return Expression('{} AND {}'.format(self.raw, other.raw))
+
+    def __ne__(self, other):
+        return Expression('{} <> {}'.format(self.raw, other.raw))
 
 
 class ExpressionContextManager(object):
@@ -228,9 +245,24 @@ class ExpressionContextManager(object):
     def __enter__(self):
         pass
 
-    def __exit__(self):
-        # Execute the transaction
-        pass
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        expression = self.generate_expression()
+        expression_attribute_names = self.generate_expression_attribute_names()
+        expression_attribute_values = self.generate_expression_attribute_values()
+        self.model.update_2(
+            update_expression=expression,
+            expression_attribute_names=expression_attribute_names,
+            expression_attribute_values=expression_attribute_values
+        )
+
+    def generate_expression_attribute_names(self):
+        return 1
+
+    def generate_expression(self):
+        return 1
+
+    def generate_expression_attribute_values(self):
+        return 1
 
     def get_value_key(self):
         name = self.auto_value_counter
