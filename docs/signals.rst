@@ -36,6 +36,6 @@ To subscribe to a signal, just need to import the signal object and connect your
 
     pre_dynamo_send.connect(record_pre_dynamo_send)
     post_dynamo_send.connect(record_post_dynamo_send)
-    
+ 
 .. _blinker: https://pypi.python.org/pypi/blinker
 .. _Dynamo action: https://github.com/pynamodb/PynamoDB/blob/cd705cc4e0e3dd365c7e0773f6bc02fe071a0631/
