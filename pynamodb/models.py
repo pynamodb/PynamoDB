@@ -260,8 +260,8 @@ class Model(AttributeContainer):
         while items:
             if len(keys_to_get) == BATCH_GET_PAGE_LIMIT:
                 while keys_to_get:
-                    page, unprocessed_keys = cls._batch_get_page(keys_to_get, consistent_read=None,
-                                                                 attributes_to_get=None)
+                    page, unprocessed_keys = cls._batch_get_page(keys_to_get, consistent_read=consistent_read,
+                                                                 attributes_to_get=attributes_to_get)
                     for batch_item in page:
                         yield cls.from_raw_data(batch_item)
                     if unprocessed_keys:
@@ -282,7 +282,7 @@ class Model(AttributeContainer):
                 })
 
         while keys_to_get:
-            page, unprocessed_keys = cls._batch_get_page(keys_to_get, consistent_read=None, attributes_to_get=None)
+            page, unprocessed_keys = cls._batch_get_page(keys_to_get, consistent_read=consistent_read, attributes_to_get=attributes_to_get)
             for batch_item in page:
                 yield cls.from_raw_data(batch_item)
             if unprocessed_keys:
@@ -1209,7 +1209,7 @@ class Model(AttributeContainer):
         """
         log.debug("Fetching a BatchGetItem page")
         data = cls._get_connection().batch_get_item(
-            keys_to_get, consistent_read, attributes_to_get
+            keys_to_get, consistent_read=consistent_read, attributes_to_get=attributes_to_get
         )
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         item_data = data.get(RESPONSES).get(cls.Meta.table_name)
