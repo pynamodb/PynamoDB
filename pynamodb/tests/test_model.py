@@ -2372,6 +2372,33 @@ class ModelTestCase(TestCase):
             self.assertEqual(params, req.call_args[0][1])
 
         with patch(PATCH_METHOD) as req:
+            req.return_value = SIMPLE_BATCH_GET_ITEMS
+            item_keys = ['hash-{0}'.format(x) for x in range(10)]
+            for item in SimpleUserModel.batch_get(item_keys, consistent_read=True):
+                self.assertIsNotNone(item)
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'RequestItems': {
+                    'SimpleModel': {
+                        'Keys': [
+                            {'user_name': {'S': 'hash-9'}},
+                            {'user_name': {'S': 'hash-8'}},
+                            {'user_name': {'S': 'hash-7'}},
+                            {'user_name': {'S': 'hash-6'}},
+                            {'user_name': {'S': 'hash-5'}},
+                            {'user_name': {'S': 'hash-4'}},
+                            {'user_name': {'S': 'hash-3'}},
+                            {'user_name': {'S': 'hash-2'}},
+                            {'user_name': {'S': 'hash-1'}},
+                            {'user_name': {'S': 'hash-0'}}
+                        ],
+                        'ConsistentRead': True
+                    }
+                }
+            }
+            self.assertEqual(params, req.call_args[0][1])
+
+        with patch(PATCH_METHOD) as req:
             req.return_value = MODEL_TABLE_DATA
             UserModel('foo', 'bar')
 
