@@ -26,6 +26,7 @@ Arguments         Description
 To subscribe to a signal, just need to import the signal object and connect your callback, like so.
 
 .. code:: python
+
     from pynamodb.connection.signals import pre_dynamo_send, post_dynamo_send
 
     def record_pre_dynamo_send(sender, operation_name, table_name, req_uuid):
