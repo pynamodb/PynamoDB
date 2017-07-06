@@ -39,4 +39,7 @@ setup(
         'Programming Language :: Python :: 3.3',
         'License :: OSI Approved :: MIT License',
     ],
+    extras_require={
+        'signals': ['blinker>=1.3,<2.0'] 
+    },
 )
