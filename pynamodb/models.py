@@ -522,9 +522,11 @@ class Model(AttributeContainer):
         :param hash_key: The hash key to query. Can be None.
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
-        :param filters: A dictionary of filters to be used in the query
+        :param filters: A dictionary of filters to be used in the query. Requires a hash_key to be passed.
         """
         if hash_key is None:
+            if filters:
+                raise ValueError('A hash_key must be given to use filters')
             return cls.describe_table().get(ITEM_COUNT)
 
         cls._get_indexes()
