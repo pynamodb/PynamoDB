@@ -1,8 +1,38 @@
 Release Notes
 =============
 
+v3.1.0
+------
+
+:date: 2017-07-07
+
+This is a backwards compatible, minor release.
+
+Note that we now require ``botocore>=1.2.0``; this is required to support the 
+``consistent_read`` parameter when scanning.
+
+Calling ``Model.count()`` without a ``hash_key`` and *with* ``filters`` will
+raise a ``ValueError``, as it was previously returning incorrect results.
+
+New features in this release:
+
+* Add support for signals via blinker (#278)
+
+Fixes in this release:
+
+* Pass batch parameters down to boto/dynamo (#308)
+* Raise a ValueError if count() is invoked with no hash key AND filters (#313)
+* Add consistent_read parameter to Model.scan (#311)
+
+Contributors to this release:
+
+* @jmphilli
+* @Lordnibbler
+* @lita
+
+
 v3.0.1
------
+------
 
 :date: 2017-06-09
 
