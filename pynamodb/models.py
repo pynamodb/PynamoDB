@@ -699,6 +699,7 @@ class Model(AttributeContainer):
             throttling/rate limit scenarios
         :param max_consecutive_exceptions: Max number of consecutive provision throughput exceeded
             exceptions for scan to exit
+        :param consistent_read: If True, a consistent read is performed
         """
 
         cls._conditional_operator_check(conditional_operator)
@@ -750,6 +751,7 @@ class Model(AttributeContainer):
         :param last_evaluated_key: If set, provides the starting point for scan.
         :param page_size: Page size of the scan to DynamoDB
         :param filters: A list of item filters
+        :param consistent_read: If True, a consistent read is performed
         """
         cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
