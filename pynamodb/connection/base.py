@@ -2,26 +2,24 @@
 Lowest level connection
 """
 from __future__ import division
-from base64 import b64decode
+
 import logging
 import math
 import random
 import time
+import uuid
+from base64 import b64decode
 
 import six
-from six.moves import range
-from botocore.session import get_session
-from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
+from botocore.exceptions import BotoCoreError
+from botocore.session import get_session
 from botocore.vendored import requests
+from botocore.vendored.requests import Request
+from six.moves import range
 
-from pynamodb.connection.util import pythonic
-from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
-from pynamodb.exceptions import (
-    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
-    VerboseClientError
-)
+from pynamodb.connection.util import pythonic
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -38,8 +36,13 @@ from pynamodb.constants import (
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
+from pynamodb.exceptions import (
+    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
+    VerboseClientError
+)
 from pynamodb.settings import get_settings_value
-from botocore.vendored.requests import Request
+from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
+from pynamodb.types import HASH, RANGE
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
@@ -261,7 +264,12 @@ class Connection(object):
                 operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         self._log_debug(operation_name, operation_kwargs)
 
+        table_name = operation_kwargs.get(TABLE_NAME)
+        req_uuid = uuid.uuid4()
+
+        self.send_pre_boto_callback(operation_name, req_uuid, table_name)
         data = self._make_api_call(operation_name, operation_kwargs)
+        self.send_post_boto_callback(operation_name, req_uuid, table_name)
 
         if data and CONSUMED_CAPACITY in data:
             capacity = data.get(CONSUMED_CAPACITY)
@@ -269,6 +277,18 @@ class Connection(object):
                 capacity = capacity.get(CAPACITY_UNITS)
             log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
+
+    def send_post_boto_callback(self, operation_name, req_uuid, table_name):
+        try:
+            post_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
+        except Exception as e:
+            log.exception("post_boto callback threw an exception.")
+
+    def send_pre_boto_callback(self, operation_name, req_uuid, table_name):
+        try:
+            pre_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
+        except Exception as e:
+            log.exception("pre_boto callback threw an exception.")
 
     def _make_api_call(self, operation_name, operation_kwargs):
         """
@@ -281,7 +301,6 @@ class Connection(object):
             operation_kwargs,
             operation_model
         )
-
         prepared_request = self._create_prepared_request(request_dict, operation_model)
 
         for i in range(0, self._max_retry_attempts_exception + 1):
