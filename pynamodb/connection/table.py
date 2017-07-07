@@ -172,7 +172,8 @@ class TableConnection(object):
              return_consumed_capacity=None,
              segment=None,
              total_segments=None,
-             exclusive_start_key=None):
+             exclusive_start_key=None,
+             consistent_read=None):
         """
         Performs the scan operation
         """
@@ -185,7 +186,8 @@ class TableConnection(object):
             return_consumed_capacity=return_consumed_capacity,
             segment=segment,
             total_segments=total_segments,
-            exclusive_start_key=exclusive_start_key)
+            exclusive_start_key=exclusive_start_key,
+            consistent_read=consistent_read)
 
     def query(self,
               hash_key,
