@@ -1476,6 +1476,10 @@ class ModelTestCase(TestCase):
             params = {'TableName': 'UserModel'}
             self.assertEqual(args, params)
 
+    def test_count_no_hash_key(self):
+        self.assertRaises(ValueError, lambda: UserModel.count(zip_code__le='94117'))
+
+
     def test_index_count(self):
         """
         Model.index.count()

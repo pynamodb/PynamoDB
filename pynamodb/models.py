@@ -525,6 +525,8 @@ class Model(AttributeContainer):
         :param filters: A dictionary of filters to be used in the query
         """
         if hash_key is None:
+            if filters:
+                raise ValueError('A hash_key must be given to use filters')
             return cls.describe_table().get(ITEM_COUNT)
 
         cls._get_indexes()
