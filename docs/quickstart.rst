@@ -123,6 +123,17 @@ Alternatively, you can retrieve the table item count by calling the `count` meth
     print(UserModel.count())
 
 
+Note that the first positional argument to `count()` is a `hash_key`. Although
+this argument can be `None`, filters must not be used when `hash_key` is `None`:
+
+::
+    # raises a ValueError
+    print(UserModel.count(first_name__eq='John'))
+
+    # returns count of only the matching users
+    print(UserModel.count('my_hash_key', first_name__eq='John'))
+
+
 Batch Operations
 ^^^^^^^^^^^^^^^^
 
@@ -156,4 +167,3 @@ Perhaps you want to delete all these users:
         items = [UserModel('user-{0}@example.com'.format(x)) for x in range(100)]
         for item in items:
             batch.delete(item)
-
