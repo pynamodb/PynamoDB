@@ -675,6 +675,7 @@ class Model(AttributeContainer):
             allow_rate_limited_scan_without_consumed_capacity=None,
             max_sleep_between_retry=10,
             max_consecutive_exceptions=30,
+            consistent_read=None,
             **filters):
         """
         Scans the items in the table at a definite rate.
@@ -698,6 +699,7 @@ class Model(AttributeContainer):
             throttling/rate limit scenarios
         :param max_consecutive_exceptions: Max number of consecutive provision throughput exceeded
             exceptions for scan to exit
+        :param consistent_read: If True, a consistent read is performed
         """
 
         cls._conditional_operator_check(conditional_operator)
@@ -723,6 +725,7 @@ class Model(AttributeContainer):
             allow_rate_limited_scan_without_consumed_capacity=allow_rate_limited_scan_without_consumed_capacity,
             max_sleep_between_retry=max_sleep_between_retry,
             max_consecutive_exceptions=max_consecutive_exceptions,
+            consistent_read=consistent_read,
         )
 
         for item in scan_result:
@@ -736,6 +739,7 @@ class Model(AttributeContainer):
              conditional_operator=None,
              last_evaluated_key=None,
              page_size=None,
+             consistent_read=None,
              **filters):
         """
         Iterates through all items in the table
@@ -747,6 +751,7 @@ class Model(AttributeContainer):
         :param last_evaluated_key: If set, provides the starting point for scan.
         :param page_size: Page size of the scan to DynamoDB
         :param filters: A list of item filters
+        :param consistent_read: If True, a consistent read is performed
         """
         cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
@@ -765,7 +770,8 @@ class Model(AttributeContainer):
             limit=page_size,
             scan_filter=key_filter,
             total_segments=total_segments,
-            conditional_operator=conditional_operator
+            conditional_operator=conditional_operator,
+            consistent_read=consistent_read
         )
         log.debug("Fetching first scan page")
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)

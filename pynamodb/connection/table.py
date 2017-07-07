@@ -144,7 +144,8 @@ class TableConnection(object):
              read_capacity_to_consume_per_second=None,
              allow_rate_limited_scan_without_consumed_capacity=None,
              max_sleep_between_retry=None,
-             max_consecutive_exceptions=None):
+             max_consecutive_exceptions=None,
+             consistent_read=None):
         """
         Performs the scan operation with rate limited
         """
@@ -162,7 +163,8 @@ class TableConnection(object):
             read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
             allow_rate_limited_scan_without_consumed_capacity=allow_rate_limited_scan_without_consumed_capacity,
             max_sleep_between_retry=max_sleep_between_retry,
-            max_consecutive_exceptions=max_consecutive_exceptions)
+            max_consecutive_exceptions=max_consecutive_exceptions,
+            consistent_read=consistent_read)
 
     def scan(self,
              attributes_to_get=None,
@@ -172,7 +174,8 @@ class TableConnection(object):
              return_consumed_capacity=None,
              segment=None,
              total_segments=None,
-             exclusive_start_key=None):
+             exclusive_start_key=None,
+             consistent_read=None):
         """
         Performs the scan operation
         """
@@ -185,7 +188,8 @@ class TableConnection(object):
             return_consumed_capacity=return_consumed_capacity,
             segment=segment,
             total_segments=total_segments,
-            exclusive_start_key=exclusive_start_key)
+            exclusive_start_key=exclusive_start_key,
+            consistent_read=consistent_read)
 
     def query(self,
               hash_key,

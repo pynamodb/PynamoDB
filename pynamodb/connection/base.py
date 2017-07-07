@@ -982,7 +982,8 @@ class Connection(object):
                           read_capacity_to_consume_per_second=10,
                           allow_rate_limited_scan_without_consumed_capacity=None,
                           max_sleep_between_retry=10,
-                          max_consecutive_exceptions=10):
+                          max_consecutive_exceptions=10,
+                          consistent_read=None):
         """
         Performs a rate limited scan on the table. The API uses the scan API to fetch items from
         DynamoDB. The rate_limited_scan uses the 'ConsumedCapacity' value returned from DynamoDB to
@@ -1007,6 +1008,7 @@ class Connection(object):
             throttling/rate limit scenarios
         :param max_consecutive_exceptions: Max number of consecutive ProvisionedThroughputExceededException
             exception for scan to exit
+        :param consistent_read: enable consistent read
         """
         read_capacity_to_consume_per_ms = float(read_capacity_to_consume_per_second) / 1000
         if allow_rate_limited_scan_without_consumed_capacity is None:
@@ -1038,7 +1040,8 @@ class Connection(object):
                         return_consumed_capacity=TOTAL,
                         scan_filter=scan_filter,
                         segment=segment,
-                        total_segments=total_segments
+                        total_segments=total_segments,
+                        consistent_read=consistent_read
                     )
                     for item in data.get(ITEMS):
                         yield item
@@ -1120,7 +1123,8 @@ class Connection(object):
              return_consumed_capacity=None,
              exclusive_start_key=None,
              segment=None,
-             total_segments=None):
+             total_segments=None,
+             consistent_read=None):
         """
         Performs the scan operation
         """
@@ -1154,6 +1158,8 @@ class Connection(object):
                     operation_kwargs[SCAN_FILTER][key][ATTR_VALUE_LIST] = values
             if conditional_operator:
                 operation_kwargs.update(self.get_conditional_operator(conditional_operator))
+        if consistent_read:
+            operation_kwargs[CONSISTENT_READ] = consistent_read
         try:
             return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:

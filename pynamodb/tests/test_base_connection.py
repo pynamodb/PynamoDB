@@ -1612,6 +1612,23 @@ class ConnectionTestCase(TestCase):
                 table_name,
                 segment=0,
                 total_segments=22,
+                consistent_read=True
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': table_name,
+                'Segment': 0,
+                'TotalSegments': 22,
+                'ConsistentRead': True
+            }
+            self.assertDictEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.scan(
+                table_name,
+                segment=0,
+                total_segments=22,
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',

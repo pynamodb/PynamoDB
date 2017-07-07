@@ -1906,6 +1906,16 @@ class ModelTestCase(TestCase):
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 4)
             self.assertEqual(count, 4)
 
+        with patch(PATCH_METHOD, new=mock_scan) as req:
+            count = 0
+            for item in UserModel.scan(limit=4, consistent_read=True):
+                count += 1
+                self.assertIsNotNone(item)
+            self.assertEqual(len(req.mock_calls), 2)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 4)
+            self.assertEquals(req.mock_calls[1][1][1]['ConsistentRead'], True)
+            self.assertEqual(count, 4)
+
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
@@ -1997,7 +2007,8 @@ class ModelTestCase(TestCase):
                 allow_rate_limited_scan_without_consumed_capacity=False,
                 max_sleep_between_retry=4,
                 max_consecutive_exceptions=22,
-                attributes_to_get=['X1', 'X2']
+                attributes_to_get=['X1', 'X2'],
+                consistent_read=True
             )
             self.assertEqual(1, len(list(result)))
             self.assertEqual('UserModel', req.call_args[0][0])
@@ -2014,7 +2025,8 @@ class ModelTestCase(TestCase):
                 'read_capacity_to_consume_per_second': 33,
                 'allow_rate_limited_scan_without_consumed_capacity': False,
                 'max_sleep_between_retry': 4,
-                'max_consecutive_exceptions': 22
+                'max_consecutive_exceptions': 22,
+                'consistent_read': True
             }
             self.assertEqual(params, req.call_args[1])
 
