@@ -724,7 +724,7 @@ class Model(AttributeContainer):
             allow_rate_limited_scan_without_consumed_capacity=allow_rate_limited_scan_without_consumed_capacity,
             max_sleep_between_retry=max_sleep_between_retry,
             max_consecutive_exceptions=max_consecutive_exceptions,
-            consistent_read=consistent_read
+            consistent_read=consistent_read,
         )
 
         for item in scan_result:
