@@ -2,28 +2,24 @@
 Lowest level connection
 """
 from __future__ import division
-from base64 import b64decode
+
 import logging
 import math
 import random
 import time
 import uuid
+from base64 import b64decode
 
 import six
-from six.moves import range
-from botocore.session import get_session
-from botocore.exceptions import BotoCoreError
 from botocore.client import ClientError
+from botocore.exceptions import BotoCoreError
+from botocore.session import get_session
 from botocore.vendored import requests
+from botocore.vendored.requests import Request
+from six.moves import range
 
-from pynamodb.connection.util import pythonic
-from pynamodb.connection.signals import pre_dynamodb_send, post_dynamodb_send
-from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
-from pynamodb.exceptions import (
-    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
-    VerboseClientError
-)
+from pynamodb.connection.util import pythonic
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -40,8 +36,13 @@ from pynamodb.constants import (
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
+from pynamodb.exceptions import (
+    TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
+    VerboseClientError
+)
 from pynamodb.settings import get_settings_value
-from botocore.vendored.requests import Request
+from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
+from pynamodb.types import HASH, RANGE
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
