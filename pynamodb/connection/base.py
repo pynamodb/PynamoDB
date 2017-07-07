@@ -989,6 +989,7 @@ class Connection(object):
             throttling/rate limit scenarios
         :param max_consecutive_exceptions: Max number of consecutive ProvisionedThroughputExceededException
             exception for scan to exit
+        :param consistent_read: enable consistent read
         """
         read_capacity_to_consume_per_ms = float(read_capacity_to_consume_per_second) / 1000
         if allow_rate_limited_scan_without_consumed_capacity is None:

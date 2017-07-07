@@ -1911,9 +1911,9 @@ class ModelTestCase(TestCase):
             for item in UserModel.scan(limit=4, consistent_read=True):
                 count += 1
                 self.assertIsNotNone(item)
-            self.assertEqual(len(req.mock_calls), 1)
-            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 4)
-            self.assertEquals(req.mock_calls[0][1][1]['ConsistentRead'], True)
+            self.assertEqual(len(req.mock_calls), 2)
+            self.assertEquals(req.mock_calls[1][1][1]['Limit'], 4)
+            self.assertEquals(req.mock_calls[1][1][1]['ConsistentRead'], True)
             self.assertEqual(count, 4)
 
         with patch(PATCH_METHOD) as req:
