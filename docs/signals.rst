@@ -33,7 +33,7 @@ To subscribe to a signal, the user needs to import the signal object and connect
 
 .. code:: python
 
-    from pynamodb.connection.signals import pre_dynamodb_send, post_dynamodb_send
+    from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 
     def record_pre_dynamodb_send(sender, operation_name, table_name, req_uuid):
         pre_recorded.append((operation_name, table_name, req_uuid))
