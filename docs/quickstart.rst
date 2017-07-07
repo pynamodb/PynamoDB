@@ -127,6 +127,7 @@ Note that the first positional argument to `count()` is a `hash_key`. Although
 this argument can be `None`, filters must not be used when `hash_key` is `None`:
 
 ::
+
     # raises a ValueError
     print(UserModel.count(first_name__eq='John'))
 
