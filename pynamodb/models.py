@@ -648,6 +648,9 @@ class Model(AttributeContainer):
                 limit -= 1
             yield cls.from_raw_data(item)
 
+        if limit is None and page_size is not None:
+            return
+
         while last_evaluated_key:
             query_kwargs['exclusive_start_key'] = last_evaluated_key
             log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
