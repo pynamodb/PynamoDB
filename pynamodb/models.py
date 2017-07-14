@@ -243,7 +243,7 @@ class ExpressionContextManager(object):
         self.expression_attribute_names = {}
 
     def __enter__(self):
-        pass
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         expression = self.generate_expression()
@@ -257,33 +257,34 @@ class ExpressionContextManager(object):
         return attribute_dictionary.get(path)
 
     def generate_expression_attribute_names(self):
-        return 1
+        return self.expression_attribute_names
 
     def generate_expression(self):
-        return 1
+        # import pdb; pdb.set_trace()
+        return ', '.join(self.expressions)
 
     def generate_expression_values(self):
-        result = []
+        result = {}
         for key, value in six.iteritems(self.expression_attribute_values):
-            model_path = self.expression_attribute_names[value]
-            attribute_cls = self.recursive_lookup(self.model._get_attributes(), model_path)
-
-            result.append(self.model._serialize_value(attribute_cls, value))
+            result[key] = value
         return result
 
     def get_value_key(self):
         name = self.auto_value_counter
         self.auto_value_counter = chr(ord(name) + 1)  # TODO: support more than 26
-        return name
+        return ':' + name
 
     def get_name_key(self):
         name = self.auto_name_counter
         self.auto_name_counter = chr(ord(name) + 1)  # TODO: support more than 26
-        return name
+        return '#' + name
 
-    def value(self, expr_value, key=None):
+    def value(self, attr_cls, expr_value, key=None):
         key = key or self.get_value_key()
-        self.expression_attribute_values[key] = expr_value
+
+        serialized_value = self.model._serialize_value(attr_cls, expr_value)
+
+        self.expression_attribute_values[key] = serialized_value
         return key  # TODO: return an object here instead?
 
     def name(self, expr_name, key=None):

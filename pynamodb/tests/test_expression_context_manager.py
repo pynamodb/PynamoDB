@@ -1,3 +1,4 @@
+import mock
 import pytest
 
 from pynamodb.attributes import (
@@ -22,15 +23,26 @@ class CarModel(Model):
     car_info = CarInfoMap(null=False)
 
 
-def test_expression_context_manager_generates_expression():
+@mock.patch.object(CarModel, 'update_2')
+def test_expression_context_manager_generates_expression(mock_update):
     car_info = CarInfoMap(make='Dodge')
     item = CarModel(car_id=123, car_info=car_info)
     new_value = 'Tesla'
     with item.update_2_cm() as update:
-        tesla = update.value(new_value)
+        tesla = update.value(CarInfoMap.make, new_value)
         update.le_set('car_info.make', tesla)
 
+
     expected_expression = "SET car_info.make = :a"
-    expected_attrribute_values = {":a": {"S": new_value}}
+    expected_attribute_names = {}
+    expected_attribute_values = {":a": {"S": new_value}}
+
+    assert mock_update.call_args_list == [
+        mock.call(
+            update_expression=expected_expression,
+            expression_attribute_names=expected_attribute_names,
+            expression_attribute_values=expected_attribute_values,
+       )
+    ]
 
     assert True
