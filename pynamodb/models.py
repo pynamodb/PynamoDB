@@ -31,8 +31,8 @@ from pynamodb.constants import (
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
     CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
-    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
-    STREAM_ENABLED, EQ, NE)
+    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, SCANNED_COUNT, STREAM_VIEW_TYPE,
+    STREAM_SPECIFICATION, STREAM_ENABLED, EQ, NE)
 
 
 log = logging.getLogger(__name__)
@@ -649,7 +649,9 @@ class Model(AttributeContainer):
             yield cls.from_raw_data(item)
 
         if limit is None and page_size is not None:
-            return
+            if page_size == data.get(SCANNED_COUNT):
+                return
+            page_size -= data.get(SCANNED_COUNT)
 
         while last_evaluated_key:
             query_kwargs['exclusive_start_key'] = last_evaluated_key
@@ -662,6 +664,8 @@ class Model(AttributeContainer):
                         return
                     limit -= 1
                 yield cls.from_raw_data(item)
+            if page_size == data.get(SCANNED_COUNT):
+                return
             last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
     @classmethod
