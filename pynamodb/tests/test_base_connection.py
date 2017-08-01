@@ -606,7 +606,10 @@ class ConnectionTestCase(TestCase):
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'AttributesToGet': ['ForumName'],
+                'ProjectionExpression': '#0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
                 'Key': {
                     'ForumName': {
                         'S': 'Amazon DynamoDB'
@@ -1231,7 +1234,10 @@ class ConnectionTestCase(TestCase):
                 'RequestItems': {
                     'Thread': {
                         'ConsistentRead': True,
-                        'AttributesToGet': ['ForumName'],
+                        'ProjectionExpression': '#0',
+                        'ExpressionAttributeNames': {
+                            '#0': 'ForumName'
+                        },
                         'Keys': [
                             {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-0'}},
                             {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-1'}},
@@ -1394,7 +1400,10 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'IndexName': 'LastPostIndex',
-                'AttributesToGet': ['ForumName'],
+                'ProjectionExpression': '#0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
                 'KeyConditions': {
                     'ForumName': {
                         'ComparisonOperator': 'EQ', 'AttributeValueList': [{
@@ -1650,7 +1659,10 @@ class ConnectionTestCase(TestCase):
                 attributes_to_get=['ForumName']
             )
             params = {
-                'AttributesToGet': ['ForumName'],
+                'ProjectionExpression': '#0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
                 'ExclusiveStartKey': {
                     "ForumName": {
                         "S": "FooForum"
@@ -2186,3 +2198,25 @@ class ConnectionTestCase(TestCase):
             _assert=True
         )
 
+
+    def test_get_projection_expression(self):
+        attributes_to_get = ['Description', 'RelatedItems[0]', 'ProductReviews.FiveStar']
+        placeholders = {}
+        projection_expression = Connection._get_projection_expression(attributes_to_get, placeholders)
+        assert projection_expression == "#0, #1[0], #2.#3"
+        assert placeholders == {'Description': '#0', 'RelatedItems': '#1', 'ProductReviews': '#2', 'FiveStar': '#3'}
+
+
+    def test_get_projection_expression_repeated_names(self):
+        attributes_to_get = ['ProductReviews.FiveStar', 'ProductReviews.ThreeStar', 'ProductReviews.OneStar']
+        placeholders = {}
+        projection_expression = Connection._get_projection_expression(attributes_to_get, placeholders)
+        assert projection_expression == "#0.#1, #0.#2, #0.#3"
+        assert placeholders == {'ProductReviews': '#0', 'FiveStar': '#1', 'ThreeStar': '#2', 'OneStar': '#3'}
+
+
+    def test_get_projection_expression_invalid_attribute_raises(self):
+        invalid_attributes = ['', '[0]', 'foo[bar]', 'MyList[-1]', 'MyList[0.4]']
+        for attribute in invalid_attributes:
+            with self.assertRaises(ValueError):
+                Connection._get_projection_expression([attribute], {})

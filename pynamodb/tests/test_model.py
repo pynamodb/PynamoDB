@@ -2381,7 +2381,10 @@ class ModelTestCase(TestCase):
                             {'user_name': {'S': 'hash-1'}},
                             {'user_name': {'S': 'hash-0'}}
                         ],
-                        'AttributesToGet': ['numbers']
+                        'ProjectionExpression': '#0',
+                        'ExpressionAttributeNames': {
+                            '#0': 'numbers'
+                        }
                     }
                 }
             }

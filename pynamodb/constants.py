@@ -33,7 +33,6 @@ CONSISTENT_READ = 'ConsistentRead'
 DELETE_REQUEST = 'DeleteRequest'
 RETURN_VALUES = 'ReturnValues'
 REQUEST_ITEMS = 'RequestItems'
-ATTRS_TO_GET = 'AttributesToGet'
 ATTR_UPDATES = 'AttributeUpdates'
 TABLE_STATUS = 'TableStatus'
 SCAN_FILTER = 'ScanFilter'
@@ -61,6 +60,10 @@ ITEM = 'Item'
 KEYS = 'Keys'
 UTC = 'UTC'
 KEY = 'Key'
+
+# Expression Parameters
+EXPRESSION_ATTRIBUTE_NAMES = 'ExpressionAttributeNames'
+PROJECTION_EXPRESSION = 'ProjectionExpression'
 
 # Defaults
 DEFAULT_ENCODING = 'utf-8'
