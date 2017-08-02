@@ -12,6 +12,7 @@ from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
 )
+from pynamodb.expressions.condition import Path
 import collections
 
 
@@ -65,6 +66,38 @@ class Attribute(object):
     def get_value(self, value):
         serialized_dynamo_type = ATTR_TYPE_MAP[self.attr_type]
         return value.get(serialized_dynamo_type)
+
+    # Condition Expression Support
+    def __eq__(self, other):
+        if other is None or isinstance(other, Attribute):  # handle object identity comparison
+            return self is other
+        return Path(self.attr_name).__eq__(self._get_attribute_value(other))
+
+    def __lt__(self, other):
+        return Path(self.attr_name).__lt__(self._get_attribute_value(other))
+
+    def __le__(self, other):
+        return Path(self.attr_name).__le__(self._get_attribute_value(other))
+
+    def __gt__(self, other):
+        return Path(self.attr_name).__gt__(self._get_attribute_value(other))
+
+    def __ge__(self, other):
+        return Path(self.attr_name).__ge__(self._get_attribute_value(other))
+
+    def __getitem__(self, idx):  # support accessing list elements in condition expressions
+        if not isinstance(idx, int):
+            raise TypeError('list indices must be integers, not {}'.format(type(idx).__name__))
+        return Path('{0}[{1}]'.format(self.attr_name, idx))  # TODO include attribute value formatting
+
+    def between(self, value1, value2):
+        return Path(self.attr_name).between(self._get_attribute_value(value1), self._get_attribute_value(value2))
+
+    def startswith(self, prefix):
+        return Path(self.attr_name).startswith(self._get_attribute_value(prefix))
+
+    def _get_attribute_value(self, value):
+        return {ATTR_TYPE_MAP[self.attr_type]: self.serialize(value)}
 
 
 class AttributeContainer(object):

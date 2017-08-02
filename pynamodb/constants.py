@@ -33,6 +33,7 @@ CONSISTENT_READ = 'ConsistentRead'
 DELETE_REQUEST = 'DeleteRequest'
 RETURN_VALUES = 'ReturnValues'
 REQUEST_ITEMS = 'RequestItems'
+ATTRS_TO_GET = 'AttributesToGet'
 ATTR_UPDATES = 'AttributeUpdates'
 TABLE_STATUS = 'TableStatus'
 SCAN_FILTER = 'ScanFilter'
@@ -63,6 +64,8 @@ KEY = 'Key'
 
 # Expression Parameters
 EXPRESSION_ATTRIBUTE_NAMES = 'ExpressionAttributeNames'
+EXPRESSION_ATTRIBUTE_VALUES = 'ExpressionAttributeValues'
+KEY_CONDITION_EXPRESSION = 'KeyConditionExpression'
 PROJECTION_EXPRESSION = 'ProjectionExpression'
 
 # Defaults
@@ -140,8 +143,8 @@ STREAM_OLD_IMAGE = 'OLD_IMAGE'
 STREAM_NEW_AND_OLD_IMAGE = 'NEW_AND_OLD_IMAGES'
 STREAM_KEYS_ONLY = 'KEYS_ONLY'
 
-# These are constants used in the KeyConditions parameter
-# See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditions
+# These are constants used in the KeyConditionExpression parameter
+# http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
 EXCLUSIVE_START_KEY = 'ExclusiveStartKey'
 LAST_EVALUATED_KEY = 'LastEvaluatedKey'
 QUERY_FILTER = 'QueryFilter'
@@ -164,6 +167,15 @@ QUERY_OPERATOR_MAP = {
     'gt': GT,
     'begins_with': BEGINS_WITH,
     'between': BETWEEN
+}
+KEY_CONDITION_OPERATOR_MAP = {
+    EQ: '__eq__',
+    LE: '__le__',
+    LT: '__lt__',
+    GE: '__ge__',
+    GT: '__gt__',
+    BEGINS_WITH: 'startswith',
+    BETWEEN: 'between'
 }
 
 # These are the valid select values for the Scan operation

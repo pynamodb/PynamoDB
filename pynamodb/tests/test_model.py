@@ -1446,10 +1446,13 @@ class ModelTestCase(TestCase):
             self.assertEqual(res, 10)
             args = req.call_args[0][1]
             params = {
-                'KeyConditions': {
-                    'user_name': {
-                        'ComparisonOperator': 'EQ',
-                        'AttributeValueList': [{'S': u'foo'}]
+                'KeyConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
                     }
                 },
                 'TableName': 'UserModel',
@@ -1490,14 +1493,17 @@ class ModelTestCase(TestCase):
             self.assertEqual(res, 42)
             args = req.call_args[0][1]
             params = {
-                'KeyConditions': {
-                    'user_name': {
-                        'ComparisonOperator': 'BEGINS_WITH',
-                        'AttributeValueList': [{'S': u'bar'}]
+                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_id',
+                    '#1': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
                     },
-                    'user_id': {
-                        'ComparisonOperator': 'EQ',
-                        'AttributeValueList': [{'S': u'foo'}]
+                    ':1': {
+                        'S': u'bar'
                     }
                 },
                 'Limit': 2,
@@ -1523,10 +1529,13 @@ class ModelTestCase(TestCase):
 
             args_one = req.call_args_list[0][0][1]
             params_one = {
-                'KeyConditions': {
-                    'user_id': {
-                        'ComparisonOperator': 'EQ',
-                        'AttributeValueList': [{'S': u'foo'}]
+                'KeyConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_id'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
                     }
                 },
                 'IndexName': 'uid_index',
@@ -1823,18 +1832,17 @@ class ModelTestCase(TestCase):
                     zip_code__between=[2, 3]):
                 queried.append(item._serialize())
             params = {
-                'KeyConditions': {
-                    'user_id': {
-                        'AttributeValueList': [
-                            {'S': 'id'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
+                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_name',
+                    '#1': 'user_id'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
                     },
-                    'user_name': {
-                        'AttributeValueList': [
-                            {'S': 'foo'}
-                        ],
-                        'ComparisonOperator': 'EQ'
+                    ':1': {
+                        'S': u'id'
                     }
                 },
                 'QueryFilter': {
@@ -1933,18 +1941,17 @@ class ModelTestCase(TestCase):
                     conditional_operator='AND'):
                 queried.append(item._serialize())
             params = {
-                'KeyConditions': {
-                    'user_id': {
-                        'AttributeValueList': [
-                            {'S': 'id'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
+                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_name',
+                    '#1': 'user_id'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
                     },
-                    'user_name': {
-                        'AttributeValueList': [
-                            {'S': 'foo'}
-                        ],
-                        'ComparisonOperator': 'EQ'
+                    ':1': {
+                        'S': u'id'
                     }
                 },
                 'query_filter': {
@@ -1971,11 +1978,8 @@ class ModelTestCase(TestCase):
 
             for key in ('ConditionalOperator', 'ReturnConsumedCapacity', 'TableName'):
                 self.assertEqual(req.call_args[0][1][key], params[key])
-            for key in ('user_id', 'user_name'):
-                self.assertEqual(
-                    req.call_args[0][1]['KeyConditions'][key],
-                    params['KeyConditions'][key]
-                )
+            for key in ('KeyConditionExpression', 'ExpressionAttributeNames', 'ExpressionAttributeValues'):
+                self.assertEqual(req.call_args[0][1][key], params[key])
             for key in ('email', 'zip_code', 'picture'):
                 self.assertEqual(
                     sorted(req.call_args[0][1]['QueryFilter'][key].items(), key=lambda x: x[0]),
@@ -2615,22 +2619,17 @@ class ModelTestCase(TestCase):
                 queried.append(item._serialize())
 
             params = {
-                'KeyConditions': {
-                    'user_name': {
-                        'ComparisonOperator': 'BEGINS_WITH',
-                        'AttributeValueList': [
-                            {
-                                'S': u'bar'
-                            }
-                        ]
+                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
                     },
-                    'email': {
-                        'ComparisonOperator': 'EQ',
-                        'AttributeValueList': [
-                            {
-                                'S': u'foo'
-                            }
-                        ]
+                    ':1': {
+                        'S': u'bar'
                     }
                 },
                 'IndexName': 'custom_idx_name',
@@ -2658,22 +2657,17 @@ class ModelTestCase(TestCase):
                 queried.append(item._serialize())
 
             params = {
-                'KeyConditions': {
-                    'user_name': {
-                        'ComparisonOperator': 'BEGINS_WITH',
-                        'AttributeValueList': [
-                            {
-                                'S': u'bar'
-                            }
-                        ]
+                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
                     },
-                    'email': {
-                        'ComparisonOperator': 'EQ',
-                        'AttributeValueList': [
-                            {
-                                'S': u'foo'
-                            }
-                        ]
+                    ':1': {
+                        'S': u'bar'
                     }
                 },
                 'QueryFilter': {
@@ -2706,22 +2700,17 @@ class ModelTestCase(TestCase):
                 queried.append(item._serialize())
 
             params = {
-                'KeyConditions': {
-                    'user_name': {
-                        'ComparisonOperator': 'BEGINS_WITH',
-                        'AttributeValueList': [
-                            {
-                                'S': u'bar'
-                            }
-                        ]
+                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_id',
+                    '#1': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
                     },
-                    'user_id': {
-                        'ComparisonOperator': 'EQ',
-                        'AttributeValueList': [
-                            {
-                                'S': u'foo'
-                            }
-                        ]
+                    ':1': {
+                        'S': u'bar'
                     }
                 },
                 'IndexName': 'uid_index',
