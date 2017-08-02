@@ -6,6 +6,7 @@ from __future__ import division
 import logging
 import math
 import random
+import re
 import time
 import uuid
 from base64 import b64decode
@@ -26,7 +27,7 @@ from pynamodb.constants import (
     COMPARISON_OPERATOR, EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, SCAN_FILTER_VALUES, ATTR_DEFINITIONS,
     BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, KEY_CONDITIONS,
     BATCH_GET_ITEM, DELETE_REQUEST, SELECT_VALUES, RETURN_VALUES, REQUEST_ITEMS, ATTR_UPDATES,
-    ATTRS_TO_GET, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
+    PROJECTION_EXPRESSION, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
     INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
     PUT_ITEM, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
@@ -35,7 +36,7 @@ from pynamodb.constants import (
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
-    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED)
+    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, EXPRESSION_ATTRIBUTE_NAMES)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -45,6 +46,7 @@ from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
+PATH_SEGMENT_REGEX = re.compile(r'([^\[\]]+)((?:\[\d+\])*)$')
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
@@ -929,12 +931,16 @@ class Connection(object):
         }
 
         args_map = {}
+        name_placeholders = {}
         if consistent_read:
             args_map[CONSISTENT_READ] = consistent_read
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if attributes_to_get is not None:
-            args_map[ATTRS_TO_GET] = attributes_to_get
+            projection_expression = self._get_projection_expression(attributes_to_get, name_placeholders)
+            args_map[PROJECTION_EXPRESSION] = projection_expression
+        if name_placeholders:
+            args_map[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
         operation_kwargs[REQUEST_ITEMS][table_name].update(args_map)
 
         keys_map = {KEYS: []}
@@ -958,8 +964,12 @@ class Connection(object):
         Performs the GetItem operation and returns the result
         """
         operation_kwargs = {}
+        name_placeholders = {}
         if attributes_to_get is not None:
-            operation_kwargs[ATTRS_TO_GET] = attributes_to_get
+            projection_expression = self._get_projection_expression(attributes_to_get, name_placeholders)
+            operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
+        if name_placeholders:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
         operation_kwargs[CONSISTENT_READ] = consistent_read
         operation_kwargs[TABLE_NAME] = table_name
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
@@ -1129,8 +1139,12 @@ class Connection(object):
         Performs the scan operation
         """
         operation_kwargs = {TABLE_NAME: table_name}
+        name_placeholders = {}
         if attributes_to_get is not None:
-            operation_kwargs[ATTRS_TO_GET] = attributes_to_get
+            projection_expression = self._get_projection_expression(attributes_to_get, name_placeholders)
+            operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
+        if name_placeholders:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
         if limit is not None:
             operation_kwargs[LIMIT] = limit
         if return_consumed_capacity:
@@ -1183,8 +1197,12 @@ class Connection(object):
         Performs the Query operation and returns the result
         """
         operation_kwargs = {TABLE_NAME: table_name}
+        name_placeholders = {}
         if attributes_to_get:
-            operation_kwargs[ATTRS_TO_GET] = attributes_to_get
+            projection_expression = self._get_projection_expression(attributes_to_get, name_placeholders)
+            operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
+        if name_placeholders:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
         if consistent_read:
             operation_kwargs[CONSISTENT_READ] = True
         if exclusive_start_key:
@@ -1244,6 +1262,15 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {0}".format(e), e)
 
+    @staticmethod
+    def _get_projection_expression(attributes_to_get, placeholders):
+        expressions = [_substitute_names(attribute, placeholders) for attribute in attributes_to_get]
+        return ', '.join(expressions)
+
+    @staticmethod
+    def _reverse_dict(d):
+        return dict((v, k) for k, v in six.iteritems(d))
+
 
 def _convert_binary(attr):
     if BINARY_SHORT in attr:
@@ -1252,3 +1279,23 @@ def _convert_binary(attr):
         value = attr[BINARY_SET_SHORT]
         if value and len(value):
             attr[BINARY_SET_SHORT] = set(b64decode(v.encode(DEFAULT_ENCODING)) for v in value)
+
+
+def _substitute_names(expression, placeholders):
+    """
+    Replaces names in the given expression with placeholders.
+    Stores the placeholders in the given dictionary.
+    """
+    path_segments = expression.split('.')
+    for idx, segment in enumerate(path_segments):
+        match = PATH_SEGMENT_REGEX.match(segment)
+        if not match:
+            raise ValueError('{0} is not a valid document path'.format(expression))
+        name, indexes = match.groups()
+        if name in placeholders:
+            placeholder = placeholders[name]
+        else:
+            placeholder = '#' + str(len(placeholders))
+            placeholders[name] = placeholder
+        path_segments[idx] = placeholder + indexes
+    return '.'.join(path_segments)
