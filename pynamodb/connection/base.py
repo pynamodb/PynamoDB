@@ -20,6 +20,7 @@ from botocore.vendored.requests import Request
 from six.moves import range
 
 from pynamodb.compat import NullHandler
+from pynamodb.connection.expression import _get_projection_expression
 from pynamodb.connection.util import pythonic
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
@@ -27,7 +28,7 @@ from pynamodb.constants import (
     COMPARISON_OPERATOR, EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, SCAN_FILTER_VALUES, ATTR_DEFINITIONS,
     BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, KEY_CONDITIONS,
     BATCH_GET_ITEM, DELETE_REQUEST, SELECT_VALUES, RETURN_VALUES, REQUEST_ITEMS, ATTR_UPDATES,
-    PROJECTION_EXPRESSION, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
+    PROJECTION_EXPRESSION, FILTER_EXPRESSION, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
     INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
     PUT_ITEM, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
@@ -1234,7 +1235,7 @@ class Connection(object):
         operation_kwargs = {TABLE_NAME: table_name}
         name_placeholders = {}
         if attributes_to_get:
-            projection_expression = self._get_projection_expression(attributes_to_get, name_placeholders)
+            projection_expression = _get_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
         if name_placeholders:
             operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
@@ -1249,7 +1250,8 @@ class Connection(object):
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if query_filters:
-            operation_kwargs.update(self.get_query_filter_map(table_name, query_filters))
+            filter_expression = get_filter_expression(query_filters, name_placeholders)
+            operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if conditional_operator:
             operation_kwargs.update(self.get_conditional_operator(conditional_operator))
         if select:
@@ -1297,14 +1299,6 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {0}".format(e), e)
 
-    @staticmethod
-    def _get_projection_expression(attributes_to_get, placeholders):
-        expressions = [_substitute_names(attribute, placeholders) for attribute in attributes_to_get]
-        return ', '.join(expressions)
-
-    @staticmethod
-    def _reverse_dict(d):
-        return dict((v, k) for k, v in six.iteritems(d))
 
 
 def _convert_binary(attr):

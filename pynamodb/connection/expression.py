@@ -1,4 +1,9 @@
+import re
+
 PATH_SEGMENT_REGEX = re.compile(r'([^\[\]]+)((?:\[\d+\])*)$')
+
+class Operand(object):
+    
 
 class Expression(object):
     """Immutable"""
@@ -7,6 +12,9 @@ class Expression(object):
     TODO between, IN, and NOT
     http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
     """
+
+    def __repr__(self):
+        return self.raw
 
     def __init__(self, raw=''):
         self.raw = raw
@@ -35,6 +43,15 @@ class Expression(object):
     def __ne__(self, other):
         return Expression('{} <> {}'.format(self.raw, other.raw))
 
+    def between(self, a, b):
+        return Expression('{} BETWEEN {} AND {}'.format(self.raw, a, b))
+
+    def in_(self, items):
+        return Expression('{} IN {}'.format(','.join(items)))
+
+    def begins_with(self, other):
+        return Expression(('begins_with({}, {}').format(self.raw, other))
+
 
 def substitute_names(expression, placeholders):
     """
@@ -62,3 +79,18 @@ def _substitute(expression, placeholders, identifier):
             placeholders[name] = placeholder
         path_segments[idx] = placeholder + indexes
     return '.'.join(path_segments)
+
+
+def _get_projection_expression(attributes_to_get, placeholders):
+    expressions = [substitute_names(attribute, placeholders) for attribute in attributes_to_get]
+    return ', '.join(expressions)
+
+
+def _get_filter_expression(query_filters, placeholders):
+    expression = []
+
+
+def _reverse_dict(d):
+    return dict((v, k) for k, v in six.iteritems(d))
+
+

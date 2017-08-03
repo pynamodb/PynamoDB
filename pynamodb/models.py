@@ -202,6 +202,7 @@ class ExpressionContextManager(object):
         self.auto_name_counter = 'a'
         self.model = model
 
+        self.placeholder = {}
         self.expressions = []
         self.expression_attribute_values = {}
         self.expression_attribute_names = {}
@@ -255,6 +256,8 @@ class ExpressionContextManager(object):
         key = key or self.get_name_key()
         self.expression_attribute_names[key] = expr_name
 
+    det
+
     def le_set(self, path, value):
 
         # value _should_ be an object of type <?> returned from .value(), it's
@@ -296,6 +299,7 @@ class Model(AttributeContainer):
         :param attrs: A dictionary of attributes to set on this object.
         """
         self.attribute_values = {}
+        self._placeholders = {}
         self._set_defaults()
         if hash_key is not None:
             attrs[self._dynamo_to_python_attr(self._get_meta_data().hash_keyname)] = hash_key
@@ -321,6 +325,21 @@ class Model(AttributeContainer):
             raise NotImplementedError('Map and List attribute do not support conditional_operator yet')
 
     @classmethod
+    def _do_batch_get_and_deserialize(cls, keys_to_get, attributes_to_get, consistent_read):
+        while keys_to_get:
+            page, unprocessed_keys = cls._batch_get_page(
+                keys_to_get,
+                consistent_read=consistent_read,
+                attributes_to_get=attributes_to_get
+            )
+            for batch_item in page:
+                yield cls.from_raw_data(batch_item)
+            if unprocessed_keys:
+                keys_to_get = unprocessed_keys
+            else:
+                keys_to_get = []
+
+    @classmethod
     def batch_get(cls, items, consistent_read=None, attributes_to_get=None):
         """
         BatchGetItem for this model
@@ -334,18 +353,7 @@ class Model(AttributeContainer):
         keys_to_get = []
         while items:
             if len(keys_to_get) == BATCH_GET_PAGE_LIMIT:
-                while keys_to_get:
-                    page, unprocessed_keys = cls._batch_get_page(
-                        keys_to_get,
-                        consistent_read=consistent_read,
-                        attributes_to_get=attributes_to_get
-                    )
-                    for batch_item in page:
-                        yield cls.from_raw_data(batch_item)
-                    if unprocessed_keys:
-                        keys_to_get = unprocessed_keys
-                    else:
-                        keys_to_get = []
+                yield cls._do_batch_get_and_deserialize(keys_to_get, attributes_to_get, consistent_read)
             item = items.pop()
             if range_keyname:
                 hash_key, range_key = cls._serialize_keys(item[0], item[1])
@@ -358,19 +366,7 @@ class Model(AttributeContainer):
                 keys_to_get.append({
                     hash_keyname: hash_key
                 })
-
-        while keys_to_get:
-            page, unprocessed_keys = cls._batch_get_page(
-                keys_to_get,
-                consistent_read=consistent_read,
-                attributes_to_get=attributes_to_get
-            )
-            for batch_item in page:
-                yield cls.from_raw_data(batch_item)
-            if unprocessed_keys:
-                keys_to_get = unprocessed_keys
-            else:
-                keys_to_get = []
+        yield cls._do_batch_get_and_deserialize(keys_to_get, attributes_to_get, consistent_read)
 
     @classmethod
     def batch_write(cls, auto_commit=True):

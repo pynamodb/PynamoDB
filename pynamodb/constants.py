@@ -64,6 +64,7 @@ KEY = 'Key'
 # Expression Parameters
 EXPRESSION_ATTRIBUTE_NAMES = 'ExpressionAttributeNames'
 PROJECTION_EXPRESSION = 'ProjectionExpression'
+FILTER_EXPRESSION = 'FilterExpression'
 
 # Defaults
 DEFAULT_ENCODING = 'utf-8'
