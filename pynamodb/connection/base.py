@@ -46,7 +46,6 @@ from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
-PATH_SEGMENT_REGEX = re.compile(r'([^\[\]]+)((?:\[\d+\])*)$')
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
@@ -1315,31 +1314,3 @@ def _convert_binary(attr):
         value = attr[BINARY_SET_SHORT]
         if value and len(value):
             attr[BINARY_SET_SHORT] = set(b64decode(v.encode(DEFAULT_ENCODING)) for v in value)
-
-
-def _substitute_names(expression, placeholders):
-    """
-    Replaces names in the given expression with placeholders.
-    Stores the placeholders in the given dictionary.
-    """
-    return _substitute(expression, placeholders, '#')
-
-
-def _substitute_values(expression, placeholders):
-    return _substitute(expression, placeholders, ':')
-
-
-def _substitute(expression, placeholders, identifier):
-    path_segments = expression.split('.')
-    for idx, segment in enumerate(path_segments):
-        match = PATH_SEGMENT_REGEX.match(segment)
-        if not match:
-            raise ValueError('{0} is not a valid document path'.format(expression))
-        name, indexes = match.groups()
-        if name in placeholders:
-            placeholder = placeholders[name]
-        else:
-            placeholder = identifier + str(len(placeholders))
-            placeholders[name] = placeholder
-        path_segments[idx] = placeholder + indexes
-    return '.'.join(path_segments)

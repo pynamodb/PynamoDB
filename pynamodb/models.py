@@ -196,42 +196,6 @@ class MetaModel(type):
                 cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
 
 
-class Expression(object):
-    """Immutable"""
-
-    """
-    TODO between, IN, and NOT
-    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
-    """
-
-    def __init__(self, raw=''):
-        self.raw = raw
-
-    def __eq__(self, other):
-        return Expression('{} = {}'.format(self.raw, other.raw))
-
-    def __lt__(self, other):
-        return Expression('{} < {}'.format(self.raw, other.raw))
-
-    def __le__(self, other):
-        return Expression('{} <= {}'.format(self.raw, other.raw))
-
-    def __gt__(self, other):
-        return Expression('{} > {}'.format(self.raw, other.raw))
-
-    def __ge__(self, other):
-        return Expression('{} >= {}'.format(self.raw, other.raw))
-
-    def __or__(self, other):
-        return Expression('{} OR {}'.format(self.raw, other.raw))
-
-    def __and__(self, other):
-        return Expression('{} AND {}'.format(self.raw, other.raw))
-
-    def __ne__(self, other):
-        return Expression('{} <> {}'.format(self.raw, other.raw))
-
-
 class ExpressionContextManager(object):
     def __init__(self, model):
         self.auto_value_counter = 'a'
