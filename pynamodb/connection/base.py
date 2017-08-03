@@ -1322,6 +1322,14 @@ def _substitute_names(expression, placeholders):
     Replaces names in the given expression with placeholders.
     Stores the placeholders in the given dictionary.
     """
+    return _substitute(expression, placeholders, '#')
+
+
+def _substitute_values(expression, placeholders):
+    return _substitute(expression, placeholders, ':')
+
+
+def _substitute(expression, placeholders, identifier):
     path_segments = expression.split('.')
     for idx, segment in enumerate(path_segments):
         match = PATH_SEGMENT_REGEX.match(segment)
@@ -1331,7 +1339,7 @@ def _substitute_names(expression, placeholders):
         if name in placeholders:
             placeholder = placeholders[name]
         else:
-            placeholder = '#' + str(len(placeholders))
+            placeholder = identifier + str(len(placeholders))
             placeholders[name] = placeholder
         path_segments[idx] = placeholder + indexes
     return '.'.join(path_segments)
