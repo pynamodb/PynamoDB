@@ -1,4 +1,8 @@
+import re
+
+
 PATH_SEGMENT_REGEX = re.compile(r'([^\[\]]+)((?:\[\d+\])*)$')
+
 
 class Expression(object):
     """Immutable"""

@@ -6,7 +6,6 @@ from __future__ import division
 import logging
 import math
 import random
-import re
 import time
 import uuid
 from base64 import b64decode
@@ -41,6 +40,7 @@ from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
 )
+from pynamodb.expressions import substitute_names
 from pynamodb.settings import get_settings_value
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
@@ -1299,7 +1299,7 @@ class Connection(object):
 
     @staticmethod
     def _get_projection_expression(attributes_to_get, placeholders):
-        expressions = [_substitute_names(attribute, placeholders) for attribute in attributes_to_get]
+        expressions = [substitute_names(attribute, placeholders) for attribute in attributes_to_get]
         return ', '.join(expressions)
 
     @staticmethod
