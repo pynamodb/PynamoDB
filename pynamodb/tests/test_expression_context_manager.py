@@ -14,6 +14,7 @@ from pynamodb.models import ExpressionContextManager
 class CarInfoMap(MapAttribute):
     make = UnicodeAttribute(null=False)
     model = UnicodeAttribute(null=True)
+    year = NumberAttribute(null=True)
 
 
 class CarModel(Model):
@@ -32,10 +33,9 @@ def test_expression_context_manager_generates_expression(mock_update):
         tesla = update.value(CarInfoMap.make, new_value)
         update.le_set('car_info.make', tesla)
 
-
-    expected_expression = "SET car_info.make = :a"
-    expected_attribute_names = {}
-    expected_attribute_values = {":a": {"S": new_value}}
+    expected_expression = "SET #0.#1 = :0"
+    expected_attribute_names = {'#0': 'car_info', '#1': 'make'}
+    expected_attribute_values = {':0': {'S': new_value}}
 
     assert mock_update.call_args_list == [
         mock.call(

@@ -12,7 +12,7 @@ from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
 from pynamodb.attributes import Attribute, AttributeContainer, MapAttribute, ListAttribute
-from pynamodb.connection.base import MetaTable
+from pynamodb.connection.base import MetaTable, _substitute_names, _substitute_values
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
@@ -198,13 +198,14 @@ class MetaModel(type):
 
 class ExpressionContextManager(object):
     def __init__(self, model):
-        self.auto_value_counter = 'a'
-        self.auto_name_counter = 'a'
+        self.auto_value_counter = 0
         self.model = model
+
+        self.name_placeholders = {}
+        self.value_placeholders = {}
 
         self.expressions = []
         self.expression_attribute_values = {}
-        self.expression_attribute_names = {}
 
     def __enter__(self):
         return self
@@ -221,10 +222,9 @@ class ExpressionContextManager(object):
         return attribute_dictionary.get(path)
 
     def generate_expression_attribute_names(self):
-        return self.expression_attribute_names
+        return {v: k for k, v in six.iteritems(self.name_placeholders)}
 
     def generate_expression(self):
-        # import pdb; pdb.set_trace()
         return ', '.join(self.expressions)
 
     def generate_expression_values(self):
@@ -234,14 +234,9 @@ class ExpressionContextManager(object):
         return result
 
     def get_value_key(self):
-        name = self.auto_value_counter
-        self.auto_value_counter = chr(ord(name) + 1)  # TODO: support more than 26
-        return ':' + name
-
-    def get_name_key(self):
-        name = self.auto_name_counter
-        self.auto_name_counter = chr(ord(name) + 1)  # TODO: support more than 26
-        return '#' + name
+        counter = self.auto_value_counter
+        self.auto_value_counter += 1
+        return ':{0}'.format(counter)
 
     def value(self, attr_cls, expr_value, key=None):
         key = key or self.get_value_key()
@@ -251,19 +246,13 @@ class ExpressionContextManager(object):
         self.expression_attribute_values[key] = serialized_value
         return key  # TODO: return an object here instead?
 
-    def name(self, expr_name, key=None):
-        key = key or self.get_name_key()
-        self.expression_attribute_names[key] = expr_name
+    def name(self, expr_name):
+        return _substitute_names(expr_name, self.name_placeholders)
 
-    def le_set(self, path, value):
-
-        # value _should_ be an object of type <?> returned from .value(), it's
-        # currently the key returned from .value()
-
-        # SET offsets.#offset = :hostname_and_healthcheck
-
+    def le_set(self, attr, value):
+        name = self.name(attr)
         self.expressions.append(
-            'SET {} = {}'.format(path, value)
+            'SET {0} = {1}'.format(name, value)
         )
 
     def condition(self, expr_condition):
