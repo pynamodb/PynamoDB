@@ -797,6 +797,42 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise DeleteError("Failed to delete item: {0}".format(e), e)
 
+    def update_item_2(self,
+                      table_name,
+                      hash_key,
+                      range_key=None,
+                      return_values=None,
+                      update_expression=None,
+                      expression_attribute_names=None,
+                      expression_attribute_values=None):
+        """
+        Performs the UpdateItem operation with the new api
+        http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html
+        aws dynamodb update-item \
+            --table-name ProductCatalog \
+            --key '{"Id":{"N":"789"}}' \
+            --update-expression "SET ProductCategory = :c, Price = :p" \
+            --expression-attribute-values file://values.json \
+            --return-values ALL_NEW
+        """
+        operation_kwargs = {TABLE_NAME: table_name}
+        operation_kwargs.update(
+            self.get_identifier_map(table_name, hash_key, range_key)
+        )
+        if return_values:
+            operation_kwargs.update(self.get_return_values_map(return_values))
+        if update_expression:
+            operation_kwargs.update({'UpdateExpression': update_expression})
+        if expression_attribute_names:
+            operation_kwargs.update({'ExpressionAttributeNames': expression_attribute_names})
+        if expression_attribute_values:
+            operation_kwargs.update({'ExpressionAttributeValues': expression_attribute_values})
+
+        try:
+            return self.dispatch(UPDATE_ITEM, operation_kwargs)
+        except BOTOCORE_EXCEPTIONS as e:
+            raise UpdateError("Failed to update item: {0}".format(e), e)
+
     def update_item(self,
                     table_name,
                     hash_key,
