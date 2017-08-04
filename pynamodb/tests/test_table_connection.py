@@ -431,15 +431,21 @@ class ConnectionTestCase(TestCase):
             req.return_value = {}
             conn.query(
                 "FooForum",
-                key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+                key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': [{
-                            'S': 'thread'
-                        }]
+                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
                     }
                 },
                 'TableName': self.test_table_name

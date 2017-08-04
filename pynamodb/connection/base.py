@@ -6,7 +6,6 @@ from __future__ import division
 import logging
 import math
 import random
-import re
 import time
 import uuid
 from base64 import b64decode
@@ -25,7 +24,7 @@ from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
     COMPARISON_OPERATOR, EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, SCAN_FILTER_VALUES, ATTR_DEFINITIONS,
-    BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, KEY_CONDITIONS,
+    BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, KEY_CONDITION_EXPRESSION,
     BATCH_GET_ITEM, DELETE_REQUEST, SELECT_VALUES, RETURN_VALUES, REQUEST_ITEMS, ATTR_UPDATES,
     PROJECTION_EXPRESSION, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
     INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
@@ -36,17 +35,19 @@ from pynamodb.constants import (
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
-    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, EXPRESSION_ATTRIBUTE_NAMES)
+    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
+    EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
 )
+from pynamodb.expressions.condition import Path
+from pynamodb.expressions.projection import create_projection_expression
 from pynamodb.settings import get_settings_value
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
-PATH_SEGMENT_REGEX = re.compile(r'([^\[\]]+)((?:\[\d+\])*)$')
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
@@ -937,7 +938,7 @@ class Connection(object):
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if attributes_to_get is not None:
-            projection_expression = self._get_projection_expression(attributes_to_get, name_placeholders)
+            projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             args_map[PROJECTION_EXPRESSION] = projection_expression
         if name_placeholders:
             args_map[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
@@ -966,7 +967,7 @@ class Connection(object):
         operation_kwargs = {}
         name_placeholders = {}
         if attributes_to_get is not None:
-            projection_expression = self._get_projection_expression(attributes_to_get, name_placeholders)
+            projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
         if name_placeholders:
             operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
@@ -1141,7 +1142,7 @@ class Connection(object):
         operation_kwargs = {TABLE_NAME: table_name}
         name_placeholders = {}
         if attributes_to_get is not None:
-            projection_expression = self._get_projection_expression(attributes_to_get, name_placeholders)
+            projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
         if name_placeholders:
             operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
@@ -1198,11 +1199,39 @@ class Connection(object):
         """
         operation_kwargs = {TABLE_NAME: table_name}
         name_placeholders = {}
+        expression_attribute_values = {}
+
+        tbl = self.get_meta_table(table_name)
+        if tbl is None:
+            raise TableError("No such table: {0}".format(table_name))
+        if index_name:
+            hash_keyname = tbl.get_index_hash_keyname(index_name)
+            if not hash_keyname:
+                raise ValueError("No hash key attribute for index: {0}".format(index_name))
+        else:
+            hash_keyname = tbl.hash_keyname
+
+        key_condition_expression = self._get_condition_expression(table_name, hash_keyname, '__eq__', hash_key)
+        if key_conditions is None or len(key_conditions) == 0:
+            pass  # No comparisons on sort key
+        elif len(key_conditions) > 1:
+            raise ValueError("Multiple attributes are not supported in key_conditions: {0}".format(key_conditions))
+        else:
+            (key, condition), = key_conditions.items()
+            operator = condition.get(COMPARISON_OPERATOR)
+            if operator not in COMPARISON_OPERATOR_VALUES:
+                raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, COMPARISON_OPERATOR_VALUES))
+            operator = KEY_CONDITION_OPERATOR_MAP[operator]
+            values = condition.get(ATTR_VALUE_LIST)
+            sort_key_expression = self._get_condition_expression(table_name, key, operator, *values)
+            key_condition_expression = key_condition_expression & sort_key_expression
+
+        operation_kwargs[KEY_CONDITION_EXPRESSION] = key_condition_expression.serialize(
+            name_placeholders, expression_attribute_values)
+
         if attributes_to_get:
-            projection_expression = self._get_projection_expression(attributes_to_get, name_placeholders)
+            projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
-        if name_placeholders:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
         if consistent_read:
             operation_kwargs[CONSISTENT_READ] = True
         if exclusive_start_key:
@@ -1223,49 +1252,20 @@ class Connection(object):
             operation_kwargs[SELECT] = str(select).upper()
         if scan_index_forward is not None:
             operation_kwargs[SCAN_INDEX_FORWARD] = scan_index_forward
-        tbl = self.get_meta_table(table_name)
-        if tbl is None:
-            raise TableError("No such table: {0}".format(table_name))
-        if index_name:
-            hash_keyname = tbl.get_index_hash_keyname(index_name)
-            if not hash_keyname:
-                raise ValueError("No hash key attribute for index: {0}".format(index_name))
-        else:
-            hash_keyname = tbl.hash_keyname
-        operation_kwargs[KEY_CONDITIONS] = {
-            hash_keyname: {
-                ATTR_VALUE_LIST: [
-                    {
-                        self.get_attribute_type(table_name, hash_keyname): hash_key,
-                    }
-                ],
-                COMPARISON_OPERATOR: EQ
-            },
-        }
-        if key_conditions is not None:
-            for key, condition in key_conditions.items():
-                attr_type = self.get_attribute_type(table_name, key)
-                operator = condition.get(COMPARISON_OPERATOR)
-                if operator not in COMPARISON_OPERATOR_VALUES:
-                    raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, COMPARISON_OPERATOR_VALUES))
-                operation_kwargs[KEY_CONDITIONS][key] = {
-                    ATTR_VALUE_LIST: [
-                        {
-                            attr_type: self.parse_attribute(value)
-                        } for value in condition.get(ATTR_VALUE_LIST)
-                    ],
-                    COMPARISON_OPERATOR: operator
-                }
+        if name_placeholders:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
+        if expression_attribute_values:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
 
         try:
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {0}".format(e), e)
 
-    @staticmethod
-    def _get_projection_expression(attributes_to_get, placeholders):
-        expressions = [_substitute_names(attribute, placeholders) for attribute in attributes_to_get]
-        return ', '.join(expressions)
+    def _get_condition_expression(self, table_name, attribute_name, operator, *values):
+        attr_type = self.get_attribute_type(table_name, attribute_name)
+        values = [{attr_type: self.parse_attribute(value)} for value in values]
+        return getattr(Path(attribute_name), operator)(*values)
 
     @staticmethod
     def _reverse_dict(d):
@@ -1279,23 +1279,3 @@ def _convert_binary(attr):
         value = attr[BINARY_SET_SHORT]
         if value and len(value):
             attr[BINARY_SET_SHORT] = set(b64decode(v.encode(DEFAULT_ENCODING)) for v in value)
-
-
-def _substitute_names(expression, placeholders):
-    """
-    Replaces names in the given expression with placeholders.
-    Stores the placeholders in the given dictionary.
-    """
-    path_segments = expression.split('.')
-    for idx, segment in enumerate(path_segments):
-        match = PATH_SEGMENT_REGEX.match(segment)
-        if not match:
-            raise ValueError('{0} is not a valid document path'.format(expression))
-        name, indexes = match.groups()
-        if name in placeholders:
-            placeholder = placeholders[name]
-        else:
-            placeholder = '#' + str(len(placeholders))
-            placeholders[name] = placeholder
-        path_segments[idx] = placeholder + indexes
-    return '.'.join(path_segments)

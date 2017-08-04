@@ -1299,7 +1299,7 @@ class ConnectionTestCase(TestCase):
             "FooForum",
             conditional_operator='NOT_A_VALID_ONE',
             return_consumed_capacity='TOTAL',
-            key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+            key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
         )
 
         self.assertRaises(
@@ -1308,7 +1308,7 @@ class ConnectionTestCase(TestCase):
             table_name,
             "FooForum",
             return_consumed_capacity='TOTAL',
-            key_conditions={'ForumName': {'ComparisonOperator': 'BAD_OPERATOR', 'AttributeValueList': ['thread']}}
+            key_conditions={'Subject': {'ComparisonOperator': 'BAD_OPERATOR', 'AttributeValueList': ['thread']}}
         )
 
         self.assertRaises(
@@ -1318,7 +1318,7 @@ class ConnectionTestCase(TestCase):
             "FooForum",
             return_consumed_capacity='TOTAL',
             select='BAD_VALUE',
-            key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+            key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
         )
 
         with patch(PATCH_METHOD) as req:
@@ -1331,7 +1331,7 @@ class ConnectionTestCase(TestCase):
                 scan_index_forward=True,
                 return_consumed_capacity='TOTAL',
                 select='ALL_ATTRIBUTES',
-                key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+                key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
             )
 
         with patch(PATCH_METHOD) as req:
@@ -1342,17 +1342,23 @@ class ConnectionTestCase(TestCase):
                 scan_index_forward=True,
                 return_consumed_capacity='TOTAL',
                 select='ALL_ATTRIBUTES',
-                key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+                key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
             )
             params = {
                 'ScanIndexForward': True,
                 'Select': 'ALL_ATTRIBUTES',
                 'ReturnConsumedCapacity': 'TOTAL',
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': [{
-                            'S': 'thread'
-                        }]
+                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
                     }
                 },
                 'TableName': 'Thread'
@@ -1364,15 +1370,21 @@ class ConnectionTestCase(TestCase):
             conn.query(
                 table_name,
                 "FooForum",
-                key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+                key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': [{
-                            'S': 'thread'
-                        }]
+                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
                     }
                 },
                 'TableName': 'Thread'
@@ -1401,14 +1413,13 @@ class ConnectionTestCase(TestCase):
                 },
                 'IndexName': 'LastPostIndex',
                 'ProjectionExpression': '#0',
+                'KeyConditionExpression': '#0 = :0',
                 'ExpressionAttributeNames': {
                     '#0': 'ForumName'
                 },
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'EQ', 'AttributeValueList': [{
-                            'S': 'FooForum'
-                        }]
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
                     }
                 },
                 'TableName': 'Thread'
@@ -1430,11 +1441,13 @@ class ConnectionTestCase(TestCase):
                         'S': 'FooForum'
                     }
                 },
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'EQ', 'AttributeValueList': [{
-                            'S': 'FooForum'
-                        }]
+                'KeyConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
                     }
                 },
                 'TableName': 'Thread',
@@ -1458,11 +1471,13 @@ class ConnectionTestCase(TestCase):
                         'S': 'FooForum'
                     }
                 },
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'EQ', 'AttributeValueList': [{
-                            'S': 'FooForum'
-                        }]
+                'KeyConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
                     }
                 },
                 'TableName': 'Thread',
@@ -2197,26 +2212,3 @@ class ConnectionTestCase(TestCase):
             {UNPROCESSED_ITEMS: {'someTable': expected_unprocessed_items}},
             _assert=True
         )
-
-
-    def test_get_projection_expression(self):
-        attributes_to_get = ['Description', 'RelatedItems[0]', 'ProductReviews.FiveStar']
-        placeholders = {}
-        projection_expression = Connection._get_projection_expression(attributes_to_get, placeholders)
-        assert projection_expression == "#0, #1[0], #2.#3"
-        assert placeholders == {'Description': '#0', 'RelatedItems': '#1', 'ProductReviews': '#2', 'FiveStar': '#3'}
-
-
-    def test_get_projection_expression_repeated_names(self):
-        attributes_to_get = ['ProductReviews.FiveStar', 'ProductReviews.ThreeStar', 'ProductReviews.OneStar']
-        placeholders = {}
-        projection_expression = Connection._get_projection_expression(attributes_to_get, placeholders)
-        assert projection_expression == "#0.#1, #0.#2, #0.#3"
-        assert placeholders == {'ProductReviews': '#0', 'FiveStar': '#1', 'ThreeStar': '#2', 'OneStar': '#3'}
-
-
-    def test_get_projection_expression_invalid_attribute_raises(self):
-        invalid_attributes = ['', '[0]', 'foo[bar]', 'MyList[-1]', 'MyList[0.4]']
-        for attribute in invalid_attributes:
-            with self.assertRaises(ValueError):
-                Connection._get_projection_expression([attribute], {})
