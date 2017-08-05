@@ -3,12 +3,12 @@ import re
 PATH_SEGMENT_REGEX = re.compile(r'([^\[\]]+)((?:\[\d+\])*)$')
 
 
-def substitute_names(expression, placeholders):
+def substitute_names(expression, placeholders, split=True):
     """
     Replaces names in the given expression with placeholders.
     Stores the placeholders in the given dictionary.
     """
-    path_segments = expression.split('.')
+    path_segments = expression.split('.') if split else [expression]
     for idx, segment in enumerate(path_segments):
         match = PATH_SEGMENT_REGEX.match(segment)
         if not match:
