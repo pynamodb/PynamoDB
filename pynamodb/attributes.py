@@ -2,7 +2,6 @@
 PynamoDB attributes
 """
 import six
-from six import add_metaclass
 import json
 from base64 import b64encode, b64decode
 from datetime import datetime
@@ -102,7 +101,6 @@ class Attribute(object):
 
 class AttributeContainer(object):
 
-    _attributes = None
     _dynamo_to_python_attrs = None
 
     @classmethod
@@ -137,7 +135,8 @@ class AttributeContainer(object):
 
         :rtype: dict[str, Attribute]
         """
-        if cls._attributes is None:
+        if '_attributes' not in cls.__dict__:
+            # Each subclass of AttributeContainer needs its own attributes map.
             cls._initialize_attributes()
         return cls._attributes
 
@@ -445,12 +444,6 @@ class NullAttribute(Attribute):
         return None
 
 
-class MapAttributeMeta(type):
-    def __init__(cls, name, bases, attrs):
-        setattr(cls, '_attributes', None)
-
-
-@add_metaclass(MapAttributeMeta)
 class MapAttribute(AttributeContainer, Attribute):
     attr_type = MAP
 
