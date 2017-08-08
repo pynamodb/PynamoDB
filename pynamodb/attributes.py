@@ -471,6 +471,19 @@ class MapAttribute(AttributeContainer, Attribute):
         self._set_defaults()
         self._set_attributes(**attrs)
 
+    def __get__(self, instance, owner):
+        if instance:
+            return super(MapAttribute, self).__get__(instance, owner)
+        else:
+            # If we're accessing a MapAttribute field from an AttributeContainer
+            # class we want the type of the MapAttribute, not the instance
+            # itself.  This matches the user's expectations that something like:
+            #
+            # ModelClass.map_attr.field.attr_name
+            #
+            # should work.
+            return type(self)
+
     def __iter__(self):
         return iter(self.attribute_values)
 

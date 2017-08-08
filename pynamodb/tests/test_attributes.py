@@ -49,6 +49,10 @@ class CustomAttrMap(MapAttribute):
     overridden_unicode_attr = UnicodeAttribute(attr_name="unicode_attr")
 
 
+class CustomMapModel(Model):
+    custom_map_attr = CustomAttrMap()
+
+
 class DefaultsMap(MapAttribute):
     map_field = MapAttribute(default={})
 
@@ -585,6 +589,15 @@ class TestMapAttribute:
         }
         expected = {'number_attr': {'N': '10'}, 'unicode_attr': {'S': six.u('Hello')}}
         assert CustomAttrMap().serialize(attribute) == expected
+
+    def test_map_access_child_field_attributes(self):
+        self.assertEquals(
+            CustomMapModel.custom_map_attr.overridden_number_attr.attr_name,
+            'number_attr'
+        )
+        self.assertIsNone(
+            CustomMapModel().custom_map_attr
+        )
 
     def test_defaults(self):
         item = DefaultsMap()
