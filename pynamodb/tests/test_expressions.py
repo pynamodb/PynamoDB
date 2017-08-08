@@ -1,6 +1,6 @@
 from pynamodb.attributes import ListAttribute, UnicodeAttribute
 from pynamodb.compat import CompatTestCase as TestCase
-from pynamodb.expressions.condition import Path
+from pynamodb.expressions.condition import Path, size
 from pynamodb.expressions.projection import create_projection_expression
 
 
@@ -95,11 +95,19 @@ class ConditionExpressionTestCase(TestCase):
     def setUp(self):
         self.attribute = UnicodeAttribute(attr_name='foo')
 
-    def test_equals(self):
+    def test_equal(self):
         condition = self.attribute == 'bar'
         placeholder_names, expression_attribute_values = {}, {}
         expression = condition.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 = :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
+
+    def test_not_equal(self):
+        condition = self.attribute != 'bar'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 <> :0"
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'S': 'bar'}}
 
@@ -143,6 +151,38 @@ class ConditionExpressionTestCase(TestCase):
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'S': 'bar'}, ':1': {'S': 'baz'}}
 
+    def test_in(self):
+        condition = self.attribute.is_in('bar', 'baz')
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 IN (:0, :1)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}, ':1': {'S': 'baz'}}
+
+    def test_exists(self):
+        condition = self.attribute.exists()
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "attribute_exists (#0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {}
+
+    def test_not_exists(self):
+        condition = self.attribute.not_exists()
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "attribute_not_exists (#0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {}
+
+    def test_is_type(self):
+        condition = self.attribute.is_type()
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "attribute_type (#0, :0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S' : 'S'}}
+
     def test_begins_with(self):
         condition = self.attribute.startswith('bar')
         placeholder_names, expression_attribute_values = {}, {}
@@ -150,6 +190,54 @@ class ConditionExpressionTestCase(TestCase):
         assert expression == "begins_with (#0, :0)"
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'S' : 'bar'}}
+
+    def test_contains(self):
+        condition = self.attribute.contains('bar')
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "contains (#0, :0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S' : 'bar'}}
+
+    def test_size(self):
+        condition = size(self.attribute) == 3
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "size (#0) = :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'N' : '3'}}
+
+    def test_and(self):
+        condition = (self.attribute < 'bar') & (self.attribute > 'baz')
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "(#0 < :0 AND #0 > :1)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}, ':1': {'S': 'baz'}}
+
+    def test_or(self):
+        condition = (self.attribute < 'bar') | (self.attribute > 'baz')
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "(#0 < :0 OR #0 > :1)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}, ':1': {'S': 'baz'}}
+
+    def test_not(self):
+        condition = ~(self.attribute < 'bar')
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "(NOT #0 < :0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
+
+    def test_compound_logic(self):
+        condition = (~(self.attribute < 'bar') & (self.attribute > 'baz')) | (self.attribute == 'foo')
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "(((NOT #0 < :0) AND #0 > :1) OR #0 = :2)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}, ':1': {'S': 'baz'}, ':2': {'S': 'foo'}}
 
     def test_indexing(self):
         condition = ListAttribute(attr_name='foo')[0] == 'bar'

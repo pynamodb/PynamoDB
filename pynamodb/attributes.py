@@ -76,6 +76,11 @@ class Attribute(object):
             return self is other
         return AttributePath(self).__eq__(other)
 
+    def __ne__(self, other):
+        if other is None or isinstance(other, Attribute):  # handle object identity comparison
+            return self is not other
+        return AttributePath(self).__ne__(other)
+
     def __lt__(self, other):
         return AttributePath(self).__lt__(other)
 
@@ -94,8 +99,24 @@ class Attribute(object):
     def between(self, lower, upper):
         return AttributePath(self).between(lower, upper)
 
+    def is_in(self, *values):
+        return AttributePath(self).is_in(*values)
+
+    def exists(self):
+        return AttributePath(self).exists()
+
+    def not_exists(self):
+        return AttributePath(self).not_exists()
+
+    def is_type(self):
+        # What makes sense here? Are we using this to check if deserialization will be successful?
+        return AttributePath(self).is_type(ATTR_TYPE_MAP[self.attr_type])
+
     def startswith(self, prefix):
         return AttributePath(self).startswith(prefix)
+
+    def contains(self, item):
+        return AttributePath(self).contains(item)
 
 
 class AttributePath(Path):
