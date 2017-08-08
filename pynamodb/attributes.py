@@ -73,33 +73,49 @@ class Attribute(object):
     def __eq__(self, other):
         if other is None or isinstance(other, Attribute):  # handle object identity comparison
             return self is other
-        return Path(self.attr_name).__eq__(self._get_attribute_value(other))
+        return AttributePath(self).__eq__(other)
 
     def __lt__(self, other):
-        return Path(self.attr_name).__lt__(self._get_attribute_value(other))
+        return AttributePath(self).__lt__(other)
 
     def __le__(self, other):
-        return Path(self.attr_name).__le__(self._get_attribute_value(other))
+        return AttributePath(self).__le__(other)
 
     def __gt__(self, other):
-        return Path(self.attr_name).__gt__(self._get_attribute_value(other))
+        return AttributePath(self).__gt__(other)
 
     def __ge__(self, other):
-        return Path(self.attr_name).__ge__(self._get_attribute_value(other))
+        return AttributePath(self).__ge__(other)
 
-    def __getitem__(self, idx):  # support accessing list elements in condition expressions
-        if not isinstance(idx, int):
-            raise TypeError('list indices must be integers, not {}'.format(type(idx).__name__))
-        return Path('{0}[{1}]'.format(self.attr_name, idx))  # TODO include attribute value formatting
+    def __getitem__(self, idx):
+        return AttributePath(self)[idx]
 
-    def between(self, value1, value2):
-        return Path(self.attr_name).between(self._get_attribute_value(value1), self._get_attribute_value(value2))
+    def between(self, lower, upper):
+        return AttributePath(self).between(lower, upper)
 
     def startswith(self, prefix):
-        return Path(self.attr_name).startswith(self._get_attribute_value(prefix))
+        return AttributePath(self).startswith(prefix)
 
-    def _get_attribute_value(self, value):
-        return {ATTR_TYPE_MAP[self.attr_type]: self.serialize(value)}
+
+class AttributePath(Path):
+
+    def __init__(self, attribute):
+        super(AttributePath, self).__init__(attribute.attr_name, attribute_name=True)
+        self.attribute = attribute
+
+    def __getitem__(self, idx):
+        if self.attribute.attr_type != LIST:  # only list elements support the list dereference operator
+            raise TypeError("'{0}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
+        return super(AttributePath, self).__getitem__(idx)
+
+    def _serialize(self, value):
+        if self.attribute.attr_type == LIST and not isinstance(value, list):
+            # List attributes assume the values to be serialized are lists.
+            return self.attribute.serialize([value])[0]
+        if self.attribute.attr_type == MAP and not isinstance(value, dict):
+            # Map attributes assume the values to be serialized are maps.
+            return self.attribute.serialize({'': value})['']
+        return {ATTR_TYPE_MAP[self.attribute.attr_type]: self.attribute.serialize(value)}
 
 
 class AttributeContainer(object):

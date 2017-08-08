@@ -1,6 +1,34 @@
-from pynamodb.attributes import UnicodeAttribute
+from pynamodb.attributes import ListAttribute, UnicodeAttribute
 from pynamodb.compat import CompatTestCase as TestCase
+from pynamodb.expressions.condition import Path
 from pynamodb.expressions.projection import create_projection_expression
+
+
+class PathTestCase(TestCase):
+
+    def test_document_path(self):
+        path = Path('foo.bar')
+        assert str(path) == 'foo.bar'
+        assert repr(path) == "Path('foo.bar', attribute_name=False)"
+
+    def test_attribute_name(self):
+        path = Path('foo.bar', attribute_name=True)
+        assert str(path) == "'foo.bar'"
+        assert repr(path) == "Path('foo.bar', attribute_name=True)"
+
+    def test_index_document_path(self):
+        path = Path('foo.bar')[0]
+        assert str(path) == 'foo.bar[0]'
+        assert repr(path) == "Path('foo.bar[0]', attribute_name=False)"
+
+    def test_index_attribute_name(self):
+        path = Path('foo.bar', attribute_name=True)[0]
+        assert str(path) == "'foo.bar'[0]"
+        assert repr(path) == "Path('foo.bar[0]', attribute_name=True)"
+
+    def test_index_invalid(self):
+        with self.assertRaises(TypeError):
+            Path('foo.bar')['foo']
 
 
 class ProjectionExpressionTestCase(TestCase):
@@ -24,6 +52,42 @@ class ProjectionExpressionTestCase(TestCase):
         for attribute in invalid_attributes:
             with self.assertRaises(ValueError):
                 create_projection_expression([attribute], {})
+
+    def test_create_project_expression_with_document_paths(self):
+        attributes_to_get = [Path('foo.bar')[0]]
+        placeholders = {}
+        projection_expression = create_projection_expression(attributes_to_get, placeholders)
+        assert projection_expression == "#0.#1[0]"
+        assert placeholders == {'foo': '#0', 'bar': '#1'}
+
+    def test_create_project_expression_with_attribute_names(self):
+        attributes_to_get = [Path('foo.bar', attribute_name=True)[0]]
+        placeholders = {}
+        projection_expression = create_projection_expression(attributes_to_get, placeholders)
+        assert projection_expression == "#0[0]"
+        assert placeholders == {'foo.bar': '#0'}
+
+    def test_create_projection_expression_with_attributes(self):
+        attributes_to_get = [
+            UnicodeAttribute(attr_name='ProductReviews.FiveStar'),
+            UnicodeAttribute(attr_name='ProductReviews.ThreeStar'),
+            UnicodeAttribute(attr_name='ProductReviews.OneStar')
+        ]
+        placeholders = {}
+        projection_expression = create_projection_expression(attributes_to_get, placeholders)
+        assert projection_expression == "#0, #1, #2"
+        assert placeholders == {
+            'ProductReviews.FiveStar': '#0',
+            'ProductReviews.ThreeStar': '#1',
+            'ProductReviews.OneStar': '#2',
+        }
+
+    def test_create_projection_expression_not_a_list(self):
+        attributes_to_get = 'Description'
+        placeholders = {}
+        projection_expression = create_projection_expression(attributes_to_get, placeholders)
+        assert projection_expression == "#0"
+        assert placeholders == {'Description': '#0'}
 
 
 class ConditionExpressionTestCase(TestCase):
@@ -88,9 +152,38 @@ class ConditionExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'S' : 'bar'}}
 
     def test_indexing(self):
-        condition = self.attribute[0] == 'bar'
+        condition = ListAttribute(attr_name='foo')[0] == 'bar'
         placeholder_names, expression_attribute_values = {}, {}
         expression = condition.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0[0] = :0"
         assert placeholder_names == {'foo': '#0'}
-        assert expression_attribute_values == {':0': 'bar'}  # TODO fix attribute value formatting
+        assert expression_attribute_values == {':0': {'S' : 'bar'}}
+
+    def test_invalid_indexing(self):
+        with self.assertRaises(TypeError):
+            self.attribute[0]
+
+    def test_double_indexing(self):
+        condition = ListAttribute(attr_name='foo')[0][1] == 'bar'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0[0][1] = :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S' : 'bar'}}
+
+    def test_list_comparison(self):
+        condition = ListAttribute(attr_name='foo') == ['bar', 'baz']
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 = :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'L': [{'S' : 'bar'}, {'S': 'baz'}]}}
+
+    def test_dotted_attribute_name(self):
+        self.attribute.attr_name = 'foo.bar'
+        condition = self.attribute == 'baz'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 = :0"
+        assert placeholder_names == {'foo.bar': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'baz'}}
