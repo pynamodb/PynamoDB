@@ -39,16 +39,19 @@ class Attribute(object):
             self.attr_name = attr_name
 
     def __set__(self, instance, value):
-        if instance:
+        if instance and not self._is_map_attribute_class_object(instance):
             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
             instance.attribute_values[attr_name] = value
 
     def __get__(self, instance, owner):
-        if instance:
+        if instance and not self._is_map_attribute_class_object(instance):
             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
             return instance.attribute_values.get(attr_name, None)
         else:
             return self
+
+    def _is_map_attribute_class_object(self, instance):
+        return isinstance(instance, MapAttribute) and getattr(instance, '_class_object', False)
 
     def serialize(self, value):
         """
@@ -120,8 +123,18 @@ class AttributeContainer(object):
             if item_cls is None:
                 continue
 
-            if issubclass(item_cls, (Attribute, )):
+            if issubclass(item_cls, Attribute):
                 instance = getattr(cls, item_name)
+                if isinstance(instance, MapAttribute):
+                    # Attributes are data descriptors that bind their value to the containing object.
+                    # When subclassing MapAttribute and using them as AttributeContainers on a Model,
+                    # their internal attributes are bound to the instance in the Model class.
+                    # The `_class_object` attribute is used to indicate that the MapAttribute instance
+                    # belongs to a class object and not a class instance, overriding the binding.
+                    # Without this, Model.MapAttribute().attribute would the value and not the object;
+                    # whereas Model.attribute always returns the object.
+                    instance._class_object = True
+
                 cls._attributes[item_name] = instance
                 if instance.attr_name is not None:
                     cls._dynamo_to_python_attrs[instance.attr_name] = item_name
