@@ -19,7 +19,7 @@ from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
-    MapAttribute, ListAttribute, Attribute,
+    MapAttribute, MapAttributeMeta, ListAttribute, Attribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, MAP, LIST, BOOLEAN, _get_value_for_deserialize)
 
@@ -715,6 +715,9 @@ class TestMapAttribute:
             bad = t.nested.double_nested['bad']
         with pytest.raises(KeyError):
             bad = t.nested['something_else']
+
+    def test_metaclass(self):
+        assert type(MapAttribute) == MapAttributeMeta
 
 
 class TestValueDeserialize:

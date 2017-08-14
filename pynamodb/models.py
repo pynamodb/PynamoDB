@@ -11,7 +11,7 @@ import warnings
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
-from pynamodb.attributes import Attribute, AttributeContainer, MapAttribute, ListAttribute
+from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -153,7 +153,7 @@ class ResultSet(object):
         return iter(self.results)
 
 
-class MetaModel(type):
+class MetaModel(AttributeContainerMeta):
     """
     Model meta class
 
@@ -161,6 +161,7 @@ class MetaModel(type):
     Model.index.query()
     """
     def __init__(cls, name, bases, attrs):
+        super(MetaModel, cls).__init__(name, bases, attrs)
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:

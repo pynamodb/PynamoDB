@@ -2,6 +2,7 @@
 PynamoDB attributes
 """
 import six
+from six import add_metaclass
 import json
 from base64 import b64encode, b64decode
 from datetime import datetime
@@ -118,11 +119,13 @@ class AttributePath(Path):
         return {ATTR_TYPE_MAP[self.attribute.attr_type]: self.attribute.serialize(value)}
 
 
-class AttributeContainer(object):
+class AttributeContainerMeta(type):
 
-    _dynamo_to_python_attrs = None
+    def __init__(cls, name, bases, attrs):
+        super(AttributeContainerMeta, cls).__init__(name, bases, attrs)
+        AttributeContainerMeta._initialize_attributes(cls)
 
-    @classmethod
+    @staticmethod
     def _initialize_attributes(cls):
         """
         Initialize attributes on the class.
@@ -157,6 +160,10 @@ class AttributeContainer(object):
                 else:
                     instance.attr_name = item_name
 
+
+@add_metaclass(AttributeContainerMeta)
+class AttributeContainer(object):
+
     @classmethod
     def _get_attributes(cls):
         """
@@ -164,9 +171,6 @@ class AttributeContainer(object):
 
         :rtype: dict[str, Attribute]
         """
-        if '_attributes' not in cls.__dict__:
-            # Each subclass of AttributeContainer needs its own attributes map.
-            cls._initialize_attributes()
         return cls._attributes
 
     @classmethod
@@ -176,8 +180,6 @@ class AttributeContainer(object):
 
         This covers cases where an attribute name has been overridden via "attr_name".
         """
-        if cls._attributes is None:
-            cls._initialize_attributes()
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
     def _set_defaults(self):
@@ -473,6 +475,13 @@ class NullAttribute(Attribute):
         return None
 
 
+class MapAttributeMeta(AttributeContainerMeta):
+    """
+    This is only here for backwards compatibility: i.e. so type(MapAttribute) == MapAttributeMeta
+    """
+
+
+@add_metaclass(MapAttributeMeta)
 class MapAttribute(AttributeContainer, Attribute):
     attr_type = MAP
 
@@ -482,7 +491,6 @@ class MapAttribute(AttributeContainer, Attribute):
                                            null=null,
                                            default=default,
                                            attr_name=attr_name)
-        self._get_attributes()  # Ensure attributes are always inited
         self.attribute_values = {}
         self._set_defaults()
         self._set_attributes(**attrs)
