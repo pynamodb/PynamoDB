@@ -219,7 +219,7 @@ class IsType(Condition):
         if attr_type not in SHORT_ATTR_TYPES:
             raise ValueError("{0} is not a valid attribute type. Must be one of {1}".format(
                 attr_type, SHORT_ATTR_TYPES))
-        super(IsType, self).__init__(path, 'attribute_type', {'S': attr_type})
+        super(IsType, self).__init__(path, 'attribute_type', {STRING_SHORT: attr_type})
 
 
 class BeginsWith(Condition):
