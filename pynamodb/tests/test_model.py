@@ -1493,7 +1493,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(res, 42)
             args = req.call_args[0][1]
             params = {
-                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'user_id',
                     '#1': 'user_name'
@@ -1832,7 +1832,7 @@ class ModelTestCase(TestCase):
                     zip_code__between=[2, 3]):
                 queried.append(item._serialize())
             params = {
-                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'user_name',
                     '#1': 'user_id'
@@ -1941,7 +1941,7 @@ class ModelTestCase(TestCase):
                     conditional_operator='AND'):
                 queried.append(item._serialize())
             params = {
-                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'user_name',
                     '#1': 'user_id'
@@ -2619,7 +2619,7 @@ class ModelTestCase(TestCase):
                 queried.append(item._serialize())
 
             params = {
-                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'email',
                     '#1': 'user_name'
@@ -2657,7 +2657,7 @@ class ModelTestCase(TestCase):
                 queried.append(item._serialize())
 
             params = {
-                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'email',
                     '#1': 'user_name'
@@ -2700,7 +2700,7 @@ class ModelTestCase(TestCase):
                 queried.append(item._serialize())
 
             params = {
-                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'user_id',
                     '#1': 'user_name'

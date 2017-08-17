@@ -1348,7 +1348,7 @@ class ConnectionTestCase(TestCase):
                 'ScanIndexForward': True,
                 'Select': 'ALL_ATTRIBUTES',
                 'ReturnConsumedCapacity': 'TOTAL',
-                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'ForumName',
                     '#1': 'Subject'
@@ -1374,7 +1374,7 @@ class ConnectionTestCase(TestCase):
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'KeyConditionExpression': '#0 = :0 AND begins_with (#1, :1)',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'ForumName',
                     '#1': 'Subject'
