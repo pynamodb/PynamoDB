@@ -56,6 +56,7 @@ class Size(Operand):
     """
 
     def __init__(self, path):
+        # prevent circular import -- AttributePath imports Path
         from pynamodb.attributes import Attribute, AttributePath
         if isinstance(path, Path):
             self.path = Path
