@@ -63,8 +63,10 @@ UTC = 'UTC'
 KEY = 'Key'
 
 # Expression Parameters
+CONDITION_EXPRESSION = 'ConditionExpression'
 EXPRESSION_ATTRIBUTE_NAMES = 'ExpressionAttributeNames'
 EXPRESSION_ATTRIBUTE_VALUES = 'ExpressionAttributeValues'
+FILTER_EXPRESSION = 'FilterExpression'
 KEY_CONDITION_EXPRESSION = 'KeyConditionExpression'
 PROJECTION_EXPRESSION = 'ProjectionExpression'
 
@@ -216,6 +218,21 @@ TOTAL_SEGMENTS = 'TotalSegments'
 SCAN_FILTER_VALUES = [EQ, NE, LE, LT, GE, GT, NOT_NULL, NULL, CONTAINS, NOT_CONTAINS, BEGINS_WITH, IN, BETWEEN]
 QUERY_FILTER_VALUES = SCAN_FILTER_VALUES
 DELETE_FILTER_VALUES = SCAN_FILTER_VALUES
+FILTER_EXPRESSION_OPERATOR_MAP = {
+    EQ: '__eq__',
+    NE: '__ne__',
+    LE: '__le__',
+    LT: '__lt__',
+    GE: '__ge__',
+    GT: '__gt__',
+    NOT_NULL: 'exists',
+    NULL: 'not_exists',
+    CONTAINS: 'contains',
+    NOT_CONTAINS: 'contains',  # special cased
+    BEGINS_WITH: 'startswith',
+    IN: 'is_in',
+    BETWEEN: 'between'
+}
 
 
 # These are constants used in the expected condition for PutItem

@@ -529,10 +529,9 @@ class ConnectionTestCase(TestCase):
                         'S': 'How do I update multiple items?'
                     }
                 },
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
                 },
                 'TableName': self.test_table_name,
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -559,13 +558,11 @@ class ConnectionTestCase(TestCase):
                         'S': 'How do I update multiple items?'
                     }
                 },
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
                 },
                 'TableName': self.test_table_name,
-                'ConditionalOperator': 'AND',
                 'ReturnConsumedCapacity': 'TOTAL',
                 'ReturnItemCollectionMetrics': 'SIZE'
             }
@@ -693,10 +690,9 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-range-key'
                     }
                 },
-                'Expected': {
-                    'Forum': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum'
                 },
                 'AttributeUpdates': {
                     'Subject': {
@@ -877,17 +873,16 @@ class ConnectionTestCase(TestCase):
                         'Action': 'PUT'
                     }
                 },
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    },
-                    'Subject': {
-                        'Value': {
-                            'S': 'Foo'
-                        }
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 },
-                'ConditionalOperator': 'AND',
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'ci-table'
             }
@@ -1004,12 +999,14 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': self.test_table_name,
-                'Expected': {
-                    'Forum': {
-                        'Exists': False
-                    },
-                    'Subject': {
-                        'Value': {'S': 'Foo'}
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 },
                 'Item': {
@@ -1037,11 +1034,13 @@ class ConnectionTestCase(TestCase):
             )
             params = {
                 'TableName': self.test_table_name,
-                'Expected': {
-                    'ForumName': {
-                        'Value': {
-                            'S': 'item1-hash'
-                        }
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'item1-hash'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -1481,8 +1480,7 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'TableName': 'Thread',
-                'Select': 'ALL_ATTRIBUTES',
-                'ConditionalOperator': 'AND'
+                'Select': 'ALL_ATTRIBUTES'
             }
             self.assertEqual(req.call_args[0][1], params)
 
@@ -1741,12 +1739,13 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': table_name,
-                'ScanFilter': {
-                    'ForumName': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
+                'FilterExpression': 'begins_with (#0, :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 }
             }
@@ -1761,12 +1760,13 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': table_name,
-                'ScanFilter': {
-                    'ForumName': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
+                'FilterExpression': 'begins_with (#0, :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 }
             }
@@ -1795,21 +1795,19 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': table_name,
-                'ScanFilter': {
-                    'ForumName': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
-                    },
-                    'Subject': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
-                    }
+                'FilterExpression': '(begins_with (#0, :0) AND contains (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
                 },
-                'ConditionalOperator': 'AND'
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
+                    },
+                    ':1': {
+                        'S': 'Foo'
+                    }
+                }
             }
             self.assertEqual(req.call_args[0][1], params)
 

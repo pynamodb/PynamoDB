@@ -36,7 +36,8 @@ from pynamodb.constants import (
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
-    EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP)
+    EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
+    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -134,11 +135,11 @@ class MetaTable(object):
         for attr in self.data.get(ATTR_DEFINITIONS):
             if attr.get(ATTR_NAME) == attribute_name:
                 return attr.get(ATTR_TYPE)
-        attr_names = [attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS)]
         if value is not None and isinstance(value, dict):
             for key in SHORT_ATTR_TYPES:
                 if key in value:
                     return key
+        attr_names = [attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS)]
         raise ValueError("No attribute {0} in {1}".format(attribute_name, attr_names))
 
     def get_identifier_map(self, hash_key, range_key=None, key=KEY):
@@ -782,17 +783,26 @@ class Connection(object):
         """
         operation_kwargs = {TABLE_NAME: table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
+        name_placeholders = {}
+        expression_attribute_values = {}
 
-        if expected:
-            operation_kwargs.update(self.get_expected_map(table_name, expected))
         if return_values:
             operation_kwargs.update(self.get_return_values_map(return_values))
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics:
             operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
-        if conditional_operator:
-            operation_kwargs.update(self.get_conditional_operator(conditional_operator))
+        # We read the conditional operator even without expected passed in to maintain existing behavior.
+        conditional_operator = self.get_conditional_operator(conditional_operator or AND)
+        if expected:
+            condition_expression = self._get_condition_expression(
+                table_name, expected, conditional_operator, name_placeholders, expression_attribute_values)
+            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
+        if name_placeholders:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
+        if expression_attribute_values:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
+
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -813,16 +823,15 @@ class Connection(object):
         """
         operation_kwargs = {TABLE_NAME: table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
-        if expected:
-            operation_kwargs.update(self.get_expected_map(table_name, expected))
+        name_placeholders = {}
+        expression_attribute_values = {}
+
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics:
             operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
         if return_values:
             operation_kwargs.update(self.get_return_values_map(return_values))
-        if conditional_operator:
-            operation_kwargs.update(self.get_conditional_operator(conditional_operator))
         if not attribute_updates:
             raise ValueError("{0} cannot be empty".format(ATTR_UPDATES))
 
@@ -840,6 +849,18 @@ class Connection(object):
             }
             if action.upper() != DELETE:
                 operation_kwargs[ATTR_UPDATES][key][VALUE] = {attr_type: value}
+
+        # We read the conditional operator even without expected passed in to maintain existing behavior.
+        conditional_operator = self.get_conditional_operator(conditional_operator or AND)
+        if expected:
+            condition_expression = self._get_condition_expression(
+                table_name, expected, conditional_operator, name_placeholders, expression_attribute_values)
+            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
+        if name_placeholders:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
+        if expression_attribute_values:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
+
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -860,6 +881,9 @@ class Connection(object):
         """
         operation_kwargs = {TABLE_NAME: table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=ITEM))
+        name_placeholders = {}
+        expression_attribute_values = {}
+
         if attributes:
             attrs = self.get_item_attribute_map(table_name, attributes)
             operation_kwargs[ITEM].update(attrs[ITEM])
@@ -869,10 +893,17 @@ class Connection(object):
             operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
         if return_values:
             operation_kwargs.update(self.get_return_values_map(return_values))
+        # We read the conditional operator even without expected passed in to maintain existing behavior.
+        conditional_operator = self.get_conditional_operator(conditional_operator or AND)
         if expected:
-            operation_kwargs.update(self.get_expected_map(table_name, expected))
-        if conditional_operator:
-            operation_kwargs.update(self.get_conditional_operator(conditional_operator))
+            condition_expression = self._get_condition_expression(
+                table_name, expected, conditional_operator, name_placeholders, expression_attribute_values)
+            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
+        if name_placeholders:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
+        if expression_attribute_values:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
+
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -1141,11 +1172,11 @@ class Connection(object):
         """
         operation_kwargs = {TABLE_NAME: table_name}
         name_placeholders = {}
+        expression_attribute_values = {}
+
         if attributes_to_get is not None:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
-        if name_placeholders:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
         if limit is not None:
             operation_kwargs[LIMIT] = limit
         if return_consumed_capacity:
@@ -1157,24 +1188,17 @@ class Connection(object):
         if total_segments:
             operation_kwargs[TOTAL_SEGMENTS] = total_segments
         if scan_filter:
-            operation_kwargs[SCAN_FILTER] = {}
-            for key, condition in scan_filter.items():
-                operator = condition.get(COMPARISON_OPERATOR)
-                if operator not in SCAN_FILTER_VALUES:
-                    raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, SCAN_FILTER_VALUES))
-                values = []
-                for value in condition.get(ATTR_VALUE_LIST, []):
-                    attr_type = self.get_attribute_type(table_name, key, value)
-                    values.append({attr_type: self.parse_attribute(value)})
-                operation_kwargs[SCAN_FILTER][key] = {
-                    COMPARISON_OPERATOR: operator
-                }
-                if len(values):
-                    operation_kwargs[SCAN_FILTER][key][ATTR_VALUE_LIST] = values
-            if conditional_operator:
-                operation_kwargs.update(self.get_conditional_operator(conditional_operator))
+            conditional_operator = self.get_conditional_operator(conditional_operator or AND)
+            filter_expression = self._get_filter_expression(
+                table_name, scan_filter, conditional_operator, name_placeholders, expression_attribute_values)
+            operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if consistent_read:
             operation_kwargs[CONSISTENT_READ] = consistent_read
+        if name_placeholders:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
+        if expression_attribute_values:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
+
         try:
             return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -1211,7 +1235,7 @@ class Connection(object):
         else:
             hash_keyname = tbl.hash_keyname
 
-        key_condition_expression = self._get_condition_expression(table_name, hash_keyname, '__eq__', hash_key)
+        key_condition_expression = self._get_condition(table_name, hash_keyname, '__eq__', hash_key)
         if key_conditions is None or len(key_conditions) == 0:
             pass  # No comparisons on sort key
         elif len(key_conditions) > 1:
@@ -1223,7 +1247,7 @@ class Connection(object):
                 raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, COMPARISON_OPERATOR_VALUES))
             operator = KEY_CONDITION_OPERATOR_MAP[operator]
             values = condition.get(ATTR_VALUE_LIST)
-            sort_key_expression = self._get_condition_expression(table_name, key, operator, *values)
+            sort_key_expression = self._get_condition(table_name, key, operator, *values)
             key_condition_expression = key_condition_expression & sort_key_expression
 
         operation_kwargs[KEY_CONDITION_EXPRESSION] = key_condition_expression.serialize(
@@ -1242,10 +1266,12 @@ class Connection(object):
             operation_kwargs[LIMIT] = limit
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
+        # We read the conditional operator even without a query filter passed in to maintain existing behavior.
+        conditional_operator = self.get_conditional_operator(conditional_operator or AND)
         if query_filters:
-            operation_kwargs.update(self.get_query_filter_map(table_name, query_filters))
-        if conditional_operator:
-            operation_kwargs.update(self.get_conditional_operator(conditional_operator))
+            filter_expression = self._get_filter_expression(
+                table_name, query_filters, conditional_operator, name_placeholders, expression_attribute_values)
+            operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if select:
             if select.upper() not in SELECT_VALUES:
                 raise ValueError("{0} must be one of {1}".format(SELECT, SELECT_VALUES))
@@ -1262,10 +1288,77 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {0}".format(e), e)
 
-    def _get_condition_expression(self, table_name, attribute_name, operator, *values):
-        attr_type = self.get_attribute_type(table_name, attribute_name)
-        values = [{attr_type: self.parse_attribute(value)} for value in values]
-        return getattr(Path(attribute_name), operator)(*values)
+    def _get_condition_expression(self, table_name, expected, conditional_operator,
+                                  name_placeholders, expression_attribute_values):
+        """
+        Builds the ConditionExpression needed for DeleteItem, PutItem, and UpdateItem operations
+        """
+        condition_expression = None
+        conditional_operator = conditional_operator[CONDITIONAL_OPERATOR]
+        # We sort the keys here for determinism. This is mostly done to simplify testing.
+        keys = list(expected.keys())
+        keys.sort()
+        for key in keys:
+            condition = expected[key]
+            if EXISTS in condition:
+                operator = NOT_NULL if condition.get(EXISTS, True) else NULL
+                values = []
+            elif VALUE in condition:
+                operator = EQ
+                values = [condition.get(VALUE)]
+            else:
+                operator = condition.get(COMPARISON_OPERATOR)
+                values = condition.get(ATTR_VALUE_LIST, [])
+            if operator not in QUERY_FILTER_VALUES:
+                raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, QUERY_FILTER_VALUES))
+            not_contains = operator == NOT_CONTAINS
+            operator = FILTER_EXPRESSION_OPERATOR_MAP[operator]
+            condition = self._get_condition(table_name, key, operator, *values)
+            if not_contains:
+                condition = ~condition
+            if condition_expression is None:
+                condition_expression = condition
+            elif conditional_operator == AND:
+                condition_expression = condition_expression & condition
+            else:
+                condition_expression = condition_expression | condition
+        return condition_expression.serialize(name_placeholders, expression_attribute_values)
+
+    def _get_filter_expression(self, table_name, filters, conditional_operator,
+                               name_placeholders, expression_attribute_values):
+        """
+        Builds the FilterExpression needed for Query and Scan operations
+        """
+        condition_expression = None
+        conditional_operator = conditional_operator[CONDITIONAL_OPERATOR]
+        # We sort the keys here for determinism. This is mostly done to simplify testing.
+        keys = list(filters.keys())
+        keys.sort()
+        for key in keys:
+            condition = filters[key]
+            operator = condition.get(COMPARISON_OPERATOR)
+            if operator not in QUERY_FILTER_VALUES:
+                raise ValueError("{0} must be one of {1}".format(COMPARISON_OPERATOR, QUERY_FILTER_VALUES))
+            not_contains = operator == NOT_CONTAINS
+            operator = FILTER_EXPRESSION_OPERATOR_MAP[operator]
+            values = condition.get(ATTR_VALUE_LIST, [])
+            condition = self._get_condition(table_name, key, operator, *values)
+            if not_contains:
+                condition = ~condition
+            if condition_expression is None:
+                condition_expression = condition
+            elif conditional_operator == AND:
+                condition_expression = condition_expression & condition
+            else:
+                condition_expression = condition_expression | condition
+        return condition_expression.serialize(name_placeholders, expression_attribute_values)
+
+    def _get_condition(self, table_name, attribute_name, operator, *values):
+        values = [
+            {self.get_attribute_type(table_name, attribute_name, value): self.parse_attribute(value)}
+            for value in values
+        ]
+        return getattr(Path(attribute_name, attribute_name=True), operator)(*values)
 
     @staticmethod
     def _reverse_dict(d):

@@ -333,11 +333,9 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'TableName': self.test_table_name,
-                'ConditionalOperator': 'AND',
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
                 }
             }
             self.assertEqual(req.call_args[0][1], params)

@@ -10,7 +10,7 @@ from dateutil.parser import parse
 from dateutil.tz import tzutc
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
+    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
 from pynamodb.expressions.condition import Path
 import collections
@@ -130,7 +130,17 @@ class AttributePath(Path):
             raise TypeError("'{0}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
         return super(AttributePath, self).__getitem__(idx)
 
+    def contains(self, item):
+        if self.attribute.attr_type in [BINARY_SET, NUMBER_SET, STRING_SET]:
+            # Set attributes assume the values to be serialized are sets.
+            (attr_type, attr_value), = self._serialize([item]).items()
+            item = {attr_type[0]: attr_value[0]}
+        return super(AttributePath, self).contains(item)
+
     def _serialize(self, value):
+        # Check to see if value is already serialized
+        if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in SHORT_ATTR_TYPES:
+            return value
         if self.attribute.attr_type == LIST and not isinstance(value, list):
             # List attributes assume the values to be serialized are lists.
             return self.attribute.serialize([value])[0]
