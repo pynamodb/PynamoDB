@@ -2063,7 +2063,6 @@ class ConnectionTestCase(TestCase):
 
         assert rand_int_mock.call_args_list == [mock.call(0, 25), mock.call(0, 50)]
 
-
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_create_prepared_request(self, requests_session_mock, session_mock):
@@ -2098,7 +2097,6 @@ class ConnectionTestCase(TestCase):
         self.assertEqual(called_request_object.data, expected_request_object.data)
         self.assertEqual(called_request_object.headers, expected_request_object.headers)
 
-
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_make_api_call_retries_properly(self, requests_session_mock, session_mock):
@@ -2129,7 +2127,6 @@ class ConnectionTestCase(TestCase):
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
 
-
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_make_api_call_throws_when_retries_exhausted(self, requests_session_mock, session_mock):
@@ -2154,7 +2151,6 @@ class ConnectionTestCase(TestCase):
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
 
-
     @mock.patch('random.randint')
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
@@ -2178,7 +2174,6 @@ class ConnectionTestCase(TestCase):
         assert requests_session_mock.send.call_args[1]['timeout'] == 11
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
-
 
     def test_handle_binary_attributes_for_unprocessed_items(self):
         binary_blob = six.b('\x00\xFF\x00\xFF')
@@ -2209,4 +2204,46 @@ class ConnectionTestCase(TestCase):
             Connection._handle_binary_attributes({UNPROCESSED_ITEMS: {'someTable': unprocessed_items}}),
             {UNPROCESSED_ITEMS: {'someTable': expected_unprocessed_items}},
             _assert=True
+        )
+
+    def test_get_expected_map(self):
+        conn = Connection(self.region)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = DESCRIBE_TABLE_DATA
+            conn.describe_table(self.test_table_name)
+
+        expected = {'ForumName': {'Exists': True}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'Exists': True}}}
+        )
+
+        expected = {'ForumName': {'Value': 'foo'}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'Value': {'S': 'foo'}}}}
+        )
+
+        expected = {'ForumName': {'ComparisonOperator': 'Null'}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'ComparisonOperator': 'Null', 'AttributeValueList': []}}}
+        )
+
+        expected = {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': ['foo']}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': [{'S': 'foo'}]}}}
+        )
+
+    def test_get_query_filter_map(self):
+        conn = Connection(self.region)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = DESCRIBE_TABLE_DATA
+            conn.describe_table(self.test_table_name)
+
+        query_filters = {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': ['foo']}}
+        self.assertEqual(
+            conn.get_query_filter_map(self.test_table_name, query_filters),
+            {'QueryFilter': {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': [{'S': 'foo'}]}}}
         )
