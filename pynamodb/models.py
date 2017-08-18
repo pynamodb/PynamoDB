@@ -32,7 +32,7 @@ from pynamodb.constants import (
     CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
-    STREAM_ENABLED, EQ, NE)
+    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET)
 
 
 log = logging.getLogger(__name__)
@@ -1057,9 +1057,17 @@ class Model(AttributeContainer):
             else:
                 if not isinstance(value, list):
                     value = [value]
-                value = [
-                    {ATTR_TYPE_MAP[attribute_class.attr_type]: attribute_class.serialize(val)} for val in value
-                ]
+                attr_type = attribute_class.attr_type
+                if operator in ['contains', 'not_contains'] and attr_type in [BINARY_SET, STRING_SET, NUMBER_SET]:
+                    # The 'CONTAINS' and 'NOT_CONTAINS' comparison operators do not support a set in ATTR_VALUE_LIST.
+                    # If the `attribute_class` to serialize is a set, take the first element of type and value.
+                    value = [
+                        {ATTR_TYPE_MAP[attr_type][0]: attribute_class.serialize(val)[0]} for val in value
+                    ]
+                else:
+                    value = [
+                        {ATTR_TYPE_MAP[attr_type]: attribute_class.serialize(val)} for val in value
+                    ]
                 condition = {
                     ATTR_VALUE_LIST: value
                 }
