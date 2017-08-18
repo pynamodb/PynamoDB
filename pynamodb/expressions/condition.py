@@ -1,5 +1,7 @@
 from copy import copy
-from pynamodb.constants import AND, ATTR_TYPE_MAP, BETWEEN, IN, OR, SHORT_ATTR_TYPES, STRING_SHORT
+from pynamodb.constants import (
+    AND, ATTR_TYPE_MAP, BETWEEN, BINARY_SHORT, IN, NUMBER_SHORT, OR, SHORT_ATTR_TYPES, STRING_SHORT
+)
 from pynamodb.expressions.util import get_value_placeholder, substitute_names
 from six.moves import range
 
@@ -68,7 +70,7 @@ class Size(Operand):
     def _serialize(self, value):
         if not isinstance(value, int):
             raise TypeError("size must be compared to an integer, not {0}".format(type(value).__name__))
-        return {'N': str(value)}
+        return {NUMBER_SHORT: str(value)}
 
     def __str__(self):
         return "size({0})".format(self.path)
@@ -235,8 +237,8 @@ class Contains(Condition):
 
     def __init__(self, path, item):
         (attr_type, value), = item.items()
-        if attr_type != STRING_SHORT:
-            raise ValueError("{0} must be a string".format(value))
+        if attr_type not in [BINARY_SHORT, NUMBER_SHORT, STRING_SHORT]:
+            raise ValueError("{0} must be a string, number, or binary element".format(value))
         super(Contains, self).__init__(path, 'contains', item)
 
 

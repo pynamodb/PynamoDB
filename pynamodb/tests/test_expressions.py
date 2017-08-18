@@ -1,4 +1,4 @@
-from pynamodb.attributes import ListAttribute, UnicodeAttribute
+from pynamodb.attributes import ListAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.expressions.condition import Path, size
 from pynamodb.expressions.projection import create_projection_expression
@@ -193,6 +193,30 @@ class ConditionExpressionTestCase(TestCase):
 
     def test_contains(self):
         condition = self.attribute.contains('bar')
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "contains (#0, :0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S' : 'bar'}}
+
+    def test_contains_string_set(self):
+        condition = UnicodeSetAttribute(attr_name='foo').contains('bar')
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "contains (#0, :0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S' : 'bar'}}
+
+    def test_contains_number_set(self):
+        condition = NumberSetAttribute(attr_name='foo').contains(1)
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "contains (#0, :0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'N' : '1'}}
+
+    def test_contains_list(self):
+        condition = ListAttribute(attr_name='foo').contains('bar')
         placeholder_names, expression_attribute_values = {}, {}
         expression = condition.serialize(placeholder_names, expression_attribute_values)
         assert expression == "contains (#0, :0)"

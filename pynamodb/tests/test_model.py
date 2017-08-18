@@ -772,9 +772,13 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'Expected': {
-                    'user_id': {
-                        'Value': {'S': 'bar'},
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_id'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'bar'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -795,9 +799,13 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'Expected': {
-                    'user_id': {
-                        'Value': {'S': 'bar'},
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_id'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'bar'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -818,20 +826,19 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'Expected': {
-                    'email': {
-                        'AttributeValueList': [
-                            {'S': '@'}
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
+                'ConditionExpression': '(contains (#0, :0) AND #1 = :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_id'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': '@'
                     },
-                    'user_id': {
-                        'Value': {
-                            'S': 'bar'
-                        }
+                    ':1': {
+                        'S': 'bar'
                     }
                 },
-                'ConditionalOperator': 'AND',
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'UserModel'
             }
@@ -1006,16 +1013,18 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'Expected': {
-                    'user_name': {
-                        'Value': {'S': 'foo'}
+                'ConditionExpression': '((NOT contains (#0, :0)) AND #1 = :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': '@'
                     },
-                    'email': {
-                        'AttributeValueList': [
-                            {'S': '@'}
-                        ],
-                        'ComparisonOperator': 'NOT_CONTAINS'
-                    },
+                    ':1': {
+                        'S': 'foo'
+                    }
                 },
                 'AttributeUpdates': {
                     'views': {
@@ -1047,8 +1056,9 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'Expected': {
-                    'user_name': {'Exists': False}
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_name'
                 },
                 'AttributeUpdates': {
                     'views': {
@@ -1159,13 +1169,14 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'Expected': {
-                    'numbers': {
-                        'AttributeValueList': [
-                            {'NS': ['1', '2']}
-                        ],
-                        'ComparisonOperator': 'EQ'
-                    },
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'numbers'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'NS': ['1', '2']
+                    }
                 },
                 'AttributeUpdates': {
                     'views': {
@@ -1198,14 +1209,17 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'Expected': {
-                    'email': {
-                        'AttributeValueList': [
-                            {'S': '1@pynamo.db'},
-                            {'S': '2@pynamo.db'}
-                        ],
-                        'ComparisonOperator': 'IN'
+                'ConditionExpression': '#0 IN (:0, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': '1@pynamo.db'
                     },
+                    ':1': {
+                        'S': '2@pynamo.db'
+                    }
                 },
                 'AttributeUpdates': {
                     'views': {
@@ -1326,10 +1340,9 @@ class ModelTestCase(TestCase):
                         'S': u'foo'
                     },
                 },
-                'Expected': {
-                    'email': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email'
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'UserModel'
@@ -1355,13 +1368,10 @@ class ModelTestCase(TestCase):
                         'S': u'foo'
                     },
                 },
-                'Expected': {
-                    'email': {
-                        'Exists': False
-                    },
-                    'zip_code': {
-                        'ComparisonOperator': 'NOT_NULL'
-                    }
+                'ConditionExpression': '(attribute_not_exists (#0) AND attribute_exists (#1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'zip_code'
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'UserModel'
@@ -1387,19 +1397,18 @@ class ModelTestCase(TestCase):
                         'S': u'foo'
                     },
                 },
-                'ConditionalOperator': 'OR',
-                'Expected': {
-                    'user_name': {
-                        'Value': {'S': 'bar'}
+                'ConditionExpression': '((contains (#0, :0) OR #1 = :1) OR attribute_not_exists (#2))',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_name',
+                    '#2': 'zip_code'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': '@'
                     },
-                    'zip_code': {
-                        'ComparisonOperator': 'NULL'
-                    },
-                    'email': {
-                        'ComparisonOperator': 'CONTAINS',
-                        'AttributeValueList': [
-                            {'S': '@'}
-                        ]
+                    ':1': {
+                        'S': 'bar'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -1426,9 +1435,13 @@ class ModelTestCase(TestCase):
                         'S': u'foo'
                     },
                 },
-                'Expected': {
-                    'user_name': {
-                        'Value': {'S': 'foo'}
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -1833,9 +1846,13 @@ class ModelTestCase(TestCase):
                 queried.append(item._serialize())
             params = {
                 'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'FilterExpression': '((contains (#2, :2) AND attribute_exists (#3)) AND #4 BETWEEN :3 AND :4)',
                 'ExpressionAttributeNames': {
                     '#0': 'user_name',
-                    '#1': 'user_id'
+                    '#1': 'user_id',
+                    '#2': 'email',
+                    '#3': 'picture',
+                    '#4': 'zip_code'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
@@ -1843,24 +1860,15 @@ class ModelTestCase(TestCase):
                     },
                     ':1': {
                         'S': u'id'
-                    }
-                },
-                'QueryFilter': {
-                    'email': {
-                        'AttributeValueList': [
-                            {'S': '@'}
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
                     },
-                    'zip_code': {
-                        'ComparisonOperator': 'BETWEEN',
-                        'AttributeValueList': [
-                            {'N': '2'},
-                            {'N': '3'}
-                        ]
+                    ':2': {
+                        'S': '@'
                     },
-                    'picture': {
-                        'ComparisonOperator': 'NOT_NULL'
+                    ':3': {
+                        'N': '2'
+                    },
+                    ':4': {
+                        'N': '3'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -1942,9 +1950,13 @@ class ModelTestCase(TestCase):
                 queried.append(item._serialize())
             params = {
                 'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'FilterExpression': '((contains (#2, :2) AND attribute_exists (#3)) AND #4 >= :3)',
                 'ExpressionAttributeNames': {
                     '#0': 'user_name',
-                    '#1': 'user_id'
+                    '#1': 'user_id',
+                    '#2': 'email',
+                    '#3': 'picture',
+                    '#4': 'zip_code'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
@@ -1952,39 +1964,19 @@ class ModelTestCase(TestCase):
                     },
                     ':1': {
                         'S': u'id'
+                    },
+                    ':2': {
+                        'S': '@'
+                    },
+                    ':3': {
+                        'N': '2'
                     }
                 },
-                'query_filter': {
-                    'email': {
-                        'AttributeValueList': [
-                            {'S': '@'}
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
-                    },
-                    'zip_code': {
-                        'ComparisonOperator': 'GE',
-                        'AttributeValueList': [
-                            {'N': '2'},
-                        ]
-                    },
-                    'picture': {
-                        'ComparisonOperator': 'NOT_NULL'
-                    }
-                },
-                'ConditionalOperator': 'AND',
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'UserModel'
             }
 
-            for key in ('ConditionalOperator', 'ReturnConsumedCapacity', 'TableName'):
-                self.assertEqual(req.call_args[0][1][key], params[key])
-            for key in ('KeyConditionExpression', 'ExpressionAttributeNames', 'ExpressionAttributeValues'):
-                self.assertEqual(req.call_args[0][1][key], params[key])
-            for key in ('email', 'zip_code', 'picture'):
-                self.assertEqual(
-                    sorted(req.call_args[0][1]['QueryFilter'][key].items(), key=lambda x: x[0]),
-                    sorted(params['query_filter'][key].items(), key=lambda x: x[0]),
-                )
+            self.assertEqual(req.call_args[0][1], params)
             self.assertTrue(len(queried) == len(items))
 
     def test_rate_limited_scan(self):
@@ -2069,18 +2061,15 @@ class ModelTestCase(TestCase):
             params = {
                 'Limit': 13,
                 'ReturnConsumedCapacity': 'TOTAL',
-                'ScanFilter': {
-                    'user_id': {
-                        'AttributeValueList': [
-                            {'S': 'tux'}
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
-                    },
-                    'zip_code': {
-                        'ComparisonOperator': 'NOT_NULL'
-                    },
-                    'email': {
-                        'ComparisonOperator': 'NULL'
+                'FilterExpression': '((attribute_not_exists (#0) AND contains (#1, :0)) AND attribute_exists (#2))',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_id',
+                    '#2': 'zip_code'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'tux'
                     }
                 },
                 'TableName': 'UserModel'
@@ -2104,21 +2093,17 @@ class ModelTestCase(TestCase):
             params = {
                 'Limit': 12,
                 'ReturnConsumedCapacity': 'TOTAL',
-                'ScanFilter': {
-                    'user_id': {
-                        'AttributeValueList': [
-                            {'S': 'tux'}
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
-                    },
-                    'zip_code': {
-                        'ComparisonOperator': 'NOT_NULL'
-                    },
-                    'email': {
-                        'ComparisonOperator': 'NULL'
+                'FilterExpression': '((attribute_not_exists (#0) OR contains (#1, :0)) OR attribute_exists (#2))',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_id',
+                    '#2': 'zip_code'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'tux'
                     },
                 },
-                'ConditionalOperator': 'OR',
                 'TableName': 'UserModel'
             }
 
@@ -2185,18 +2170,15 @@ class ModelTestCase(TestCase):
                 self.assertIsNotNone(item)
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'ScanFilter': {
-                    'user_id': {
-                        'AttributeValueList': [
-                            {'S': 'tux'}
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
-                    },
-                    'zip_code': {
-                        'ComparisonOperator': 'NOT_NULL'
-                    },
-                    'email': {
-                        'ComparisonOperator': 'NULL'
+                'FilterExpression': '((attribute_not_exists (#0) AND contains (#1, :0)) AND attribute_exists (#2))',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_id',
+                    '#2': 'zip_code'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'tux'
                     }
                 },
                 'TableName': 'UserModel'
@@ -2218,21 +2200,17 @@ class ModelTestCase(TestCase):
                 self.assertIsNotNone(item)
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'ScanFilter': {
-                    'user_id': {
-                        'AttributeValueList': [
-                            {'S': 'tux'}
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
-                    },
-                    'zip_code': {
-                        'ComparisonOperator': 'NOT_NULL'
-                    },
-                    'email': {
-                        'ComparisonOperator': 'NULL'
-                    },
+                'FilterExpression': '((attribute_not_exists (#0) OR contains (#1, :0)) OR attribute_exists (#2))',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_id',
+                    '#2': 'zip_code'
                 },
-                'ConditionalOperator': 'OR',
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'tux'
+                    }
+                },
                 'TableName': 'UserModel'
             }
             self.assertEquals(params, req.call_args[0][1])
@@ -2658,9 +2636,11 @@ class ModelTestCase(TestCase):
 
             params = {
                 'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'FilterExpression': 'contains (#2, :2)',
                 'ExpressionAttributeNames': {
                     '#0': 'email',
-                    '#1': 'user_name'
+                    '#1': 'user_name',
+                    '#2': 'aliases'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
@@ -2668,16 +2648,9 @@ class ModelTestCase(TestCase):
                     },
                     ':1': {
                         'S': u'bar'
-                    }
-                },
-                'QueryFilter': {
-                    'aliases': {
-                        'AttributeValueList': [
-                            {
-                                'S': '1'
-                            }
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
+                    },
+                    ':2': {
+                        'S': '1'
                     }
                 },
                 'IndexName': 'email_index',

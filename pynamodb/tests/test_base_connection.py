@@ -529,10 +529,9 @@ class ConnectionTestCase(TestCase):
                         'S': 'How do I update multiple items?'
                     }
                 },
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
                 },
                 'TableName': self.test_table_name,
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -559,13 +558,11 @@ class ConnectionTestCase(TestCase):
                         'S': 'How do I update multiple items?'
                     }
                 },
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
                 },
                 'TableName': self.test_table_name,
-                'ConditionalOperator': 'AND',
                 'ReturnConsumedCapacity': 'TOTAL',
                 'ReturnItemCollectionMetrics': 'SIZE'
             }
@@ -693,10 +690,9 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-range-key'
                     }
                 },
-                'Expected': {
-                    'Forum': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum'
                 },
                 'AttributeUpdates': {
                     'Subject': {
@@ -877,17 +873,16 @@ class ConnectionTestCase(TestCase):
                         'Action': 'PUT'
                     }
                 },
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    },
-                    'Subject': {
-                        'Value': {
-                            'S': 'Foo'
-                        }
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 },
-                'ConditionalOperator': 'AND',
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'ci-table'
             }
@@ -1004,12 +999,14 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': self.test_table_name,
-                'Expected': {
-                    'Forum': {
-                        'Exists': False
-                    },
-                    'Subject': {
-                        'Value': {'S': 'Foo'}
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 },
                 'Item': {
@@ -1037,11 +1034,13 @@ class ConnectionTestCase(TestCase):
             )
             params = {
                 'TableName': self.test_table_name,
-                'Expected': {
-                    'ForumName': {
-                        'Value': {
-                            'S': 'item1-hash'
-                        }
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'item1-hash'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -1481,8 +1480,7 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'TableName': 'Thread',
-                'Select': 'ALL_ATTRIBUTES',
-                'ConditionalOperator': 'AND'
+                'Select': 'ALL_ATTRIBUTES'
             }
             self.assertEqual(req.call_args[0][1], params)
 
@@ -1741,12 +1739,13 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': table_name,
-                'ScanFilter': {
-                    'ForumName': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
+                'FilterExpression': 'begins_with (#0, :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 }
             }
@@ -1761,12 +1760,13 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': table_name,
-                'ScanFilter': {
-                    'ForumName': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
+                'FilterExpression': 'begins_with (#0, :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 }
             }
@@ -1795,21 +1795,19 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': table_name,
-                'ScanFilter': {
-                    'ForumName': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
-                    },
-                    'Subject': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
-                    }
+                'FilterExpression': '(begins_with (#0, :0) AND contains (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
                 },
-                'ConditionalOperator': 'AND'
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
+                    },
+                    ':1': {
+                        'S': 'Foo'
+                    }
+                }
             }
             self.assertEqual(req.call_args[0][1], params)
 
@@ -2065,7 +2063,6 @@ class ConnectionTestCase(TestCase):
 
         assert rand_int_mock.call_args_list == [mock.call(0, 25), mock.call(0, 50)]
 
-
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_create_prepared_request(self, requests_session_mock, session_mock):
@@ -2100,7 +2097,6 @@ class ConnectionTestCase(TestCase):
         self.assertEqual(called_request_object.data, expected_request_object.data)
         self.assertEqual(called_request_object.headers, expected_request_object.headers)
 
-
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_make_api_call_retries_properly(self, requests_session_mock, session_mock):
@@ -2131,7 +2127,6 @@ class ConnectionTestCase(TestCase):
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
 
-
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_make_api_call_throws_when_retries_exhausted(self, requests_session_mock, session_mock):
@@ -2156,7 +2151,6 @@ class ConnectionTestCase(TestCase):
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
 
-
     @mock.patch('random.randint')
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
@@ -2180,7 +2174,6 @@ class ConnectionTestCase(TestCase):
         assert requests_session_mock.send.call_args[1]['timeout'] == 11
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
-
 
     def test_handle_binary_attributes_for_unprocessed_items(self):
         binary_blob = six.b('\x00\xFF\x00\xFF')
@@ -2211,4 +2204,46 @@ class ConnectionTestCase(TestCase):
             Connection._handle_binary_attributes({UNPROCESSED_ITEMS: {'someTable': unprocessed_items}}),
             {UNPROCESSED_ITEMS: {'someTable': expected_unprocessed_items}},
             _assert=True
+        )
+
+    def test_get_expected_map(self):
+        conn = Connection(self.region)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = DESCRIBE_TABLE_DATA
+            conn.describe_table(self.test_table_name)
+
+        expected = {'ForumName': {'Exists': True}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'Exists': True}}}
+        )
+
+        expected = {'ForumName': {'Value': 'foo'}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'Value': {'S': 'foo'}}}}
+        )
+
+        expected = {'ForumName': {'ComparisonOperator': 'Null'}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'ComparisonOperator': 'Null', 'AttributeValueList': []}}}
+        )
+
+        expected = {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': ['foo']}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': [{'S': 'foo'}]}}}
+        )
+
+    def test_get_query_filter_map(self):
+        conn = Connection(self.region)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = DESCRIBE_TABLE_DATA
+            conn.describe_table(self.test_table_name)
+
+        query_filters = {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': ['foo']}}
+        self.assertEqual(
+            conn.get_query_filter_map(self.test_table_name, query_filters),
+            {'QueryFilter': {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': [{'S': 'foo'}]}}}
         )
