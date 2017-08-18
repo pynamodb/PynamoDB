@@ -2674,7 +2674,7 @@ class ModelTestCase(TestCase):
                     'aliases': {
                         'AttributeValueList': [
                             {
-                                'SS': ['1']
+                                'S': '1'
                             }
                         ],
                         'ComparisonOperator': 'CONTAINS'
