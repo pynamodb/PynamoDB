@@ -167,8 +167,8 @@ class ConditionExpressionTestCase(TestCase):
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {}
 
-    def test_not_exists(self):
-        condition = self.attribute.not_exists()
+    def test_does_not_exist(self):
+        condition = self.attribute.does_not_exist()
         placeholder_names, expression_attribute_values = {}, {}
         expression = condition.serialize(placeholder_names, expression_attribute_values)
         assert expression == "attribute_not_exists (#0)"

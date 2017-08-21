@@ -226,7 +226,7 @@ FILTER_EXPRESSION_OPERATOR_MAP = {
     GE: '__ge__',
     GT: '__gt__',
     NOT_NULL: 'exists',
-    NULL: 'not_exists',
+    NULL: 'does_not_exist',
     CONTAINS: 'contains',
     NOT_CONTAINS: 'contains',  # special cased
     BEGINS_WITH: 'startswith',

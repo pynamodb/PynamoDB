@@ -105,8 +105,8 @@ class Attribute(object):
     def exists(self):
         return AttributePath(self).exists()
 
-    def not_exists(self):
-        return AttributePath(self).not_exists()
+    def does_not_exist(self):
+        return AttributePath(self).does_not_exist()
 
     def is_type(self):
         # What makes sense here? Are we using this to check if deserialization will be successful?
