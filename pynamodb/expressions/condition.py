@@ -105,7 +105,7 @@ class Path(Operand):
     def exists(self):
         return Exists(self)
 
-    def not_exists(self):
+    def does_not_exist(self):
         return NotExists(self)
 
     def is_type(self, attr_type):
