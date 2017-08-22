@@ -166,19 +166,17 @@ thread_item = Thread(
     last_post_datetime=datetime.now()
 )
 
-# DynamoDB will only save the item if forum_name exists and is not null
-print(thread_item.save(forum_name__null=False))
+# DynamoDB will only save the item if forum_name exists
+print(thread_item.save(Thread.forum_name.exists()))
 
 # DynamoDB will update the item, by adding 1 to the views attribute,
-# if the forum_name attribute equals 'Some Forum' or the subject attribute is not null
+# if the forum_name attribute equals 'Some Forum' or the subject attribute exists
 print(thread_item.update_item(
     'views',
     1,
     action='add',
-    conditional_operator='or',
-    forum_name__eq='Some Forum',
-    subject__null=False)
-)
+    condition=((Thread.forum_name == 'Some Forum') | Thread.subject.exists())
+))
 
 # DynamoDB will atomically update the attributes `replies` (increase value by 1),
 # and `last_post_datetime` (set value to the current datetime)
@@ -194,7 +192,7 @@ print(thread_item.update({
 }))
 
 # DynamoDB will delete the item, only if the views attribute is equal to one
-print(thread_item.delete(views__eq=1))
+print(thread_item.delete(Thread.views == 1))
 
 # Delete an item's attribute
 print(thread_item.update_item(

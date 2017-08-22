@@ -10,6 +10,7 @@ from botocore.vendored import requests
 from pynamodb.exceptions import (VerboseClientError,
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
 from pynamodb.constants import DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING
+from pynamodb.expressions.condition import Path
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from pynamodb.tests.deep_eq import deep_eq
 from botocore.exceptions import BotoCoreError
@@ -517,6 +518,34 @@ class ConnectionTestCase(TestCase):
                 self.test_table_name,
                 "Amazon DynamoDB",
                 "How do I update multiple items?",
+                condition=Path('ForumName').does_not_exist(),
+                return_item_collection_metrics='SIZE'
+            )
+            params = {
+                'Key': {
+                    'ForumName': {
+                        'S': 'Amazon DynamoDB'
+                    },
+                    'Subject': {
+                        'S': 'How do I update multiple items?'
+                    }
+                },
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'TableName': self.test_table_name,
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ReturnItemCollectionMetrics': 'SIZE'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.delete_item(
+                self.test_table_name,
+                "Amazon DynamoDB",
+                "How do I update multiple items?",
                 expected={'ForumName': {'Exists': False}},
                 return_item_collection_metrics='SIZE'
             )
@@ -665,6 +694,46 @@ class ConnectionTestCase(TestCase):
                 attribute_updates=bad_attr_updates,
                 range_key='foo-range-key',
             )
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.update_item(
+                self.test_table_name,
+                'foo-key',
+                return_consumed_capacity='TOTAL',
+                return_item_collection_metrics='NONE',
+                return_values='ALL_NEW',
+                condition=Path('Forum').does_not_exist(),
+                attribute_updates=attr_updates,
+                range_key='foo-range-key',
+            )
+            params = {
+                'ReturnValues': 'ALL_NEW',
+                'ReturnItemCollectionMetrics': 'NONE',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum'
+                },
+                'AttributeUpdates': {
+                    'Subject': {
+                        'Value': {
+                            'S': 'foo-subject'
+                        },
+                        'Action': 'PUT'
+                    }
+                },
+                'TableName': 'ci-table'
+            }
+            self.assertEqual(req.call_args[0][1], params)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -846,6 +915,52 @@ class ConnectionTestCase(TestCase):
                         'Action': 'PUT'
                     },
                 },
+                condition=(Path('ForumName').does_not_exist() & (Path('Subject') == 'Foo')),
+                range_key='foo-range-key',
+            )
+            params = {
+                'Key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'AttributeUpdates': {
+                    'Subject': {
+                        'Value': {
+                            'S': 'Bar'
+                        },
+                        'Action': 'PUT'
+                    }
+                },
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'ci-table'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.update_item(
+                self.test_table_name,
+                'foo-key',
+                attribute_updates={
+                    'Subject': {
+                        'Value': {'S': 'Bar'},
+                        'Action': 'PUT'
+                    },
+                },
                 expected={
                     'ForumName': {'Exists': False},
                     'Subject': {
@@ -988,6 +1103,42 @@ class ConnectionTestCase(TestCase):
                 'item1-hash',
                 range_key='item1-range',
                 attributes={'foo': {'S': 'bar'}},
+                condition=(Path('Forum').does_not_exist() & (Path('Subject') == 'Foo'))
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': self.test_table_name,
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
+                    }
+                },
+                'Item': {
+                    'ForumName': {
+                        'S': 'item1-hash'
+                    },
+                    'foo': {
+                        'S': 'bar'
+                    },
+                    'Subject': {
+                        'S': 'item1-range'
+                    }
+                }
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.put_item(
+                self.test_table_name,
+                'item1-hash',
+                range_key='item1-range',
+                attributes={'foo': {'S': 'bar'}},
                 expected={
                     'Forum': {'Exists': False},
                     'Subject': {
@@ -1009,6 +1160,41 @@ class ConnectionTestCase(TestCase):
                         'S': 'Foo'
                     }
                 },
+                'Item': {
+                    'ForumName': {
+                        'S': 'item1-hash'
+                    },
+                    'foo': {
+                        'S': 'bar'
+                    },
+                    'Subject': {
+                        'S': 'item1-range'
+                    }
+                }
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.put_item(
+                self.test_table_name,
+                'item1-hash',
+                range_key='item1-range',
+                attributes={'foo': {'S': 'bar'}},
+                condition=(Path('ForumName') == 'item1-hash')
+            )
+            params = {
+                'TableName': self.test_table_name,
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'item1-hash'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
                 'Item': {
                     'ForumName': {
                         'S': 'item1-hash'

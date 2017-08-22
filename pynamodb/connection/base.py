@@ -8,6 +8,7 @@ import math
 import random
 import time
 import uuid
+import warnings
 from base64 import b64decode
 
 import six
@@ -42,7 +43,7 @@ from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
 )
-from pynamodb.expressions.condition import Path
+from pynamodb.expressions.condition import Condition, Path
 from pynamodb.expressions.projection import create_projection_expression
 from pynamodb.settings import get_settings_value
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
@@ -773,6 +774,7 @@ class Connection(object):
                     table_name,
                     hash_key,
                     range_key=None,
+                    condition=None,
                     expected=None,
                     conditional_operator=None,
                     return_values=None,
@@ -781,11 +783,16 @@ class Connection(object):
         """
         Performs the DeleteItem operation and returns the result
         """
+        self._check_condition('condition', condition, expected, conditional_operator)
+
         operation_kwargs = {TABLE_NAME: table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
         name_placeholders = {}
         expression_attribute_values = {}
 
+        if condition is not None:
+            condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
+            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
         if return_values:
             operation_kwargs.update(self.get_return_values_map(return_values))
         if return_consumed_capacity:
@@ -813,6 +820,7 @@ class Connection(object):
                     hash_key,
                     range_key=None,
                     attribute_updates=None,
+                    condition=None,
                     expected=None,
                     return_consumed_capacity=None,
                     conditional_operator=None,
@@ -821,11 +829,16 @@ class Connection(object):
         """
         Performs the UpdateItem operation
         """
+        self._check_condition('condition', condition, expected, conditional_operator)
+
         operation_kwargs = {TABLE_NAME: table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
         name_placeholders = {}
         expression_attribute_values = {}
 
+        if condition is not None:
+            condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
+            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics:
@@ -871,6 +884,7 @@ class Connection(object):
                  hash_key,
                  range_key=None,
                  attributes=None,
+                 condition=None,
                  expected=None,
                  conditional_operator=None,
                  return_values=None,
@@ -879,6 +893,8 @@ class Connection(object):
         """
         Performs the PutItem operation and returns the result
         """
+        self._check_condition('condition', condition, expected, conditional_operator)
+
         operation_kwargs = {TABLE_NAME: table_name}
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=ITEM))
         name_placeholders = {}
@@ -887,6 +903,9 @@ class Connection(object):
         if attributes:
             attrs = self.get_item_attribute_map(table_name, attributes)
             operation_kwargs[ITEM].update(attrs[ITEM])
+        if condition is not None:
+            condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
+            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics:
@@ -1359,6 +1378,13 @@ class Connection(object):
             for value in values
         ]
         return getattr(Path(attribute_name, attribute_name=True), operator)(*values)
+
+    def _check_condition(self, name, condition, expected_or_filter, conditional_operator):
+        if condition is not None:
+            if not isinstance(condition, Condition):
+                raise ValueError("'{0}' must be an instance of Condition".format(name))
+            if expected_or_filter is not None or conditional_operator is not None:
+                raise ValueError("Legacy conditional parameters cannot be used with condition expressions")
 
     @staticmethod
     def _reverse_dict(d):

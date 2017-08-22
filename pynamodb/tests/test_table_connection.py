@@ -5,6 +5,7 @@ import six
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION
+from pynamodb.expressions.condition import Path
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
 from pynamodb.tests.response import HttpOK
 
@@ -306,6 +307,32 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'TableName': self.test_table_name
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.put_item(
+                'foo-key',
+                range_key='foo-range-key',
+                attributes={'ForumName': 'foo-value'},
+                condition=Path('ForumName').does_not_exist()
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Item': {
+                    'ForumName': {
+                        'S': 'foo-value'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'TableName': self.test_table_name,
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                }
             }
             self.assertEqual(req.call_args[0][1], params)
 
