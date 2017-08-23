@@ -316,7 +316,7 @@ class Model(AttributeContainer):
                 msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
-    def delete(self, conditional_operator=None, **expected_values):
+    def delete(self, condition=None, conditional_operator=None, **expected_values):
         """
         Deletes this object from dynamodb
         """
@@ -325,9 +325,10 @@ class Model(AttributeContainer):
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, DELETE_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
+        kwargs.update(condition=condition)
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update_item(self, attribute, value=None, action=None, conditional_operator=None, **expected_values):
+    def update_item(self, attribute, value=None, action=None, condition=None, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -365,6 +366,7 @@ class Model(AttributeContainer):
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name][VALUE] = {ATTR_TYPE_MAP[attribute_cls.attr_type]: value}
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)
+        kwargs.update(condition=condition)
         data = self._get_connection().update_item(
             *args,
             **kwargs
@@ -378,7 +380,7 @@ class Model(AttributeContainer):
                 setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
-    def update(self, attributes, conditional_operator=None, **expected_values):
+    def update(self, attributes, condition=None, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -415,6 +417,7 @@ class Model(AttributeContainer):
 
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name] = attr_values
 
+        kwargs.update(condition=condition)
         data = self._get_connection().update_item(*args, **kwargs)
         self._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for name, value in data[ATTRIBUTES].items():
@@ -424,7 +427,7 @@ class Model(AttributeContainer):
                 setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
-    def save(self, conditional_operator=None, **expected_values):
+    def save(self, condition=None, conditional_operator=None, **expected_values):
         """
         Save this object to dynamodb
         """
@@ -433,6 +436,7 @@ class Model(AttributeContainer):
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
+        kwargs.update(condition=condition)
         data = self._get_connection().put_item(*args, **kwargs)
         if isinstance(data, dict):
             self._throttle.add_record(data.get(CONSUMED_CAPACITY))

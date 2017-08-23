@@ -762,7 +762,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = None
-            item.delete(user_id='bar')
+            item.delete(UserModel.user_id =='bar')
             params = {
                 'Key': {
                     'user_id': {
@@ -812,7 +812,92 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
             args = req.call_args[0][1]
+            deep_eq(args, params, _assert=True)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = None
+            item.delete(UserModel.user_id == 'bar')
+            params = {
+                'Key': {
+                    'user_id': {
+                        'S': 'bar'
+                    },
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_id'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'bar'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'UserModel'
+            }
+            args = req.call_args[0][1]
             self.assertEqual(args, params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = None
+            item.delete(user_id='bar')
+            params = {
+                'Key': {
+                    'user_id': {
+                        'S': 'bar'
+                    },
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_id'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'bar'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'UserModel'
+            }
+            args = req.call_args[0][1]
+            self.assertEqual(args, params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = None
+            item.delete((UserModel.user_id == 'bar') & UserModel.email.contains('@'))
+            params = {
+                'Key': {
+                    'user_id': {
+                        'S': 'bar'
+                    },
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'ConditionExpression': '(#0 = :0 AND contains (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_id',
+                    '#1': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'bar'
+                    },
+                    ':1': {
+                        'S': '@'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'UserModel'
+            }
+            args = req.call_args[0][1]
+            deep_eq(args, params, _assert=True)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = None
@@ -1003,6 +1088,51 @@ class ModelTestCase(TestCase):
                     }
                 }
             }
+            item.update_item('views', 10, action='add', condition=(
+                (SimpleUserModel.user_name == 'foo') & ~SimpleUserModel.email.contains('@')
+            ))
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'ConditionExpression': '(#0 = :0 AND (NOT contains (#1, :1)))',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_name',
+                    '#1': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo'
+                    },
+                    ':1': {
+                        'S': '@'
+                    }
+                },
+                'AttributeUpdates': {
+                    'views': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'N': '10'
+                        }
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
             item.update_item('views', 10, action='add', user_name='foo', email__not_contains='@')
             args = req.call_args[0][1]
             params = {
@@ -1025,6 +1155,40 @@ class ModelTestCase(TestCase):
                     ':1': {
                         'S': 'foo'
                     }
+                },
+                'AttributeUpdates': {
+                    'views': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'N': '10'
+                        }
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
+            item.update_item('views', 10, action='add', condition=SimpleUserModel.user_name.does_not_exist())
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_name'
                 },
                 'AttributeUpdates': {
                     'views': {
@@ -1159,6 +1323,45 @@ class ModelTestCase(TestCase):
                     }
                 }
             }
+            item.update_item('views', 10, action='add', condition=SimpleUserModel.numbers == [1, 2])
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'numbers'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'NS': ['1', '2']
+                    }
+                },
+                'AttributeUpdates': {
+                    'views': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'N': '10'
+                        }
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
             item.update_item('views', 10, action='add', numbers__eq=[1, 2])
             args = req.call_args[0][1]
             params = {
@@ -1176,6 +1379,49 @@ class ModelTestCase(TestCase):
                 'ExpressionAttributeValues': {
                     ':0': {
                         'NS': ['1', '2']
+                    }
+                },
+                'AttributeUpdates': {
+                    'views': {
+                        'Action': 'ADD',
+                        'Value': {
+                            'N': '10'
+                        }
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
+        # Reproduces https://github.com/pynamodb/PynamoDB/issues/102
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "views": {
+                        "N": "10"
+                    }
+                }
+            }
+            item.update_item('views', 10, action='add', condition=SimpleUserModel.email.is_in('1@pynamo.db','2@pynamo.db'))
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'ConditionExpression': '#0 IN (:0, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': '1@pynamo.db'
+                    },
+                    ':1': {
+                        'S': '2@pynamo.db'
                     }
                 },
                 'AttributeUpdates': {
@@ -1323,6 +1569,34 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
+            item.save(UserModel.email.does_not_exist())
+            args = req.call_args[0][1]
+            params = {
+                'Item': {
+                    'callable_field': {
+                        'N': '42'
+                    },
+                    'email': {
+                        'S': u'needs_email'
+                    },
+                    'user_id': {
+                        'S': u'bar'
+                    },
+                    'user_name': {
+                        'S': u'foo'
+                    },
+                },
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email'
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'UserModel'
+            }
+            deep_eq(args, params, _assert=True)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
             item.save(email__exists=False)
             args = req.call_args[0][1]
             params = {
@@ -1343,6 +1617,35 @@ class ModelTestCase(TestCase):
                 'ConditionExpression': 'attribute_not_exists (#0)',
                 'ExpressionAttributeNames': {
                     '#0': 'email'
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'UserModel'
+            }
+            deep_eq(args, params, _assert=True)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item.save(UserModel.email.does_not_exist() & UserModel.zip_code.exists())
+            args = req.call_args[0][1]
+            params = {
+                'Item': {
+                    'callable_field': {
+                        'N': '42'
+                    },
+                    'email': {
+                        'S': u'needs_email'
+                    },
+                    'user_id': {
+                        'S': u'bar'
+                    },
+                    'user_name': {
+                        'S': u'foo'
+                    },
+                },
+                'ConditionExpression': '(attribute_not_exists (#0) AND attribute_exists (#1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'zip_code'
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'UserModel'
@@ -1380,6 +1683,46 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
+            item.save(
+                (UserModel.custom_user_name == 'bar') | UserModel.zip_code.does_not_exist() | UserModel.email.contains('@')
+            )
+            args = req.call_args[0][1]
+            params = {
+                'Item': {
+                    'callable_field': {
+                        'N': '42'
+                    },
+                    'email': {
+                        'S': u'needs_email'
+                    },
+                    'user_id': {
+                        'S': u'bar'
+                    },
+                    'user_name': {
+                        'S': u'foo'
+                    },
+                },
+                'ConditionExpression': '((#0 = :0 OR attribute_not_exists (#1)) OR contains (#2, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_name',
+                    '#1': 'zip_code',
+                    '#2': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'bar'
+                    },
+                    ':1': {
+                        'S': '@'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'UserModel'
+            }
+            deep_eq(args, params, _assert=True)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
             item.save(custom_user_name='bar', zip_code__null=True, email__contains='@', conditional_operator='OR')
             args = req.call_args[0][1]
             params = {
@@ -1409,6 +1752,39 @@ class ModelTestCase(TestCase):
                     },
                     ':1': {
                         'S': 'bar'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'UserModel'
+            }
+            deep_eq(args, params, _assert=True)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item.save(UserModel.custom_user_name == 'foo')
+            args = req.call_args[0][1]
+            params = {
+                'Item': {
+                    'callable_field': {
+                        'N': '42'
+                    },
+                    'email': {
+                        'S': u'needs_email'
+                    },
+                    'user_id': {
+                        'S': u'bar'
+                    },
+                    'user_name': {
+                        'S': u'foo'
+                    },
+                },
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
