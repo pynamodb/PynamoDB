@@ -53,67 +53,42 @@ Here is an example using an iterator for retrieving items in bulk:
     for item in Thread.batch_get(item_keys):
         print(item)
 
-.. _filtering:
-
 Query Filters
 ^^^^^^^^^^^^^
 
-You can query items from your table using a simple syntax, similar to other Python ORMs:
+You can query items from your table using a simple syntax:
 
 .. code-block:: python
 
-    for item in Thread.query('ForumName', subject__begins_with='mygreatprefix'):
+    for item in Thread.query('ForumName', Thread.subject.startswith('mygreatprefix')):
         print("Query returned item {0}".format(item))
 
-Query filters are translated from an ORM like syntax to DynamoDB API calls, and use
-the following syntax: `attribute__operator=value`, where `attribute` is the name of an attribute
-and `operator` can be one of the following:
+Additionally, you can filter the results before they are returned using condition expressions:
 
- * eq
- * le
- * lt
- * ge
- * gt
- * begins_with
- * between
+.. code-block:: python
+
+    for item in Thread.query('ForumName', Thread.subject == 'Subject', Thread.views > 0):
+        print("Query returned item {0}".format(item))
+
+
+
+Query filters use the condition expression syntax (see :ref:`conditions`).
 
 .. note::
 
-    DynamoDB does not allow multiple operators against range keys. `PynamoDB` is also currently
-    based on deprecated API functionality that does not support multiple operators against any
-    key, even if not part of the primary key. `between` can be used in place of `le AND ge`.
+    DynamoDB only allows the following conditions on range keys: `==`, `<`, `<=`, `>`, `>=`, `between`, and `startswith`.
+    DynamoDB does not allow multiple conditions using range keys.
 
 
 Scan Filters
 ^^^^^^^^^^^^
 
-Scan filters have the same syntax as Query filters, but support different operations (a consequence of the
-DynamoDB API - not PynamoDB). The supported operators are:
-
- * eq
- * ne
- * le
- * lt
- * gt
- * not_null
- * null
- * contains
- * not_contains
- * begins_with
- * between
-
-You can even specify multiple filters:
+Scan filters have the same syntax as Query filters, but support all condition expressions:
 
 .. code-block:: python
 
-    >>> for item in Thread.scan(forum_name__begins_with='Prefix', views__gt=10):
+    >>> for item in Thread.scan(Thread.forum_name.startswith('Prefix') & (Thread.views > 10)):
             print(item)
-
-.. note::
-
-    PynamoDB is currently based on deprecated API functionality that does not support multiple operators per key.
-    `between` can be used in place of `le AND ge`.
-
 
 Limiting results
 ^^^^^^^^^^^^^^^^
@@ -122,5 +97,5 @@ Both `Scan` and `Query` results can be limited to a maximum number of items usin
 
 .. code-block:: python
 
-    for item in Thread.query('ForumName', subject__begins_with='mygreatprefix', limit=5):
+    for item in Thread.query('ForumName', Thread.subject.startswith('mygreatprefix'), limit=5):
         print("Query returned item {0}".format(item))

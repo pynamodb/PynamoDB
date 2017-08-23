@@ -88,14 +88,14 @@ Now, suppose that you want to search the table for users with a last name
 
 ::
 
-    for user in UserModel.query('Smith', first_name__begins_with='J'):
+    for user in UserModel.query('Smith', UserModel.first_name.startswith('J')):
         print(user.first_name)
 
-You can combine query terms using 'AND' or 'OR':
+You can combine query terms:
 
 ::
 
-    for user in UserModel.query('Smith', first_name__begins_with='J', email__contains='domain.com', conditional_operator='OR'):
+    for user in UserModel.query('Smith', UserModel.first_name.startswith('J') | UserModel.email.contains('domain.com')):
         print(user)
 
 
@@ -106,7 +106,7 @@ You can retrieve the count for queries by using the `count` method:
 
 ::
 
-    print(UserModel.count('Smith', first_name__begins_with='J'))
+    print(UserModel.count('Smith', UserModel.first_name.startswith('J'))
 
 
 Counts also work for indexes:
@@ -129,10 +129,10 @@ this argument can be `None`, filters must not be used when `hash_key` is `None`:
 ::
 
     # raises a ValueError
-    print(UserModel.count(first_name__eq='John'))
+    print(UserModel.count(UserModel.first_name == 'John'))
 
     # returns count of only the matching users
-    print(UserModel.count('my_hash_key', first_name__eq='John'))
+    print(UserModel.count('my_hash_key', UserModel.first_name == 'John'))
 
 
 Batch Operations
