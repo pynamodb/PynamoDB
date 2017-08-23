@@ -138,6 +138,7 @@ class TableConnection(object):
             attributes_to_get=attributes_to_get)
 
     def rate_limited_scan(self,
+             filter_condition=None,
              attributes_to_get=None,
              page_size=None,
              limit=None,
@@ -157,6 +158,7 @@ class TableConnection(object):
         """
         return self.connection.rate_limited_scan(
             self.table_name,
+            filter_condition=filter_condition,
             attributes_to_get=attributes_to_get,
             page_size=page_size,
             limit=limit,
@@ -173,6 +175,7 @@ class TableConnection(object):
             consistent_read=consistent_read)
 
     def scan(self,
+             filter_condition=None,
              attributes_to_get=None,
              limit=None,
              conditional_operator=None,
@@ -187,6 +190,7 @@ class TableConnection(object):
         """
         return self.connection.scan(
             self.table_name,
+            filter_condition=filter_condition,
             attributes_to_get=attributes_to_get,
             limit=limit,
             conditional_operator=conditional_operator,
@@ -199,6 +203,8 @@ class TableConnection(object):
 
     def query(self,
               hash_key,
+              range_key_condition=None,
+              filter_condition=None,
               attributes_to_get=None,
               consistent_read=False,
               exclusive_start_key=None,
@@ -217,6 +223,8 @@ class TableConnection(object):
         return self.connection.query(
             self.table_name,
             hash_key,
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
             attributes_to_get=attributes_to_get,
             consistent_read=consistent_read,
             exclusive_start_key=exclusive_start_key,

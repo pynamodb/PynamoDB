@@ -137,6 +137,10 @@ class Condition(object):
         self.operator = operator
         self.values = values
 
+    # http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
+    def is_valid_range_key_condition(self, path):
+        return str(self.path) == path and self.operator in ['=', '<', '<=', '>', '>=', BETWEEN, 'begins_with']
+
     def serialize(self, placeholder_names, expression_attribute_values):
         path = self._get_path(self.path, placeholder_names)
         values = self._get_values(placeholder_names, expression_attribute_values)
@@ -175,7 +179,7 @@ class Condition(object):
         return Not(self)
 
     def __repr__(self):
-        values = [repr(value) if isinstance(value, Condition) else value.items()[0][1] for value in self.values]
+        values = [repr(value) if isinstance(value, Condition) else list(value.items())[0][1] for value in self.values]
         return self.format_string.format(*values, path=self.path, operator = self.operator)
 
     def __nonzero__(self):

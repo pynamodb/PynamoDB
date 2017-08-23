@@ -517,6 +517,8 @@ class Model(AttributeContainer):
     @classmethod
     def count(cls,
               hash_key=None,
+              range_key_condition=None,
+              filter_condition=None,
               consistent_read=False,
               index_name=None,
               limit=None,
@@ -525,6 +527,8 @@ class Model(AttributeContainer):
         Provides a filtered count
 
         :param hash_key: The hash key to query. Can be None.
+        :param range_key_condition: Condition for range key
+        :param filter_condition: Condition used to restrict the query results
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
         :param filters: A dictionary of filters to be used in the query. Requires a hash_key to be passed.
@@ -562,6 +566,8 @@ class Model(AttributeContainer):
             started = True
             data = cls._get_connection().query(
                 hash_key,
+                range_key_condition=range_key_condition,
+                filter_condition=filter_condition,
                 index_name=index_name,
                 consistent_read=consistent_read,
                 key_conditions=key_conditions,
@@ -578,6 +584,8 @@ class Model(AttributeContainer):
     @classmethod
     def query(cls,
               hash_key,
+              range_key_condition=None,
+              filter_condition=None,
               consistent_read=False,
               index_name=None,
               scan_index_forward=None,
@@ -591,6 +599,8 @@ class Model(AttributeContainer):
         Provides a high level query API
 
         :param hash_key: The hash key to query
+        :param range_key_condition: Condition for range key
+        :param filter_condition: Condition used to restrict the query results
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
         :param limit: Used to limit the number of results returned
@@ -630,6 +640,8 @@ class Model(AttributeContainer):
         log.debug("Fetching first query page")
 
         query_kwargs = dict(
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
             index_name=index_name,
             exclusive_start_key=last_evaluated_key,
             consistent_read=consistent_read,
@@ -668,6 +680,7 @@ class Model(AttributeContainer):
 
     @classmethod
     def rate_limited_scan(cls,
+            filter_condition=None,
             attributes_to_get=None,
             segment=None,
             total_segments=None,
@@ -686,6 +699,7 @@ class Model(AttributeContainer):
         Scans the items in the table at a definite rate.
         Invokes the low level rate_limited_scan API.
 
+        :param filter_condition: Condition used to restrict the scan results
         :param attributes_to_get: A list of attributes to return.
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
@@ -717,6 +731,7 @@ class Model(AttributeContainer):
         key_filter.update(scan_filter)
 
         scan_result = cls._get_connection().rate_limited_scan(
+            filter_condition=filter_condition,
             attributes_to_get=attributes_to_get,
             page_size=page_size,
             limit=limit,
@@ -738,6 +753,7 @@ class Model(AttributeContainer):
 
     @classmethod
     def scan(cls,
+             filter_condition=None,
              segment=None,
              total_segments=None,
              limit=None,
@@ -749,6 +765,7 @@ class Model(AttributeContainer):
         """
         Iterates through all items in the table
 
+        :param filter_condition: Condition used to restrict the scan results
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
         :param limit: Used to limit the number of results returned
@@ -770,6 +787,7 @@ class Model(AttributeContainer):
             page_size = limit
 
         data = cls._get_connection().scan(
+            filter_condition=filter_condition,
             exclusive_start_key=last_evaluated_key,
             segment=segment,
             limit=page_size,
@@ -790,6 +808,7 @@ class Model(AttributeContainer):
         while last_evaluated_key:
             log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().scan(
+                filter_condition=filter_condition,
                 exclusive_start_key=last_evaluated_key,
                 limit=page_size,
                 scan_filter=key_filter,

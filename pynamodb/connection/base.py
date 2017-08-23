@@ -109,6 +109,24 @@ class MetaTable(object):
                     if schema_key.get(KEY_TYPE) == HASH:
                         return schema_key.get(ATTR_NAME)
 
+    def get_index_range_keyname(self, index_name):
+        """
+        Returns the name of the hash key for a given index
+        """
+        global_indexes = self.data.get(GLOBAL_SECONDARY_INDEXES)
+        local_indexes = self.data.get(LOCAL_SECONDARY_INDEXES)
+        indexes = []
+        if local_indexes:
+            indexes += local_indexes
+        if global_indexes:
+            indexes += global_indexes
+        for index in indexes:
+            if index.get(INDEX_NAME) == index_name:
+                for schema_key in index.get(KEY_SCHEMA):
+                    if schema_key.get(KEY_TYPE) == RANGE:
+                        return schema_key.get(ATTR_NAME)
+        return None
+
     def get_item_attribute_map(self, attributes, item_key=ITEM, pythonic_key=True):
         """
         Builds up a dynamodb compatible AttributeValue map
@@ -1031,6 +1049,7 @@ class Connection(object):
 
     def rate_limited_scan(self,
                           table_name,
+                          filter_condition=None,
                           attributes_to_get=None,
                           page_size=None,
                           limit=None,
@@ -1051,6 +1070,7 @@ class Connection(object):
         limit the rate of the scan. 'ProvisionedThroughputExceededException' is also handled and retried.
 
         :param table_name: Name of the table to perform scan on.
+        :param filter_condition: Condition used to restrict the scan results
         :param attributes_to_get: A list of attributes to return.
         :param page_size: Page size of the scan to DynamoDB
         :param limit: Used to limit the number of results returned
@@ -1094,6 +1114,7 @@ class Connection(object):
                 try:
                     data = self.scan(
                         table_name,
+                        filter_condition=filter_condition,
                         attributes_to_get=attributes_to_get,
                         exclusive_start_key=last_evaluated_key,
                         limit=page_size,
@@ -1177,6 +1198,7 @@ class Connection(object):
 
     def scan(self,
              table_name,
+             filter_condition=None,
              attributes_to_get=None,
              limit=None,
              conditional_operator=None,
@@ -1189,10 +1211,15 @@ class Connection(object):
         """
         Performs the scan operation
         """
+        self._check_condition('filter_condition', filter_condition, scan_filter, conditional_operator)
+
         operation_kwargs = {TABLE_NAME: table_name}
         name_placeholders = {}
         expression_attribute_values = {}
 
+        if filter_condition is not None:
+            filter_expression = filter_condition.serialize(name_placeholders, expression_attribute_values)
+            operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if attributes_to_get is not None:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
@@ -1226,6 +1253,8 @@ class Connection(object):
     def query(self,
               table_name,
               hash_key,
+              range_key_condition=None,
+              filter_condition=None,
               attributes_to_get=None,
               consistent_read=False,
               exclusive_start_key=None,
@@ -1240,6 +1269,9 @@ class Connection(object):
         """
         Performs the Query operation and returns the result
         """
+        self._check_condition('range_key_condition', range_key_condition, key_conditions, conditional_operator)
+        self._check_condition('filter_condition', filter_condition, query_filters, conditional_operator)
+
         operation_kwargs = {TABLE_NAME: table_name}
         name_placeholders = {}
         expression_attribute_values = {}
@@ -1251,10 +1283,21 @@ class Connection(object):
             hash_keyname = tbl.get_index_hash_keyname(index_name)
             if not hash_keyname:
                 raise ValueError("No hash key attribute for index: {0}".format(index_name))
+            range_keyname = tbl.get_index_range_keyname(index_name)
         else:
             hash_keyname = tbl.hash_keyname
+            range_keyname = tbl.range_keyname
 
-        key_condition_expression = self._get_condition(table_name, hash_keyname, '__eq__', hash_key)
+        key_condition = self._get_condition(table_name, hash_keyname, '__eq__', hash_key)
+        if range_key_condition is not None:
+            if range_key_condition.is_valid_range_key_condition(range_keyname):
+                key_condition = key_condition & range_key_condition
+            elif filter_condition is None:
+                # Try to gracefully handle the case where a user passed in a filter as a range key condition
+                (filter_condition, range_key_condition) = (range_key_condition, None)
+            else:
+                raise ValueError("{0} is not a valid range key condition".format(range_key_condition))
+
         if key_conditions is None or len(key_conditions) == 0:
             pass  # No comparisons on sort key
         elif len(key_conditions) > 1:
@@ -1267,11 +1310,19 @@ class Connection(object):
             operator = KEY_CONDITION_OPERATOR_MAP[operator]
             values = condition.get(ATTR_VALUE_LIST)
             sort_key_expression = self._get_condition(table_name, key, operator, *values)
-            key_condition_expression = key_condition_expression & sort_key_expression
+            key_condition = key_condition & sort_key_expression
 
-        operation_kwargs[KEY_CONDITION_EXPRESSION] = key_condition_expression.serialize(
+        operation_kwargs[KEY_CONDITION_EXPRESSION] = key_condition.serialize(
             name_placeholders, expression_attribute_values)
-
+        if filter_condition is not None:
+            filter_expression = filter_condition.serialize(name_placeholders, expression_attribute_values)
+            # FilterExpression does not allow key attributes. Check for hash and range key name placeholders
+            hash_key_placeholder = name_placeholders.get(hash_keyname)
+            range_key_placeholder = range_keyname and name_placeholders.get(range_keyname)
+            if hash_key_placeholder in filter_expression or \
+                (range_key_placeholder and range_key_placeholder in filter_expression):
+                raise ValueError("'filter_condition' cannot contain key attributes")
+            operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if attributes_to_get:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
@@ -1383,7 +1434,7 @@ class Connection(object):
         if condition is not None:
             if not isinstance(condition, Condition):
                 raise ValueError("'{0}' must be an instance of Condition".format(name))
-            if expected_or_filter is not None or conditional_operator is not None:
+            if expected_or_filter or conditional_operator is not None:
                 raise ValueError("Legacy conditional parameters cannot be used with condition expressions")
 
     @staticmethod
