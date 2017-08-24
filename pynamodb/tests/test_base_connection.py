@@ -1506,6 +1506,45 @@ class ConnectionTestCase(TestCase):
             key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
         )
 
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
+            Path('NotRangeKey').startswith('thread'),
+            Path('Foo') == 'Bar',
+            return_consumed_capacity='TOTAL'
+        )
+
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
+            Path('Subject') != 'thread',  # invalid sort key condition
+            return_consumed_capacity='TOTAL'
+        )
+
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
+            Path('Subject').startswith('thread'),
+            Path('ForumName') == 'FooForum',  # filter containing hash key
+            return_consumed_capacity='TOTAL'
+        )
+
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
+            Path('Subject').startswith('thread'),
+            Path('Subject').startswith('thread'),  # filter containing range key
+            return_consumed_capacity='TOTAL'
+        )
+
         with patch(PATCH_METHOD) as req:
             req.side_effect = BotoCoreError
             self.assertRaises(
@@ -1524,6 +1563,37 @@ class ConnectionTestCase(TestCase):
             conn.query(
                 table_name,
                 "FooForum",
+                Path('Subject').startswith('thread'),
+                scan_index_forward=True,
+                return_consumed_capacity='TOTAL',
+                select='ALL_ATTRIBUTES'
+            )
+            params = {
+                'ScanIndexForward': True,
+                'Select': 'ALL_ATTRIBUTES',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
+                    }
+                },
+                'TableName': 'Thread'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.query(
+                table_name,
+                "FooForum",
                 scan_index_forward=True,
                 return_consumed_capacity='TOTAL',
                 select='ALL_ATTRIBUTES',
@@ -1532,6 +1602,32 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ScanIndexForward': True,
                 'Select': 'ALL_ATTRIBUTES',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
+                    }
+                },
+                'TableName': 'Thread'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.query(
+                table_name,
+                "FooForum",
+                Path('Subject').startswith('thread')
+            )
+            params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
@@ -1941,7 +2037,7 @@ class ConnectionTestCase(TestCase):
             req.return_value = {}
             conn.scan(
                 table_name,
-                **kwargs
+                Path('ForumName').startswith('Foo')
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -1977,6 +2073,31 @@ class ConnectionTestCase(TestCase):
             conn.scan(
                 table_name,
                 **kwargs
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': table_name,
+                'FilterExpression': '(begins_with (#0, :0) AND contains (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
+                    },
+                    ':1': {
+                        'S': 'Foo'
+                    }
+                }
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.scan(
+                table_name,
+                Path('ForumName').startswith('Foo') & Path('Subject').contains('Foo')
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',

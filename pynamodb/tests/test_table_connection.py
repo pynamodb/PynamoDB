@@ -452,6 +452,32 @@ class ConnectionTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = DESCRIBE_TABLE_DATA
             conn.describe_table()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.query(
+                "FooForum",
+                Path('Subject').startswith('thread')
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
+                    }
+                },
+                'TableName': self.test_table_name
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
             conn.query(
@@ -518,6 +544,7 @@ class ConnectionTestCase(TestCase):
             )
             self.assertEqual(self.test_table_name, req.call_args[0][0])
             params = {
+                'filter_condition': None,
                 'attributes_to_get': 'attributes_to_get',
                 'page_size': 1,
                 'limit': 2,

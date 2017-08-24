@@ -1878,6 +1878,38 @@ class ModelTestCase(TestCase):
         """
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 42}
+            res = CustomAttrNameModel.uid_index.count(
+                'foo',
+                CustomAttrNameModel.overidden_user_name.startswith('bar'),
+                limit=2)
+            self.assertEqual(res, 42)
+            args = req.call_args[0][1]
+            params = {
+                'KeyConditionExpression': '#0 = :0',
+                'FilterExpression': 'begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_id',
+                    '#1': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
+                    },
+                    ':1': {
+                        'S': u'bar'
+                    }
+                },
+                'Limit': 2,
+                'IndexName': 'uid_index',
+                'TableName': 'CustomAttrModel',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Select': 'COUNT'
+            }
+            deep_eq(args, params, _assert=True)
+
+        # Note: this test is incorrect as uid_index does not have a range key
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {'Count': 42}
             res = CustomAttrNameModel.uid_index.count('foo', limit=2, overidden_user_name__begins_with='bar')
             self.assertEqual(res, 42)
             args = req.call_args[0][1]
@@ -2086,6 +2118,21 @@ class ModelTestCase(TestCase):
                 items.append(item)
             req.return_value = {'Items': items}
             queried = []
+            for item in UserModel.query('foo', UserModel.user_id.between('id-1', 'id-3')):
+                queried.append(item._serialize().get(RANGE))
+            self.assertListEqual(
+                [item.get('user_id').get(STRING_SHORT) for item in items],
+                queried
+            )
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            queried = []
             for item in UserModel.query('foo', user_id__between=['id-1', 'id-3']):
                 queried.append(item._serialize().get(RANGE))
             self.assertListEqual(
@@ -2099,6 +2146,22 @@ class ModelTestCase(TestCase):
         # you cannot query a non-primary key with multiple conditions
         self.assertRaises(ValueError, lambda: list(UserModel.query('foo', zip_code__gt='77096', zip_code__le='94117')))
 
+        # you cannot use a range key in a query filter
+        self.assertRaises(ValueError, lambda: list(UserModel.query(
+            'foo', UserModel.user_id > 'id-1', UserModel.user_id <= 'id-2')))
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            queried = []
+            for item in UserModel.query('foo', UserModel.user_id < 'id-1'):
+                queried.append(item._serialize())
+            self.assertTrue(len(queried) == len(items))
+
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
@@ -2108,6 +2171,18 @@ class ModelTestCase(TestCase):
             req.return_value = {'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__lt='id-1'):
+                queried.append(item._serialize())
+            self.assertTrue(len(queried) == len(items))
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            queried = []
+            for item in UserModel.query('foo', UserModel.user_id >= 'id-1'):
                 queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
@@ -2131,6 +2206,18 @@ class ModelTestCase(TestCase):
                 items.append(item)
             req.return_value = {'Items': items}
             queried = []
+            for item in UserModel.query('foo', UserModel.user_id <= 'id-1'):
+                queried.append(item._serialize())
+            self.assertTrue(len(queried) == len(items))
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            queried = []
             for item in UserModel.query('foo', user_id__le='id-1'):
                 queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
@@ -2143,7 +2230,31 @@ class ModelTestCase(TestCase):
                 items.append(item)
             req.return_value = {'Items': items}
             queried = []
+            for item in UserModel.query('foo', UserModel.user_id == 'id-1'):
+                queried.append(item._serialize())
+            self.assertTrue(len(queried) == len(items))
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            queried = []
             for item in UserModel.query('foo', user_id__eq='id-1'):
+                queried.append(item._serialize())
+            self.assertTrue(len(queried) == len(items))
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            queried = []
+            for item in UserModel.query('foo', UserModel.user_id.startswith('id')):
                 queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
@@ -2200,10 +2311,58 @@ class ModelTestCase(TestCase):
             req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
             CustomAttrNameModel._get_meta_data()
 
+        # Note this test is not valid -- this is request user_name == 'bar' and user_name == 'foo'
+        # The new condition api correctly throws an exception for in this case.
         with patch(PATCH_METHOD) as req:
             req.return_value = {ITEMS: [CUSTOM_ATTR_NAME_ITEM_DATA.get(ITEM)]}
             for item in CustomAttrNameModel.query('bar', overidden_user_name__eq='foo'):
                 self.assertIsNotNone(item)
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            queried = []
+            for item in UserModel.query(
+                    'foo',
+                    UserModel.user_id.startswith('id'),
+                    UserModel.email.contains('@') & UserModel.picture.exists() & UserModel.zip_code.between(2, 3)):
+                queried.append(item._serialize())
+            params = {
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'FilterExpression': '((contains (#2, :2) AND attribute_exists (#3)) AND #4 BETWEEN :3 AND :4)',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_name',
+                    '#1': 'user_id',
+                    '#2': 'email',
+                    '#3': 'picture',
+                    '#4': 'zip_code'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
+                    },
+                    ':1': {
+                        'S': u'id'
+                    },
+                    ':2': {
+                        'S': '@'
+                    },
+                    ':3': {
+                        'N': '2'
+                    },
+                    ':4': {
+                        'N': '3'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'UserModel'
+            }
+            self.assertEqual(params, req.call_args[0][1])
+            self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -2308,53 +2467,6 @@ class ModelTestCase(TestCase):
             self.assertEquals(req.mock_calls[1][1][1]['ConsistentRead'], True)
             self.assertEqual(count, 4)
 
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Items': items}
-            queried = []
-            for item in UserModel.query(
-                    'foo',
-                    user_id__begins_with='id',
-                    email__contains='@',
-                    picture__null=False,
-                    zip_code__ge=2,
-                    conditional_operator='AND'):
-                queried.append(item._serialize())
-            params = {
-                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
-                'FilterExpression': '((contains (#2, :2) AND attribute_exists (#3)) AND #4 >= :3)',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_name',
-                    '#1': 'user_id',
-                    '#2': 'email',
-                    '#3': 'picture',
-                    '#4': 'zip_code'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': u'foo'
-                    },
-                    ':1': {
-                        'S': u'id'
-                    },
-                    ':2': {
-                        'S': '@'
-                    },
-                    ':3': {
-                        'N': '2'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-
-            self.assertEqual(req.call_args[0][1], params)
-            self.assertTrue(len(queried) == len(items))
-
     def test_rate_limited_scan(self):
         """
         Model.rate_limited_scan
@@ -2385,6 +2497,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(1, len(list(result)))
             self.assertEqual('UserModel', req.call_args[0][0])
             params = {
+                'filter_condition': None,
                 'segment': 1,
                 'total_segments': 12,
                 'limit': 16,
@@ -2969,6 +3082,42 @@ class ModelTestCase(TestCase):
             req.return_value = {'Items': items}
             queried = []
 
+            for item in IndexedModel.email_index.query('foo', IndexedModel.user_name.startswith('bar'), limit=2):
+                queried.append(item._serialize())
+
+            params = {
+                'KeyConditionExpression': '#0 = :0',
+                'FilterExpression': 'begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
+                    },
+                    ':1': {
+                        'S': u'bar'
+                    }
+                },
+                'IndexName': 'custom_idx_name',
+                'TableName': 'IndexedModel',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Limit': 2
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        # Note this test is incorrect as 'user_name' is not the range key for email_index.
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            queried = []
+
             for item in IndexedModel.email_index.query('foo', limit=2, user_name__begins_with='bar'):
                 queried.append(item._serialize())
 
@@ -2993,6 +3142,49 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            queried = []
+
+            for item in LocalIndexedModel.email_index.query(
+                    'foo',
+                    LocalIndexedModel.user_name.startswith('bar') & LocalIndexedModel.aliases.contains(1),
+                    limit=1):
+                queried.append(item._serialize())
+
+            params = {
+                'KeyConditionExpression': '#0 = :0',
+                'FilterExpression': '(begins_with (#1, :1) AND contains (#2, :2))',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'user_name',
+                    '#2': 'aliases'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
+                    },
+                    ':1': {
+                        'S': u'bar'
+                    },
+                    ':2': {
+                        'S': '1'
+                    }
+                },
+                'IndexName': 'email_index',
+                'TableName': 'LocalIndexedModel',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Limit': 1
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        # Note this test is incorrect as 'user_name' is not the range key for email_index.
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
@@ -3036,6 +3228,44 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Items': items}
+            queried = []
+
+            for item in CustomAttrNameModel.uid_index.query(
+                    'foo',
+                    CustomAttrNameModel.overidden_user_name.startswith('bar'),
+                    limit=2):
+                queried.append(item._serialize())
+
+            params = {
+                'KeyConditionExpression': '#0 = :0',
+                'FilterExpression': 'begins_with (#1, :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'user_id',
+                    '#1': 'user_name'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
+                    },
+                    ':1': {
+                        'S': u'bar'
+                    }
+                },
+                'IndexName': 'uid_index',
+                'TableName': 'CustomAttrModel',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Limit': 2
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        # Note: this test is incorrect since uid_index has no range key
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
