@@ -1319,8 +1319,10 @@ class Connection(object):
             # FilterExpression does not allow key attributes. Check for hash and range key name placeholders
             hash_key_placeholder = name_placeholders.get(hash_keyname)
             range_key_placeholder = range_keyname and name_placeholders.get(range_keyname)
-            if hash_key_placeholder in filter_expression or \
-                (range_key_placeholder and range_key_placeholder in filter_expression):
+            if (
+                hash_key_placeholder in filter_expression or
+                (range_key_placeholder and range_key_placeholder in filter_expression)
+            ):
                 raise ValueError("'filter_condition' cannot contain key attributes")
             operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if attributes_to_get:
