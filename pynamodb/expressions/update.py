@@ -31,12 +31,24 @@ class IncrementAction(SetAction):
     """
     format_string = '{path} = {path} + {0}'
 
+    def __init__(self, path, amount):
+        (attr_type, value), = amount.items()
+        if attr_type != NUMBER_SHORT:
+            raise ValueError("{0} must be a number".format(value))
+        super(IncrementAction, self).__init__(path, amount)
+
 
 class DecrementAction(SetAction):
     """
     A SET action that is used to subtract from a number attribute.
     """
     format_string = '{path} = {path} - {0}'
+
+    def __init__(self, path, amount):
+        (attr_type, value), = amount.items()
+        if attr_type != NUMBER_SHORT:
+            raise ValueError("{0} must be a number".format(value))
+        super(DecrementAction, self).__init__(path, amount)
 
 
 class AppendAction(SetAction):
@@ -91,7 +103,7 @@ class AddAction(Action):
     def __init__(self, path, subset):
         (attr_type, value), = subset.items()
         if attr_type not in [BINARY_SET_SHORT, NUMBER_SET_SHORT, NUMBER_SHORT, STRING_SET_SHORT]:
-            raise ValueError("{0} must be a set".format(value))
+            raise ValueError("{0} must be a number or set".format(value))
         super(AddAction, self).__init__(path, subset)
 
 
