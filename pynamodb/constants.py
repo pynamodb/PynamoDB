@@ -69,6 +69,7 @@ EXPRESSION_ATTRIBUTE_VALUES = 'ExpressionAttributeValues'
 FILTER_EXPRESSION = 'FilterExpression'
 KEY_CONDITION_EXPRESSION = 'KeyConditionExpression'
 PROJECTION_EXPRESSION = 'ProjectionExpression'
+UPDATE_EXPRESSION = 'UpdateExpression'
 
 # Defaults
 DEFAULT_ENCODING = 'utf-8'
