@@ -869,8 +869,7 @@ class Connection(object):
 
         update_expression = Update()
         # We sort the keys here for determinism. This is mostly done to simplify testing.
-        keys = list(attribute_updates.keys())
-        for key in sorted(keys):
+        for key in sorted(attribute_updates.keys()):
             update = attribute_updates[key]
             action = update.get(ACTION)
             if action not in ATTR_UPDATE_ACTIONS:
@@ -1376,8 +1375,7 @@ class Connection(object):
         condition_expression = None
         conditional_operator = conditional_operator[CONDITIONAL_OPERATOR]
         # We sort the keys here for determinism. This is mostly done to simplify testing.
-        keys = list(expected.keys())
-        for key in sorted(keys):
+        for key in sorted(expected.keys()):
             condition = expected[key]
             if EXISTS in condition:
                 operator = NOT_NULL if condition.get(EXISTS, True) else NULL
@@ -1411,8 +1409,7 @@ class Connection(object):
         condition_expression = None
         conditional_operator = conditional_operator[CONDITIONAL_OPERATOR]
         # We sort the keys here for determinism. This is mostly done to simplify testing.
-        keys = list(filters.keys())
-        for key in sorted(keys):
+        for key in sorted(filters.keys()):
             condition = filters[key]
             operator = condition.get(COMPARISON_OPERATOR)
             if operator not in QUERY_FILTER_VALUES:
