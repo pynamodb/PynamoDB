@@ -118,5 +118,5 @@ range key of the index. Here is an example that queries the index for values of 
 
 .. code-block:: python
 
-    for item in TestModel.view_index.query('foo', view__gt=0):
+    for item in TestModel.view_index.query('foo', TestModel.view > 0):
         print("Item queried from index: {0}".format(item.view))

@@ -82,7 +82,7 @@ for item in Thread.scan():
     print(item)
 
 # Query
-for item in Thread.query('forum-1', subject__begins_with='subject'):
+for item in Thread.query('forum-1', Thread.subject.startswith('subject')):
     print(item)
 
 
@@ -138,24 +138,20 @@ for item in AliasedModel.scan():
     print("Scanned item: {0}".format(item))
 
 # Query
-for item in AliasedModel.query('forum-1', subject__begins_with='subject'):
+for item in AliasedModel.query('forum-1', AliasedModel.subject.startswith('subject')):
     print("Query using aliased attribute: {0}".format(item))
 
-# Query on non key attributes
-for item in Thread.query('forum-1', views__eq=0):
-    print("Query result: {0}".format(item))
-
-# Query with conditional operators
-for item in Thread.query('forum-1', views__eq=0, replies__eq=0, conditional_operator='OR'):
+# Query with filters
+for item in Thread.query('forum-1', (Thread.views == 0) | (Thread.replies == 0)):
     print("Query result: {0}".format(item))
 
 
 # Scan with filters
-for item in Thread.scan(subject__begins_with='subject', views__ge=0, conditional_operator='AND'):
+for item in Thread.scan(Thread.subject.startswith('subject') & (Thread.views == 0)):
     print("Scanned item: {0} {1}".format(item.subject, item.views))
 
 # Scan with null filter
-for item in Thread.scan(subject__begins_with='subject', last_post_datetime__null=True):
+for item in Thread.scan(Thread.subject.startswith('subject') & Thread.last_post_datetime.does_not_exist()):
     print("Scanned item: {0} {1}".format(item.subject, item.views))
 
 # Conditionally save an item
@@ -166,19 +162,17 @@ thread_item = Thread(
     last_post_datetime=datetime.now()
 )
 
-# DynamoDB will only save the item if forum_name exists and is not null
-print(thread_item.save(forum_name__null=False))
+# DynamoDB will only save the item if forum_name exists
+print(thread_item.save(Thread.forum_name.exists()))
 
 # DynamoDB will update the item, by adding 1 to the views attribute,
-# if the forum_name attribute equals 'Some Forum' or the subject attribute is not null
+# if the forum_name attribute equals 'Some Forum' or the subject attribute exists
 print(thread_item.update_item(
     'views',
     1,
     action='add',
-    conditional_operator='or',
-    forum_name__eq='Some Forum',
-    subject__null=False)
-)
+    condition=((Thread.forum_name == 'Some Forum') | Thread.subject.exists())
+))
 
 # DynamoDB will atomically update the attributes `replies` (increase value by 1),
 # and `last_post_datetime` (set value to the current datetime)
@@ -194,7 +188,10 @@ print(thread_item.update({
 }))
 
 # DynamoDB will delete the item, only if the views attribute is equal to one
-print(thread_item.delete(views__eq=1))
+try:
+    print(thread_item.delete(Thread.views == 1))
+except:
+    pass
 
 # Delete an item's attribute
 print(thread_item.update_item(

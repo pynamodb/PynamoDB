@@ -1,11 +1,9 @@
 Conditional Operations
 ======================
 
-Some DynamoDB operations (UpdateItem, PutItem, DeleteItem) support the inclusion of conditions. The user can supply a list of conditions to be
-evaluated by DynamoDB before the operation is performed, as well as specifying whether those conditions are
-applied with logical OR (at least one must be true) or logical AND (all must be true). See the `official documentation <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItems.html#ConditionalExpressions>`_
-for more details. PynamoDB supports conditionals through keyword arguments, using syntax that is similar to the filter syntax (see :ref:`filtering`).
-Multiple conditions may be supplied, and each value provided will be serialized using the serializer defined for that attribute.
+Some DynamoDB operations (UpdateItem, PutItem, DeleteItem) support the inclusion of conditions. The user can supply a condition to be
+evaluated by DynamoDB before the operation is performed. See the `official documentation <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItems.html#WorkingWithItems.ConditionalUpdate>`_
+for more details.
 
 Suppose that you have defined a `Thread` Model for the examples below.
 
@@ -25,114 +23,80 @@ Suppose that you have defined a `Thread` Model for the examples below.
         subject = UnicodeAttribute(range_key=True)
         views = NumberAttribute(default=0)
 
+.. _conditions:
 
-AND vs. OR
-^^^^^^^^^^
+Condition Expressions
+^^^^^^^^^^^^^^^^^^^^^
 
-Specifying that the conditions should be applied with AND or OR is achieved through the use of the `conditional_operator` keyword,
-which can be `and` or `or`.
+PynamoDB supports creating condition expressions from attributes using a mix of built-in operators and method calls.
+Any value provided will be serialized using the serializer defined for that attribute.
+See the `comparison operator and function reference <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html>`_
+for more details.
+
+.. csv-table::
+    :header: DynamoDB Condition, PynamoDB Syntax, Example
+
+    =, ==, Thread.forum_name == 'Some Forum'
+    <>, !=, Thread.forum_name != 'Some Forum'
+    <, <, Thread.views < 10
+    <=, <=, Thread.views <= 10
+    >, >, Thread.views > 10
+    >=, >=, Thread.views >= 10
+    BETWEEN, "between( `lower` , `upper` )", "Thread.views.between(1, 5)"
+    IN, is_in( `*values` ), "Thread.subject.is_in('Subject', 'Other Subject')"
+    attribute_exists ( `path` ), exists(), Thread.forum_name.exists()
+    attribute_not_exists ( `path` ), does_not_exist(), Thread.forum_name.does_not_exist()
+    "attribute_type ( `path` , `type` )", is_type(), Thread.forum_name.is_type()
+    "begins_with ( `path` , `substr` )", startswith( `prefix` ), Thread.subject.startswith('Example')
+    "contains ( `path` , `operand` )", contains( `item` ), Thread.subject.contains('foobar')
+    size ( `path`), size( `attribute` ), size(Thread.subject) == 10
+    AND, &, (Thread.views > 1) & (Thread.views < 5)
+    OR, \|, (Thread.views < 1) | (Thread.views > 5)
+    NOT, ~, ~Thread.subject.contains('foobar')
+
+If necessary, you can use document paths to access nested list and map attributes:
 
 .. code-block:: python
 
-    thread_item = Thread('Existing Forum', 'Example Subject')
+    from pynamodb.expressions.condition import size
 
-    # The item will be saved if the forum name is not null OR the subject contains 'foobar'
-    thread_item.save(
-        forum_name__null=False,
-        forum_subject__contains='foobar',
-        conditional_operator='or'
-    )
+    print(size('foo.bar[0].baz') == 0)
 
-    # The item will be saved if the forum name is not null AND the subject contains 'foobar'
-    thread_item.save(
-        forum_name__null=False,
-        forum_subject__contains='foobar',
-        conditional_operator='and'
-    )
 
 Conditional Model.save
 ^^^^^^^^^^^^^^^^^^^^^^
 
-The following conditional operators are supported for `Model.save`:
-
-* eq
-* ne
-* le
-* lt
-* ge
-* gt
-* null
-* contains
-* not_contains
-* begins_with
-* in
-* between
-
-This example saves a `Thread` item, only if the item exists, and the `forum_name` attribute is not null.
+This example saves a `Thread` item, only if the item exists.
 
 .. code-block:: python
 
     thread_item = Thread('Existing Forum', 'Example Subject')
 
-    # DynamoDB will only save the item if forum_name exists and is not null
-    print(thread_item.save(forum_name__null=False)
+    # DynamoDB will only save the item if forum_name exists
+    print(thread_item.save(Thread.forum_name.exists())
 
     # You can specify multiple conditions
-    print(thread_item.save(forum_name__null=False, forum_subject__contains='foobar'))
+    print(thread_item.save(Thread.forum_name.exists() & Thread.forum_subject.contains('foobar')))
 
 
 Conditional Model.update
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The following conditional operators are supported for `Model.update`:
-
-* eq
-* ne
-* le
-* lt
-* ge
-* gt
-* null
-* contains
-* not_contains
-* begins_with
-* in
-* between
-
-This example will update a `Thread` item, if the `forum_name` attribute equals 'Some Forum' *OR* the subject is not null:
+This example will update a `Thread` item, if the `views` attribute is less than 5 *OR* greater than 10:
 
 .. code-block:: python
 
-    thread_item.update(
-        conditional_operator='or',
-        forum_name__eq='Some Forum',
-        subject__null=False)
-    )
+    thread_item.update((Thread.views < 5) | (Thread.views > 10))
 
 
 Conditional Model.delete
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The following conditional operators are supported for `Model.delete`:
-
-* eq
-* ne
-* le
-* lt
-* ge
-* gt
-* null
-* contains
-* not_contains
-* begins_with
-* in
-* between
-
 This example will delete the item, only if its `views` attribute is equal to 0.
 
 .. code-block:: python
 
-    print(thread_item.delete(views__eq=0))
+    print(thread_item.delete(Thread.views == 0))
 
 Conditional Operation Failures
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -142,7 +106,7 @@ You can check for conditional operation failures by inspecting the cause of the 
 .. code-block:: python
 
     try:
-        thread_item.save(forum_name__null=False)
+        thread_item.save(Thread.forum_name.exists())
     except PutError as e:
         if isinstance(e.cause, ClientError):
             code = e.cause.response['Error'].get('Code')

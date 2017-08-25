@@ -34,6 +34,7 @@ Topics
    attributes
    local
    backup_restore
+   signals
    examples
    settings
    low_level
