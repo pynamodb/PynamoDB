@@ -28,7 +28,7 @@ Suppose that you have defined a `Thread` Model for the examples below.
 Condition Expressions
 ^^^^^^^^^^^^^^^^^^^^^
 
-PynamoDB supports creating condition expressions from attributes using a simple syntax.
+PynamoDB supports creating condition expressions from attributes using a mix of built-in operators and method calls.
 Any value provided will be serialized using the serializer defined for that attribute.
 See the `comparison operator and function reference <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html>`_
 for more details.
