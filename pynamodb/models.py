@@ -11,7 +11,7 @@ import warnings
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.throttle import NoThrottle
-from pynamodb.attributes import Attribute, AttributeContainer, MapAttribute, ListAttribute
+from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -31,8 +31,8 @@ from pynamodb.constants import (
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
     CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
-    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, SCANNED_COUNT, STREAM_VIEW_TYPE,
-    STREAM_SPECIFICATION, STREAM_ENABLED, EQ, NE)
+    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
+    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET, SCANNED_COUNT)
 
 
 log = logging.getLogger(__name__)
@@ -153,7 +153,7 @@ class ResultSet(object):
         return iter(self.results)
 
 
-class MetaModel(type):
+class MetaModel(AttributeContainerMeta):
     """
     Model meta class
 
@@ -161,6 +161,7 @@ class MetaModel(type):
     Model.index.query()
     """
     def __init__(cls, name, bases, attrs):
+        super(MetaModel, cls).__init__(name, bases, attrs)
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
@@ -315,7 +316,7 @@ class Model(AttributeContainer):
                 msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
-    def delete(self, conditional_operator=None, **expected_values):
+    def delete(self, condition=None, conditional_operator=None, **expected_values):
         """
         Deletes this object from dynamodb
         """
@@ -324,9 +325,10 @@ class Model(AttributeContainer):
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, DELETE_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
+        kwargs.update(condition=condition)
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update_item(self, attribute, value=None, action=None, conditional_operator=None, **expected_values):
+    def update_item(self, attribute, value=None, action=None, condition=None, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -364,6 +366,7 @@ class Model(AttributeContainer):
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name][VALUE] = {ATTR_TYPE_MAP[attribute_cls.attr_type]: value}
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)
+        kwargs.update(condition=condition)
         data = self._get_connection().update_item(
             *args,
             **kwargs
@@ -377,7 +380,7 @@ class Model(AttributeContainer):
                 setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
-    def update(self, attributes, conditional_operator=None, **expected_values):
+    def update(self, attributes, condition=None, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -414,6 +417,7 @@ class Model(AttributeContainer):
 
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name] = attr_values
 
+        kwargs.update(condition=condition)
         data = self._get_connection().update_item(*args, **kwargs)
         self._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for name, value in data[ATTRIBUTES].items():
@@ -423,7 +427,7 @@ class Model(AttributeContainer):
                 setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
 
-    def save(self, conditional_operator=None, **expected_values):
+    def save(self, condition=None, conditional_operator=None, **expected_values):
         """
         Save this object to dynamodb
         """
@@ -432,6 +436,7 @@ class Model(AttributeContainer):
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
+        kwargs.update(condition=condition)
         data = self._get_connection().put_item(*args, **kwargs)
         if isinstance(data, dict):
             self._throttle.add_record(data.get(CONSUMED_CAPACITY))
@@ -512,6 +517,8 @@ class Model(AttributeContainer):
     @classmethod
     def count(cls,
               hash_key=None,
+              range_key_condition=None,
+              filter_condition=None,
               consistent_read=False,
               index_name=None,
               limit=None,
@@ -520,6 +527,8 @@ class Model(AttributeContainer):
         Provides a filtered count
 
         :param hash_key: The hash key to query. Can be None.
+        :param range_key_condition: Condition for range key
+        :param filter_condition: Condition used to restrict the query results
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
         :param filters: A dictionary of filters to be used in the query. Requires a hash_key to be passed.
@@ -557,6 +566,8 @@ class Model(AttributeContainer):
             started = True
             data = cls._get_connection().query(
                 hash_key,
+                range_key_condition=range_key_condition,
+                filter_condition=filter_condition,
                 index_name=index_name,
                 consistent_read=consistent_read,
                 key_conditions=key_conditions,
@@ -573,6 +584,8 @@ class Model(AttributeContainer):
     @classmethod
     def query(cls,
               hash_key,
+              range_key_condition=None,
+              filter_condition=None,
               consistent_read=False,
               index_name=None,
               scan_index_forward=None,
@@ -586,6 +599,8 @@ class Model(AttributeContainer):
         Provides a high level query API
 
         :param hash_key: The hash key to query
+        :param range_key_condition: Condition for range key
+        :param filter_condition: Condition used to restrict the query results
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
         :param limit: Used to limit the number of results returned
@@ -625,6 +640,8 @@ class Model(AttributeContainer):
         log.debug("Fetching first query page")
 
         query_kwargs = dict(
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
             index_name=index_name,
             exclusive_start_key=last_evaluated_key,
             consistent_read=consistent_read,
@@ -670,6 +687,7 @@ class Model(AttributeContainer):
 
     @classmethod
     def rate_limited_scan(cls,
+            filter_condition=None,
             attributes_to_get=None,
             segment=None,
             total_segments=None,
@@ -688,6 +706,7 @@ class Model(AttributeContainer):
         Scans the items in the table at a definite rate.
         Invokes the low level rate_limited_scan API.
 
+        :param filter_condition: Condition used to restrict the scan results
         :param attributes_to_get: A list of attributes to return.
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
@@ -719,6 +738,7 @@ class Model(AttributeContainer):
         key_filter.update(scan_filter)
 
         scan_result = cls._get_connection().rate_limited_scan(
+            filter_condition=filter_condition,
             attributes_to_get=attributes_to_get,
             page_size=page_size,
             limit=limit,
@@ -740,6 +760,7 @@ class Model(AttributeContainer):
 
     @classmethod
     def scan(cls,
+             filter_condition=None,
              segment=None,
              total_segments=None,
              limit=None,
@@ -751,6 +772,7 @@ class Model(AttributeContainer):
         """
         Iterates through all items in the table
 
+        :param filter_condition: Condition used to restrict the scan results
         :param segment: If set, then scans the segment
         :param total_segments: If set, then specifies total segments
         :param limit: Used to limit the number of results returned
@@ -772,6 +794,7 @@ class Model(AttributeContainer):
             page_size = limit
 
         data = cls._get_connection().scan(
+            filter_condition=filter_condition,
             exclusive_start_key=last_evaluated_key,
             segment=segment,
             limit=page_size,
@@ -792,6 +815,7 @@ class Model(AttributeContainer):
         while last_evaluated_key:
             log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().scan(
+                filter_condition=filter_condition,
                 exclusive_start_key=last_evaluated_key,
                 limit=page_size,
                 scan_filter=key_filter,
@@ -1063,9 +1087,17 @@ class Model(AttributeContainer):
             else:
                 if not isinstance(value, list):
                     value = [value]
-                value = [
-                    {ATTR_TYPE_MAP[attribute_class.attr_type]: attribute_class.serialize(val)} for val in value
-                ]
+                attr_type = attribute_class.attr_type
+                if operator in ['contains', 'not_contains'] and attr_type in [BINARY_SET, STRING_SET, NUMBER_SET]:
+                    # The 'CONTAINS' and 'NOT_CONTAINS' comparison operators do not support a set in ATTR_VALUE_LIST.
+                    # If the `attribute_class` to serialize is a set, take the first element of type and value.
+                    value = [
+                        {ATTR_TYPE_MAP[attr_type][0]: attribute_class.serialize(val)[0]} for val in value
+                    ]
+                else:
+                    value = [
+                        {ATTR_TYPE_MAP[attr_type]: attribute_class.serialize(val)} for val in value
+                    ]
                 condition = {
                     ATTR_VALUE_LIST: value
                 }

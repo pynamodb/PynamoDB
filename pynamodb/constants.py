@@ -62,6 +62,14 @@ KEYS = 'Keys'
 UTC = 'UTC'
 KEY = 'Key'
 
+# Expression Parameters
+CONDITION_EXPRESSION = 'ConditionExpression'
+EXPRESSION_ATTRIBUTE_NAMES = 'ExpressionAttributeNames'
+EXPRESSION_ATTRIBUTE_VALUES = 'ExpressionAttributeValues'
+FILTER_EXPRESSION = 'FilterExpression'
+KEY_CONDITION_EXPRESSION = 'KeyConditionExpression'
+PROJECTION_EXPRESSION = 'ProjectionExpression'
+
 # Defaults
 DEFAULT_ENCODING = 'utf-8'
 DEFAULT_REGION = 'us-east-1'
@@ -137,8 +145,8 @@ STREAM_OLD_IMAGE = 'OLD_IMAGE'
 STREAM_NEW_AND_OLD_IMAGE = 'NEW_AND_OLD_IMAGES'
 STREAM_KEYS_ONLY = 'KEYS_ONLY'
 
-# These are constants used in the KeyConditions parameter
-# See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditions
+# These are constants used in the KeyConditionExpression parameter
+# http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
 EXCLUSIVE_START_KEY = 'ExclusiveStartKey'
 LAST_EVALUATED_KEY = 'LastEvaluatedKey'
 QUERY_FILTER = 'QueryFilter'
@@ -161,6 +169,15 @@ QUERY_OPERATOR_MAP = {
     'gt': GT,
     'begins_with': BEGINS_WITH,
     'between': BETWEEN
+}
+KEY_CONDITION_OPERATOR_MAP = {
+    EQ: '__eq__',
+    LE: '__le__',
+    LT: '__lt__',
+    GE: '__ge__',
+    GT: '__gt__',
+    BEGINS_WITH: 'startswith',
+    BETWEEN: 'between'
 }
 
 # These are the valid select values for the Scan operation
@@ -202,6 +219,21 @@ TOTAL_SEGMENTS = 'TotalSegments'
 SCAN_FILTER_VALUES = [EQ, NE, LE, LT, GE, GT, NOT_NULL, NULL, CONTAINS, NOT_CONTAINS, BEGINS_WITH, IN, BETWEEN]
 QUERY_FILTER_VALUES = SCAN_FILTER_VALUES
 DELETE_FILTER_VALUES = SCAN_FILTER_VALUES
+FILTER_EXPRESSION_OPERATOR_MAP = {
+    EQ: '__eq__',
+    NE: '__ne__',
+    LE: '__le__',
+    LT: '__lt__',
+    GE: '__ge__',
+    GT: '__gt__',
+    NOT_NULL: 'exists',
+    NULL: 'does_not_exist',
+    CONTAINS: 'contains',
+    NOT_CONTAINS: 'contains',  # special cased
+    BEGINS_WITH: 'startswith',
+    IN: 'is_in',
+    BETWEEN: 'between'
+}
 
 
 # These are constants used in the expected condition for PutItem

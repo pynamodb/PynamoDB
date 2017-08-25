@@ -10,6 +10,7 @@ from botocore.vendored import requests
 from pynamodb.exceptions import (VerboseClientError,
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
 from pynamodb.constants import DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING
+from pynamodb.expressions.condition import Path
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from pynamodb.tests.deep_eq import deep_eq
 from botocore.exceptions import BotoCoreError
@@ -517,6 +518,34 @@ class ConnectionTestCase(TestCase):
                 self.test_table_name,
                 "Amazon DynamoDB",
                 "How do I update multiple items?",
+                condition=Path('ForumName').does_not_exist(),
+                return_item_collection_metrics='SIZE'
+            )
+            params = {
+                'Key': {
+                    'ForumName': {
+                        'S': 'Amazon DynamoDB'
+                    },
+                    'Subject': {
+                        'S': 'How do I update multiple items?'
+                    }
+                },
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'TableName': self.test_table_name,
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ReturnItemCollectionMetrics': 'SIZE'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.delete_item(
+                self.test_table_name,
+                "Amazon DynamoDB",
+                "How do I update multiple items?",
                 expected={'ForumName': {'Exists': False}},
                 return_item_collection_metrics='SIZE'
             )
@@ -529,10 +558,9 @@ class ConnectionTestCase(TestCase):
                         'S': 'How do I update multiple items?'
                     }
                 },
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
                 },
                 'TableName': self.test_table_name,
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -559,13 +587,11 @@ class ConnectionTestCase(TestCase):
                         'S': 'How do I update multiple items?'
                     }
                 },
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
                 },
                 'TableName': self.test_table_name,
-                'ConditionalOperator': 'AND',
                 'ReturnConsumedCapacity': 'TOTAL',
                 'ReturnItemCollectionMetrics': 'SIZE'
             }
@@ -606,7 +632,10 @@ class ConnectionTestCase(TestCase):
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'AttributesToGet': ['ForumName'],
+                'ProjectionExpression': '#0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
                 'Key': {
                     'ForumName': {
                         'S': 'Amazon DynamoDB'
@@ -674,6 +703,46 @@ class ConnectionTestCase(TestCase):
                 return_consumed_capacity='TOTAL',
                 return_item_collection_metrics='NONE',
                 return_values='ALL_NEW',
+                condition=Path('Forum').does_not_exist(),
+                attribute_updates=attr_updates,
+                range_key='foo-range-key',
+            )
+            params = {
+                'ReturnValues': 'ALL_NEW',
+                'ReturnItemCollectionMetrics': 'NONE',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum'
+                },
+                'AttributeUpdates': {
+                    'Subject': {
+                        'Value': {
+                            'S': 'foo-subject'
+                        },
+                        'Action': 'PUT'
+                    }
+                },
+                'TableName': 'ci-table'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.update_item(
+                self.test_table_name,
+                'foo-key',
+                return_consumed_capacity='TOTAL',
+                return_item_collection_metrics='NONE',
+                return_values='ALL_NEW',
                 expected={'Forum': {'Exists': False}},
                 attribute_updates=attr_updates,
                 range_key='foo-range-key',
@@ -690,10 +759,9 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-range-key'
                     }
                 },
-                'Expected': {
-                    'Forum': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum'
                 },
                 'AttributeUpdates': {
                     'Subject': {
@@ -847,6 +915,52 @@ class ConnectionTestCase(TestCase):
                         'Action': 'PUT'
                     },
                 },
+                condition=(Path('ForumName').does_not_exist() & (Path('Subject') == 'Foo')),
+                range_key='foo-range-key',
+            )
+            params = {
+                'Key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'AttributeUpdates': {
+                    'Subject': {
+                        'Value': {
+                            'S': 'Bar'
+                        },
+                        'Action': 'PUT'
+                    }
+                },
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'ci-table'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.update_item(
+                self.test_table_name,
+                'foo-key',
+                attribute_updates={
+                    'Subject': {
+                        'Value': {'S': 'Bar'},
+                        'Action': 'PUT'
+                    },
+                },
                 expected={
                     'ForumName': {'Exists': False},
                     'Subject': {
@@ -874,17 +988,16 @@ class ConnectionTestCase(TestCase):
                         'Action': 'PUT'
                     }
                 },
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    },
-                    'Subject': {
-                        'Value': {
-                            'S': 'Foo'
-                        }
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 },
-                'ConditionalOperator': 'AND',
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': 'ci-table'
             }
@@ -990,6 +1103,42 @@ class ConnectionTestCase(TestCase):
                 'item1-hash',
                 range_key='item1-range',
                 attributes={'foo': {'S': 'bar'}},
+                condition=(Path('Forum').does_not_exist() & (Path('Subject') == 'Foo'))
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': self.test_table_name,
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
+                    }
+                },
+                'Item': {
+                    'ForumName': {
+                        'S': 'item1-hash'
+                    },
+                    'foo': {
+                        'S': 'bar'
+                    },
+                    'Subject': {
+                        'S': 'item1-range'
+                    }
+                }
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.put_item(
+                self.test_table_name,
+                'item1-hash',
+                range_key='item1-range',
+                attributes={'foo': {'S': 'bar'}},
                 expected={
                     'Forum': {'Exists': False},
                     'Subject': {
@@ -1001,14 +1150,51 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': self.test_table_name,
-                'Expected': {
-                    'Forum': {
-                        'Exists': False
-                    },
-                    'Subject': {
-                        'Value': {'S': 'Foo'}
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 },
+                'Item': {
+                    'ForumName': {
+                        'S': 'item1-hash'
+                    },
+                    'foo': {
+                        'S': 'bar'
+                    },
+                    'Subject': {
+                        'S': 'item1-range'
+                    }
+                }
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.put_item(
+                self.test_table_name,
+                'item1-hash',
+                range_key='item1-range',
+                attributes={'foo': {'S': 'bar'}},
+                condition=(Path('ForumName') == 'item1-hash')
+            )
+            params = {
+                'TableName': self.test_table_name,
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'item1-hash'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
                 'Item': {
                     'ForumName': {
                         'S': 'item1-hash'
@@ -1034,11 +1220,13 @@ class ConnectionTestCase(TestCase):
             )
             params = {
                 'TableName': self.test_table_name,
-                'Expected': {
-                    'ForumName': {
-                        'Value': {
-                            'S': 'item1-hash'
-                        }
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'item1-hash'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -1231,7 +1419,10 @@ class ConnectionTestCase(TestCase):
                 'RequestItems': {
                     'Thread': {
                         'ConsistentRead': True,
-                        'AttributesToGet': ['ForumName'],
+                        'ProjectionExpression': '#0',
+                        'ExpressionAttributeNames': {
+                            '#0': 'ForumName'
+                        },
                         'Keys': [
                             {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-0'}},
                             {'ForumName': {'S': 'FooForum'}, 'Subject': {'S': 'thread-1'}},
@@ -1293,7 +1484,7 @@ class ConnectionTestCase(TestCase):
             "FooForum",
             conditional_operator='NOT_A_VALID_ONE',
             return_consumed_capacity='TOTAL',
-            key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+            key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
         )
 
         self.assertRaises(
@@ -1302,7 +1493,7 @@ class ConnectionTestCase(TestCase):
             table_name,
             "FooForum",
             return_consumed_capacity='TOTAL',
-            key_conditions={'ForumName': {'ComparisonOperator': 'BAD_OPERATOR', 'AttributeValueList': ['thread']}}
+            key_conditions={'Subject': {'ComparisonOperator': 'BAD_OPERATOR', 'AttributeValueList': ['thread']}}
         )
 
         self.assertRaises(
@@ -1312,7 +1503,46 @@ class ConnectionTestCase(TestCase):
             "FooForum",
             return_consumed_capacity='TOTAL',
             select='BAD_VALUE',
-            key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+            key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+        )
+
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
+            Path('NotRangeKey').startswith('thread'),
+            Path('Foo') == 'Bar',
+            return_consumed_capacity='TOTAL'
+        )
+
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
+            Path('Subject') != 'thread',  # invalid sort key condition
+            return_consumed_capacity='TOTAL'
+        )
+
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
+            Path('Subject').startswith('thread'),
+            Path('ForumName') == 'FooForum',  # filter containing hash key
+            return_consumed_capacity='TOTAL'
+        )
+
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
+            Path('Subject').startswith('thread'),
+            Path('Subject').startswith('thread'),  # filter containing range key
+            return_consumed_capacity='TOTAL'
         )
 
         with patch(PATCH_METHOD) as req:
@@ -1325,7 +1555,7 @@ class ConnectionTestCase(TestCase):
                 scan_index_forward=True,
                 return_consumed_capacity='TOTAL',
                 select='ALL_ATTRIBUTES',
-                key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+                key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
             )
 
         with patch(PATCH_METHOD) as req:
@@ -1333,20 +1563,26 @@ class ConnectionTestCase(TestCase):
             conn.query(
                 table_name,
                 "FooForum",
+                Path('Subject').startswith('thread'),
                 scan_index_forward=True,
                 return_consumed_capacity='TOTAL',
-                select='ALL_ATTRIBUTES',
-                key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+                select='ALL_ATTRIBUTES'
             )
             params = {
                 'ScanIndexForward': True,
                 'Select': 'ALL_ATTRIBUTES',
                 'ReturnConsumedCapacity': 'TOTAL',
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': [{
-                            'S': 'thread'
-                        }]
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
                     }
                 },
                 'TableName': 'Thread'
@@ -1358,15 +1594,78 @@ class ConnectionTestCase(TestCase):
             conn.query(
                 table_name,
                 "FooForum",
-                key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+                scan_index_forward=True,
+                return_consumed_capacity='TOTAL',
+                select='ALL_ATTRIBUTES',
+                key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+            )
+            params = {
+                'ScanIndexForward': True,
+                'Select': 'ALL_ATTRIBUTES',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
+                    }
+                },
+                'TableName': 'Thread'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.query(
+                table_name,
+                "FooForum",
+                Path('Subject').startswith('thread')
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': [{
-                            'S': 'thread'
-                        }]
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
+                    }
+                },
+                'TableName': 'Thread'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.query(
+                table_name,
+                "FooForum",
+                key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
                     }
                 },
                 'TableName': 'Thread'
@@ -1394,12 +1693,14 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'IndexName': 'LastPostIndex',
-                'AttributesToGet': ['ForumName'],
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'EQ', 'AttributeValueList': [{
-                            'S': 'FooForum'
-                        }]
+                'ProjectionExpression': '#0',
+                'KeyConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
                     }
                 },
                 'TableName': 'Thread'
@@ -1421,11 +1722,13 @@ class ConnectionTestCase(TestCase):
                         'S': 'FooForum'
                     }
                 },
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'EQ', 'AttributeValueList': [{
-                            'S': 'FooForum'
-                        }]
+                'KeyConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
                     }
                 },
                 'TableName': 'Thread',
@@ -1449,16 +1752,17 @@ class ConnectionTestCase(TestCase):
                         'S': 'FooForum'
                     }
                 },
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'EQ', 'AttributeValueList': [{
-                            'S': 'FooForum'
-                        }]
+                'KeyConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
                     }
                 },
                 'TableName': 'Thread',
-                'Select': 'ALL_ATTRIBUTES',
-                'ConditionalOperator': 'AND'
+                'Select': 'ALL_ATTRIBUTES'
             }
             self.assertEqual(req.call_args[0][1], params)
 
@@ -1650,7 +1954,10 @@ class ConnectionTestCase(TestCase):
                 attributes_to_get=['ForumName']
             )
             params = {
-                'AttributesToGet': ['ForumName'],
+                'ProjectionExpression': '#0',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
                 'ExclusiveStartKey': {
                     "ForumName": {
                         "S": "FooForum"
@@ -1714,12 +2021,13 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': table_name,
-                'ScanFilter': {
-                    'ForumName': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
+                'FilterExpression': 'begins_with (#0, :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 }
             }
@@ -1729,17 +2037,18 @@ class ConnectionTestCase(TestCase):
             req.return_value = {}
             conn.scan(
                 table_name,
-                **kwargs
+                Path('ForumName').startswith('Foo')
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': table_name,
-                'ScanFilter': {
-                    'ForumName': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
+                'FilterExpression': 'begins_with (#0, :0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 }
             }
@@ -1768,21 +2077,44 @@ class ConnectionTestCase(TestCase):
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': table_name,
-                'ScanFilter': {
-                    'ForumName': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'BEGINS_WITH'
-                    },
-                    'Subject': {
-                        'AttributeValueList': [
-                            {'S': 'Foo'}
-                        ],
-                        'ComparisonOperator': 'CONTAINS'
-                    }
+                'FilterExpression': '(begins_with (#0, :0) AND contains (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
                 },
-                'ConditionalOperator': 'AND'
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
+                    },
+                    ':1': {
+                        'S': 'Foo'
+                    }
+                }
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.scan(
+                table_name,
+                Path('ForumName').startswith('Foo') & Path('Subject').contains('Foo')
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': table_name,
+                'FilterExpression': '(begins_with (#0, :0) AND contains (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
+                    },
+                    ':1': {
+                        'S': 'Foo'
+                    }
+                }
             }
             self.assertEqual(req.call_args[0][1], params)
 
@@ -2038,7 +2370,6 @@ class ConnectionTestCase(TestCase):
 
         assert rand_int_mock.call_args_list == [mock.call(0, 25), mock.call(0, 50)]
 
-
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_create_prepared_request(self, requests_session_mock, session_mock):
@@ -2073,7 +2404,6 @@ class ConnectionTestCase(TestCase):
         self.assertEqual(called_request_object.data, expected_request_object.data)
         self.assertEqual(called_request_object.headers, expected_request_object.headers)
 
-
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_make_api_call_retries_properly(self, requests_session_mock, session_mock):
@@ -2104,7 +2434,6 @@ class ConnectionTestCase(TestCase):
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
 
-
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
     def test_make_api_call_throws_when_retries_exhausted(self, requests_session_mock, session_mock):
@@ -2129,7 +2458,6 @@ class ConnectionTestCase(TestCase):
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
 
-
     @mock.patch('random.randint')
     @mock.patch('pynamodb.connection.Connection.session')
     @mock.patch('pynamodb.connection.Connection.requests_session')
@@ -2153,7 +2481,6 @@ class ConnectionTestCase(TestCase):
         assert requests_session_mock.send.call_args[1]['timeout'] == 11
         for call in requests_session_mock.mock_calls:
             self.assertEqual(call[:2], ('send', (prepared_request,)))
-
 
     def test_handle_binary_attributes_for_unprocessed_items(self):
         binary_blob = six.b('\x00\xFF\x00\xFF')
@@ -2186,3 +2513,44 @@ class ConnectionTestCase(TestCase):
             _assert=True
         )
 
+    def test_get_expected_map(self):
+        conn = Connection(self.region)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = DESCRIBE_TABLE_DATA
+            conn.describe_table(self.test_table_name)
+
+        expected = {'ForumName': {'Exists': True}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'Exists': True}}}
+        )
+
+        expected = {'ForumName': {'Value': 'foo'}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'Value': {'S': 'foo'}}}}
+        )
+
+        expected = {'ForumName': {'ComparisonOperator': 'Null'}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'ComparisonOperator': 'Null', 'AttributeValueList': []}}}
+        )
+
+        expected = {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': ['foo']}}
+        self.assertEqual(
+            conn.get_expected_map(self.test_table_name, expected),
+            {'Expected': {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': [{'S': 'foo'}]}}}
+        )
+
+    def test_get_query_filter_map(self):
+        conn = Connection(self.region)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = DESCRIBE_TABLE_DATA
+            conn.describe_table(self.test_table_name)
+
+        query_filters = {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': ['foo']}}
+        self.assertEqual(
+            conn.get_query_filter_map(self.test_table_name, query_filters),
+            {'QueryFilter': {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': [{'S': 'foo'}]}}}
+        )

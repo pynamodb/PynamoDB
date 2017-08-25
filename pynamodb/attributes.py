@@ -10,8 +10,9 @@ from dateutil.parser import parse
 from dateutil.tz import tzutc
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
+    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
+from pynamodb.expressions.condition import Path
 import collections
 
 
@@ -39,16 +40,19 @@ class Attribute(object):
             self.attr_name = attr_name
 
     def __set__(self, instance, value):
-        if instance:
+        if instance and not self._is_map_attribute_class_object(instance):
             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
             instance.attribute_values[attr_name] = value
 
     def __get__(self, instance, owner):
-        if instance:
+        if instance and not self._is_map_attribute_class_object(instance):
             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
             return instance.attribute_values.get(attr_name, None)
         else:
             return self
+
+    def _is_map_attribute_class_object(self, instance):
+        return isinstance(instance, MapAttribute) and getattr(instance, '_class_object', False)
 
     def serialize(self, value):
         """
@@ -66,13 +70,93 @@ class Attribute(object):
         serialized_dynamo_type = ATTR_TYPE_MAP[self.attr_type]
         return value.get(serialized_dynamo_type)
 
+    # Condition Expression Support
+    def __eq__(self, other):
+        if other is None or isinstance(other, Attribute):  # handle object identity comparison
+            return self is other
+        return AttributePath(self).__eq__(other)
 
-class AttributeContainer(object):
+    def __ne__(self, other):
+        if other is None or isinstance(other, Attribute):  # handle object identity comparison
+            return self is not other
+        return AttributePath(self).__ne__(other)
 
-    _attributes = None
-    _dynamo_to_python_attrs = None
+    def __lt__(self, other):
+        return AttributePath(self).__lt__(other)
 
-    @classmethod
+    def __le__(self, other):
+        return AttributePath(self).__le__(other)
+
+    def __gt__(self, other):
+        return AttributePath(self).__gt__(other)
+
+    def __ge__(self, other):
+        return AttributePath(self).__ge__(other)
+
+    def __getitem__(self, idx):
+        return AttributePath(self)[idx]
+
+    def between(self, lower, upper):
+        return AttributePath(self).between(lower, upper)
+
+    def is_in(self, *values):
+        return AttributePath(self).is_in(*values)
+
+    def exists(self):
+        return AttributePath(self).exists()
+
+    def does_not_exist(self):
+        return AttributePath(self).does_not_exist()
+
+    def is_type(self):
+        # What makes sense here? Are we using this to check if deserialization will be successful?
+        return AttributePath(self).is_type(ATTR_TYPE_MAP[self.attr_type])
+
+    def startswith(self, prefix):
+        return AttributePath(self).startswith(prefix)
+
+    def contains(self, item):
+        return AttributePath(self).contains(item)
+
+
+class AttributePath(Path):
+
+    def __init__(self, attribute):
+        super(AttributePath, self).__init__(attribute.attr_name, attribute_name=True)
+        self.attribute = attribute
+
+    def __getitem__(self, idx):
+        if self.attribute.attr_type != LIST:  # only list elements support the list dereference operator
+            raise TypeError("'{0}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
+        return super(AttributePath, self).__getitem__(idx)
+
+    def contains(self, item):
+        if self.attribute.attr_type in [BINARY_SET, NUMBER_SET, STRING_SET]:
+            # Set attributes assume the values to be serialized are sets.
+            (attr_type, attr_value), = self._serialize([item]).items()
+            item = {attr_type[0]: attr_value[0]}
+        return super(AttributePath, self).contains(item)
+
+    def _serialize(self, value):
+        # Check to see if value is already serialized
+        if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in SHORT_ATTR_TYPES:
+            return value
+        if self.attribute.attr_type == LIST and not isinstance(value, list):
+            # List attributes assume the values to be serialized are lists.
+            return self.attribute.serialize([value])[0]
+        if self.attribute.attr_type == MAP and not isinstance(value, dict):
+            # Map attributes assume the values to be serialized are maps.
+            return self.attribute.serialize({'': value})['']
+        return {ATTR_TYPE_MAP[self.attribute.attr_type]: self.attribute.serialize(value)}
+
+
+class AttributeContainerMeta(type):
+
+    def __init__(cls, name, bases, attrs):
+        super(AttributeContainerMeta, cls).__init__(name, bases, attrs)
+        AttributeContainerMeta._initialize_attributes(cls)
+
+    @staticmethod
     def _initialize_attributes(cls):
         """
         Initialize attributes on the class.
@@ -89,13 +173,27 @@ class AttributeContainer(object):
             if item_cls is None:
                 continue
 
-            if issubclass(item_cls, (Attribute, )):
+            if issubclass(item_cls, Attribute):
                 instance = getattr(cls, item_name)
+                if isinstance(instance, MapAttribute):
+                    # Attributes are data descriptors that bind their value to the containing object.
+                    # When subclassing MapAttribute and using them as AttributeContainers on a Model,
+                    # their internal attributes are bound to the instance in the Model class.
+                    # The `_class_object` attribute is used to indicate that the MapAttribute instance
+                    # belongs to a class object and not a class instance, overriding the binding.
+                    # Without this, Model.MapAttribute().attribute would the value and not the object;
+                    # whereas Model.attribute always returns the object.
+                    instance._class_object = True
+
                 cls._attributes[item_name] = instance
                 if instance.attr_name is not None:
                     cls._dynamo_to_python_attrs[instance.attr_name] = item_name
                 else:
                     instance.attr_name = item_name
+
+
+@add_metaclass(AttributeContainerMeta)
+class AttributeContainer(object):
 
     @classmethod
     def _get_attributes(cls):
@@ -104,8 +202,6 @@ class AttributeContainer(object):
 
         :rtype: dict[str, Attribute]
         """
-        if cls._attributes is None:
-            cls._initialize_attributes()
         return cls._attributes
 
     @classmethod
@@ -115,8 +211,6 @@ class AttributeContainer(object):
 
         This covers cases where an attribute name has been overridden via "attr_name".
         """
-        if cls._attributes is None:
-            cls._initialize_attributes()
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
     def _set_defaults(self):
@@ -412,9 +506,10 @@ class NullAttribute(Attribute):
         return None
 
 
-class MapAttributeMeta(type):
-    def __init__(cls, name, bases, attrs):
-        setattr(cls, '_attributes', None)
+class MapAttributeMeta(AttributeContainerMeta):
+    """
+    This is only here for backwards compatibility: i.e. so type(MapAttribute) == MapAttributeMeta
+    """
 
 
 @add_metaclass(MapAttributeMeta)
@@ -427,7 +522,6 @@ class MapAttribute(AttributeContainer, Attribute):
                                            null=null,
                                            default=default,
                                            attr_name=attr_name)
-        self._get_attributes()  # Ensure attributes are always inited
         self.attribute_values = {}
         self._set_defaults()
         self._set_attributes(**attrs)

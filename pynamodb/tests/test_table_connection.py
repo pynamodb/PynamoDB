@@ -5,6 +5,7 @@ import six
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION
+from pynamodb.expressions.condition import Path
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
 from pynamodb.tests.response import HttpOK
 
@@ -315,6 +316,32 @@ class ConnectionTestCase(TestCase):
                 'foo-key',
                 range_key='foo-range-key',
                 attributes={'ForumName': 'foo-value'},
+                condition=Path('ForumName').does_not_exist()
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Item': {
+                    'ForumName': {
+                        'S': 'foo-value'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'TableName': self.test_table_name,
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                }
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.put_item(
+                'foo-key',
+                range_key='foo-range-key',
+                attributes={'ForumName': 'foo-value'},
                 conditional_operator='and',
                 expected={
                     'ForumName': {
@@ -333,11 +360,9 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'TableName': self.test_table_name,
-                'ConditionalOperator': 'AND',
-                'Expected': {
-                    'ForumName': {
-                        'Exists': False
-                    }
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
                 }
             }
             self.assertEqual(req.call_args[0][1], params)
@@ -427,19 +452,51 @@ class ConnectionTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = DESCRIBE_TABLE_DATA
             conn.describe_table()
+
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
             conn.query(
                 "FooForum",
-                key_conditions={'ForumName': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+                Path('Subject').startswith('thread')
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
-                'KeyConditions': {
-                    'ForumName': {
-                        'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': [{
-                            'S': 'thread'
-                        }]
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
+                    }
+                },
+                'TableName': self.test_table_name
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.query(
+                "FooForum",
+                key_conditions={'Subject': {'ComparisonOperator': 'BEGINS_WITH', 'AttributeValueList': ['thread']}}
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'FooForum'
+                    },
+                    ':1': {
+                        'S': 'thread'
                     }
                 },
                 'TableName': self.test_table_name
@@ -487,6 +544,7 @@ class ConnectionTestCase(TestCase):
             )
             self.assertEqual(self.test_table_name, req.call_args[0][0])
             params = {
+                'filter_condition': None,
                 'attributes_to_get': 'attributes_to_get',
                 'page_size': 1,
                 'limit': 2,
