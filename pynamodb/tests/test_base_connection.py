@@ -720,15 +720,14 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'ConditionExpression': 'attribute_not_exists (#0)',
+                'UpdateExpression': 'SET #1 = :0',
                 'ExpressionAttributeNames': {
-                    '#0': 'Forum'
+                    '#0': 'Forum',
+                    '#1': 'Subject'
                 },
-                'AttributeUpdates': {
-                    'Subject': {
-                        'Value': {
-                            'S': 'foo-subject'
-                        },
-                        'Action': 'PUT'
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo-subject'
                     }
                 },
                 'TableName': 'ci-table'
@@ -759,16 +758,15 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-range-key'
                     }
                 },
-                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ConditionExpression': 'attribute_not_exists (#1)',
+                'UpdateExpression': 'SET #0 = :0',
                 'ExpressionAttributeNames': {
-                    '#0': 'Forum'
+                    '#0': 'Subject',
+                    '#1': 'Forum'
                 },
-                'AttributeUpdates': {
-                    'Subject': {
-                        'Value': {
-                            'S': 'foo-subject'
-                        },
-                        'Action': 'PUT'
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo-subject'
                     }
                 },
                 'TableName': 'ci-table'
@@ -792,12 +790,13 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-range-key'
                     }
                 },
-                'AttributeUpdates': {
-                    'Subject': {
-                        'Value': {
-                            'S': 'foo-subject'
-                        },
-                        'Action': 'PUT'
+                'UpdateExpression': 'SET #0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo-subject'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -828,12 +827,13 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-range-key'
                     }
                 },
-                'AttributeUpdates': {
-                    'Subject': {
-                        'Value': {
-                            'S': 'foo-subject'
-                        },
-                        'Action': 'PUT'
+                'UpdateExpression': 'SET #0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo-subject'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -864,12 +864,13 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-range-key'
                     }
                 },
-                'AttributeUpdates': {
-                    'Subject': {
-                        'Value': {
-                            'S': 'Foo'
-                        },
-                        'Action': 'PUT'
+                'UpdateExpression': 'SET #0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -927,15 +928,8 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-range-key'
                     }
                 },
-                'AttributeUpdates': {
-                    'Subject': {
-                        'Value': {
-                            'S': 'Bar'
-                        },
-                        'Action': 'PUT'
-                    }
-                },
                 'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'UpdateExpression': 'SET #1 = :1',
                 'ExpressionAttributeNames': {
                     '#0': 'ForumName',
                     '#1': 'Subject'
@@ -943,6 +937,9 @@ class ConnectionTestCase(TestCase):
                 'ExpressionAttributeValues': {
                     ':0': {
                         'S': 'Foo'
+                    },
+                    ':1': {
+                        'S': 'Bar'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -980,21 +977,17 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-range-key'
                     }
                 },
-                'AttributeUpdates': {
-                    'Subject': {
-                        'Value': {
-                            'S': 'Bar'
-                        },
-                        'Action': 'PUT'
-                    }
-                },
-                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'ConditionExpression': '(attribute_not_exists (#1) AND #0 = :1)',
+                'UpdateExpression': 'SET #0 = :0',
                 'ExpressionAttributeNames': {
-                    '#0': 'ForumName',
-                    '#1': 'Subject'
+                    '#0': 'Subject',
+                    '#1': 'ForumName'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
+                        'S': 'Bar'
+                    },
+                    ':1': {
                         'S': 'Foo'
                     }
                 },

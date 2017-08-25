@@ -2,6 +2,10 @@ from pynamodb.attributes import ListAttribute, NumberSetAttribute, UnicodeAttrib
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.expressions.condition import Path, size
 from pynamodb.expressions.projection import create_projection_expression
+from pynamodb.expressions.update import (
+    AddAction, AppendAction, DecrementAction, DeleteAction, IncrementAction, PrependAction, SetAction,
+    SetIfNotExistsAction, RemoveAction, Update
+)
 
 
 class PathTestCase(TestCase):
@@ -299,3 +303,126 @@ class ConditionExpressionTestCase(TestCase):
         assert expression == "#0 = :0"
         assert placeholder_names == {'foo.bar': '#0'}
         assert expression_attribute_values == {':0': {'S': 'baz'}}
+
+
+class UpdateExpressionTestCase(TestCase):
+
+    def test_set_action(self):
+        action = SetAction('foo', {'S': 'bar'})
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 = :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
+
+    def test_increment_action(self):
+        action = IncrementAction('foo', {'N': '0'})
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 = #0 + :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'N': '0'}}
+
+    def test_increment_action_non_numeric(self):
+        with self.assertRaises(ValueError):
+            IncrementAction('foo', {'S': '0'})
+
+    def test_decrement_action(self):
+        action = DecrementAction('foo', {'N': '0'})
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 = #0 - :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'N': '0'}}
+
+    def test_decrement_action_non_numeric(self):
+        with self.assertRaises(ValueError):
+            DecrementAction('foo', {'S': '0'})
+
+    def test_append_action(self):
+        action = AppendAction('foo', {'L': [{'S': 'bar'}]})
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 = list_append(#0, :0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'L': [{'S': 'bar'}]}}
+
+    def test_append_action_non_list(self):
+        with self.assertRaises(ValueError):
+            AppendAction('foo', {'S': 'bar'})
+
+    def test_prepend_action(self):
+        action = PrependAction('foo', {'L': [{'S': 'bar'}]})
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 = list_append(:0, #0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'L': [{'S': 'bar'}]}}
+
+    def test_prepend_action_non_list(self):
+        with self.assertRaises(ValueError):
+            PrependAction('foo', {'S': 'bar'})
+
+    def test_set_if_not_exists_action(self):
+        action = SetIfNotExistsAction('foo', {'S': 'bar'})
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 = if_not_exists(#0, :0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
+
+    def test_remove_action(self):
+        action = RemoveAction('foo')
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {}
+
+    def test_add_action(self):
+        action = AddAction('foo', {'N': '0'})
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'N': '0'}}
+
+    def test_add_action_set(self):
+        action = AddAction('foo', {'NS': ['0']})
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'NS': ['0']}}
+
+    def test_add_action_list(self):
+        with self.assertRaises(ValueError):
+            AddAction('foo', {'L': [{'N': '0'}]})
+
+    def test_delete_action(self):
+        action = DeleteAction('foo', {'NS': ['0']})
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'NS': ['0']}}
+
+    def test_add_action_non_set(self):
+        with self.assertRaises(ValueError):
+            DeleteAction('foo', {'N': '0'})
+
+    def test_update(self):
+        update = Update()
+        update.add_action(SetAction('foo', {'S': 'bar'}))
+        update.add_action(RemoveAction('foo'))
+        update.add_action(AddAction('foo', {'N': '0'}))
+        update.add_action(DeleteAction('foo', {'NS': ['0']}))
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = update.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "SET #0 = :0 REMOVE #0 ADD #0 :1 DELETE #0 :2"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {
+            ':0': {'S': 'bar'},
+            ':1': {'N': '0'},
+            ':2': {'NS': ['0']}
+        }

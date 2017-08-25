@@ -209,7 +209,7 @@ class ConnectionTestCase(TestCase):
 
     def test_update_item(self):
         """
-        TableConnection.delete_item
+        TableConnection.update_item
         """
         conn = TableConnection(self.test_table_name)
         with patch(PATCH_METHOD) as req:
@@ -239,12 +239,13 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-range-key'
                     }
                 },
-                'AttributeUpdates': {
-                    'Subject': {
-                        'Value': {
-                            'S': 'foo-subject'
-                        },
-                        'Action': 'PUT'
+                'UpdateExpression': 'SET #0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo-subject'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',

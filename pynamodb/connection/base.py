@@ -34,9 +34,9 @@ from pynamodb.constants import (
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES,
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
-    CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE,
+    CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE, PUT,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
-    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
+    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, UPDATE_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
     CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND)
 from pynamodb.exceptions import (
@@ -45,6 +45,7 @@ from pynamodb.exceptions import (
 )
 from pynamodb.expressions.condition import Condition, Path
 from pynamodb.expressions.projection import create_projection_expression
+from pynamodb.expressions.update import AddAction, DeleteAction, RemoveAction, SetAction, Update
 from pynamodb.settings import get_settings_value
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
@@ -866,20 +867,26 @@ class Connection(object):
         if not attribute_updates:
             raise ValueError("{0} cannot be empty".format(ATTR_UPDATES))
 
-        operation_kwargs[ATTR_UPDATES] = {}
-        for key, update in attribute_updates.items():
-            value = update.get(VALUE)
-            attr_type, value = self.parse_attribute(value, return_type=True)
+        update_expression = Update()
+        # We sort the keys here for determinism. This is mostly done to simplify testing.
+        for key in sorted(attribute_updates.keys()):
+            update = attribute_updates[key]
             action = update.get(ACTION)
-            if attr_type is None and action is not None and action.upper() != DELETE:
-                attr_type = self.get_attribute_type(table_name, key, value)
             if action not in ATTR_UPDATE_ACTIONS:
                 raise ValueError("{0} must be one of {1}".format(ACTION, ATTR_UPDATE_ACTIONS))
-            operation_kwargs[ATTR_UPDATES][key] = {
-                ACTION: action,
-            }
-            if action.upper() != DELETE:
-                operation_kwargs[ATTR_UPDATES][key][VALUE] = {attr_type: value}
+            value = update.get(VALUE)
+            attr_type, value = self.parse_attribute(value, return_type=True)
+            if attr_type is None and action != DELETE:
+                attr_type = self.get_attribute_type(table_name, key, value)
+            value = {attr_type: value}
+            if action == DELETE:
+                action = RemoveAction(key) if attr_type is None else DeleteAction(key, value)
+            elif action == PUT:
+                action = SetAction(key, value)
+            else:
+                action = AddAction(key, value)
+            update_expression.add_action(action)
+        operation_kwargs[UPDATE_EXPRESSION] = update_expression.serialize(name_placeholders, expression_attribute_values)
 
         # We read the conditional operator even without expected passed in to maintain existing behavior.
         conditional_operator = self.get_conditional_operator(conditional_operator or AND)
@@ -1368,9 +1375,7 @@ class Connection(object):
         condition_expression = None
         conditional_operator = conditional_operator[CONDITIONAL_OPERATOR]
         # We sort the keys here for determinism. This is mostly done to simplify testing.
-        keys = list(expected.keys())
-        keys.sort()
-        for key in keys:
+        for key in sorted(expected.keys()):
             condition = expected[key]
             if EXISTS in condition:
                 operator = NOT_NULL if condition.get(EXISTS, True) else NULL
@@ -1404,9 +1409,7 @@ class Connection(object):
         condition_expression = None
         conditional_operator = conditional_operator[CONDITIONAL_OPERATOR]
         # We sort the keys here for determinism. This is mostly done to simplify testing.
-        keys = list(filters.keys())
-        keys.sort()
-        for key in keys:
+        for key in sorted(filters.keys()):
             condition = filters[key]
             operator = condition.get(COMPARISON_OPERATOR)
             if operator not in QUERY_FILTER_VALUES:
@@ -1438,6 +1441,9 @@ class Connection(object):
                 raise ValueError("'{0}' must be an instance of Condition".format(name))
             if expected_or_filter or conditional_operator is not None:
                 raise ValueError("Legacy conditional parameters cannot be used with condition expressions")
+        else:
+            if expected_or_filter or conditional_operator is not None:
+                warnings.warn("Legacy conditional parameters are deprecated in favor of condition expressions")
 
     @staticmethod
     def _reverse_dict(d):

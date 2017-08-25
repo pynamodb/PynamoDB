@@ -989,34 +989,27 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'AttributeUpdates': {
-                    'email': {
-                        'Action': 'PUT',
-                        'Value': {
-                            'S': 'foo@example.com',
-                        },
+                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3 REMOVE #4',
+                'ExpressionAttributeNames': {
+                    '#0': 'aliases',
+                    '#1': 'email',
+                    '#2': 'is_active',
+                    '#3': 'signature',
+                    '#4': 'views'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'SS': set(['bob'])
                     },
-                    'views': {
-                        'Action': 'DELETE',
+                    ':1': {
+                        'S': 'foo@example.com',
                     },
-                    'is_active': {
-                        'Action': 'PUT',
-                        'Value': {
-                            'NULL': True,
-                        },
+                    ':2': {
+                        'NULL': True
                     },
-                    'signature': {
-                        'Action': 'PUT',
-                        'Value': {
-                            'NULL': True,
-                        },
-                    },
-                    'aliases': {
-                        'Action': 'PUT',
-                        'Value': {
-                            'SS': set(['bob']),
-                        },
-                    },
+                    ':3': {
+                        'NULL': True
+                    }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
             }
@@ -1068,12 +1061,13 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
+                'UpdateExpression': 'ADD #0 :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'views'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'N': '10'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1101,9 +1095,11 @@ class ModelTestCase(TestCase):
                     }
                 },
                 'ConditionExpression': '(#0 = :0 AND (NOT contains (#1, :1)))',
+                'UpdateExpression': 'ADD #2 :2',
                 'ExpressionAttributeNames': {
                     '#0': 'user_name',
-                    '#1': 'email'
+                    '#1': 'email',
+                    '#2': 'views'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
@@ -1111,14 +1107,9 @@ class ModelTestCase(TestCase):
                     },
                     ':1': {
                         'S': '@'
-                    }
-                },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
+                    },
+                    ':2': {
+                        'N': '10'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1143,25 +1134,22 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'ConditionExpression': '((NOT contains (#0, :0)) AND #1 = :1)',
+                'ConditionExpression': '((NOT contains (#1, :1)) AND #2 = :2)',
+                'UpdateExpression': 'ADD #0 :0',
                 'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'user_name'
+                    '#0': 'views',
+                    '#1': 'email',
+                    '#2': 'user_name'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
-                        'S': '@'
+                        'N': '10'
                     },
                     ':1': {
+                        'S': '@'
+                    },
+                    ':2': {
                         'S': 'foo'
-                    }
-                },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1187,15 +1175,14 @@ class ModelTestCase(TestCase):
                     }
                 },
                 'ConditionExpression': 'attribute_not_exists (#0)',
+                'UpdateExpression': 'ADD #1 :0',
                 'ExpressionAttributeNames': {
-                    '#0': 'user_name'
+                    '#0': 'user_name',
+                    '#1': 'views'
                 },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'N': '10'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1220,16 +1207,15 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ConditionExpression': 'attribute_not_exists (#1)',
+                'UpdateExpression': 'ADD #0 :0',
                 'ExpressionAttributeNames': {
-                    '#0': 'user_name'
+                    '#0': 'views',
+                    '#1': 'user_name'
                 },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'N': '10'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1246,8 +1232,14 @@ class ModelTestCase(TestCase):
             args = req.call_args[0][1]
 
             params = {
-                'AttributeUpdates': {
-                    'zip_code': {'Action': 'ADD', 'Value': {'N': '10'}}
+                'UpdateExpression': 'ADD #0 :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'zip_code'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'N': '10'
+                    }
                 },
                 'TableName': 'UserModel',
                 'ReturnValues': 'ALL_NEW',
@@ -1278,12 +1270,13 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
+                'UpdateExpression': 'ADD #0 :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'views'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'N': '10'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1306,10 +1299,9 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'DELETE',
-                    }
+                'UpdateExpression': 'REMOVE #0',
+                'ExpressionAttributeNames': {
+                    '#0': 'views'
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
             }
@@ -1334,20 +1326,17 @@ class ModelTestCase(TestCase):
                     }
                 },
                 'ConditionExpression': '#0 = :0',
+                'UpdateExpression': 'ADD #1 :1',
                 'ExpressionAttributeNames': {
-                    '#0': 'numbers'
+                    '#0': 'numbers',
+                    '#1': 'views'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
                         'NS': ['1', '2']
-                    }
-                },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
+                    },
+                    ':1': {
+                        'N': '10'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1372,21 +1361,18 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'ConditionExpression': '#0 = :0',
+                'ConditionExpression': '#1 = :1',
+                'UpdateExpression': 'ADD #0 :0',
                 'ExpressionAttributeNames': {
-                    '#0': 'numbers'
+                    '#0': 'views',
+                    '#1': 'numbers'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
+                        'N': '10'
+                    },
+                    ':1': {
                         'NS': ['1', '2']
-                    }
-                },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1413,8 +1399,10 @@ class ModelTestCase(TestCase):
                     }
                 },
                 'ConditionExpression': '#0 IN (:0, :1)',
+                'UpdateExpression': 'ADD #1 :2',
                 'ExpressionAttributeNames': {
-                    '#0': 'email'
+                    '#0': 'email',
+                    '#1': 'views'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
@@ -1422,14 +1410,9 @@ class ModelTestCase(TestCase):
                     },
                     ':1': {
                         'S': '2@pynamo.db'
-                    }
-                },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
+                    },
+                    ':2': {
+                        'N': '10'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1455,24 +1438,21 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'ConditionExpression': '#0 IN (:0, :1)',
+                'ConditionExpression': '#1 IN (:1, :2)',
+                'UpdateExpression': 'ADD #0 :0',
                 'ExpressionAttributeNames': {
-                    '#0': 'email'
+                    '#0': 'views',
+                    '#1': 'email'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
-                        'S': '1@pynamo.db'
+                        'N': '10'
                     },
                     ':1': {
+                        'S': '1@pynamo.db'
+                    },
+                    ':2': {
                         'S': '2@pynamo.db'
-                    }
-                },
-                'AttributeUpdates': {
-                    'views': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'N': '10'
-                        }
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1497,12 +1477,13 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'AttributeUpdates': {
-                    'aliases': {
-                        'Action': 'ADD',
-                        'Value': {
-                            'SS': set(['lita'])
-                        }
+                'UpdateExpression': 'ADD #0 :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'aliases'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'SS': set(['lita'])
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
@@ -1521,12 +1502,13 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'AttributeUpdates': {
-                    'is_active': {
-                        'Action': 'PUT',
-                        'Value': {
-                            'BOOL': True
-                        }
+                'UpdateExpression': 'SET #0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'is_active'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'BOOL': True
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'
