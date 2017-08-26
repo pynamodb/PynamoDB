@@ -1,12 +1,13 @@
 from pynamodb.attributes import ListAttribute, MapAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
-from pynamodb.compat import CompatTestCase as TestCase
-from pynamodb.expressions.condition import size
-from pynamodb.expressions.operand import Path
+from pynamodb.expressions.condition import Path, size
 from pynamodb.expressions.projection import create_projection_expression
 from pynamodb.expressions.update import Update
 
 
-class PathTestCase(TestCase):
+from pytest import raises
+
+
+class TestPath:
 
     def test_document_path(self):
         path = Path('foo.bar')
@@ -29,11 +30,11 @@ class PathTestCase(TestCase):
         assert repr(path) == "Path(['foo.bar[0]'])"
 
     def test_index_invalid(self):
-        with self.assertRaises(TypeError):
+        with raises(TypeError):
             Path('foo.bar')['foo']
 
 
-class ProjectionExpressionTestCase(TestCase):
+class TestProjectionExpression:
 
     def test_create_projection_expression(self):
         attributes_to_get = ['Description', 'RelatedItems[0]', 'ProductReviews.FiveStar']
@@ -52,7 +53,7 @@ class ProjectionExpressionTestCase(TestCase):
     def test_create_projection_expression_invalid_attribute_raises(self):
         invalid_attributes = ['', '[0]', 'foo[bar]', 'MyList[-1]', 'MyList[0.4]']
         for attribute in invalid_attributes:
-            with self.assertRaises(ValueError):
+            with raises(ValueError):
                 create_projection_expression([attribute], {})
 
     def test_create_project_expression_with_document_paths(self):
@@ -92,9 +93,9 @@ class ProjectionExpressionTestCase(TestCase):
         assert placeholders == {'Description': '#0'}
 
 
-class ConditionExpressionTestCase(TestCase):
+class TestConditionExpression:
 
-    def setUp(self):
+    def setup(self):
         self.attribute = UnicodeAttribute(attr_name='foo')
 
     def test_equal(self):
@@ -290,7 +291,7 @@ class ConditionExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'S' : 'bar'}}
 
     def test_invalid_indexing(self):
-        with self.assertRaises(TypeError):
+        with raises(TypeError):
             self.attribute[0]
 
     def test_double_indexing(self):
@@ -334,9 +335,7 @@ class ConditionExpressionTestCase(TestCase):
         assert placeholder_names == {'foo.bar': '#0', 'foo': '#1'}
         assert expression_attribute_values == {':0': {'S': 'baz'}}
 
-
 class UpdateExpressionTestCase(TestCase):
-
     def test_set_action(self):
         action = Path('foo').set('bar')
         placeholder_names, expression_attribute_values = {}, {}
@@ -401,3 +400,8 @@ class UpdateExpressionTestCase(TestCase):
             ':1': {'N': '0'},
             ':2': {'NS': ['0']}
         }
+
+class TestUpdateExpressionContextManager:
+
+    def test_basic_context_manager(self):
+        pass
