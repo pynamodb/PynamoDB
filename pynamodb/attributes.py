@@ -8,6 +8,7 @@ from base64 import b64encode, b64decode
 from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import tzutc
+from inspect import getargspec
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
@@ -20,7 +21,6 @@ class Attribute(object):
     """
     An attribute of a model
     """
-    attr_name = None
     attr_type = None
     null = False
 
@@ -36,8 +36,7 @@ class Attribute(object):
             self.null = null
         self.is_hash_key = hash_key
         self.is_range_key = range_key
-        if attr_name is not None:
-            self.attr_name = attr_name
+        self.attr_name = attr_name
 
     def __set__(self, instance, value):
         if instance and not self._is_map_attribute_class_object(instance):
@@ -52,7 +51,7 @@ class Attribute(object):
             return self
 
     def _is_map_attribute_class_object(self, instance):
-        return isinstance(instance, MapAttribute) and getattr(instance, '_class_object', False)
+        return isinstance(instance, MapAttribute) and not instance._is_attribute_container()
 
     def serialize(self, value):
         """
@@ -176,14 +175,9 @@ class AttributeContainerMeta(type):
             if issubclass(item_cls, Attribute):
                 instance = getattr(cls, item_name)
                 if isinstance(instance, MapAttribute):
-                    # Attributes are data descriptors that bind their value to the containing object.
-                    # When subclassing MapAttribute and using them as AttributeContainers on a Model,
-                    # their internal attributes are bound to the instance in the Model class.
-                    # The `_class_object` attribute is used to indicate that the MapAttribute instance
-                    # belongs to a class object and not a class instance, overriding the binding.
-                    # Without this, Model.MapAttribute().attribute would the value and not the object;
-                    # whereas Model.attribute always returns the object.
-                    instance._class_object = True
+                    # MapAttribute instances that are class attributes of an AttributeContainer class
+                    # should behave like an Attribute instance and not an AttributeContainer instance.
+                    instance._make_attribute()
 
                 cls._attributes[item_name] = instance
                 if instance.attr_name is not None:
@@ -194,6 +188,16 @@ class AttributeContainerMeta(type):
 
 @add_metaclass(AttributeContainerMeta)
 class AttributeContainer(object):
+
+    def __init__(self, **attributes):
+        # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
+        # to store the values that are bound to this instance. Attributes store values in the dictionary
+        # using the `python_attr_name` as the dictionary key. "Raw" (i.e. non-subclassed) MapAttribute
+        # instances do not have any Attributes defined and instead use this dictionary to store their
+        # collection of name-value pairs.
+        self.attribute_values = {}
+        self._set_defaults()
+        self._set_attributes(**attributes)
 
     @classmethod
     def _get_attributes(cls):
@@ -225,6 +229,15 @@ class AttributeContainer(object):
                 value = default
             if value is not None:
                 setattr(self, name, value)
+
+    def _set_attributes(self, **attributes):
+        """
+        Sets the attributes for this object
+        """
+        for attr_name, attr_value in six.iteritems(attributes):
+            if attr_name not in self._get_attributes():
+                raise ValueError("Attribute {0} specified does not exist".format(attr_name))
+            setattr(self, attr_name, attr_value)
 
 
 class SetMixin(object):
@@ -513,18 +526,101 @@ class MapAttributeMeta(AttributeContainerMeta):
 
 
 @add_metaclass(MapAttributeMeta)
-class MapAttribute(AttributeContainer, Attribute):
+class MapAttribute(Attribute, AttributeContainer):
+    """
+    A Map Attribute
+
+    The MapAttribute class can be used to store a JSON document as "raw" name-value pairs, or
+    it can be subclassed and the document fields represented as class attributes using Attribute instances.
+
+    To support the ability to subclass MapAttribute and use it as an AttributeContainer, instances of
+    MapAttribute behave differently based both on where they are instantiated and on their type.
+    Because of this complicated behavior, a bit of an introduction is warranted.
+
+    Models that contain a MapAttribute define its properties using a class attribute on the model.
+    For example, below we define "MyModel" which contains a MapAttribute "my_map":
+
+    class MyModel(Model):
+       my_map = MapAttribute(attr_name="dynamo_name", default={})
+
+    When instantiated in this manner (as a class attribute of an AttributeContainer class), the MapAttribute
+    class acts as an instance of the Attribute class. The instance stores data about the attribute (in this
+    example the dynamo name and default value), and acts as a data descriptor, storing any value bound to it
+    on the `attribute_values` dictionary of the containing instance (in this case an instance of MyModel).
+
+    Unlike other Attribute types, the value that gets bound to the containing instance is a new instance of
+    MapAttribute, not an instance of the primitive type. For example, a UnicodeAttribute stores strings in
+    the `attribute_values` of the containing instance; a MapAttribute does not store a dict but instead stores
+    a new instance of itself. This difference in behavior is necessary when subclassing MapAttribute in order
+    to access the Attribute data descriptors that represent the document fields.
+
+    For example, below we redefine "MyModel" to use a subclass of MapAttribute as "my_map":
+
+    class MyMapAttribute(MapAttribute):
+        my_internal_map = MapAttribute()
+
+    class MyModel(Model):
+        my_map = MyMapAttribute(attr_name="dynamo_name", default = {})
+
+    In order to set the value of my_internal_map on an instance of MyModel we need the bound value for "my_map"
+    to be an instance of MapAttribute so that it acts as a data descriptor:
+
+    MyModel().my_map.my_internal_map = {'foo': 'bar'}
+
+    That is the attribute access of "my_map" must return a MyMapAttribute instance and not a dict.
+
+    When an instance is used in this manner (bound to an instance of an AttributeContainer class),
+    the MapAttribute class acts as an AttributeContainer class itself. The instance does not store data
+    about the attribute, and does not act as a data descriptor. The instance stores name-value pairs in its
+    internal `attribute_values` dictionary.
+
+    Thus while MapAttribute multiply inherits from Attribute and AttributeContainer, a MapAttribute instance
+    does not behave as both an Attribute AND an AttributeContainer. Rather an instance of MapAttribute behaves
+    EITHER as an Attribute OR as an AttributeContainer, depending on where it was instantiated.
+
+    So, how do we create this dichotomous behavior? Using the AttributeContainerMeta metaclass.
+    All MapAttribute instances are initialized as AttributeContainers only. During construction of
+    AttributeContainer classes (subclasses of MapAttribute and Model), any instances that are class attributes
+    are transformed from AttributeContainers to Attributes (via the `_make_attribute` method call).
+    """
     attr_type = MAP
 
-    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, **attrs):
-        super(MapAttribute, self).__init__(hash_key=hash_key,
-                                           range_key=range_key,
-                                           null=null,
-                                           default=default,
-                                           attr_name=attr_name)
-        self.attribute_values = {}
-        self._set_defaults()
-        self._set_attributes(**attrs)
+    attribute_args = getargspec(Attribute.__init__).args[1:]
+
+    def __init__(self, **attributes):
+        # Store the kwargs used by Attribute.__init__ in case `_make_attribute` is called.
+        self.attribute_kwargs = dict((arg, attributes.pop(arg)) for arg in self.attribute_args if arg in attributes)
+
+        # Assume all instances should behave like an AttributeContainer. Instances that are intended to be
+        # used as Attributes will be transformed by AttributeContainerMeta during creation of the containing class.
+        # Because of this do not use MRO or cooperative multiple inheritance, call the parent class directly.
+        AttributeContainer.__init__(self, **attributes)
+
+        # It is possible that attributes names can collide with argument names of Attribute.__init__.
+        # Assume that this is the case if any of the following are true:
+        #   - the user passed in other attributes that did not match any argument names
+        #   - this is "raw" (i.e. non-subclassed) MapAttribute instance and attempting to store the attributes
+        #     cannot raise a ValueError (if this assumption is wrong, calling `_make_attribute` removes them)
+        #   - the names of all attributes in self.attribute_kwargs match attributes defined on the class
+        if self.attribute_kwargs and (
+                attributes or self.is_raw() or all(arg in self._get_attributes() for arg in self.attribute_kwargs)):
+            self._set_attributes(**self.attribute_kwargs)
+
+    def _is_attribute_container(self):
+        # Determine if this instance is being used as an AttributeContainer or an Attribute.
+        # AttributeContainer instances have an internal `attribute_values` dictionary that is removed
+        # by the `_make_attribute` call during initialization of the containing class.
+        return 'attribute_values' in self.__dict__
+
+    def _make_attribute(self):
+        # WARNING! This function is only intended to be called from the AttributeContainerMeta metaclass.
+        if not self._is_attribute_container():
+            return
+        # During initialization the kwargs were stored in `attribute_kwargs`. Remove them and re-initialize the class.
+        kwargs = self.attribute_kwargs
+        del self.attribute_kwargs
+        del self.attribute_values
+        Attribute.__init__(self, **kwargs)
 
     def __iter__(self):
         return iter(self.attribute_values)
@@ -533,12 +629,22 @@ class MapAttribute(AttributeContainer, Attribute):
         return self.attribute_values[item]
 
     def __getattr__(self, attr):
-        # Should only be called for non-subclassed, otherwise we would go through
-        # the descriptor instead.
-        try:
-            return self.attribute_values[attr]
-        except KeyError:
-            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, attr))
+        # This should only be called for "raw" (i.e. non-subclassed) MapAttribute instances.
+        # MapAttribute subclasses should access attributes via the Attribute descriptors.
+        if self.is_raw() and self._is_attribute_container():
+            try:
+                return self.attribute_values[attr]
+            except KeyError:
+                pass
+        raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, attr))
+
+    def __setattr__(self, name, value):
+        # "Raw" (i.e. non-subclassed) instances set their name-value pairs in the `attribute_values` dictionary.
+        # MapAttribute subclasses should set attributes via the Attribute descriptors.
+        if self.is_raw() and self._is_attribute_container():
+            self.attribute_values[name] = value
+        else:
+            object.__setattr__(self, name, value)
 
     def __set__(self, instance, value):
         if isinstance(value, collections.Mapping):
@@ -549,14 +655,11 @@ class MapAttribute(AttributeContainer, Attribute):
         """
         Sets the attributes for this object
         """
-        for attr_name, value in six.iteritems(attrs):
-            attribute = self._get_attributes().get(attr_name)
-            if self.is_raw():
-                self.attribute_values[attr_name] = value
-            elif not attribute:
-                raise AttributeError("Attribute {0} specified does not exist".format(attr_name))
-            else:
-                setattr(self, attr_name, value)
+        if self.is_raw():
+            for name, value in six.iteritems(attrs):
+                setattr(self, name, value)
+        else:
+            super(MapAttribute, self)._set_attributes(**attrs)
 
     def is_correctly_typed(self, key, attr):
         can_be_null = attr.null

@@ -221,8 +221,6 @@ class Model(AttributeContainer):
         :param range_key: Only required if the table has a range key attribute.
         :param attrs: A dictionary of attributes to set on this object.
         """
-        self.attribute_values = {}
-        self._set_defaults()
         if hash_key is not None:
             attrs[self._dynamo_to_python_attr(self._get_meta_data().hash_keyname)] = hash_key
         if range_key is not None:
@@ -232,7 +230,7 @@ class Model(AttributeContainer):
                     "This table has no range key, but a range key value was provided: {0}".format(range_key)
                 )
             attrs[self._dynamo_to_python_attr(range_keyname)] = range_key
-        self._set_attributes(**attrs)
+        super(Model, self).__init__(**attrs)
 
     @classmethod
     def has_map_or_list_attributes(cls):
@@ -1262,15 +1260,6 @@ class Model(AttributeContainer):
         item_data = data.get(RESPONSES).get(cls.Meta.table_name)
         unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.Meta.table_name, {}).get(KEYS, None)
         return item_data, unprocessed_items
-
-    def _set_attributes(self, **attrs):
-        """
-        Sets the attributes for this object
-        """
-        for attr_name, attr_value in six.iteritems(attrs):
-            if attr_name not in self._get_attributes():
-                raise ValueError("Attribute {0} specified does not exist".format(attr_name))
-            setattr(self, attr_name, attr_value)
 
     @classmethod
     def add_throttle_record(cls, records):
