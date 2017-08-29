@@ -3,24 +3,23 @@ import re
 PATH_SEGMENT_REGEX = re.compile(r'([^\[\]]+)((?:\[\d+\])*)$')
 
 
-def substitute_names(expression, placeholders, split=True):
+def substitute_names(document_path, placeholders):
     """
-    Replaces names in the given expression with placeholders.
+    Replaces all attribute names in the given document path with placeholders.
     Stores the placeholders in the given dictionary.
     """
-    path_segments = expression.split('.') if split else [expression]
-    for idx, segment in enumerate(path_segments):
+    for idx, segment in enumerate(document_path):
         match = PATH_SEGMENT_REGEX.match(segment)
         if not match:
-            raise ValueError('{0} is not a valid document path'.format(expression))
+            raise ValueError('{0} is not a valid document path'.format('.'.join(document_path)))
         name, indexes = match.groups()
         if name in placeholders:
             placeholder = placeholders[name]
         else:
             placeholder = '#' + str(len(placeholders))
             placeholders[name] = placeholder
-        path_segments[idx] = placeholder + indexes
-    return '.'.join(path_segments)
+        document_path[idx] = placeholder + indexes
+    return '.'.join(document_path)
 
 
 def get_value_placeholder(value, expression_attribute_values):

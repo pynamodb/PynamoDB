@@ -215,22 +215,22 @@ class Model(AttributeContainer):
     _throttle = NoThrottle()
     DoesNotExist = DoesNotExist
 
-    def __init__(self, hash_key=None, range_key=None, **attrs):
+    def __init__(self, hash_key=None, range_key=None, **attributes):
         """
         :param hash_key: Required. The hash key for this object.
         :param range_key: Only required if the table has a range key attribute.
         :param attrs: A dictionary of attributes to set on this object.
         """
         if hash_key is not None:
-            attrs[self._dynamo_to_python_attr(self._get_meta_data().hash_keyname)] = hash_key
+            attributes[self._dynamo_to_python_attr(self._get_meta_data().hash_keyname)] = hash_key
         if range_key is not None:
             range_keyname = self._get_meta_data().range_keyname
             if range_keyname is None:
                 raise ValueError(
                     "This table has no range key, but a range key value was provided: {0}".format(range_key)
                 )
-            attrs[self._dynamo_to_python_attr(range_keyname)] = range_key
-        super(Model, self).__init__(**attrs)
+            attributes[self._dynamo_to_python_attr(range_keyname)] = range_key
+        super(Model, self).__init__(**attributes)
 
     @classmethod
     def has_map_or_list_attributes(cls):

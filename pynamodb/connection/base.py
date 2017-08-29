@@ -1433,7 +1433,7 @@ class Connection(object):
             {self.get_attribute_type(table_name, attribute_name, value): self.parse_attribute(value)}
             for value in values
         ]
-        return getattr(Path(attribute_name, attribute_name=True), operator)(*values)
+        return getattr(Path([attribute_name]), operator)(*values)
 
     def _check_condition(self, name, condition, expected_or_filter, conditional_operator):
         if condition is not None:

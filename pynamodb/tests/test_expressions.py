@@ -1,4 +1,4 @@
-from pynamodb.attributes import ListAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
+from pynamodb.attributes import ListAttribute, MapAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.expressions.condition import Path, size
 from pynamodb.expressions.projection import create_projection_expression
@@ -13,22 +13,22 @@ class PathTestCase(TestCase):
     def test_document_path(self):
         path = Path('foo.bar')
         assert str(path) == 'foo.bar'
-        assert repr(path) == "Path('foo.bar', attribute_name=False)"
+        assert repr(path) == "Path(['foo', 'bar'])"
 
     def test_attribute_name(self):
-        path = Path('foo.bar', attribute_name=True)
+        path = Path(['foo.bar'])
         assert str(path) == "'foo.bar'"
-        assert repr(path) == "Path('foo.bar', attribute_name=True)"
+        assert repr(path) == "Path(['foo.bar'])"
 
     def test_index_document_path(self):
         path = Path('foo.bar')[0]
         assert str(path) == 'foo.bar[0]'
-        assert repr(path) == "Path('foo.bar[0]', attribute_name=False)"
+        assert repr(path) == "Path(['foo', 'bar[0]'])"
 
     def test_index_attribute_name(self):
-        path = Path('foo.bar', attribute_name=True)[0]
+        path = Path(['foo.bar'])[0]
         assert str(path) == "'foo.bar'[0]"
-        assert repr(path) == "Path('foo.bar[0]', attribute_name=True)"
+        assert repr(path) == "Path(['foo.bar[0]'])"
 
     def test_index_invalid(self):
         with self.assertRaises(TypeError):
@@ -65,7 +65,7 @@ class ProjectionExpressionTestCase(TestCase):
         assert placeholders == {'foo': '#0', 'bar': '#1'}
 
     def test_create_project_expression_with_attribute_names(self):
-        attributes_to_get = [Path('foo.bar', attribute_name=True)[0]]
+        attributes_to_get = [Path(['foo.bar'])[0]]
         placeholders = {}
         projection_expression = create_projection_expression(attributes_to_get, placeholders)
         assert projection_expression == "#0[0]"
@@ -302,6 +302,22 @@ class ConditionExpressionTestCase(TestCase):
         expression = condition.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 = :0"
         assert placeholder_names == {'foo.bar': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'baz'}}
+
+    def test_map_attribute_dereference(self):
+        class MyMapAttribute(MapAttribute):
+            nested_string = self.attribute
+
+        # Simulate initialization from inside an AttributeContainer
+        my_map_attribute = MyMapAttribute(attr_name='foo.bar')
+        my_map_attribute._make_attribute()
+        my_map_attribute._update_attribute_paths(my_map_attribute.attr_name)
+
+        condition = my_map_attribute.nested_string == 'baz'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0.#1 = :0"
+        assert placeholder_names == {'foo.bar': '#0', 'foo': '#1'}
         assert expression_attribute_values == {':0': {'S': 'baz'}}
 
 
