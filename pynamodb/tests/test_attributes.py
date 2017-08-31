@@ -744,13 +744,13 @@ class TestMapAttribute:
             sub_sub_map = SubSubMapAttribute()
 
         assert SubModel.sub_map.foo.attr_name == 'dyn_foo'
-        assert SubModel.sub_map.foo.attr_path == ['dyn_sub_map']
+        assert SubModel.sub_map.foo.attr_path == ['dyn_sub_map', 'dyn_foo']
         assert SubSubModel.sub_map.foo.attr_name == 'dyn_foo'
-        assert SubSubModel.sub_map.foo.attr_path == ['dyn_sub_map']
+        assert SubSubModel.sub_map.foo.attr_path == ['dyn_sub_map', 'dyn_foo']
         assert SubSubModel.sub_sub_map.foo.attr_name == 'dyn_foo'
-        assert SubSubModel.sub_sub_map.foo.attr_path == ['sub_sub_map']
+        assert SubSubModel.sub_sub_map.foo.attr_path == ['sub_sub_map', 'dyn_foo']
         assert SubSubModel.sub_sub_map.bar.attr_name == 'dyn_bar'
-        assert SubSubModel.sub_sub_map.bar.attr_path == ['sub_sub_map']
+        assert SubSubModel.sub_sub_map.bar.attr_path == ['sub_sub_map', 'dyn_bar']
 
     def test_attribute_paths_wrapping(self):
         class InnerMapAttribute(MapAttribute):
@@ -769,10 +769,13 @@ class TestMapAttribute:
         class MyModel(Model):
             outer_map = OuterMapAttribute(attr_name='dyn_out_map')
 
-        assert MyModel.outer_map.mid_map_a.inner_map.map_attr.attr_name == 'dyn_map_attr'
-        assert MyModel.outer_map.mid_map_a.inner_map.map_attr.attr_path == ['dyn_out_map', 'mid_map_a', 'dyn_in_map_a']
-        assert MyModel.outer_map.mid_map_b.inner_map.map_attr.attr_name == 'dyn_map_attr'
-        assert MyModel.outer_map.mid_map_b.inner_map.map_attr.attr_path == ['dyn_out_map', 'mid_map_b', 'dyn_in_map_b']
+        mid_map_a_map_attr = MyModel.outer_map.mid_map_a.inner_map.map_attr
+        mid_map_b_map_attr = MyModel.outer_map.mid_map_b.inner_map.map_attr
+
+        assert mid_map_a_map_attr.attr_name == 'dyn_map_attr'
+        assert mid_map_a_map_attr.attr_path == ['dyn_out_map', 'mid_map_a', 'dyn_in_map_a', 'dyn_map_attr']
+        assert mid_map_b_map_attr.attr_name == 'dyn_map_attr'
+        assert mid_map_b_map_attr.attr_path == ['dyn_out_map', 'mid_map_b', 'dyn_in_map_b', 'dyn_map_attr']
 
 
 class TestValueDeserialize:

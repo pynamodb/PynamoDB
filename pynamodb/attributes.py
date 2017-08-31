@@ -37,8 +37,15 @@ class Attribute(object):
             self.null = null
         self.is_hash_key = hash_key
         self.is_range_key = range_key
-        self.attr_name = attr_name
-        self.attr_path = []
+        self.attr_path = [attr_name]
+
+    @property
+    def attr_name(self):
+        return self.attr_path[-1]
+
+    @attr_name.setter
+    def attr_name(self, value):
+        self.attr_path[-1] = value
 
     def __set__(self, instance, value):
         if instance and not self._is_map_attribute_class_object(instance):
@@ -127,7 +134,7 @@ class Attribute(object):
 class AttributePath(Path):
 
     def __init__(self, attribute):
-        super(AttributePath, self).__init__(attribute.attr_path + [attribute.attr_name])
+        super(AttributePath, self).__init__(attribute.attr_path)
         self.attribute = attribute
 
     def __getitem__(self, idx):
