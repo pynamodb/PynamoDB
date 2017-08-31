@@ -738,35 +738,41 @@ class TestMapAttribute:
             bar = UnicodeAttribute(attr_name='dyn_bar')
 
         class SubModel(Model):
-            sub_map = SubMapAttribute()
+            sub_map = SubMapAttribute(attr_name='dyn_sub_map')
 
         class SubSubModel(SubModel):
             sub_sub_map = SubSubMapAttribute()
 
-        assert SubModel.sub_map.foo.attr_path == ['sub_map']
-        assert SubSubModel.sub_map.foo.attr_path == ['sub_map']
+        assert SubModel.sub_map.foo.attr_name == 'dyn_foo'
+        assert SubModel.sub_map.foo.attr_path == ['dyn_sub_map']
+        assert SubSubModel.sub_map.foo.attr_name == 'dyn_foo'
+        assert SubSubModel.sub_map.foo.attr_path == ['dyn_sub_map']
+        assert SubSubModel.sub_sub_map.foo.attr_name == 'dyn_foo'
         assert SubSubModel.sub_sub_map.foo.attr_path == ['sub_sub_map']
+        assert SubSubModel.sub_sub_map.bar.attr_name == 'dyn_bar'
         assert SubSubModel.sub_sub_map.bar.attr_path == ['sub_sub_map']
 
     def test_attribute_paths_wrapping(self):
         class InnerMapAttribute(MapAttribute):
-            map_attr = MapAttribute()
+            map_attr = MapAttribute(attr_name='dyn_map_attr')
 
         class MiddleMapAttributeA(MapAttribute):
-            inner_map = InnerMapAttribute()
+            inner_map = InnerMapAttribute(attr_name='dyn_in_map_a')
 
         class MiddleMapAttributeB(MapAttribute):
-            inner_map = InnerMapAttribute()
+            inner_map = InnerMapAttribute(attr_name='dyn_in_map_b')
 
         class OuterMapAttribute(MapAttribute):
             mid_map_a = MiddleMapAttributeA()
             mid_map_b = MiddleMapAttributeB()
 
         class MyModel(Model):
-            outer_map = OuterMapAttribute()
+            outer_map = OuterMapAttribute(attr_name='dyn_out_map')
 
-        assert MyModel.outer_map.mid_map_a.inner_map.map_attr.attr_path == ['outer_map', 'mid_map_a', 'inner_map']
-        assert MyModel.outer_map.mid_map_b.inner_map.map_attr.attr_path == ['outer_map', 'mid_map_b', 'inner_map']
+        assert MyModel.outer_map.mid_map_a.inner_map.map_attr.attr_name == 'dyn_map_attr'
+        assert MyModel.outer_map.mid_map_a.inner_map.map_attr.attr_path == ['dyn_out_map', 'mid_map_a', 'dyn_in_map_a']
+        assert MyModel.outer_map.mid_map_b.inner_map.map_attr.attr_name == 'dyn_map_attr'
+        assert MyModel.outer_map.mid_map_b.inner_map.map_attr.attr_path == ['dyn_out_map', 'mid_map_b', 'dyn_in_map_b']
 
 
 class TestValueDeserialize:
