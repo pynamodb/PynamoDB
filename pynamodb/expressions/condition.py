@@ -1,8 +1,8 @@
-from copy import copy
 from pynamodb.constants import (
     AND, ATTR_TYPE_MAP, BETWEEN, BINARY_SHORT, IN, NUMBER_SHORT, OR, SHORT_ATTR_TYPES, STRING_SHORT
 )
 from pynamodb.expressions.util import get_value_placeholder, substitute_names
+from six import string_types
 from six.moves import range
 
 
@@ -90,16 +90,17 @@ class Path(Operand):
     In addition to supporting comparisons, Path also supports creating conditions from functions.
     """
 
-    def __init__(self, path, attribute_name=False):
-        self.path = path
-        self.attribute_name = attribute_name
+    def __init__(self, path):
+        if not path:
+            raise ValueError("path cannot be empty")
+        self.path = path.split('.') if isinstance(path, string_types) else list(path)
 
     def __getitem__(self, idx):
         # list dereference operator
         if not isinstance(idx, int):
             raise TypeError("list indices must be integers, not {0}".format(type(idx).__name__))
-        element_path = copy(self)
-        element_path.path = '{0}[{1}]'.format(self.path, idx)
+        element_path = Path(self.path)  # copy the document path before indexing last element
+        element_path.path[-1] = '{0}[{1}]'.format(self.path[-1], idx)
         return element_path
 
     def exists(self):
@@ -119,14 +120,17 @@ class Path(Operand):
         return Contains(self, self._serialize(item))
 
     def __str__(self):
-        if self.attribute_name and '.' in self.path:
-            # Quote the path to illustrate that the dot characters are not dereference operators.
-            path, sep, rem = self.path.partition('[')
-            return repr(path) + sep + rem
-        return self.path
+        # Quote the path to illustrate that any dot characters are not dereference operators.
+        quoted_path = [self._quote_path(segment) if '.' in segment else segment for segment in self.path]
+        return '.'.join(quoted_path)
 
     def __repr__(self):
-        return "Path('{0}', attribute_name={1})".format(self.path, self.attribute_name)
+        return "Path({0})".format(self.path)
+
+    @staticmethod
+    def _quote_path(path):
+        path, sep, rem = path.partition('[')
+        return repr(path) + sep + rem
 
 
 class Condition(object):
@@ -148,8 +152,7 @@ class Condition(object):
 
     def _get_path(self, path, placeholder_names):
         if isinstance(path, Path):
-            split = not path.attribute_name
-            return substitute_names(path.path, placeholder_names, split=split)
+            return substitute_names(path.path, placeholder_names)
         elif isinstance(path, Size):
             return "size ({0})".format(self._get_path(path.path, placeholder_names))
         else:

@@ -5,6 +5,7 @@ import six
 from six import add_metaclass
 import json
 from base64 import b64encode, b64decode
+from copy import deepcopy
 from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import tzutc
@@ -36,7 +37,15 @@ class Attribute(object):
             self.null = null
         self.is_hash_key = hash_key
         self.is_range_key = range_key
-        self.attr_name = attr_name
+        self.attr_path = [attr_name]
+
+    @property
+    def attr_name(self):
+        return self.attr_path[-1]
+
+    @attr_name.setter
+    def attr_name(self, value):
+        self.attr_path[-1] = value
 
     def __set__(self, instance, value):
         if instance and not self._is_map_attribute_class_object(instance):
@@ -44,7 +53,11 @@ class Attribute(object):
             instance.attribute_values[attr_name] = value
 
     def __get__(self, instance, owner):
-        if instance and not self._is_map_attribute_class_object(instance):
+        if self._is_map_attribute_class_object(instance):
+            # MapAttribute class objects store a local copy of the attribute with `attr_path` set to the document path.
+            attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+            return instance.__dict__.get(attr_name, None) or self
+        elif instance:
             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
             return instance.attribute_values.get(attr_name, None)
         else:
@@ -121,12 +134,14 @@ class Attribute(object):
 class AttributePath(Path):
 
     def __init__(self, attribute):
-        super(AttributePath, self).__init__(attribute.attr_name, attribute_name=True)
+        super(AttributePath, self).__init__(attribute.attr_path)
         self.attribute = attribute
 
     def __getitem__(self, idx):
         if self.attribute.attr_type != LIST:  # only list elements support the list dereference operator
             raise TypeError("'{0}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
+        # The __getitem__ call returns a new Path instance, not an AttributePath instance.
+        # This is intended since the list element is not the same attribute as the list itself.
         return super(AttributePath, self).__getitem__(idx)
 
     def contains(self, item):
@@ -145,7 +160,7 @@ class AttributePath(Path):
             return self.attribute.serialize([value])[0]
         if self.attribute.attr_type == MAP and not isinstance(value, dict):
             # Map attributes assume the values to be serialized are maps.
-            return self.attribute.serialize({'': value})['']
+            return super(AttributePath, self)._serialize(value)
         return {ATTR_TYPE_MAP[self.attribute.attr_type]: self.attribute.serialize(value)}
 
 
@@ -174,16 +189,23 @@ class AttributeContainerMeta(type):
 
             if issubclass(item_cls, Attribute):
                 instance = getattr(cls, item_name)
+                initialized = False
                 if isinstance(instance, MapAttribute):
                     # MapAttribute instances that are class attributes of an AttributeContainer class
                     # should behave like an Attribute instance and not an AttributeContainer instance.
-                    instance._make_attribute()
+                    initialized = instance._make_attribute()
 
                 cls._attributes[item_name] = instance
                 if instance.attr_name is not None:
                     cls._dynamo_to_python_attrs[instance.attr_name] = item_name
                 else:
                     instance.attr_name = item_name
+
+                if initialized and isinstance(instance, MapAttribute):
+                    # To support creating expressions from nested attributes, MapAttribute instances
+                    # store local copies of the attributes in cls._attributes with `attr_path` set.
+                    # Prepend the `attr_path` lists with the dynamo attribute name.
+                    instance._update_attribute_paths(instance.attr_name)
 
 
 @add_metaclass(AttributeContainerMeta)
@@ -599,7 +621,7 @@ class MapAttribute(Attribute, AttributeContainer):
         # It is possible that attributes names can collide with argument names of Attribute.__init__.
         # Assume that this is the case if any of the following are true:
         #   - the user passed in other attributes that did not match any argument names
-        #   - this is "raw" (i.e. non-subclassed) MapAttribute instance and attempting to store the attributes
+        #   - this is a "raw" (i.e. non-subclassed) MapAttribute instance and attempting to store the attributes
         #     cannot raise a ValueError (if this assumption is wrong, calling `_make_attribute` removes them)
         #   - the names of all attributes in self.attribute_kwargs match attributes defined on the class
         if self.attribute_kwargs and (
@@ -615,12 +637,30 @@ class MapAttribute(Attribute, AttributeContainer):
     def _make_attribute(self):
         # WARNING! This function is only intended to be called from the AttributeContainerMeta metaclass.
         if not self._is_attribute_container():
-            return
+            # This instance has already been initialized by another AttributeContainer class.
+            return False
         # During initialization the kwargs were stored in `attribute_kwargs`. Remove them and re-initialize the class.
         kwargs = self.attribute_kwargs
         del self.attribute_kwargs
         del self.attribute_values
         Attribute.__init__(self, **kwargs)
+        for name, attr in self._get_attributes().items():
+            # Set a local attribute with the same name that shadows the class attribute.
+            # Because attr is a data descriptor and the attribute already exists on the class,
+            # we have to store the local copy directly into __dict__ to prevent calling attr.__set__.
+            # Use deepcopy so that `attr_path` and any local attributes are also copied.
+            self.__dict__[name] = deepcopy(attr)
+        return True
+
+    def _update_attribute_paths(self, path_segment):
+        # WARNING! This function is only intended to be called from the AttributeContainerMeta metaclass.
+        if self._is_attribute_container():
+            raise AssertionError("MapAttribute._update_attribute_paths called before MapAttribute._make_attribute")
+        for name in self._get_attributes().keys():
+            local_attr = self.__dict__[name]
+            local_attr.attr_path.insert(0, path_segment)
+            if isinstance(local_attr, MapAttribute):
+                local_attr._update_attribute_paths(path_segment)
 
     def __iter__(self):
         return iter(self.attribute_values)
