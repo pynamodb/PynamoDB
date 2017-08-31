@@ -7,7 +7,7 @@ from datetime import datetime
 from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
 from pynamodb.attributes import (
-    UnicodeAttribute, BinaryAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute
+    UnicodeAttribute, BinaryAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute, UnicodeSetAttribute
 )
 
 
@@ -48,6 +48,7 @@ class TestModel(Model):
     epoch = UTCDateTimeAttribute(default=datetime.now)
     content = BinaryAttribute(null=True)
     scores = NumberSetAttribute()
+    teams = UnicodeSetAttribute()
 
 if not TestModel.exists():
     print("Creating table")
@@ -98,3 +99,47 @@ for item in TestModel.view_index.query('foo', view__gt=0):
     print("Item queried from index: {0}".format(item.view))
 
 print(query_obj.update_item('view', 1, action='add', view=1, forum__null=False))
+
+obj = TestModel('5', '6')
+obj.save()
+obj.refresh()
+obj.update({
+    'scores': {
+        'action': 'add',
+        'value': set([1, 2, 3])
+    },
+    'teams': {
+        'action': 'add',
+        'value': set(['one', 'two', 'three'])
+    },
+})
+
+obj.refresh()
+print("Updated item: {}: Scores: {}, Teams: {}".format(obj, obj.scores, obj.teams))
+
+obj.update({
+    'scores': {
+        'action': 'delete',
+        'value': set([1])
+    },
+    'teams': {
+        'action': 'delete',
+        'value': set(['one'])
+    }
+})
+
+obj.refresh()
+print("Updated item: {}: Scores: {}, Teams: {}".format(obj, obj.scores, obj.teams))
+
+obj.update({
+    'scores': {
+        'action': 'delete'
+    },
+    'teams': {
+        'action': 'delete'
+    }
+})
+
+# Not using refresh here as it doesn't seem to clear the deleted attributes from the existing instance
+obj = TestModel.get('5', '6')
+print("Updated item: {}: Scores: {}, Teams: {}".format(obj, obj.scores, obj.teams))

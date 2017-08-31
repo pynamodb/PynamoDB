@@ -1018,6 +1018,51 @@ class ModelTestCase(TestCase):
             assert item.views is None
             self.assertEquals(set(['bob']), item.custom_aliases)
 
+    def test_update_allows_values_in_set_delete_actions(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = SIMPLE_MODEL_TABLE_DATA
+            item = SimpleUserModel('foo', is_active=True, email='foo@example.com', signature='foo')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item.save()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "aliases": {
+                        "SS": set(["rob"]),
+                    }
+                }
+            }
+            item.update({
+                'custom_aliases': {'value': set(['bob']), 'action': 'delete'},
+            })
+
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'UpdateExpression': 'DELETE #0 :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'aliases',
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'SS': set(['bob'])
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+
+            deep_eq(args, params, _assert=True)
+            self.assertEquals(set(['rob']), item.custom_aliases)
+
     def test_update_item(self):
         """
         Model.update_item
