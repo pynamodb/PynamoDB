@@ -730,6 +730,44 @@ class TestMapAttribute:
     def test_metaclass(self):
         assert type(MapAttribute) == MapAttributeMeta
 
+    def test_attribute_paths_subclassing(self):
+        class SubMapAttribute(MapAttribute):
+            foo = UnicodeAttribute(attr_name='dyn_foo')
+
+        class SubSubMapAttribute(SubMapAttribute):
+            bar = UnicodeAttribute(attr_name='dyn_bar')
+
+        class SubModel(Model):
+            sub_map = SubMapAttribute()
+
+        class SubSubModel(SubModel):
+            sub_sub_map = SubSubMapAttribute()
+
+        assert SubModel.sub_map.foo.attr_path == ['sub_map']
+        assert SubSubModel.sub_map.foo.attr_path == ['sub_map']
+        assert SubSubModel.sub_sub_map.foo.attr_path == ['sub_sub_map']
+        assert SubSubModel.sub_sub_map.bar.attr_path == ['sub_sub_map']
+
+    def test_attribute_paths_wrapping(self):
+        class InnerMapAttribute(MapAttribute):
+            map_attr = MapAttribute()
+
+        class MiddleMapAttributeA(MapAttribute):
+            inner_map = InnerMapAttribute()
+
+        class MiddleMapAttributeB(MapAttribute):
+            inner_map = InnerMapAttribute()
+
+        class OuterMapAttribute(MapAttribute):
+            mid_map_a = MiddleMapAttributeA()
+            mid_map_b = MiddleMapAttributeB()
+
+        class MyModel(Model):
+            outer_map = OuterMapAttribute()
+
+        assert MyModel.outer_map.mid_map_a.inner_map.map_attr.attr_path == ['outer_map', 'mid_map_a', 'inner_map']
+        assert MyModel.outer_map.mid_map_b.inner_map.map_attr.attr_path == ['outer_map', 'mid_map_b', 'inner_map']
+
 
 class TestValueDeserialize:
     def test__get_value_for_deserialize(self):

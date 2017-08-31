@@ -182,10 +182,11 @@ class AttributeContainerMeta(type):
 
             if issubclass(item_cls, Attribute):
                 instance = getattr(cls, item_name)
+                initialized = False
                 if isinstance(instance, MapAttribute):
                     # MapAttribute instances that are class attributes of an AttributeContainer class
                     # should behave like an Attribute instance and not an AttributeContainer instance.
-                    instance._make_attribute()
+                    initialized = instance._make_attribute()
 
                 cls._attributes[item_name] = instance
                 if instance.attr_name is not None:
@@ -193,7 +194,7 @@ class AttributeContainerMeta(type):
                 else:
                     instance.attr_name = item_name
 
-                if isinstance(instance, MapAttribute):
+                if initialized and isinstance(instance, MapAttribute):
                     # To support creating expressions from nested attributes, MapAttribute instances
                     # store local copies of the attributes in cls._attributes with `attr_path` set.
                     # Prepend the `attr_path` lists with the dynamo attribute name.
@@ -629,7 +630,8 @@ class MapAttribute(Attribute, AttributeContainer):
     def _make_attribute(self):
         # WARNING! This function is only intended to be called from the AttributeContainerMeta metaclass.
         if not self._is_attribute_container():
-            raise AssertionError("MapAttribute._make_attribute called multiple times")
+            # This instance has already been initialized by another AttributeContainer class.
+            return False
         # During initialization the kwargs were stored in `attribute_kwargs`. Remove them and re-initialize the class.
         kwargs = self.attribute_kwargs
         del self.attribute_kwargs
@@ -641,6 +643,7 @@ class MapAttribute(Attribute, AttributeContainer):
             # we have to store the local copy directly into __dict__ to prevent calling attr.__set__.
             # Use deepcopy so that `attr_path` and any local attributes are also copied.
             self.__dict__[name] = deepcopy(attr)
+        return True
 
     def _update_attribute_paths(self, path_segment):
         # WARNING! This function is only intended to be called from the AttributeContainerMeta metaclass.
