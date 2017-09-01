@@ -14,7 +14,7 @@ from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
-from pynamodb.expressions.condition import Path
+from pynamodb.expressions.operand import AttributePath
 import collections
 
 
@@ -106,7 +106,7 @@ class Attribute(object):
         return AttributePath(self).__ge__(other)
 
     def __getitem__(self, idx):
-        return AttributePath(self)[idx]
+        return AttributePath(self).__getitem__(idx)
 
     def between(self, lower, upper):
         return AttributePath(self).between(lower, upper)
@@ -129,39 +129,6 @@ class Attribute(object):
 
     def contains(self, item):
         return AttributePath(self).contains(item)
-
-
-class AttributePath(Path):
-
-    def __init__(self, attribute):
-        super(AttributePath, self).__init__(attribute.attr_path)
-        self.attribute = attribute
-
-    def __getitem__(self, idx):
-        if self.attribute.attr_type != LIST:  # only list elements support the list dereference operator
-            raise TypeError("'{0}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
-        # The __getitem__ call returns a new Path instance, not an AttributePath instance.
-        # This is intended since the list element is not the same attribute as the list itself.
-        return super(AttributePath, self).__getitem__(idx)
-
-    def contains(self, item):
-        if self.attribute.attr_type in [BINARY_SET, NUMBER_SET, STRING_SET]:
-            # Set attributes assume the values to be serialized are sets.
-            (attr_type, attr_value), = self._serialize([item]).items()
-            item = {attr_type[0]: attr_value[0]}
-        return super(AttributePath, self).contains(item)
-
-    def _serialize(self, value):
-        # Check to see if value is already serialized
-        if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in SHORT_ATTR_TYPES:
-            return value
-        if self.attribute.attr_type == LIST and not isinstance(value, list):
-            # List attributes assume the values to be serialized are lists.
-            return self.attribute.serialize([value])[0]
-        if self.attribute.attr_type == MAP and not isinstance(value, dict):
-            # Map attributes assume the values to be serialized are maps.
-            return super(AttributePath, self)._serialize(value)
-        return {ATTR_TYPE_MAP[self.attribute.attr_type]: self.attribute.serialize(value)}
 
 
 class AttributeContainerMeta(type):

@@ -1,136 +1,14 @@
 from pynamodb.constants import (
-    AND, ATTR_TYPE_MAP, BETWEEN, BINARY_SHORT, IN, NUMBER_SHORT, OR, SHORT_ATTR_TYPES, STRING_SHORT
+    AND, BETWEEN, BINARY_SHORT, IN, NUMBER_SHORT, OR, SHORT_ATTR_TYPES, STRING_SHORT
 )
 from pynamodb.expressions.util import get_value_placeholder, substitute_names
-from six import string_types
 from six.moves import range
-
-
-class Operand(object):
-    """
-    Operand is the base class for objects that support creating conditions from comparators.
-    """
-
-    def __eq__(self, other):
-        return self._compare('=', other)
-
-    def __ne__(self, other):
-        return self._compare('<>', other)
-
-    def __lt__(self, other):
-        return self._compare('<', other)
-
-    def __le__(self, other):
-        return self._compare('<=', other)
-
-    def __gt__(self, other):
-        return self._compare('>', other)
-
-    def __ge__(self, other):
-        return self._compare('>=', other)
-
-    def _compare(self, operator, other):
-        return Condition(self, operator, self._serialize(other))
-
-    def between(self, lower, upper):
-        # This seemed preferable to other options such as merging value1 <= attribute & attribute <= value2
-        # into one condition expression. DynamoDB only allows a single sort key comparison and having this
-        # work but similar expressions like value1 <= attribute & attribute < value2 fail seems too brittle.
-        return Between(self, self._serialize(lower), self._serialize(upper))
-
-    def is_in(self, *values):
-        values = [self._serialize(value) for value in values]
-        return In(self, *values)
-
-    def _serialize(self, value):
-        # Check to see if value is already serialized
-        if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in SHORT_ATTR_TYPES:
-            return value
-        # Serialize value based on its type
-        from pynamodb.attributes import _get_class_for_serialize
-        attr_class = _get_class_for_serialize(value)
-        return {ATTR_TYPE_MAP[attr_class.attr_type]: attr_class.serialize(value)}
-
-
-class Size(Operand):
-    """
-    Size is a special operand that represents the result of calling the 'size' function on a Path operand.
-    """
-
-    def __init__(self, path):
-        # prevent circular import -- AttributePath imports Path
-        from pynamodb.attributes import Attribute, AttributePath
-        if isinstance(path, Path):
-            self.path = Path
-        elif isinstance(path, Attribute):
-            self.path = AttributePath(path)
-        else:
-            self.path = Path(path)
-
-    def _serialize(self, value):
-        if not isinstance(value, int):
-            raise TypeError("size must be compared to an integer, not {0}".format(type(value).__name__))
-        return {NUMBER_SHORT: str(value)}
-
-    def __str__(self):
-        return "size({0})".format(self.path)
-
-    def __repr__(self):
-        return "Size({0})".format(repr(self.path))
 
 
 # match dynamo function syntax: size(path)
 def size(path):
+    from pynamodb.expressions.operand import Size
     return Size(path)
-
-
-class Path(Operand):
-    """
-    Path is an operand that represents either an attribute name or document path.
-    In addition to supporting comparisons, Path also supports creating conditions from functions.
-    """
-
-    def __init__(self, path):
-        if not path:
-            raise ValueError("path cannot be empty")
-        self.path = path.split('.') if isinstance(path, string_types) else list(path)
-
-    def __getitem__(self, idx):
-        # list dereference operator
-        if not isinstance(idx, int):
-            raise TypeError("list indices must be integers, not {0}".format(type(idx).__name__))
-        element_path = Path(self.path)  # copy the document path before indexing last element
-        element_path.path[-1] = '{0}[{1}]'.format(self.path[-1], idx)
-        return element_path
-
-    def exists(self):
-        return Exists(self)
-
-    def does_not_exist(self):
-        return NotExists(self)
-
-    def is_type(self, attr_type):
-        return IsType(self, attr_type)
-
-    def startswith(self, prefix):
-        # A 'pythonic' replacement for begins_with to match string behavior (e.g. "foo".startswith("f"))
-        return BeginsWith(self, self._serialize(prefix))
-
-    def contains(self, item):
-        return Contains(self, self._serialize(item))
-
-    def __str__(self):
-        # Quote the path to illustrate that any dot characters are not dereference operators.
-        quoted_path = [self._quote_path(segment) if '.' in segment else segment for segment in self.path]
-        return '.'.join(quoted_path)
-
-    def __repr__(self):
-        return "Path({0})".format(self.path)
-
-    @staticmethod
-    def _quote_path(path):
-        path, sep, rem = path.partition('[')
-        return repr(path) + sep + rem
 
 
 class Condition(object):
@@ -151,6 +29,7 @@ class Condition(object):
         return self.format_string.format(*values, path=path, operator=self.operator)
 
     def _get_path(self, path, placeholder_names):
+        from pynamodb.expressions.operand import Path, Size
         if isinstance(path, Path):
             return substitute_names(path.path, placeholder_names)
         elif isinstance(path, Size):
