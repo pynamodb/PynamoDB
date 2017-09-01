@@ -1,5 +1,5 @@
 from pynamodb.attributes import Attribute
-from pynamodb.expressions.condition import Path
+from pynamodb.expressions.operand import Path
 from pynamodb.expressions.util import substitute_names
 
 

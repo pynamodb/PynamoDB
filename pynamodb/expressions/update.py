@@ -10,7 +10,7 @@ class Action(object):
         self.value = value
 
     def serialize(self, placeholder_names, expression_attribute_values):
-        path = substitute_names(self.path.split('.'), placeholder_names)
+        path = substitute_names(self.path.path, placeholder_names)
         value = get_value_placeholder(self.value, expression_attribute_values) if self.value else None
         return self.format_string.format(value, path=path)
 

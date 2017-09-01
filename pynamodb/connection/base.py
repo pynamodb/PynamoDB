@@ -43,9 +43,10 @@ from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
 )
-from pynamodb.expressions.condition import Condition, Path
+from pynamodb.expressions.condition import Condition
+from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
-from pynamodb.expressions.update import AddAction, DeleteAction, RemoveAction, SetAction, Update
+from pynamodb.expressions.update import Update
 from pynamodb.settings import get_settings_value
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
@@ -870,6 +871,7 @@ class Connection(object):
         update_expression = Update()
         # We sort the keys here for determinism. This is mostly done to simplify testing.
         for key in sorted(attribute_updates.keys()):
+            path = Path([key])
             update = attribute_updates[key]
             action = update.get(ACTION)
             if action not in ATTR_UPDATE_ACTIONS:
@@ -880,11 +882,12 @@ class Connection(object):
                 attr_type = self.get_attribute_type(table_name, key, value)
             value = {attr_type: value}
             if action == DELETE:
-                action = RemoveAction(key) if attr_type is None else DeleteAction(key, value)
+                action = path.remove() if attr_type is None else path.difference_update(value)
             elif action == PUT:
-                action = SetAction(key, value)
+                action = path.set(value)
             else:
-                action = AddAction(key, value)
+                # right now update() returns an AddAction
+                action = path.update(value)
             update_expression.add_action(action)
         operation_kwargs[UPDATE_EXPRESSION] = update_expression.serialize(name_placeholders, expression_attribute_values)
 
