@@ -1,56 +1,106 @@
 from pynamodb.constants import (
-    ATTR_TYPE_MAP, BINARY_SET, LIST, MAP, NUMBER_SET, NUMBER_SHORT, SHORT_ATTR_TYPES, STRING_SET
+    ATTR_TYPE_MAP, BINARY_SET, LIST, MAP, NUMBER_SET, NUMBER_SHORT, SHORT_ATTR_TYPES, STRING_SET, STRING_SHORT
 )
 from pynamodb.expressions.condition import (
-    BeginsWith, Between, Condition, Contains, Exists, In, IsType, NotExists
+    BeginsWith, Between, Comparison, Contains, Exists, In, IsType, NotExists
 )
 from pynamodb.expressions.update import (
     AddAction, DeleteAction, RemoveAction, SetAction
 )
-from pynamodb.expressions.util import get_path_segments
+from pynamodb.expressions.util import get_path_segments, get_value_placeholder, substitute_names
 
 
 class Operand(object):
     """
-    Operand is the base class for objects that support creating conditions from comparators.
+    Operand is the base class for objects that can be operands in Condition and Update Expressions.
     """
 
     def __eq__(self, other):
-        return self._compare('=', other)
+        return Comparison('=', self, self._to_operand(other))
 
     def __ne__(self, other):
-        return self._compare('<>', other)
+        return Comparison('<>', self, self._to_operand(other))
 
     def __lt__(self, other):
-        return self._compare('<', other)
+        return Comparison('<', self, self._to_operand(other))
 
     def __le__(self, other):
-        return self._compare('<=', other)
+        return Comparison('<=', self, self._to_operand(other))
 
     def __gt__(self, other):
-        return self._compare('>', other)
+        return Comparison('>', self, self._to_operand(other))
 
     def __ge__(self, other):
-        return self._compare('>=', other)
-
-    def _compare(self, operator, other):
-        return Condition(self, operator, self._serialize(other))
+        return Comparison('>=', self, self._to_operand(other))
 
     def between(self, lower, upper):
-        # This seemed preferable to other options such as merging value1 <= attribute & attribute <= value2
-        # into one condition expression. DynamoDB only allows a single sort key comparison and having this
-        # work but similar expressions like value1 <= attribute & attribute < value2 fail seems too brittle.
-        return Between(self, self._serialize(lower), self._serialize(upper))
+        return Between(self, self._to_operand(lower), self._to_operand(upper))
 
     def is_in(self, *values):
-        values = [self._serialize(value) for value in values]
+        values = [self._to_operand(value) for value in values]
         return In(self, *values)
 
-    def _serialize(self, value):
+    def serialize(self, placeholder_names, expression_attribute_values):
+        raise NotImplementedError('serialize has not been implemented for {0}'.format(self.__class__.__name__))
+
+    def _has_type(self, short_type):
+        raise NotImplementedError('_has_type has not been implemented for {0}'.format(self.__class__.__name__))
+
+    def _to_operand(self, value):
+        from pynamodb.attributes import Attribute  # prevent circular import -- Attribute imports AttributePath
+        if isinstance(value, Attribute):
+            return AttributePath(value)
+        return value if isinstance(value, Operand) else self._to_value(value)
+
+    def _to_value(self, value):
+        return Value(value)
+
+
+class Value(Operand):
+    """
+    Value is an operand that represents an attribute value.
+    """
+
+    def __init__(self, value, attribute=None):
         # Check to see if value is already serialized
         if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in SHORT_ATTR_TYPES:
-            return value
-        # Serialize value based on its type
+            self.value = value
+        else:
+            self.value = Value._serialize_value(value, attribute)
+
+    def serialize(self, placeholder_names, expression_attribute_values):
+        return get_value_placeholder(self.value, expression_attribute_values)
+
+    def _has_type(self, short_type):
+        (attr_type, value), = self.value.items()
+        return short_type == attr_type
+
+    def __str__(self):
+        (attr_type, value), = self.value.items()
+        try:
+            from pynamodb.attributes import _get_class_for_deserialize
+            attr_class = _get_class_for_deserialize(self.value)
+            return str(attr_class.deserialize(value))
+        except ValueError:
+            return str(value)
+
+    def __repr__(self):
+        return "Value({0})".format(self.value)
+
+    @staticmethod
+    def _serialize_value(value, attribute=None):
+        if attribute is None:
+            return Value._serialize_value_based_on_type(value)
+        if attribute.attr_type == LIST and not isinstance(value, list):
+            # List attributes assume the values to be serialized are lists.
+            return attribute.serialize([value])[0]
+        if attribute.attr_type == MAP and not isinstance(value, dict):
+            # Map attributes assume the values to be serialized are maps.
+            return Value._serialize_value_based_on_type(value)
+        return {ATTR_TYPE_MAP[attribute.attr_type]: attribute.serialize(value)}
+
+    @staticmethod
+    def _serialize_value_based_on_type(value):
         from pynamodb.attributes import _get_class_for_serialize
         attr_class = _get_class_for_serialize(value)
         return {ATTR_TYPE_MAP[attr_class.attr_type]: attr_class.serialize(value)}
@@ -59,7 +109,6 @@ class Operand(object):
 class Path(Operand):
     """
     Path is an operand that represents either an attribute name or document path.
-    In addition to supporting comparisons, Path also supports creating conditions from functions.
     """
 
     def __init__(self, path):
@@ -77,15 +126,15 @@ class Path(Operand):
 
     def set(self, value):
         # Returns an update action that sets this attribute to the given value
-        return SetAction(self, value if isinstance(value, Path) else self._serialize(value))
+        return SetAction(self, self._to_operand(value))
 
     def update(self, subset):
         # Returns an update action that adds the subset to this set attribute
-        return AddAction(self, self._serialize(subset))
+        return AddAction(self, self._to_operand(subset))
 
     def difference_update(self, subset):
         # Returns an update action that deletes the subset from this set attribute
-        return DeleteAction(self, self._serialize(subset))
+        return DeleteAction(self, self._to_operand(subset))
 
     def remove(self):
         # Returns an update action that removes this attribute from the item
@@ -98,14 +147,27 @@ class Path(Operand):
         return NotExists(self)
 
     def is_type(self, attr_type):
-        return IsType(self, attr_type)
+        if attr_type not in SHORT_ATTR_TYPES:
+            raise ValueError("{0} is not a valid attribute type. Must be one of {1}".format(
+                attr_type, SHORT_ATTR_TYPES))
+        return IsType(self, Value(attr_type))
 
     def startswith(self, prefix):
         # A 'pythonic' replacement for begins_with to match string behavior (e.g. "foo".startswith("f"))
-        return BeginsWith(self, self._serialize(prefix))
+        operand = self._to_operand(prefix)
+        if not operand._has_type(STRING_SHORT):
+            raise ValueError("{0} must be a string operand".format(operand))
+        return BeginsWith(self, operand)
 
     def contains(self, item):
-        return Contains(self, self._serialize(item))
+        return Contains(self, self._to_operand(item))
+
+    def serialize(self, placeholder_names, expression_attribute_values):
+        return substitute_names(self.path, placeholder_names)
+
+    def _has_type(self, short_type):
+        # Assume the attribute has the correct type
+        return True
 
     def __str__(self):
         # Quote the path to illustrate that any dot characters are not dereference operators.
@@ -137,21 +199,15 @@ class AttributePath(Path):
     def contains(self, item):
         if self.attribute.attr_type in [BINARY_SET, NUMBER_SET, STRING_SET]:
             # Set attributes assume the values to be serialized are sets.
-            (attr_type, attr_value), = self._serialize([item]).items()
+            (attr_type, attr_value), = self._to_value([item]).value.items()
             item = {attr_type[0]: attr_value[0]}
         return super(AttributePath, self).contains(item)
 
-    def _serialize(self, value):
-        # Check to see if value is already serialized
-        if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in SHORT_ATTR_TYPES:
-            return value
-        if self.attribute.attr_type == LIST and not isinstance(value, list):
-            # List attributes assume the values to be serialized are lists.
-            return self.attribute.serialize([value])[0]
-        if self.attribute.attr_type == MAP and not isinstance(value, dict):
-            # Map attributes assume the values to be serialized are maps.
-            return super(AttributePath, self)._serialize(value)
-        return {ATTR_TYPE_MAP[self.attribute.attr_type]: self.attribute.serialize(value)}
+    def _has_type(self, short_type):
+        return ATTR_TYPE_MAP[self.attribute.attr_type] == short_type
+
+    def _to_value(self, value):
+        return Value(value, attribute=self.attribute)
 
 
 class Size(Operand):
@@ -169,10 +225,14 @@ class Size(Operand):
         else:
             self.path = Path(path)
 
-    def _serialize(self, value):
-        if not isinstance(value, int):
-            raise TypeError("size must be compared to an integer, not {0}".format(type(value).__name__))
-        return {NUMBER_SHORT: str(value)}
+    def _to_operand(self, value):
+        operand = super(Size, self)._to_operand(value)
+        if not operand._has_type(NUMBER_SHORT):
+            raise ValueError("size must be compared to a number, not {0}".format(operand))
+        return operand
+
+    def serialize(self, placeholder_names, expression_attribute_values):
+        return "size ({0})".format(substitute_names(self.path.path, placeholder_names))
 
     def __str__(self):
         return "size({0})".format(self.path)

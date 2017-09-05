@@ -1,7 +1,4 @@
-from pynamodb.constants import (
-    AND, BETWEEN, BINARY_SHORT, IN, NUMBER_SHORT, OR, SHORT_ATTR_TYPES, STRING_SHORT
-)
-from pynamodb.expressions.util import get_value_placeholder, substitute_names
+from pynamodb.constants import AND, BETWEEN, IN, OR
 from six.moves import range
 
 
@@ -12,38 +9,19 @@ def size(path):
 
 
 class Condition(object):
-    format_string = '{path} {operator} {0}'
+    format_string = ''
 
-    def __init__(self, path, operator, *values):
-        self.path = path
+    def __init__(self, operator, *values):
         self.operator = operator
         self.values = values
 
     # http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
     def is_valid_range_key_condition(self, path):
-        return str(self.path) == path and self.operator in ['=', '<', '<=', '>', '>=', BETWEEN, 'begins_with']
+        return self.operator in ['=', '<', '<=', '>', '>=', BETWEEN, 'begins_with'] and str(self.values[0]) == path
 
     def serialize(self, placeholder_names, expression_attribute_values):
-        path = self._get_path(self.path, placeholder_names)
-        values = self._get_values(placeholder_names, expression_attribute_values)
-        return self.format_string.format(*values, path=path, operator=self.operator)
-
-    def _get_path(self, path, placeholder_names):
-        from pynamodb.expressions.operand import Path, Size
-        if isinstance(path, Path):
-            return substitute_names(path.path, placeholder_names)
-        elif isinstance(path, Size):
-            return "size ({0})".format(self._get_path(path.path, placeholder_names))
-        else:
-            return path
-
-    def _get_values(self, placeholder_names, expression_attribute_values):
-        return [
-            value.serialize(placeholder_names, expression_attribute_values)
-            if isinstance(value, Condition)
-            else get_value_placeholder(value, expression_attribute_values)
-            for value in self.values
-        ]
+        values = [value.serialize(placeholder_names, expression_attribute_values) for value in self.values]
+        return self.format_string.format(*values, operator=self.operator)
 
     def __and__(self, other):
         if not isinstance(other, Condition):
@@ -61,8 +39,8 @@ class Condition(object):
         return Not(self)
 
     def __repr__(self):
-        values = [repr(value) if isinstance(value, Condition) else list(value.items())[0][1] for value in self.values]
-        return self.format_string.format(*values, path=self.path, operator = self.operator)
+        values = [str(value) for value in self.values]
+        return self.format_string.format(*values, operator=self.operator)
 
     def __nonzero__(self):
         # Prevent users from accidentally comparing the condition object instead of the attribute instance
@@ -73,77 +51,80 @@ class Condition(object):
         raise TypeError("unsupported operand type(s) for bool: {0}".format(self.__class__.__name__))
 
 
+class Comparison(Condition):
+    format_string = '{0} {operator} {1}'
+
+    def __init__(self, operator, lhs, rhs):
+        if operator not in ['=', '<>', '<', '<=', '>', '>=']:
+            raise ValueError("{0} is not a valid comparison operator: {0}".format(operator))
+        super(Comparison, self).__init__(operator, lhs, rhs)
+
+
 class Between(Condition):
-    format_string = '{path} {operator} {0} AND {1}'
+    format_string = '{0} {operator} {1} AND {2}'
 
     def __init__(self, path, lower, upper):
-        super(Between, self).__init__(path, BETWEEN, lower, upper)
+        super(Between, self).__init__(BETWEEN, path, lower, upper)
 
 
 class In(Condition):
     def __init__(self, path, *values):
-        super(In, self).__init__(path, IN, *values)
-        list_format = ', '.join('{' + str(i) + '}' for i in range(len(values)))
-        self.format_string = '{path} {operator} (' + list_format + ')'
+        super(In, self).__init__(IN, path, *values)
+        list_format = ', '.join('{' + str(i + 1) + '}' for i in range(len(values)))
+        self.format_string = '{0} {operator} (' + list_format + ')'
 
 
 class Exists(Condition):
-    format_string = '{operator} ({path})'
+    format_string = '{operator} ({0})'
 
     def __init__(self, path):
-        super(Exists, self).__init__(path, 'attribute_exists')
+        super(Exists, self).__init__('attribute_exists', path)
 
 
 class NotExists(Condition):
-    format_string = '{operator} ({path})'
+    format_string = '{operator} ({0})'
 
     def __init__(self, path):
-        super(NotExists, self).__init__(path, 'attribute_not_exists')
+        super(NotExists, self).__init__('attribute_not_exists', path)
 
 
 class IsType(Condition):
-    format_string = '{operator} ({path}, {0})'
+    format_string = '{operator} ({0}, {1})'
 
     def __init__(self, path, attr_type):
-        if attr_type not in SHORT_ATTR_TYPES:
-            raise ValueError("{0} is not a valid attribute type. Must be one of {1}".format(
-                attr_type, SHORT_ATTR_TYPES))
-        super(IsType, self).__init__(path, 'attribute_type', {STRING_SHORT: attr_type})
+        super(IsType, self).__init__('attribute_type', path, attr_type)
 
 
 class BeginsWith(Condition):
-    format_string = '{operator} ({path}, {0})'
+    format_string = '{operator} ({0}, {1})'
 
     def __init__(self, path, prefix):
-        super(BeginsWith, self).__init__(path, 'begins_with', prefix)
+        super(BeginsWith, self).__init__('begins_with', path, prefix)
 
 
 class Contains(Condition):
-    format_string = '{operator} ({path}, {0})'
+    format_string = '{operator} ({0}, {1})'
 
-    def __init__(self, path, item):
-        (attr_type, value), = item.items()
-        if attr_type not in [BINARY_SHORT, NUMBER_SHORT, STRING_SHORT]:
-            raise ValueError("{0} must be a string, number, or binary element".format(value))
-        super(Contains, self).__init__(path, 'contains', item)
+    def __init__(self, path, operand):
+        super(Contains, self).__init__('contains', path, operand)
 
 
 class And(Condition):
     format_string = '({0} {operator} {1})'
 
     def __init__(self, condition1, condition2):
-        super(And, self).__init__(None, AND, condition1, condition2)
+        super(And, self).__init__(AND, condition1, condition2)
 
 
 class Or(Condition):
     format_string = '({0} {operator} {1})'
 
     def __init__(self, condition1, condition2):
-        super(Or, self).__init__(None, OR, condition1, condition2)
+        super(Or, self).__init__(OR, condition1, condition2)
 
 
 class Not(Condition):
     format_string = '({operator} {0})'
 
     def __init__(self, condition):
-        super(Not, self).__init__(None, 'NOT', condition)
+        super(Not, self).__init__('NOT', condition)
