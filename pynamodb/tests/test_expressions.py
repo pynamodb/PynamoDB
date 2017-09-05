@@ -225,6 +225,14 @@ class ConditionExpressionTestCase(TestCase):
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'S' : 'bar'}}
 
+    def test_contains_attribute(self):
+        condition = ListAttribute(attr_name='foo').contains(Path('bar'))
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "contains (#0, #1)"
+        assert placeholder_names == {'foo': '#0', 'bar': '#1'}
+        assert expression_attribute_values == {}
+
     def test_size(self):
         condition = size(self.attribute) == 3
         placeholder_names, expression_attribute_values = {}, {}
@@ -232,6 +240,14 @@ class ConditionExpressionTestCase(TestCase):
         assert expression == "size (#0) = :0"
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'N' : '3'}}
+
+    def test_sizes(self):
+        condition = size(self.attribute) == size(Path('bar'))
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "size (#0) = size (#1)"
+        assert placeholder_names == {'foo': '#0', 'bar': '#1'}
+        assert expression_attribute_values == {}
 
     def test_and(self):
         condition = (self.attribute < 'bar') & (self.attribute > 'baz')

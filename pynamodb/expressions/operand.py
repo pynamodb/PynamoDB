@@ -234,6 +234,9 @@ class Size(Operand):
     def serialize(self, placeholder_names, expression_attribute_values):
         return "size ({0})".format(substitute_names(self.path.path, placeholder_names))
 
+    def _has_type(self, short_type):
+        return short_type == NUMBER_SHORT
+
     def __str__(self):
         return "size({0})".format(self.path)
 
