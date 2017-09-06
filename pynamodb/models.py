@@ -10,6 +10,8 @@ import warnings
 
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
+from pynamodb.expressions.operand import Path
+from pynamodb.expressions.update import Update
 from pynamodb.throttle import NoThrottle
 from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute
 from pynamodb.connection.base import MetaTable
@@ -53,6 +55,46 @@ class ModelContextManager(object):
 
     def __enter__(self):
         return self
+
+
+class AttributeProxy(object):
+    def __init__(self, attr, update):
+        self.attr = attr
+        self.update = update
+
+
+class UpdateProxy(ModelContextManager):
+    """
+    A class for updates via a context manager.
+    """
+
+    def __init__(self, model):
+        # dirty hack to avoid calling setattr. revisit later.
+        self.__dict__.update({
+            '_model': model,
+            '_update': Update(),
+        })
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+
+        attr = getattr(self._model, name, None)
+        if not attr:
+            raise AttributeError(name)
+        return AttributeProxy(attr, self._update)
+
+    def __setattr__(self, name, value):
+        path = Path(name)
+        self._update.add_action(path.set(value))
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self.commit()
+
+    def commit(self):
+        pass
+        #self.model.update(
+        #)
 
 
 class BatchWrite(ModelContextManager):
@@ -377,6 +419,9 @@ class Model(AttributeContainer):
             if attr:
                 setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
         return data
+
+    def update_context(self, condition=None):
+        return UpdateProxy(self)
 
     def update(self, attributes, condition=None, conditional_operator=None, **expected_values):
         """

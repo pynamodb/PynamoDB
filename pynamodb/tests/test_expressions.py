@@ -1,10 +1,14 @@
 from pynamodb.attributes import ListAttribute, MapAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
-from pynamodb.expressions.condition import Path, size
+from pynamodb.expressions.condition import size
+from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
 from pynamodb.expressions.update import Update
 
-
+import pytest
 from pytest import raises
+
+from pynamodb.tests.data import MODEL_TABLE_DATA
+from pynamodb.tests.test_model import PATCH_METHOD, UserModel
 
 
 class TestPath:
@@ -335,7 +339,7 @@ class TestConditionExpression:
         assert placeholder_names == {'foo.bar': '#0', 'foo': '#1'}
         assert expression_attribute_values == {':0': {'S': 'baz'}}
 
-class UpdateExpressionTestCase(TestCase):
+class TestUpdateExpression:
     def test_set_action(self):
         action = Path('foo').set('bar')
         placeholder_names, expression_attribute_values = {}, {}
@@ -403,5 +407,20 @@ class UpdateExpressionTestCase(TestCase):
 
 class TestUpdateExpressionContextManager:
 
-    def test_basic_context_manager(self):
-        pass
+    @pytest.fixture
+    def user(self, mocker):
+        req = mocker.patch(PATCH_METHOD)
+        req.return_value = MODEL_TABLE_DATA
+        return UserModel('John', '12345')
+
+    def test_basic_context_manager(self, user):
+        with user.update_context(condition=None) as updated_user:
+            updated_user.email = 'john@pynamo.db'
+
+        placeholder_names, expression_attribute_values = {}, {}
+        serialized = updated_user._update.serialize(placeholder_names, expression_attribute_values)
+
+        assert serialized == 'SET #0 = :0'
+        assert placeholder_names == {'email': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'john@pynamo.db'}}
+        assert user.email == 'john@pynamo.db'
