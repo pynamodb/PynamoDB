@@ -10,9 +10,43 @@ from pynamodb.expressions.update import (
 from pynamodb.expressions.util import get_path_segments, get_value_placeholder, substitute_names
 
 
-class Operand(object):
+class _Operand(object):
     """
     Operand is the base class for objects that can be operands in Condition and Update Expressions.
+    """
+    format_string = ''
+    short_attr_type = None
+
+    def __init__(self, *values):
+        self.values = values
+
+    def __repr__(self):
+        return self.format_string.format(*self.values)
+
+    def serialize(self, placeholder_names, expression_attribute_values):
+        values = [self._serialize_value(value, placeholder_names, expression_attribute_values) for value in self.values]
+        return self.format_string.format(*values)
+
+    def _serialize_value(self, value, placeholder_names, expression_attribute_values):
+        return value.serialize(placeholder_names, expression_attribute_values)
+
+    def _to_operand(self, value):
+        if isinstance(value, _Operand):
+            return value
+        from pynamodb.attributes import Attribute  # prevent circular import -- Attribute imports Path
+        return Path(value) if isinstance(value, Attribute) else self._to_value(value)
+
+    def _to_value(self, value):
+        return Value(value)
+
+    def _type_check(self, *types):
+        if self.short_attr_type and self.short_attr_type not in types:
+            raise ValueError("The data type of '{0}' must be one of {1}".format(self, list(types)))
+
+
+class _ConditionOperand(_Operand):
+    """
+    A base class for Operands that can be used in Condition Expression comparisons.
     """
 
     def __eq__(self, other):
@@ -40,86 +74,94 @@ class Operand(object):
         values = [self._to_operand(value) for value in values]
         return In(self, *values)
 
-    def serialize(self, placeholder_names, expression_attribute_values):
-        raise NotImplementedError('serialize has not been implemented for {0}'.format(self.__class__.__name__))
 
-    def _has_type(self, short_type):
-        raise NotImplementedError('_has_type has not been implemented for {0}'.format(self.__class__.__name__))
+class _Size(_ConditionOperand):
+    """
+    Size is a special operand that represents the result of calling the 'size' function on a Path operand.
+    """
+    format_string = 'size ({0})'
+    short_attr_type = NUMBER_SHORT
+
+    def __init__(self, path):
+        if not isinstance(path, Path):
+            path = Path(path)
+        super(_Size, self).__init__(path)
 
     def _to_operand(self, value):
-        from pynamodb.attributes import Attribute  # prevent circular import -- Attribute imports AttributePath
-        if isinstance(value, Attribute):
-            return AttributePath(value)
-        return value if isinstance(value, Operand) else self._to_value(value)
-
-    def _to_value(self, value):
-        return Value(value)
+        operand = super(_Size, self)._to_operand(value)
+        operand._type_check(NUMBER_SHORT)
+        return operand
 
 
-class Value(Operand):
+class Value(_ConditionOperand):
     """
     Value is an operand that represents an attribute value.
     """
+    format_string = '{0}'
 
     def __init__(self, value, attribute=None):
         # Check to see if value is already serialized
         if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in SHORT_ATTR_TYPES:
-            self.value = value
+            (self.short_attr_type, value), = value.items()
         else:
-            self.value = Value._serialize_value(value, attribute)
+            (self.short_attr_type, value) = Value.__serialize(value, attribute)
+        super(Value, self).__init__({self.short_attr_type: value})
 
-    def serialize(self, placeholder_names, expression_attribute_values):
-        return get_value_placeholder(self.value, expression_attribute_values)
+    @property
+    def value(self):
+        return self.values[0]
 
-    def _has_type(self, short_type):
-        (attr_type, value), = self.value.items()
-        return short_type == attr_type
-
-    def __str__(self):
-        (attr_type, value), = self.value.items()
-        try:
-            from pynamodb.attributes import _get_class_for_deserialize
-            attr_class = _get_class_for_deserialize(self.value)
-            return str(attr_class.deserialize(value))
-        except ValueError:
-            return str(value)
-
-    def __repr__(self):
-        return "Value({0})".format(self.value)
+    def _serialize_value(self, value, placeholder_names, expression_attribute_values):
+        return get_value_placeholder(value, expression_attribute_values)
 
     @staticmethod
-    def _serialize_value(value, attribute=None):
+    def __serialize(value, attribute=None):
         if attribute is None:
-            return Value._serialize_value_based_on_type(value)
+            return Value.__serialize_based_on_type(value)
         if attribute.attr_type == LIST and not isinstance(value, list):
             # List attributes assume the values to be serialized are lists.
-            return attribute.serialize([value])[0]
+            (attr_type, attr_value), = attribute.serialize([value])[0].items()
+            return attr_type, attr_value
         if attribute.attr_type == MAP and not isinstance(value, dict):
             # Map attributes assume the values to be serialized are maps.
-            return Value._serialize_value_based_on_type(value)
-        return {ATTR_TYPE_MAP[attribute.attr_type]: attribute.serialize(value)}
+            return Value.__serialize_based_on_type(value)
+        return ATTR_TYPE_MAP[attribute.attr_type], attribute.serialize(value)
 
     @staticmethod
-    def _serialize_value_based_on_type(value):
+    def __serialize_based_on_type(value):
         from pynamodb.attributes import _get_class_for_serialize
         attr_class = _get_class_for_serialize(value)
-        return {ATTR_TYPE_MAP[attr_class.attr_type]: attr_class.serialize(value)}
+        return ATTR_TYPE_MAP[attr_class.attr_type], attr_class.serialize(value)
 
 
-class Path(Operand):
+class Path(_ConditionOperand):
     """
     Path is an operand that represents either an attribute name or document path.
     """
+    format_string = '{0}'
 
-    def __init__(self, path):
+    def __init__(self, attribute_or_path):
+        from pynamodb.attributes import Attribute  # prevent circular import -- Attribute imports Path
+        is_attribute = isinstance(attribute_or_path, Attribute)
+        self.attribute = attribute_or_path if is_attribute else None
+        self.short_attr_type = ATTR_TYPE_MAP[attribute_or_path.attr_type] if is_attribute else None
+        path = attribute_or_path.attr_path if is_attribute else attribute_or_path
         if not path:
             raise ValueError("path cannot be empty")
-        self.path = get_path_segments(path)
+        super(Path, self).__init__(get_path_segments(path))
+
+    @property
+    def path(self):
+        return self.values[0]
 
     def __getitem__(self, idx):
         # list dereference operator
+        if self.attribute and self.attribute.attr_type != LIST:
+            raise TypeError("'{0}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
         if not isinstance(idx, int):
             raise TypeError("list indices must be integers, not {0}".format(type(idx).__name__))
+        # The __getitem__ call returns a new Path instance without any attribute set.
+        # This is intended since the list element is not the same attribute as the list itself.
         element_path = Path(self.path)  # copy the document path before indexing last element
         element_path.path[-1] = '{0}[{1}]'.format(self.path[-1], idx)
         return element_path
@@ -155,19 +197,21 @@ class Path(Operand):
     def startswith(self, prefix):
         # A 'pythonic' replacement for begins_with to match string behavior (e.g. "foo".startswith("f"))
         operand = self._to_operand(prefix)
-        if not operand._has_type(STRING_SHORT):
-            raise ValueError("{0} must be a string operand".format(operand))
+        operand._type_check(STRING_SHORT)
         return BeginsWith(self, operand)
 
     def contains(self, item):
+        if self.attribute and self.attribute.attr_type in [BINARY_SET, NUMBER_SET, STRING_SET]:
+            # Set attributes assume the values to be serialized are sets.
+            (attr_type, attr_value), = self._to_value([item]).value.items()
+            item = {attr_type[0]: attr_value[0]}
         return Contains(self, self._to_operand(item))
 
-    def serialize(self, placeholder_names, expression_attribute_values):
-        return substitute_names(self.path, placeholder_names)
+    def _serialize_value(self, value, placeholder_names, expression_attribute_values):
+        return substitute_names(value, placeholder_names)
 
-    def _has_type(self, short_type):
-        # Assume the attribute has the correct type
-        return True
+    def _to_value(self, value):
+        return Value(value, attribute=self.attribute)
 
     def __str__(self):
         # Quote the path to illustrate that any dot characters are not dereference operators.
@@ -181,64 +225,3 @@ class Path(Operand):
     def _quote_path(path):
         path, sep, rem = path.partition('[')
         return repr(path) + sep + rem
-
-
-class AttributePath(Path):
-
-    def __init__(self, attribute):
-        super(AttributePath, self).__init__(attribute.attr_path)
-        self.attribute = attribute
-
-    def __getitem__(self, idx):
-        if self.attribute.attr_type != LIST:  # only list elements support the list dereference operator
-            raise TypeError("'{0}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
-        # The __getitem__ call returns a new Path instance, not an AttributePath instance.
-        # This is intended since the list element is not the same attribute as the list itself.
-        return super(AttributePath, self).__getitem__(idx)
-
-    def contains(self, item):
-        if self.attribute.attr_type in [BINARY_SET, NUMBER_SET, STRING_SET]:
-            # Set attributes assume the values to be serialized are sets.
-            (attr_type, attr_value), = self._to_value([item]).value.items()
-            item = {attr_type[0]: attr_value[0]}
-        return super(AttributePath, self).contains(item)
-
-    def _has_type(self, short_type):
-        return ATTR_TYPE_MAP[self.attribute.attr_type] == short_type
-
-    def _to_value(self, value):
-        return Value(value, attribute=self.attribute)
-
-
-class Size(Operand):
-    """
-    Size is a special operand that represents the result of calling the 'size' function on a Path operand.
-    """
-
-    def __init__(self, path):
-        # prevent circular import -- Attribute imports AttributePath
-        from pynamodb.attributes import Attribute
-        if isinstance(path, Path):
-            self.path = path
-        elif isinstance(path, Attribute):
-            self.path = AttributePath(path)
-        else:
-            self.path = Path(path)
-
-    def _to_operand(self, value):
-        operand = super(Size, self)._to_operand(value)
-        if not operand._has_type(NUMBER_SHORT):
-            raise ValueError("size must be compared to a number, not {0}".format(operand))
-        return operand
-
-    def serialize(self, placeholder_names, expression_attribute_values):
-        return "size ({0})".format(substitute_names(self.path.path, placeholder_names))
-
-    def _has_type(self, short_type):
-        return short_type == NUMBER_SHORT
-
-    def __str__(self):
-        return "size({0})".format(self.path)
-
-    def __repr__(self):
-        return "Size({0})".format(repr(self.path))

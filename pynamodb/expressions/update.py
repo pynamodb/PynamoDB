@@ -39,9 +39,7 @@ class AddAction(Action):
     format_string = '{0} {1}'
 
     def __init__(self, path, subset):
-        (attr_type, value), = subset.value.items()
-        if attr_type not in [BINARY_SET_SHORT, NUMBER_SET_SHORT, NUMBER_SHORT, STRING_SET_SHORT]:
-            raise ValueError("{0} must be a number or set".format(value))
+        subset._type_check(BINARY_SET_SHORT, NUMBER_SET_SHORT, NUMBER_SHORT, STRING_SET_SHORT)
         super(AddAction, self).__init__(path, subset)
 
 
@@ -52,9 +50,7 @@ class DeleteAction(Action):
     format_string = '{0} {1}'
 
     def __init__(self, path, subset):
-        (attr_type, value), = subset.value.items()
-        if attr_type not in [BINARY_SET_SHORT, NUMBER_SET_SHORT, STRING_SET_SHORT]:
-            raise ValueError("{0} must be a set".format(value))
+        subset._type_check(BINARY_SET_SHORT, NUMBER_SET_SHORT, STRING_SET_SHORT)
         super(DeleteAction, self).__init__(path, subset)
 
 

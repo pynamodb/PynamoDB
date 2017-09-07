@@ -14,7 +14,7 @@ from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
-from pynamodb.expressions.operand import AttributePath
+from pynamodb.expressions.operand import Path
 import collections
 
 
@@ -86,49 +86,49 @@ class Attribute(object):
     def __eq__(self, other):
         if other is None or isinstance(other, Attribute):  # handle object identity comparison
             return self is other
-        return AttributePath(self).__eq__(other)
+        return Path(self).__eq__(other)
 
     def __ne__(self, other):
         if other is None or isinstance(other, Attribute):  # handle object identity comparison
             return self is not other
-        return AttributePath(self).__ne__(other)
+        return Path(self).__ne__(other)
 
     def __lt__(self, other):
-        return AttributePath(self).__lt__(other)
+        return Path(self).__lt__(other)
 
     def __le__(self, other):
-        return AttributePath(self).__le__(other)
+        return Path(self).__le__(other)
 
     def __gt__(self, other):
-        return AttributePath(self).__gt__(other)
+        return Path(self).__gt__(other)
 
     def __ge__(self, other):
-        return AttributePath(self).__ge__(other)
+        return Path(self).__ge__(other)
 
     def __getitem__(self, idx):
-        return AttributePath(self).__getitem__(idx)
+        return Path(self).__getitem__(idx)
 
     def between(self, lower, upper):
-        return AttributePath(self).between(lower, upper)
+        return Path(self).between(lower, upper)
 
     def is_in(self, *values):
-        return AttributePath(self).is_in(*values)
+        return Path(self).is_in(*values)
 
     def exists(self):
-        return AttributePath(self).exists()
+        return Path(self).exists()
 
     def does_not_exist(self):
-        return AttributePath(self).does_not_exist()
+        return Path(self).does_not_exist()
 
     def is_type(self):
         # What makes sense here? Are we using this to check if deserialization will be successful?
-        return AttributePath(self).is_type(ATTR_TYPE_MAP[self.attr_type])
+        return Path(self).is_type(ATTR_TYPE_MAP[self.attr_type])
 
     def startswith(self, prefix):
-        return AttributePath(self).startswith(prefix)
+        return Path(self).startswith(prefix)
 
     def contains(self, item):
-        return AttributePath(self).contains(item)
+        return Path(self).contains(item)
 
 
 class AttributeContainerMeta(type):
