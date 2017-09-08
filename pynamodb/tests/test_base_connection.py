@@ -660,6 +660,8 @@ class ConnectionTestCase(TestCase):
 
         self.assertRaises(ValueError, conn.update_item, self.test_table_name, 'foo-key')
 
+        self.assertRaises(ValueError, conn.update_item, self.test_table_name, 'foo', actions=[], attribute_updates={})
+
         attr_updates = {
             'Subject': {
                 'Value': 'foo-subject',

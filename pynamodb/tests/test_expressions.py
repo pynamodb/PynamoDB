@@ -1,9 +1,9 @@
 from pynamodb.attributes import ListAttribute, MapAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.expressions.condition import size
-from pynamodb.expressions.operand import Path
+from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.projection import create_projection_expression
-from pynamodb.expressions.update import Update
+from pynamodb.expressions.update import Action, Update
 
 
 class PathTestCase(TestCase):
@@ -31,6 +31,14 @@ class PathTestCase(TestCase):
     def test_index_invalid(self):
         with self.assertRaises(TypeError):
             Path('foo.bar')['foo']
+
+
+class ActionTestCase(TestCase):
+
+    def test_action(self):
+        action = Action(Path('foo.bar'))
+        action.format_string = '{0}'
+        assert repr(action) == 'foo.bar'
 
 
 class ProjectionExpressionTestCase(TestCase):
@@ -337,8 +345,11 @@ class ConditionExpressionTestCase(TestCase):
 
 class UpdateExpressionTestCase(TestCase):
 
+    def setUp(self):
+        self.attribute = UnicodeAttribute(attr_name='foo')
+
     def test_set_action(self):
-        action = Path('foo').set('bar')
+        action = self.attribute.set('bar')
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 = :0"
@@ -346,23 +357,39 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'S': 'bar'}}
 
     def test_increment_action(self):
-        action = Path('foo').set(Path('bar') + 0)
+        action = self.attribute.set(Path('bar') + 0)
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 = #1 + :0"
         assert placeholder_names == {'foo': '#0', 'bar': '#1'}
         assert expression_attribute_values == {':0': {'N': '0'}}
 
+    def test_increment_action_value(self):
+        action = self.attribute.set(Value(0) + Path('bar'))
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 = :0 + #1"
+        assert placeholder_names == {'foo': '#0', 'bar': '#1'}
+        assert expression_attribute_values == {':0': {'N': '0'}}
+
     def test_decrement_action(self):
-        action = Path('foo').set(Path('bar') - 0)
+        action = self.attribute.set(Path('bar') - 0)
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 = #1 - :0"
         assert placeholder_names == {'foo': '#0', 'bar': '#1'}
         assert expression_attribute_values == {':0': {'N': '0'}}
 
+    def test_decrement_action(self):
+        action = self.attribute.set(Value(0) - Path('bar'))
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 = :0 - #1"
+        assert placeholder_names == {'foo': '#0', 'bar': '#1'}
+        assert expression_attribute_values == {':0': {'N': '0'}}
+
     def test_append_action(self):
-        action = Path('foo').set(Path('bar').append(['baz']))
+        action = self.attribute.set(Path('bar').append(['baz']))
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 = list_append (#1, :0)"
@@ -370,7 +397,7 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'L': [{'S': 'baz'}]}}
 
     def test_prepend_action(self):
-        action = Path('foo').set(Path('bar').prepend(['baz']))
+        action = self.attribute.set(Path('bar').prepend(['baz']))
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 = list_append (:0, #1)"
@@ -378,7 +405,7 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'L': [{'S': 'baz'}]}}
 
     def test_conditional_set_action(self):
-        action = Path('foo').set(Path('bar') | 'baz')
+        action = self.attribute.set(Path('bar') | 'baz')
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 = if_not_exists (#1, :0)"
@@ -386,7 +413,7 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'S': 'baz'}}
 
     def test_remove_action(self):
-        action = Path('foo').remove()
+        action = self.attribute.remove()
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0"
@@ -402,7 +429,7 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'N': '0'}}
 
     def test_add_action_set(self):
-        action = Path('foo').update({'NS': ['0']})
+        action = NumberSetAttribute(attr_name='foo').update({'NS': ['0']})
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 :0"
@@ -414,7 +441,7 @@ class UpdateExpressionTestCase(TestCase):
             Path('foo').update({'L': [{'N': '0'}]})
 
     def test_delete_action(self):
-        action = Path('foo').difference_update({'NS': ['0']})
+        action = NumberSetAttribute(attr_name='foo').difference_update({'NS': ['0']})
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 :0"
@@ -426,12 +453,12 @@ class UpdateExpressionTestCase(TestCase):
             Path('foo').difference_update({'N': '0'})
 
     def test_update(self):
-        path = Path('foo')
-        update = Update()
-        update.add_action(path.set({'S': 'bar'}))
-        update.add_action(path.remove())
-        update.add_action(path.update({'N': '0'}))
-        update.add_action(path.difference_update({'NS': ['0']}))
+        update = Update(
+            self.attribute.set({'S': 'bar'}),
+            self.attribute.remove(),
+            self.attribute.update({'N': '0'}),
+            self.attribute.difference_update({'NS': ['0']})
+        )
         placeholder_names, expression_attribute_values = {}, {}
         expression = update.serialize(placeholder_names, expression_attribute_values)
         assert expression == "SET #0 = :0 REMOVE #0 ADD #0 :1 DELETE #0 :2"
