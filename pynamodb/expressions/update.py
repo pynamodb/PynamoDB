@@ -11,6 +11,10 @@ class Action(object):
         values = [value.serialize(placeholder_names, expression_attribute_values) for value in self.values]
         return self.format_string.format(*values)
 
+    def __repr__(self):
+        values = [str(value) for value in self.values]
+        return self.format_string.format(*values)
+
 
 class SetAction(Action):
     """
@@ -56,11 +60,13 @@ class DeleteAction(Action):
 
 class Update(object):
 
-    def __init__(self):
+    def __init__(self, *actions):
         self.set_actions = []
         self.remove_actions = []
         self.add_actions = []
         self.delete_actions = []
+        for action in actions:
+            self.add_action(action)
 
     def add_action(self, action):
         if isinstance(action, SetAction):

@@ -86,7 +86,7 @@ This example will update a `Thread` item, if the `views` attribute is less than 
 
 .. code-block:: python
 
-    thread_item.update((Thread.views < 5) | (Thread.views > 10))
+    thread_item.update(condition=(Thread.views < 5) | (Thread.views > 10))
 
 
 Conditional Model.delete

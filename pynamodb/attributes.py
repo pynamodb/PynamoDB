@@ -130,6 +130,40 @@ class Attribute(object):
     def contains(self, item):
         return Path(self).contains(item)
 
+    # Update Expression Support
+    def __add__(self, other):
+        return Path(self).__add__(other)
+
+    def __radd__(self, other):
+        return Path(self).__radd__(other)
+
+    def __sub__(self, other):
+        return Path(self).__sub__(other)
+
+    def __rsub__(self, other):
+        return Path(self).__rsub__(other)
+
+    def __or__(self, other):
+        return Path(self).__or__(other)
+
+    def append(self, other):
+        return Path(self).append(other)
+
+    def prepend(self, other):
+        return Path(self).prepend(other)
+
+    def set(self, value):
+        return Path(self).set(value)
+
+    def update(self, subset):
+        return Path(self).update(subset)
+
+    def difference_update(self, subset):
+        return Path(self).difference_update(subset)
+
+    def remove(self):
+        return Path(self).remove()
+
 
 class AttributeContainerMeta(type):
 

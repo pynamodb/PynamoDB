@@ -227,6 +227,36 @@ class ConnectionTestCase(TestCase):
             req.return_value = HttpOK(), {}
             conn.update_item(
                 'foo-key',
+                actions=[Path('Subject').set('foo-subject')],
+                range_key='foo-range-key',
+            )
+            params = {
+                'Key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'UpdateExpression': 'SET #0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo-subject'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'ci-table'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.update_item(
+                'foo-key',
                 attribute_updates=attr_updates,
                 range_key='foo-range-key',
             )
