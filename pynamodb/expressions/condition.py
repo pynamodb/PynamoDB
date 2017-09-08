@@ -4,8 +4,8 @@ from six.moves import range
 
 # match dynamo function syntax: size(path)
 def size(path):
-    from pynamodb.expressions.operand import Size
-    return Size(path)
+    from pynamodb.expressions.operand import _Size
+    return _Size(path)
 
 
 class Condition(object):
