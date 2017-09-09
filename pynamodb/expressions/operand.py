@@ -1,5 +1,5 @@
 from pynamodb.constants import (
-    ATTR_TYPE_MAP, BINARY_SET, LIST, MAP, NUMBER_SET, NUMBER_SHORT, SHORT_ATTR_TYPES, STRING_SET, STRING_SHORT
+    ATTR_TYPE_MAP, BINARY_SET, LIST, LIST_SHORT, MAP, NUMBER_SET, NUMBER_SHORT, SHORT_ATTR_TYPES, STRING_SET, STRING_SHORT
 )
 from pynamodb.expressions.condition import (
     BeginsWith, Between, Comparison, Contains, Exists, In, IsType, NotExists
@@ -75,6 +75,36 @@ class _ConditionOperand(_Operand):
         return In(self, *values)
 
 
+class _NumericOperand(_Operand):
+    """
+    A base class for Operands that can be used in the increment and decrement SET update actions.
+    """
+
+    def __add__(self, other):
+        return _Increment(self, self._to_operand(other))
+
+    def __radd__(self, other):
+        return _Increment(self._to_operand(other), self)
+
+    def __sub__(self, other):
+        return _Decrement(self, self._to_operand(other))
+
+    def __rsub__(self, other):
+        return _Decrement(self._to_operand(other), self)
+
+
+class _ListAppendOperand(_Operand):
+    """
+    A base class for Operands that can be used in the list_append function for the SET update action.
+    """
+
+    def append(self, other):
+        return _ListAppend(self, self._to_operand(other))
+
+    def prepend(self, other):
+        return _ListAppend(self._to_operand(other), self)
+
+
 class _Size(_ConditionOperand):
     """
     Size is a special operand that represents the result of calling the 'size' function on a Path operand.
@@ -93,7 +123,60 @@ class _Size(_ConditionOperand):
         return operand
 
 
-class Value(_ConditionOperand):
+class _Increment(_Operand):
+    """
+    Increment is a special operand that represents an increment SET update action.
+    """
+    format_string = '{0} + {1}'
+    short_attr_type = NUMBER_SHORT
+
+    def __init__(self, lhs, rhs):
+        lhs._type_check(NUMBER_SHORT)
+        rhs._type_check(NUMBER_SHORT)
+        super(_Increment, self).__init__(lhs, rhs)
+
+
+class _Decrement(_Operand):
+    """
+    Decrement is a special operand that represents an decrement SET update action.
+    """
+    format_string = '{0} - {1}'
+    short_attr_type = NUMBER_SHORT
+
+    def __init__(self, lhs, rhs):
+        lhs._type_check(NUMBER_SHORT)
+        rhs._type_check(NUMBER_SHORT)
+        super(_Decrement, self).__init__(lhs, rhs)
+
+
+class _ListAppend(_Operand):
+    """
+    ListAppend is a special operand that represents the list_append function for the SET update action.
+    """
+    format_string = 'list_append ({0}, {1})'
+    short_attr_type = LIST_SHORT
+
+    def __init__(self, list1, list2):
+        list1._type_check(LIST_SHORT)
+        list2._type_check(LIST_SHORT)
+        super(_ListAppend, self).__init__(list1, list2)
+
+
+class _IfNotExists(_NumericOperand, _ListAppendOperand):
+    """
+    IfNotExists is a special operand that represents the if_not_exists function for the SET update action.
+    """
+    format_string = 'if_not_exists ({0}, {1})'
+
+    def __init__(self, path, value):
+        self.short_attr_type = path.short_attr_type or value.short_attr_type
+        if self.short_attr_type != value.short_attr_type:
+            # path and value have conflicting types -- defer any type checks to DynamoDB
+            self.short_attr_type = None
+        super(_IfNotExists, self).__init__(path, value)
+
+
+class Value(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     """
     Value is an operand that represents an attribute value.
     """
@@ -103,6 +186,8 @@ class Value(_ConditionOperand):
         # Check to see if value is already serialized
         if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in SHORT_ATTR_TYPES:
             (self.short_attr_type, value), = value.items()
+        elif value is None:
+            (self.short_attr_type, value) = Value.__serialize(value)
         else:
             (self.short_attr_type, value) = Value.__serialize(value, attribute)
         super(Value, self).__init__({self.short_attr_type: value})
@@ -134,7 +219,7 @@ class Value(_ConditionOperand):
         return ATTR_TYPE_MAP[attr_class.attr_type], attr_class.serialize(value)
 
 
-class Path(_ConditionOperand):
+class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     """
     Path is an operand that represents either an attribute name or document path.
     """
@@ -165,6 +250,9 @@ class Path(_ConditionOperand):
         element_path = Path(self.path)  # copy the document path before indexing last element
         element_path.path[-1] = '{0}[{1}]'.format(self.path[-1], idx)
         return element_path
+
+    def __or__(self, other):
+        return _IfNotExists(self, self._to_operand(other))
 
     def set(self, value):
         # Returns an update action that sets this attribute to the given value

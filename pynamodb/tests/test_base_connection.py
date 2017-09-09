@@ -660,6 +660,8 @@ class ConnectionTestCase(TestCase):
 
         self.assertRaises(ValueError, conn.update_item, self.test_table_name, 'foo-key')
 
+        self.assertRaises(ValueError, conn.update_item, self.test_table_name, 'foo', actions=[], attribute_updates={})
+
         attr_updates = {
             'Subject': {
                 'Value': 'foo-subject',
@@ -694,6 +696,45 @@ class ConnectionTestCase(TestCase):
                 attribute_updates=bad_attr_updates,
                 range_key='foo-range-key',
             )
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.update_item(
+                self.test_table_name,
+                'foo-key',
+                return_consumed_capacity='TOTAL',
+                return_item_collection_metrics='NONE',
+                return_values='ALL_NEW',
+                actions=[Path('Subject').set('foo-subject')],
+                condition=Path('Forum').does_not_exist(),
+                range_key='foo-range-key',
+            )
+            params = {
+                'ReturnValues': 'ALL_NEW',
+                'ReturnItemCollectionMetrics': 'NONE',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'UpdateExpression': 'SET #1 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'Forum',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo-subject'
+                    }
+                },
+                'TableName': 'ci-table'
+            }
+            self.assertEqual(req.call_args[0][1], params)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -904,6 +945,43 @@ class ConnectionTestCase(TestCase):
                     'foo-key',
                     range_key='foo-range-key',
                 )
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.update_item(
+                self.test_table_name,
+                'foo-key',
+                actions=[Path('Subject').set('Bar')],
+                condition=(Path('ForumName').does_not_exist() & (Path('Subject') == 'Foo')),
+                range_key='foo-range-key',
+            )
+            params = {
+                'Key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'ConditionExpression': '(attribute_not_exists (#0) AND #1 = :0)',
+                'UpdateExpression': 'SET #1 = :1',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'Foo'
+                    },
+                    ':1': {
+                        'S': 'Bar'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'ci-table'
+            }
+            self.assertEqual(req.call_args[0][1], params)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}

@@ -279,16 +279,10 @@ atomically updating the view count of an item + updating the value of the last p
 
 .. code-block:: python
 
-    >>> thread_item.update({
-            'views': {
-                'action': 'add',
-                'value': 1,
-            },
-            'last_post_datetime': {
-                'action': 'put',
-                'value': datetime.now(),
-            },
-        })
+    >>> thread_item.update(actions=[
+            Thread.views.set(Thread.views + 1),
+            Thread.last_post_datetime.set(datetime.now()),
+        ])
 
 
 .. deprecated:: 2.0

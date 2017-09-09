@@ -839,6 +839,7 @@ class Connection(object):
                     table_name,
                     hash_key,
                     range_key=None,
+                    actions=None,
                     attribute_updates=None,
                     condition=None,
                     expected=None,
@@ -849,6 +850,7 @@ class Connection(object):
         """
         Performs the UpdateItem operation
         """
+        self._check_actions(actions, attribute_updates)
         self._check_condition('condition', condition, expected, conditional_operator)
 
         operation_kwargs = {TABLE_NAME: table_name}
@@ -865,10 +867,12 @@ class Connection(object):
             operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
         if return_values:
             operation_kwargs.update(self.get_return_values_map(return_values))
-        if not attribute_updates:
+        if not actions and not attribute_updates:
             raise ValueError("{0} cannot be empty".format(ATTR_UPDATES))
+        actions = actions or []
+        attribute_updates = attribute_updates or {}
 
-        update_expression = Update()
+        update_expression = Update(*actions)
         # We sort the keys here for determinism. This is mostly done to simplify testing.
         for key in sorted(attribute_updates.keys()):
             path = Path([key])
@@ -1437,6 +1441,14 @@ class Connection(object):
             for value in values
         ]
         return getattr(Path([attribute_name]), operator)(*values)
+
+    def _check_actions(self, actions, attribute_updates):
+        if actions is not None:
+            if attribute_updates is not None:
+                raise ValueError("Legacy attribute updates cannot be used with update actions")
+        else:
+            if attribute_updates is not None:
+                warnings.warn("Legacy attribute updates are deprecated in favor of update actions")
 
     def _check_condition(self, name, condition, expected_or_filter, conditional_operator):
         if condition is not None:

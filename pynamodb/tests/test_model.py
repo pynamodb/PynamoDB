@@ -958,6 +958,68 @@ class ModelTestCase(TestCase):
 
         self.assertRaises(TypeError, item.update, ["not", "a", "dict"])
 
+        self.assertRaises(TypeError, item.update, actions={'not': 'a list'})
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "email": {
+                        "S": "foo@example.com",
+                    },
+                    "is_active": {
+                        "NULL": None,
+                    },
+                    "aliases": {
+                        "SS": set(["bob"]),
+                    }
+                }
+            }
+            item.update(actions=[
+                SimpleUserModel.email.set('foo@example.com'),
+                SimpleUserModel.views.remove(),
+                SimpleUserModel.is_active.set(None),
+                SimpleUserModel.signature.set(None),
+                SimpleUserModel.custom_aliases.set(['bob'])
+            ])
+
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3 REMOVE #4',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'is_active',
+                    '#2': 'signature',
+                    '#3': 'aliases',
+                    '#4': 'views'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo@example.com',
+                    },
+                    ':1': {
+                        'NULL': True
+                    },
+                    ':2': {
+                        'NULL': True
+                    },
+                    ':3': {
+                        'SS': set(['bob'])
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
+            assert item.views is None
+            self.assertEquals(set(['bob']), item.custom_aliases)
+
         with patch(PATCH_METHOD) as req:
             req.return_value = {
                 ATTRIBUTES: {
