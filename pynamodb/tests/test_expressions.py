@@ -380,7 +380,7 @@ class UpdateExpressionTestCase(TestCase):
         assert placeholder_names == {'foo': '#0', 'bar': '#1'}
         assert expression_attribute_values == {':0': {'N': '0'}}
 
-    def test_decrement_action(self):
+    def test_decrement_action_value(self):
         action = self.attribute.set(Value(0) - Path('bar'))
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
