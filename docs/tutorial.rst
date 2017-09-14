@@ -207,6 +207,7 @@ PynamoDB comes with several built in attribute types for convenience, which incl
 * :py:class:`UTCDateTimeAttribute <pynamodb.attributes.UTCDateTimeAttribute>`
 * :py:class:`BooleanAttribute <pynamodb.attributes.BooleanAttribute>`
 * :py:class:`JSONAttribute <pynamodb.attributes.JSONAttribute>`
+* :py:class:`MapAttribute <pynamodb.attributes.MapAttribute>`
 
 All of these built in attributes handle serializing and deserializng themselves, in both Python 2 and Python 3.
 
