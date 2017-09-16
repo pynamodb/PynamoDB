@@ -15,13 +15,15 @@ import pytest
 
 from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.models import Model
+from pynamodb.compat import total_seconds
 
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
-    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
+    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, LegacyUTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
     MapAttribute, MapAttributeMeta, ListAttribute, Attribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY, MAP, LIST, BOOLEAN, _get_value_for_deserialize)
+    BINARY, MAP, LIST, BOOLEAN, _get_value_for_deserialize,
+    NULL, MAP_SHORT, LIST_SHORT, _get_key_for_serialize)
 
 UTC = tzutc()
 
@@ -39,7 +41,9 @@ class AttributeTestModel(Model):
     unicode_attr = UnicodeAttribute()
     unicode_set_attr = UnicodeSetAttribute()
     datetime_attr = UTCDateTimeAttribute()
+    legacy_datetime_attr = LegacyUTCDateTimeAttribute()
     bool_attr = BooleanAttribute()
+    legacy_bool_attr = LegacyBooleanAttribute()
     json_attr = JSONAttribute()
     map_attr = MapAttribute()
 
@@ -111,12 +115,27 @@ class TestAttributeDescriptor:
         self.instance.datetime_attr = now
         assert self.instance.datetime_attr == now
 
+    def test_legacy_datetime_attr(self):
+        """
+        Legacy Datetime attribute descriptor
+        """
+        now = datetime.now()
+        self.instance.legacy_datetime_attr = now
+        assert self.instance.legacy_datetime_attr == now
+
     def test_bool_attr(self):
         """
         Boolean attribute descriptor
         """
         self.instance.bool_attr = True
         assert self.instance.bool_attr is True
+
+    def test_legacy_bool_attr(self):
+        """
+        Legacy Boolean attribute descriptor
+        """
+        self.instance.legacy_bool_attr = True
+        assert self.instance.legacy_bool_attr is True
 
     def test_json_attr(self):
         """
@@ -136,10 +155,14 @@ class TestUTCDateTimeAttribute:
         """
         attr = UTCDateTimeAttribute()
         assert attr is not None
-        assert attr.attr_type == STRING
+        assert attr.attr_type == NUMBER
         tstamp = datetime.now()
         attr = UTCDateTimeAttribute(default=tstamp)
         assert attr.default == tstamp
+
+    def test_utc_date_time_none(self):
+        attr = UTCDateTimeAttribute()
+        assert attr.serialize(None) == None
 
     def test_utc_date_time_deserialize(self):
         """
@@ -159,6 +182,23 @@ class TestUTCDateTimeAttribute:
 
     @patch('pynamodb.attributes.datetime')
     @patch('pynamodb.attributes.parse')
+    def test_utc_date_time_deserialize_parse_timestamp(self, parse_mock, datetime_mock):
+        """
+        UTCDateTimeAttribute.deserialize
+        """
+        tstamp = datetime.now(UTC)
+        epoch = datetime.utcfromtimestamp(0).replace(tzinfo=tzutc())
+        attr = UTCDateTimeAttribute()
+
+        tstamp_seconds = total_seconds(tstamp - epoch)
+        attr.deserialize(repr(tstamp_seconds))
+
+        parse_mock.assert_not_called()
+        datetime_mock.strptime.assert_not_called()
+        datetime_mock.utcfromtimestamp.assert_called_once_with(tstamp_seconds)
+
+    @patch('pynamodb.attributes.datetime')
+    @patch('pynamodb.attributes.parse')
     def test_utc_date_time_deserialize_parse_args(self, parse_mock, datetime_mock):
         """
         UTCDateTimeAttribute.deserialize
@@ -170,14 +210,91 @@ class TestUTCDateTimeAttribute:
         attr.deserialize(tstamp_str)
 
         parse_mock.assert_not_called()
-        datetime_mock.strptime.assert_called_once_with(tstamp_str, DATETIME_FORMAT)
+        datetime_mock.strptime.assert_called_once_with(tstamp_str, DATETIME_FORMAT[:-2])
 
     def test_utc_date_time_serialize(self):
         """
         UTCDateTimeAttribute.serialize
         """
         tstamp = datetime.now()
+        epoch = datetime.utcfromtimestamp(0).replace()
         attr = UTCDateTimeAttribute()
+        assert attr.serialize(tstamp) == repr(total_seconds(tstamp - epoch))
+
+
+class TestLegacyUTCDateTimeAttribute:
+    """
+    Tests LegacyUTCDateTime attributes
+    """
+    def test_legacy_utc_datetime_attribute(self):
+        """
+        LegacyUTCDateTimeAttribute.default
+        """
+        attr = LegacyUTCDateTimeAttribute()
+        assert attr is not None
+        assert attr.attr_type == STRING
+        tstamp = datetime.now()
+        attr = LegacyUTCDateTimeAttribute(default=tstamp)
+        assert attr.default == tstamp
+
+    def test_legacy_utc_date_time_none(self):
+        attr = LegacyUTCDateTimeAttribute()
+        assert attr.serialize(None) == None
+
+    def test_legacy_utc_date_time_deserialize(self):
+        """
+        LegacyUTCDateTimeAttribute.deserialize
+        """
+        tstamp = datetime.now(UTC)
+        attr = LegacyUTCDateTimeAttribute()
+        assert attr.deserialize(tstamp.strftime(DATETIME_FORMAT)) == tstamp
+
+    def test_legacy_dateutil_parser_fallback(self):
+        """
+        LegacyUTCDateTimeAttribute.deserialize
+        """
+        expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=tzutc())
+        attr = LegacyUTCDateTimeAttribute()
+        assert attr.deserialize('January 6, 2047 at 8:21:00AM UTC') == expected_value
+
+    @patch('pynamodb.attributes.datetime')
+    @patch('pynamodb.attributes.parse')
+    def test_legacy_utc_date_time_deserialize_parse_timestamp(self, parse_mock, datetime_mock):
+        """
+        LegacyUTCDateTimeAttribute.deserialize
+        """
+        tstamp = datetime.now(UTC)
+        epoch = datetime.utcfromtimestamp(0).replace(tzinfo=tzutc())
+        attr = UTCDateTimeAttribute()
+
+        tstamp_seconds = total_seconds(tstamp - epoch)
+        attr.deserialize(repr(tstamp_seconds))
+
+        parse_mock.assert_not_called()
+        datetime_mock.strptime.assert_not_called()
+        datetime_mock.utcfromtimestamp.assert_called_once_with(tstamp_seconds)
+
+    @patch('pynamodb.attributes.datetime')
+    @patch('pynamodb.attributes.parse')
+    def test_legacy_utc_date_time_deserialize_parse_args(self, parse_mock, datetime_mock):
+        """
+        LegacyUTCDateTimeAttribute.deserialize
+        """
+        tstamp = datetime.now(UTC)
+        attr = LegacyUTCDateTimeAttribute()
+
+        tstamp_str = tstamp.strftime(DATETIME_FORMAT)
+        attr.deserialize(tstamp_str)
+
+        parse_mock.assert_not_called()
+        datetime_mock.strptime.assert_called_once_with(tstamp_str, DATETIME_FORMAT[:-2])
+
+    def test_utc_date_time_serialize(self):
+        """
+        LegacyUTCDateTimeAttribute.serialize
+        """
+        tstamp = datetime.now()
+        attr = LegacyUTCDateTimeAttribute()
         assert attr.serialize(tstamp) == tstamp.replace(tzinfo=UTC).strftime(DATETIME_FORMAT)
 
 
@@ -371,6 +488,9 @@ class TestUnicodeAttribute:
 
         expected = sorted([six.u('true'), six.u('false')])
         assert attr.serialize(set([six.u('true'), six.u('false')])) == expected
+
+        expected = None
+        assert attr.serialize(None) == None
 
     def test_round_trip_unicode_set(self):
         """
@@ -749,7 +869,7 @@ class TestMapAttribute:
 
     def test_serialize_datetime(self):
         class CustomMapAttribute(MapAttribute):
-            date_attr = UTCDateTimeAttribute()
+            date_attr = LegacyUTCDateTimeAttribute()
 
         cm = CustomMapAttribute(date_attr=datetime(2017, 1, 1))
         serialized_datetime = cm.serialize(cm)
@@ -857,8 +977,24 @@ class TestValueDeserialize:
         assert actual is None
 
 
-class TestMapAndListAttribute:
+class TestKeySerialize:
+    def test__get_key_for_serialize(self):
+        attr = list()
+        actual = _get_key_for_serialize(attr)
+        assert actual is LIST_SHORT
 
+    def test__get_key_for_serialize_map(self):
+        attr = MapAttribute()
+        actual = _get_key_for_serialize(attr)
+        assert actual is MAP_SHORT
+
+    def test__get_key_for_serialize_null(self):
+        attr = None
+        actual = _get_key_for_serialize(attr)
+        assert actual is NULL
+
+
+class TestMapAndListAttribute:
     def test_map_of_list(self):
         grocery_list = {
             'fruit': ['apple', 'pear', 32],

@@ -190,6 +190,41 @@ class ConnectionTestCase(TestCase):
             self.assertEqual(conn.table_name, self.test_table_name)
             self.assertEqual(req.call_args[0][1], {'TableName': 'ci-table'})
 
+    def test_describe_ttl(self):
+        """
+        TableConnection.describe_ttl
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn = TableConnection(self.test_table_name)
+            conn.describe_ttl()
+            self.assertEqual(conn.table_name, self.test_table_name)
+            self.assertEqual(req.call_args[0][1], {'TableName': 'ci-table'})
+
+    def test_update_ttl(self):
+        """
+        TableConnection.update_ttl
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn = TableConnection(self.test_table_name)
+            conn.update_ttl(attribute_name='expires', enabled=True)
+            self.assertEqual(req.call_args[0][1], {'TableName': 'ci-table',
+                                                   'TimeToLiveSpecification': {
+                                                        'AttributeName': 'expires',
+                                                        'Enabled': True
+                                                        }})
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn = TableConnection(self.test_table_name)
+            conn.update_ttl(attribute_name='expires', enabled=False)
+            self.assertEqual(req.call_args[0][1], {'TableName': 'ci-table',
+                                                   'TimeToLiveSpecification': {
+                                                        'AttributeName': 'expires',
+                                                        'Enabled': False
+                                                        }})
+
     def test_delete_item(self):
         """
         TableConnection.delete_item

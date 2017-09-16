@@ -15,7 +15,7 @@ from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
-from pynamodb.compat import getmembers_issubclass
+from pynamodb.compat import getmembers_issubclass, total_seconds
 from pynamodb.expressions.operand import Path
 import collections
 
@@ -23,6 +23,12 @@ import collections
 class Attribute(object):
     """
     An attribute of a model
+
+    :param hash_key: If True, this attribute is used as the hash key for the model's table
+    :param range_key: If True, this attribute is used as the range key for model's table
+    :param null: If True, the attribute is nullable.
+    :param default: Provides a default value for non-nullable attributes
+    :param attr_name: Overrides the name string used to represent this attribute in the model's table
     """
     attr_type = None
     null = False
@@ -37,6 +43,7 @@ class Attribute(object):
         self.default = default
         if null is not None:
             self.null = null
+        self.is_ttl = False
         self.is_hash_key = hash_key
         self.is_range_key = range_key
         self.attr_path = [attr_name]
@@ -414,7 +421,7 @@ class UnicodeAttribute(Attribute):
 
 class JSONAttribute(Attribute):
     """
-    A JSON Attribute
+    A JSON attribute
 
     Encodes JSON to unicode internally
     """
@@ -441,7 +448,7 @@ class JSONAttribute(Attribute):
 
 class LegacyBooleanAttribute(Attribute):
     """
-    A class for legacy boolean attributes
+    A boolean attribute (legacy)
 
     Previous versions of this library serialized bools as numbers.
     This class allows you to continue to use that functionality.
@@ -474,7 +481,7 @@ class LegacyBooleanAttribute(Attribute):
 
 class BooleanAttribute(Attribute):
     """
-    A class for boolean attributes
+    A boolean attribute
     """
     attr_type = BOOLEAN
 
@@ -527,7 +534,68 @@ class NumberAttribute(Attribute):
 
 class UTCDateTimeAttribute(Attribute):
     """
-    An attribute for storing a UTC Datetime
+    A UTC DateTime attribute
+
+    :param ttl: If True, this attribute is used as the TTL for purposes of automatic item expiry and deletion
+
+        Only a single attribute in a table may be used as the TTL. The first attribute with TTL enabled
+        will be used; repeated use of the flag will be ignored.
+
+        Note that expired items may persist up to two days after their TTL expires. See: 
+        https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateTimeToLive.html
+    """
+    attr_type = NUMBER
+    epoch = datetime.utcfromtimestamp(0).replace(tzinfo=tzutc())
+
+    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, ttl=False):
+        super(UTCDateTimeAttribute, self).__init__(hash_key=hash_key,
+                                                   range_key=range_key,
+                                                   null=null,
+                                                   default=default,
+                                                   attr_name=attr_name)
+        self.is_ttl = ttl
+
+    def serialize(self, value):
+        """
+        Takes a datetime object and returns a string
+        """
+        if value is None:
+            return None
+        elif value.tzinfo is None:
+            value = value.replace(tzinfo=tzutc())
+        fmt = repr(total_seconds(value.astimezone(tzutc()) - self.epoch))
+        return six.u(fmt)
+
+    def deserialize(self, value):
+        """
+        Takes an epoch timestamp string and returns a datetime object
+        """
+        # First try to parse as float UTC timestamp, falling back to string parsing.
+        try:
+            return datetime.utcfromtimestamp(float(value)).replace(tzinfo=tzutc())
+        except ValueError:
+            # First attempt to parse the datetime with the datetime format used
+            # by default when storing UTCDateTimeAttributes.  This is signifantly
+            # faster than always going through dateutil.
+            try:
+                return datetime.strptime(value, DATETIME_FORMAT[:-2]).replace(tzinfo=tzutc())
+            except ValueError:
+                return parse(value)
+
+    def get_value(self, value):
+        # we need this for legacy compatibility.
+        # previously, DATETIME was serialized as S
+        value_to_deserialize = super(UTCDateTimeAttribute, self).get_value(value)
+        if value_to_deserialize is None:
+            value_to_deserialize = value.get(STRING_SHORT, '')
+        return value_to_deserialize
+
+class LegacyUTCDateTimeAttribute(Attribute):
+    """
+    A UTC DateTime attribute (legacy)
+
+    Previous versions of this library serialized DateTimes as ISO8601 strings.
+    This class allows you to continue to use that functionality.
     """
     attr_type = STRING
 
@@ -535,25 +603,45 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a datetime object and returns a string
         """
-        if value.tzinfo is None:
+        if value is None:
+            return None
+        elif value.tzinfo is None:
             value = value.replace(tzinfo=tzutc())
         fmt = value.astimezone(tzutc()).strftime(DATETIME_FORMAT)
         return six.u(fmt)
 
     def deserialize(self, value):
         """
-        Takes a UTC datetime string and returns a datetime object
+        Takes an epoch timestamp string and returns a datetime object
         """
-        # First attempt to parse the datetime with the datetime format used
-        # by default when storing UTCDateTimeAttributes.  This is signifantly
-        # faster than always going through dateutil.
+        # First try to parse as float UTC timestamp, falling back to string parsing.
         try:
-            return datetime.strptime(value, DATETIME_FORMAT)
+            return datetime.utcfromtimestamp(float(value)).replace(tzinfo=tzutc())
         except ValueError:
-            return parse(value)
+            # First attempt to parse the datetime with the datetime format used
+            # by default when storing UTCDateTimeAttributes.  This is signifantly
+            # faster than always going through dateutil.
+            try:
+                return datetime.strptime(value, DATETIME_FORMAT[:-2]).replace(tzinfo=tzutc())
+            except ValueError:
+                return parse(value)
+
+    def get_value(self, value):
+        # we need this for the period in which you are upgrading
+        # you can switch all UTCDateTimeAttributes to LegacyUTCDateTimeAttributes
+        # this can read both but serializes as Strings
+        # once you've transitioned, you can then switch back to
+        # UTCDateTimeAttribute and it will serialize the new fancy way
+        value_to_deserialize = super(LegacyUTCDateTimeAttribute, self).get_value(value)
+        if value_to_deserialize is None:
+            value_to_deserialize = json.dumps(value.get(NUMBER_SHORT, 0))
+        return value_to_deserialize
 
 
 class NullAttribute(Attribute):
+    """
+    A Null attribute
+    """
     attr_type = NULL
 
     def serialize(self, value):
@@ -572,7 +660,7 @@ class MapAttributeMeta(AttributeContainerMeta):
 @add_metaclass(MapAttributeMeta)
 class MapAttribute(Attribute, AttributeContainer):
     """
-    A Map Attribute
+    A map attribute
 
     The MapAttribute class can be used to store a JSON document as "raw" name-value pairs, or
     it can be subclassed and the document fields represented as class attributes using Attribute instances.
@@ -882,6 +970,9 @@ def _get_key_for_serialize(value):
 
 
 class ListAttribute(Attribute):
+    """
+    A list attribute
+    """
     attr_type = LIST
     element_type = None
 

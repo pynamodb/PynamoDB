@@ -1380,3 +1380,21 @@ DOG_TABLE_DATA = {
         "TableStatus": "ACTIVE"
     }
 }
+
+UPDATE_TTL_DATA = (
+    "UpdateTimeToLive",
+    {
+        "TableName": "ExpiringModel",
+        "TimeToLiveSpecification": {
+            "AttributeName": "expires",
+            "Enabled": True
+        }
+    }
+)
+
+DESCRIBE_TTL_DATA = {
+    "TimeToLiveDescription": {
+        "AttributeName": "expires",
+        "TimeToLiveStatus": "ENABLED"
+   }
+}

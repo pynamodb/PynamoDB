@@ -302,3 +302,21 @@ class TableConnection(object):
             local_secondary_indexes=local_secondary_indexes,
             stream_specification=stream_specification
         )
+
+    def describe_ttl(self):
+        """
+        Performs the DescribeTimeToLive operation and returns the result
+        """
+        return self.connection.describe_ttl(
+            self.table_name
+        )
+
+    def update_ttl(self, attribute_name, enabled=False):
+        """
+        Performs the UpdateTimeToLive operation and returns the result
+        """
+        return self.connection.update_ttl(
+            self.table_name,
+            attribute_name=attribute_name,
+            enabled=enabled
+        )

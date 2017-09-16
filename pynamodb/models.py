@@ -29,10 +29,11 @@ from pynamodb.constants import (
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP, NOT_NULL,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
+    ATTRIBUTE_NAME, ENABLED, CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
-    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET)
+    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET, TTL_STATUS_ENABLED,
+    TTL_STATUS_DISABLED, TTL_DESCRIPTION, TTL_STATUS)
 
 
 log = logging.getLogger(__name__)
@@ -849,6 +850,10 @@ class Model(AttributeContainer):
         :param wait: If set, then this call will block until the table is ready for use
         :param read_capacity_units: Sets the read capacity units for this table
         :param write_capacity_units: Sets the write capacity units for this table
+
+        read_capacity_unit and write_capacity_unit parameters override defaults from the model's Meta class.
+
+        Presence of a TTL attribute on your model will implicitly set wait to True.
         """
         if not cls.exists():
             schema = cls._get_schema()
@@ -878,17 +883,36 @@ class Model(AttributeContainer):
             cls._get_connection().create_table(
                 **schema
             )
-        if wait:
             while True:
-                status = cls._get_connection().describe_table()
-                if status:
-                    data = status.get(TABLE_STATUS)
-                    if data == ACTIVE:
-                        return
-                    else:
+                try:
+                    cls._check_update_ttl(initial=True)
+                    break
+                except TableError as e:
+                    if e.cause.response['Error']['Code'] in ['ResourceNotFoundException', 'ResourceInUseException']:
                         time.sleep(2)
+                    else:
+                        raise e
+
+        while wait:
+            status = cls._get_connection().describe_table()
+            if status:
+                if status.get(TABLE_STATUS) == ACTIVE:
+                    break
                 else:
-                    raise TableError("No TableStatus returned for table")
+                    time.sleep(2)
+            else:
+                raise TableError("No TableStatus returned for table")
+
+
+    @classmethod
+    def update_table(cls):
+        """
+        Applies current model provisioned throughput and TTL settings to table
+
+        TODO: Update Attribute Definitions and Global Secondary Indexes
+        """
+        cls._check_update_throughput()
+        cls._check_update_ttl()
 
     @classmethod
     def dumps(cls):
@@ -919,6 +943,34 @@ class Model(AttributeContainer):
             cls.loads(inf.read())
 
     # Private API below
+    @classmethod
+    def _check_update_throughput(cls):
+        schema = {}
+        if hasattr(cls.Meta, pythonic(READ_CAPACITY_UNITS)):
+            schema[pythonic(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
+        if hasattr(cls.Meta, pythonic(WRITE_CAPACITY_UNITS)):
+            schema[pythonic(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
+        capacity = cls._get_connection().describe_table().get(PROVISIONED_THROUGHPUT)
+        if (capacity[READ_CAPACITY_UNITS] != schema[pythonic(READ_CAPACITY_UNITS)] or
+            capacity[WRITE_CAPACITY_UNITS] != schema[pythonic(WRITE_CAPACITY_UNITS)]):
+            cls._get_connection().update_table(**schema)
+
+    @classmethod
+    def _check_update_ttl(cls, initial=False):
+        ttl = cls._get_ttl_attribute()
+        if initial:
+            current_ttl = {TTL_STATUS: TTL_STATUS_DISABLED}
+        else:
+            current_ttl = cls._get_connection().describe_ttl().get(TTL_DESCRIPTION)
+        # Must pass current attribute name when turning off TTL
+        ttl_config = {
+            pythonic(ATTRIBUTE_NAME): ttl if ttl else current_ttl.get(ATTRIBUTE_NAME),
+            pythonic(ENABLED): True if ttl else False
+        }
+        if (current_ttl.get(TTL_STATUS) != (TTL_STATUS_ENABLED if ttl else TTL_STATUS_DISABLED) or
+            current_ttl.get(ATTRIBUTE_NAME) != ttl):
+            cls._get_connection().update_ttl(**ttl_config)
+
     @classmethod
     def _from_data(cls, data):
         """
@@ -1163,6 +1215,16 @@ class Model(AttributeContainer):
                 else:
                     cls._indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
         return cls._indexes
+
+    @classmethod
+    def _get_ttl_attribute(cls):
+        """
+        Returns the TTL attribute for this table
+        """
+        for name, attr in cls._get_attributes().items():
+            if attr.is_ttl:
+                return attr.attr_name
+        return None
 
     def _get_json(self):
         """

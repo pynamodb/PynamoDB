@@ -33,13 +33,14 @@ from pynamodb.constants import (
     PUT_ITEM, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
-    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
+    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, DESCRIBE_TTL, UPDATE_TTL, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
-    CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE, PUT,
+    ATTRIBUTE_NAME, ENABLED, CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE, PUT,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, UPDATE_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
-    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND)
+    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND,
+    TTL_SPECIFICATION)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -301,7 +302,8 @@ class Connection(object):
 
         Raises TableDoesNotExist if the specified table does not exist
         """
-        if operation_name not in [DESCRIBE_TABLE, LIST_TABLES, UPDATE_TABLE, DELETE_TABLE, CREATE_TABLE]:
+        if operation_name not in [DESCRIBE_TABLE, LIST_TABLES, UPDATE_TABLE, DELETE_TABLE,
+                                  CREATE_TABLE, DESCRIBE_TTL, UPDATE_TTL]:
             if RETURN_CONSUMED_CAPACITY not in operation_kwargs:
                 operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         self._log_debug(operation_name, operation_kwargs)
@@ -632,6 +634,34 @@ class Connection(object):
             return self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to update table: {0}".format(e), e)
+
+    def describe_ttl(self, table_name):
+        """
+        Performs the DescribeTimeToLive operation
+        """
+        operation_kwargs = {
+            TABLE_NAME: table_name
+        }
+        try:
+            return self.dispatch(DESCRIBE_TTL, operation_kwargs)
+        except BOTOCORE_EXCEPTIONS as e:
+            raise TableError("Failed to describe TTL: {0}".format(e), e)
+
+    def update_ttl(self, table_name, attribute_name, enabled=False):
+        """
+        Performs the UpdateTimeToLive operation
+        """
+        operation_kwargs = {
+            TABLE_NAME: table_name,
+            TTL_SPECIFICATION: {
+                ENABLED: enabled,
+                ATTRIBUTE_NAME: attribute_name
+            }
+        }
+        try:
+            return self.dispatch(UPDATE_TTL, operation_kwargs)
+        except BOTOCORE_EXCEPTIONS as e:
+            raise TableError("Failed to update TTL: {0}".format(e), e)
 
     def list_tables(self, exclusive_start_table_name=None, limit=None):
         """

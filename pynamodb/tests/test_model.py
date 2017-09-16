@@ -38,7 +38,7 @@ from pynamodb.tests.data import (
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA, COMPLEX_MODEL_SERIALIZED_TABLE_DATA,
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
-    GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
+    GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA, UPDATE_TTL_DATA, DESCRIBE_TTL_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
     CAR_MODEL_TABLE_DATA, FULL_CAR_MODEL_ITEM_DATA, CAR_MODEL_WITH_NULL_ITEM_DATA, INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA,
     BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
@@ -100,6 +100,16 @@ class GameModel(Model):
 class OldStyleModel(Model):
     _table_name = 'IndexedModel'
     user_name = UnicodeAttribute(hash_key=True)
+
+
+class ExpiringModel(Model):
+    class Meta:
+        read_capacity_units = 1
+        write_capacity_units = 1
+        table_name = "ExpiringModel"
+        host = "http://localhost:8000"
+    user_name = UnicodeAttribute(hash_key=True)
+    expires = UTCDateTimeAttribute(ttl=True)
 
 
 class EmailIndex(GlobalSecondaryIndex):
@@ -3523,7 +3533,7 @@ class ModelTestCase(TestCase):
                     }
                 ],
                 'AttributeDefinitions': [
-                    {'AttributeName': 'created_time', 'AttributeType': 'S'},
+                    {'AttributeName': 'created_time', 'AttributeType': 'N'},
                     {'AttributeName': 'player_id', 'AttributeType': 'S'},
                     {'AttributeName': 'winner_id', 'AttributeType': 'S'}
                 ]
@@ -3719,6 +3729,67 @@ class ModelTestCase(TestCase):
 
         with self.assertRaises(AttributeError):
             OldStyleModel.exists()
+
+    def test_ttl(self):
+        """
+        Confirm that TTL is enabled after table creation
+        """
+        scope_args = {'count': 0}
+
+        def fake_dynamodb(*args, **kwargs):
+            scope_args['count'] += 1
+            if scope_args['count'] == 1:
+                raise ClientError({'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Not Found'}},
+                                  "DescribeTable")
+            elif scope_args['count'] in [2, 3]:
+                data = copy.deepcopy(MODEL_TABLE_DATA)
+                data['Table']['TableStatus'] = 'ACTIVE'
+                return data
+            elif scope_args['count'] == 4:
+                self.assertEquals(args, UPDATE_TTL_DATA)
+            return {}
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            ExpiringModel.create_table(read_capacity_units=2, write_capacity_units=2)
+
+    def test_update_table(self):
+        """
+        Model.update_table
+        """
+        scope_args = {'count': 0}
+
+        def fake_dynamodb(*args, **kwargs):
+            scope_args['count'] += 1
+            if scope_args['count'] == 1:
+                raise ClientError({'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Not Found'}},
+                                  "DescribeTable")
+            elif scope_args['count'] in [2, 4, 5]:
+                data = copy.deepcopy(MODEL_TABLE_DATA)
+                data['Table']['TableStatus'] = 'ACTIVE'
+                return data
+            elif scope_args['count'] == 3:
+                self.assertEquals(args, UPDATE_TTL_DATA)
+            elif scope_args['count'] == 6:
+                return DESCRIBE_TTL_DATA
+            elif scope_args['count'] == 7:
+                data = copy.deepcopy(UPDATE_TTL_DATA)
+                data[1]['TimeToLiveSpecification']['Enabled'] = False
+                self.assertEquals(args, data)
+
+            return {}
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            ExpiringModel.create_table(read_capacity_units=2, write_capacity_units=2)
+            ExpiringModel.Meta.read_capacity_units = 1
+            ExpiringModel.Meta.read_capacity_units = 1
+            ExpiringModel.expires.is_ttl = False
+            ExpiringModel.update_table()
 
     def test_dumps(self):
         """

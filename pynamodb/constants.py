@@ -6,6 +6,8 @@ Pynamodb constants
 BATCH_WRITE_ITEM = 'BatchWriteItem'
 DESCRIBE_TABLE = 'DescribeTable'
 BATCH_GET_ITEM = 'BatchGetItem'
+DESCRIBE_TTL = 'DescribeTimeToLive'
+UPDATE_TTL = 'UpdateTimeToLive'
 CREATE_TABLE = 'CreateTable'
 UPDATE_TABLE = 'UpdateTable'
 DELETE_TABLE = 'DeleteTable'
@@ -285,3 +287,12 @@ CONDITIONAL_OPERATOR = 'ConditionalOperator'
 AND = 'AND'
 OR = 'OR'
 CONDITIONAL_OPERATORS = [AND, OR]
+
+# Constants for Time To Live configuration
+TTL_SPECIFICATION = 'TimeToLiveSpecification'
+TTL_DESCRIPTION = 'TimeToLiveDescription'
+ATTRIBUTE_NAME = 'AttributeName'
+TTL_STATUS = 'TimeToLiveStatus'
+TTL_STATUS_DISABLED = 'DISABLED'
+TTL_STATUS_ENABLED = 'ENABLED'
+ENABLED = 'Enabled'

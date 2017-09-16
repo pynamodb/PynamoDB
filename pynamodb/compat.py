@@ -1,6 +1,8 @@
 """
 Support for the old and outdated Python 2.6
 """
+from __future__ import division
+
 import logging
 import unittest
 
@@ -77,3 +79,10 @@ def getmembers_issubclass(object, classinfo):
             results.append((key, value))
     results.sort()
     return results
+
+
+# Replace this function with timedelta.total_seconds() once we drop Python 2.6 support
+def total_seconds(delta):
+    """Total seconds in the duration."""
+    return ((delta.days * 86400 + delta.seconds) * 10**6 +
+            delta.microseconds) / 10**6
