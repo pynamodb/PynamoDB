@@ -14,7 +14,7 @@ If your project was calling those low level methods a warning will be logged.
 
 New features in this release:
 
-* Add support for current version of [DynamoDB API](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Appendix.CurrentAPI.html)
+* Add support for current version of `DynamoDB API <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Appendix.CurrentAPI.html>`__
 
 Contributors to this release:
 

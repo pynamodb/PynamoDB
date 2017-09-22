@@ -1,7 +1,7 @@
 Versioning Scheme
 =================
 
-PynamoDB conforms to [PEP 440](https://www.python.org/dev/peps/pep-0440).
+PynamoDB conforms to `PEP 440 <https://www.python.org/dev/peps/pep-0440>`__.
 Generally, PynamoDB uses `Semantic Versioning <http://semver.org/>`__, where the version number has
 the format:
 
