@@ -10,5 +10,3 @@ the format:
 * The ``MAJOR`` version number changes when backward *incompatible* changes are introduced.
 * The ``MINOR`` version number changes when new features are added, but are backward compatible.
 * The ``PATCH`` version number changes when backward compatible bug fixes are added.
-
-We use `rc` instead of the second dot for release candidates as described in PEP 440. 
