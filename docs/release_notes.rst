@@ -8,8 +8,8 @@ v3.5rc1
 
 This is a backwards compatible, release candidate.
 
-This release candidate updates pynamodb to interact with dynamo via the current version of dynamo's api. 
-It deprecates some internal methods that were used to interact with dynamo that are no longer relevant. 
+This release candidate updates PynamoDB to interact with Dynamo via the current version of Dynamo's api. 
+It deprecates some internal methods that were used to interact with Dynamo that are no longer relevant. 
 If your project was calling those low level methods a warning will be logged.
 
 New features in this release:
