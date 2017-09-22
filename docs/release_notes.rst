@@ -1,6 +1,26 @@
 Release Notes
 =============
 
+v3.5rc1
+-------
+
+:date: 2017-09-22
+
+This is a backwards compatible, release candidate.
+
+This release candidate updates pynamodb to interact with dynamo via the current version of dynamo's api. 
+It deprecates some internal methods that were used to interact with dynamo that are no longer relevant. 
+If your project was calling those low level methods a warning will be logged.
+
+New features in this release:
+
+* Add support for current version of [DynamoDB api](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Appendix.CurrentAPI.html)
+
+Contributors to this release:
+
+* @jpinner-lyft
+
+
 v3.1.0
 ------
 
