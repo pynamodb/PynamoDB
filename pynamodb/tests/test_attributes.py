@@ -603,7 +603,7 @@ class TestMapAttribute:
         expected = {'number_attr': {'N': '10'}, 'unicode_attr': {'S': six.u('Hello')}}
         assert CustomAttrMap().serialize(attribute) == expected
 
-    def test_additional_atts_deserialize(self):
+    def test_additional_attrs_deserialize(self):
         raw_data = {
             'number_attr': {
                 'N': '10'},
