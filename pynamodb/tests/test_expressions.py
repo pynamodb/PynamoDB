@@ -28,9 +28,14 @@ class PathTestCase(TestCase):
         assert str(path) == "'foo.bar'[0]"
         assert repr(path) == "Path(['foo.bar[0]'])"
 
+    def test_index_map_attribute(self):
+        path = Path(['foo.bar'])['baz']
+        assert str(path) == "'foo.bar'.baz"
+        assert repr(path) == "Path(['foo.bar', 'baz'])"
+
     def test_index_invalid(self):
         with self.assertRaises(TypeError):
-            Path('foo.bar')['foo']
+            Path('foo.bar')[0.0]
 
 
 class ActionTestCase(TestCase):
