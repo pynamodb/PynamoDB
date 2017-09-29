@@ -667,7 +667,17 @@ class MapAttribute(Attribute, AttributeContainer):
         return iter(self.attribute_values)
 
     def __getitem__(self, item):
-        return self.attribute_values[item]
+        if self._is_attribute_container():
+            return self.attribute_values[item]
+        # If this instance is being used as an Attribute, treat item access like the map dereference operator.
+        # This provides equivalence between DynamoDB's nested attribute access for map elements (MyMap.nestedField)
+        # and Python's item access for dictionaries (MyMap['nestedField']).
+        if self.is_raw():
+            return Path(self.attr_path + [str(item)])
+        elif item in self._attributes:
+            return getattr(self, item)
+        else:
+            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, item))
 
     def __getattr__(self, attr):
         # This should only be called for "raw" (i.e. non-subclassed) MapAttribute instances.
