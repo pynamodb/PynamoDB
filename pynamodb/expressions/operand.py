@@ -1,5 +1,6 @@
 from pynamodb.constants import (
-    ATTR_TYPE_MAP, BINARY_SET, LIST, LIST_SHORT, MAP, NUMBER_SET, NUMBER_SHORT, SHORT_ATTR_TYPES, STRING_SET, STRING_SHORT
+    ATTR_TYPE_MAP, BINARY_SET, LIST, LIST_SHORT, MAP, MAP_SHORT,
+    NUMBER_SET, NUMBER_SHORT, SHORT_ATTR_TYPES, STRING_SET, STRING_SHORT
 )
 from pynamodb.expressions.condition import (
     BeginsWith, Between, Comparison, Contains, Exists, In, IsType, NotExists
@@ -8,6 +9,7 @@ from pynamodb.expressions.update import (
     AddAction, DeleteAction, RemoveAction, SetAction
 )
 from pynamodb.expressions.util import get_path_segments, get_value_placeholder, substitute_names
+from six import string_types
 
 
 class _Operand(object):
@@ -239,17 +241,24 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     def path(self):
         return self.values[0]
 
-    def __getitem__(self, idx):
-        # list dereference operator
-        if self.attribute and self.attribute.attr_type != LIST:
-            raise TypeError("'{0}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
-        if not isinstance(idx, int):
-            raise TypeError("list indices must be integers, not {0}".format(type(idx).__name__))
+    def __getitem__(self, item):
         # The __getitem__ call returns a new Path instance without any attribute set.
-        # This is intended since the list element is not the same attribute as the list itself.
-        element_path = Path(self.path)  # copy the document path before indexing last element
-        element_path.path[-1] = '{0}[{1}]'.format(self.path[-1], idx)
-        return element_path
+        # This is intended since the nested element is not the same attribute as ``self``.
+        if self.attribute and self.attribute.attr_type not in [LIST, MAP]:
+            raise TypeError("'{0}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
+        if self.short_attr_type == LIST_SHORT and not isinstance(item, int):
+            raise TypeError("list indices must be integers, not {0}".format(type(item).__name__))
+        if self.short_attr_type == MAP_SHORT and not isinstance(item, string_types):
+            raise TypeError("map attributes must be strings, not {0}".format(type(item).__name__))
+        if isinstance(item, int):
+            # list dereference operator
+            element_path = Path(self.path)  # copy the document path before indexing last element
+            element_path.path[-1] = '{0}[{1}]'.format(self.path[-1], item)
+            return element_path
+        if isinstance(item, string_types):
+            # map dereference operator
+            return Path(self.path + [item])
+        raise TypeError("item must be an integer or string, not {0}".format(type(item).__name__))
 
     def __or__(self, other):
         return _IfNotExists(self, self._to_operand(other))

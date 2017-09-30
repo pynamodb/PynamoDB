@@ -54,13 +54,24 @@ for more details.
     OR, \|, (Thread.views < 1) | (Thread.views > 5)
     NOT, ~, ~Thread.subject.contains('foobar')
 
-If necessary, you can use document paths to access nested list and map attributes:
+Conditions expressions using nested list and map attributes can be created with Python's item operator ``[]``:
 
 .. code-block:: python
 
-    from pynamodb.expressions.condition import size
+    from pynamodb.models import Model
+    from pynamodb.attributes import (
+        ListAttribute, MapAttribute, UnicodeAttribute
+    )
 
-    print(size('foo.bar[0].baz') == 0)
+    class Container(Model):
+        class Meta:
+            table_name = 'Container'
+
+        name = UnicodeAttribute(hash_key = True)
+        my_map = MapAttribute()
+        my_list = ListAttribute()
+
+    print(Container.my_map['foo'].exists() | Container.my_list[0].contains('bar'))
 
 
 Conditional Model.save

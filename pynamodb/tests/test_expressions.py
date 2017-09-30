@@ -28,9 +28,14 @@ class PathTestCase(TestCase):
         assert str(path) == "'foo.bar'[0]"
         assert repr(path) == "Path(['foo.bar[0]'])"
 
+    def test_index_map_attribute(self):
+        path = Path(['foo.bar'])['baz']
+        assert str(path) == "'foo.bar'.baz"
+        assert repr(path) == "Path(['foo.bar', 'baz'])"
+
     def test_index_invalid(self):
         with self.assertRaises(TypeError):
-            Path('foo.bar')['foo']
+            Path('foo.bar')[0.0]
 
 
 class ActionTestCase(TestCase):
@@ -326,6 +331,19 @@ class ConditionExpressionTestCase(TestCase):
         assert placeholder_names == {'foo.bar': '#0'}
         assert expression_attribute_values == {':0': {'S': 'baz'}}
 
+    def test_map_attribute_indexing(self):
+        # Simulate initialization from inside an AttributeContainer
+        my_map_attribute = MapAttribute(attr_name='foo.bar')
+        my_map_attribute._make_attribute()
+        my_map_attribute._update_attribute_paths(my_map_attribute.attr_name)
+
+        condition = my_map_attribute['foo'] == 'baz'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0.#1 = :0"
+        assert placeholder_names == {'foo.bar': '#0', 'foo': '#1'}
+        assert expression_attribute_values == {':0': {'S': 'baz'}}
+
     def test_map_attribute_dereference(self):
         class MyMapAttribute(MapAttribute):
             nested_string = self.attribute
@@ -341,6 +359,34 @@ class ConditionExpressionTestCase(TestCase):
         assert expression == "#0.#1 = :0"
         assert placeholder_names == {'foo.bar': '#0', 'foo': '#1'}
         assert expression_attribute_values == {':0': {'S': 'baz'}}
+
+    def test_map_attribute_dereference_via_indexing(self):
+        class MyMapAttribute(MapAttribute):
+            nested_string = self.attribute
+
+        # Simulate initialization from inside an AttributeContainer
+        my_map_attribute = MyMapAttribute(attr_name='foo.bar')
+        my_map_attribute._make_attribute()
+        my_map_attribute._update_attribute_paths(my_map_attribute.attr_name)
+
+        condition = my_map_attribute['nested_string'] == 'baz'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0.#1 = :0"
+        assert placeholder_names == {'foo.bar': '#0', 'foo': '#1'}
+        assert expression_attribute_values == {':0': {'S': 'baz'}}
+
+    def test_map_attribute_dereference_via_indexing_missing_attribute(self):
+        class MyMapAttribute(MapAttribute):
+            nested_string = self.attribute
+
+        # Simulate initialization from inside an AttributeContainer
+        my_map_attribute = MyMapAttribute(attr_name='foo.bar')
+        my_map_attribute._make_attribute()
+        my_map_attribute._update_attribute_paths(my_map_attribute.attr_name)
+
+        with self.assertRaises(AttributeError):
+            my_map_attribute['missing_attribute'] == 'baz'
 
 
 class UpdateExpressionTestCase(TestCase):
