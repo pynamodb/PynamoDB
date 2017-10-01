@@ -57,6 +57,13 @@ PynamoDB allows you to create the table if needed (it must exist before you can 
 
     UserModel.create_table(read_capacity_units=1, write_capacity_units=1)
 
+If you would rather manage your table via CloudFormation, you can print out your table representation:
+
+.. code-block:: python
+
+    # Default output is `json`. You can specify `yaml` or `yml` if you prefer.
+    UserModel.print_cloudformation(output='yml', read_capacity_units=1, write_capacity_units=1)
+
 Now, search your table for all users with a last name of 'Smith' and whose
 first name begins with 'J':
 
