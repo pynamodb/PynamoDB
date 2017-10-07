@@ -644,6 +644,18 @@ class TestMapAttribute:
         for k, v in six.iteritems(raw):
             assert attr[k] == v
 
+    def test_raw_map_iter(self):
+        raw = {
+            "foo": "bar",
+            "num": 3,
+            "nested": {
+                "nestedfoo": "nestedbar"
+            }
+        }
+        attr = MapAttribute(**raw)
+
+        assert list(iter(raw)) == list(iter(attr))
+
     def test_raw_map_json_serialize(self):
         raw = {
             "foo": "bar",
