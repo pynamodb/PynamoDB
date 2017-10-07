@@ -241,6 +241,10 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     def path(self):
         return self.values[0]
 
+    def __iter__(self):
+        # Because we define __getitem__ Path is considered an iterable
+        raise TypeError("'{0}' object is not iterable".format(self.__class__.__name__))
+
     def __getitem__(self, item):
         # The __getitem__ call returns a new Path instance without any attribute set.
         # This is intended since the nested element is not the same attribute as ``self``.

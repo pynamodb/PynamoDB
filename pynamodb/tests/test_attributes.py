@@ -606,6 +606,17 @@ class TestMapAttribute:
         assert item.map_attr['num'] == 3
         assert item.map_attr['nested']['nestedfoo'] == 'nestedbar'
 
+    def test_raw_set_item(self):
+        item = AttributeTestModel()
+        item.map_attr = {}
+        item.map_attr['foo'] = 'bar'
+        item.map_attr['num'] = 3
+        item.map_attr['nested'] = {'nestedfoo': 'nestedbar'}
+
+        assert item.map_attr['foo'] == 'bar'
+        assert item.map_attr['num'] == 3
+        assert item.map_attr['nested']['nestedfoo'] == 'nestedbar'
+
     def test_raw_map_from_dict(self):
         item = AttributeTestModel(
             map_attr={
