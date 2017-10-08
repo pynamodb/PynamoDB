@@ -82,6 +82,10 @@ class Attribute(object):
         serialized_dynamo_type = ATTR_TYPE_MAP[self.attr_type]
         return value.get(serialized_dynamo_type)
 
+    def __iter__(self):
+        # Because we define __getitem__ below for condition expression support
+        raise TypeError("'{0}' object is not iterable".format(self.__class__.__name__))
+
     # Condition Expression Support
     def __eq__(self, other):
         if other is None or isinstance(other, Attribute):  # handle object identity comparison
@@ -664,7 +668,9 @@ class MapAttribute(Attribute, AttributeContainer):
                 local_attr._update_attribute_paths(path_segment)
 
     def __iter__(self):
-        return iter(self.attribute_values)
+        if self._is_attribute_container():
+            return iter(self.attribute_values)
+        return super(MapAttribute, self).__iter__()
 
     def __getitem__(self, item):
         if self._is_attribute_container():
@@ -676,6 +682,16 @@ class MapAttribute(Attribute, AttributeContainer):
             return Path(self.attr_path + [str(item)])
         elif item in self._attributes:
             return getattr(self, item)
+        else:
+            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, item))
+
+    def __setitem__(self, item, value):
+        if not self._is_attribute_container():
+            raise TypeError("'{0}' object does not support item assignment".format(self.__class__.__name__))
+        if self.is_raw():
+            self.attribute_values[item] = value
+        elif item in self._attributes:
+            setattr(self, item, value)
         else:
             raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, item))
 
