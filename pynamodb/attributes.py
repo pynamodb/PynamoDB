@@ -12,8 +12,8 @@ from dateutil.parser import parse
 from dateutil.tz import tzutc
 from inspect import getargspec
 from pynamodb.constants import (
-    STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
+    STRING, STRING_SHORT, NUMBER, BINARY, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
+    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL
 )
 from pynamodb.compat import getmembers_issubclass
 from pynamodb.expressions.operand import Path
@@ -54,7 +54,7 @@ class Attribute(object):
             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
             instance.attribute_values[attr_name] = value
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance, unused_owner):
         if self._is_map_attribute_class_object(instance):
             # MapAttribute class objects store a local copy of the attribute with `attr_path` set to the document path.
             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
@@ -556,10 +556,10 @@ class UTCDateTimeAttribute(Attribute):
 class NullAttribute(Attribute):
     attr_type = NULL
 
-    def serialize(self, value):
+    def serialize(self, unused_value):
         return True
 
-    def deserialize(self, value):
+    def deserialize(self, unused_value):
         return None
 
 
@@ -922,6 +922,7 @@ class ListAttribute(Attribute):
             attr_value = _get_value_for_deserialize(v)
             deserialized_lst.append(class_for_deserialize.deserialize(attr_value))
         return deserialized_lst
+
 
 DESERIALIZE_CLASS_MAP = {
     LIST_SHORT: ListAttribute(),

@@ -19,14 +19,14 @@ class IndexMeta(type):
     This class is here to allow for an index `Meta` class
     that contains the index settings
     """
-    def __init__(cls, name, bases, attrs):
+    def __init__(cls, unused_name, unused_bases, attrs):
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
                     meta_cls = attrs.get(META_CLASS_NAME)
                     if meta_cls is not None:
                         meta_cls.attributes = None
-                elif issubclass(attr_obj.__class__, (Attribute, )):
+                elif issubclass(attr_obj.__class__, (Attribute,)):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
@@ -132,7 +132,7 @@ class Index(with_metaclass(IndexMeta)):
         """
         attr_definitions = []
         schema = []
-        for attr_name, attr_cls in cls._get_attributes().items():
+        for _, attr_cls in cls._get_attributes().items():
             attr_definitions.append({
                 pythonic(ATTR_NAME): attr_cls.attr_name,
                 pythonic(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]

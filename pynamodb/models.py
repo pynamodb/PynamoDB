@@ -99,7 +99,7 @@ class BatchWrite(ModelContextManager):
                 self.commit()
         self.pending_operations.append({"action": DELETE, "item": del_item})
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, unused_exc_type, unused_exc_val, unused_exc_tb):
         """
         This ensures that all pending operations are committed when
         the context is exited
@@ -167,8 +167,8 @@ class MetaModel(AttributeContainerMeta):
     This class is just here so that index queries have nice syntax.
     Model.index.query()
     """
-    def __init__(cls, name, bases, attrs):
-        super(MetaModel, cls).__init__(name, bases, attrs)
+    def __init__(self, name, bases, attrs):
+        super(MetaModel, self).__init__(name, bases, attrs)
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
@@ -188,24 +188,24 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_access_key_id', None)
                     if not hasattr(attr_obj, 'aws_secret_access_key'):
                         setattr(attr_obj, 'aws_secret_access_key', None)
-                elif issubclass(attr_obj.__class__, (Index, )):
-                    attr_obj.Meta.model = cls
+                elif issubclass(attr_obj.__class__, (Index,)):
+                    attr_obj.Meta.model = self
                     if not hasattr(attr_obj.Meta, "index_name"):
                         attr_obj.Meta.index_name = attr_name
-                elif issubclass(attr_obj.__class__, (Attribute, )):
+                elif issubclass(attr_obj.__class__, (Attribute,)):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
             if META_CLASS_NAME not in attrs:
-                setattr(cls, META_CLASS_NAME, DefaultMeta)
+                setattr(self, META_CLASS_NAME, DefaultMeta)
 
             # create a custom Model.DoesNotExist derived from pynamodb.exceptions.DoesNotExist,
             # so that "except Model.DoesNotExist:" would not catch other models' exceptions
             if 'DoesNotExist' not in attrs:
                 exception_attrs = {'__module__': attrs.get('__module__')}
-                if hasattr(cls, '__qualname__'):  # On Python 3, Model.DoesNotExist
-                    exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'DoesNotExist')
-                cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
+                if hasattr(self, '__qualname__'):  # On Python 3, Model.DoesNotExist
+                    exception_attrs['__qualname__'] = '{}.{}'.format(self.__qualname__, 'DoesNotExist')
+                self.DoesNotExist = type('DoesNotExist', (DoesNotExist,), exception_attrs)
 
 
 @add_metaclass(MetaModel)
@@ -410,7 +410,7 @@ class Model(AttributeContainer):
         self._conditional_operator_check(conditional_operator)
         args, save_kwargs = self._get_save_args(null_check=False)
         kwargs = {
-            pythonic(RETURN_VALUES):  ALL_NEW,
+            pythonic(RETURN_VALUES): ALL_NEW,
             'conditional_operator': conditional_operator,
         }
 
@@ -683,22 +683,22 @@ class Model(AttributeContainer):
 
     @classmethod
     def rate_limited_scan(cls,
-            filter_condition=None,
-            attributes_to_get=None,
-            segment=None,
-            total_segments=None,
-            limit=None,
-            conditional_operator=None,
-            last_evaluated_key=None,
-            page_size=None,
-            timeout_seconds=None,
-            read_capacity_to_consume_per_second=10,
-            allow_rate_limited_scan_without_consumed_capacity=None,
-            max_sleep_between_retry=10,
-            max_consecutive_exceptions=30,
-            consistent_read=None,
-            index_name=None,
-            **filters):
+                          filter_condition=None,
+                          attributes_to_get=None,
+                          segment=None,
+                          total_segments=None,
+                          limit=None,
+                          conditional_operator=None,
+                          last_evaluated_key=None,
+                          page_size=None,
+                          timeout_seconds=None,
+                          read_capacity_to_consume_per_second=10,
+                          allow_rate_limited_scan_without_consumed_capacity=None,
+                          max_sleep_between_retry=10,
+                          max_consecutive_exceptions=30,
+                          consistent_read=None,
+                          index_name=None,
+                          **filters):
         """
         Scans the items in the table at a definite rate.
         Invokes the low level rate_limited_scan API.
@@ -1109,7 +1109,7 @@ class Model(AttributeContainer):
             pythonic(ATTR_DEFINITIONS): [],
             pythonic(KEY_SCHEMA): []
         }
-        for attr_name, attr_cls in cls.get_attributes().items():
+        for _, attr_cls in cls._get_attributes().items():
             if attr_cls.is_hash_key or attr_cls.is_range_key:
                 schema[pythonic(ATTR_DEFINITIONS)].append({
                     pythonic(ATTR_NAME): attr_cls.attr_name,
@@ -1190,7 +1190,7 @@ class Model(AttributeContainer):
         serialized = self._serialize(null_check=null_check)
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
-        args = (hash_key, )
+        args = (hash_key,)
         if range_key is not None:
             kwargs[pythonic(RANGE_KEY)] = range_key
         if attributes:
