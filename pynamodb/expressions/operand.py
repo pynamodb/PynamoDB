@@ -200,7 +200,7 @@ class Value(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     def value(self):
         return self.values[0]
 
-    def _serialize_value(self, value, placeholder_names, expression_attribute_values):
+    def _serialize_value(self, value, unused_placeholder_names, expression_attribute_values):
         return get_value_placeholder(value, expression_attribute_values)
 
     @staticmethod
@@ -312,7 +312,7 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
             item = {attr_type[0]: attr_value[0]}
         return Contains(self, self._to_operand(item))
 
-    def _serialize_value(self, value, placeholder_names, expression_attribute_values):
+    def _serialize_value(self, value, placeholder_names, unused_expression_attribute_values):
         return substitute_names(value, placeholder_names)
 
     def _to_value(self, value):
