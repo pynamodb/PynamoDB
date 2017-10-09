@@ -40,6 +40,6 @@ setup(
         'License :: OSI Approved :: MIT License',
     ],
     extras_require={
-        'signals': ['blinker>=1.3,<2.0'] 
+        'signals': ['blinker>=1.3,<2.0']
     },
 )
