@@ -1,6 +1,20 @@
 Release Notes
 =============
 
+v3.2.0rc2
+-------
+
+:date 2017-10-09
+
+This is a backwards compatible, release candidate.
+
+This release candidate allows dereferencing raw ``MapAttributes`` in condition expressions.
+It also improves ``MapAttribute`` assignment and access.
+
+Contributors to this release:
+
+* @jpinner-lyft
+
 v3.2.0rc1
 -------
 
