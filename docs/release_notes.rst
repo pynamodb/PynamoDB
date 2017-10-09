@@ -8,7 +8,7 @@ v3.2.0rc2
 
 This is a backwards compatible, release candidate.
 
-This release candidate fixes a bug in dereferencing raw ``MapAttributes`` in condition expressions
+This release candidate fixes a bug in dereferencing raw ``MapAttributes`` in condition expressions.
 It also improves ``MapAttribute`` assignment and access.
 
 Contributors to this release:
