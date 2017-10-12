@@ -257,7 +257,7 @@ class Connection(object):
         Sends an error message to the logger
         """
         log.error("%s failed with status: %s, message: %s",
-                  operation, response.status_code,response.content)
+                  operation, response.status_code, response.content)
 
     def _create_prepared_request(self, request_dict, operation_model):
         """
@@ -300,7 +300,7 @@ class Connection(object):
             capacity = data.get(CONSUMED_CAPACITY)
             if isinstance(capacity, dict) and CAPACITY_UNITS in capacity:
                 capacity = capacity.get(CAPACITY_UNITS)
-            log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
+            log.debug("%s %s consumed %s units", data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
 
     def send_post_boto_callback(self, operation_name, req_uuid, table_name):
@@ -608,6 +608,8 @@ class Connection(object):
         """
         Performs the ListTables operation
         """
+        if limit is not None and limit <= 0:
+            raise ValueError("Invalid 'limit' parameter")
         operation_kwargs = {}
         if exclusive_start_table_name:
             operation_kwargs.update({
@@ -1105,6 +1107,8 @@ class Connection(object):
             exception for scan to exit
         :param consistent_read: enable consistent read
         """
+        if limit is not None and limit <= 0:
+            raise ValueError("Invalid 'limit' parameter")
         read_capacity_to_consume_per_ms = float(read_capacity_to_consume_per_second) / 1000
         if allow_rate_limited_scan_without_consumed_capacity is None:
             allow_rate_limited_scan_without_consumed_capacity = get_settings_value(
@@ -1139,10 +1143,13 @@ class Connection(object):
                         total_segments=total_segments,
                         consistent_read=consistent_read
                     )
-                    for item in data.get(ITEMS):
-                        yield item
-
-                        if limit is not None:
+                    if limit is None:
+                        # Fast path
+                        for item in data.get(ITEMS):
+                            yield item
+                    else:
+                        for item in data.get(ITEMS):
+                            yield item
                             limit -= 1
                             if not limit:
                                 return
@@ -1199,7 +1206,7 @@ class Connection(object):
                 # Minimum value is 1 second.
                 elapsed_time_s = math.ceil(elapsed_time_ms / 1000)
                 # Sleep proportional to the ratio of --consumed capacity-- to --capacity to consume--
-                time_to_sleep = max(1, round((total_consumed_read_capacity/ elapsed_time_s) \
+                time_to_sleep = max(1, round((total_consumed_read_capacity / elapsed_time_s) \
                                        / read_capacity_to_consume_per_second))
 
                 # At any moment if the timeout_seconds hits, then return
@@ -1225,6 +1232,8 @@ class Connection(object):
         """
         Performs the scan operation
         """
+        if limit is not None and limit <= 0:
+            raise ValueError("Invalid 'limit' parameter")
         self._check_condition('filter_condition', filter_condition, scan_filter, conditional_operator)
 
         operation_kwargs = {TABLE_NAME: table_name}
@@ -1283,6 +1292,8 @@ class Connection(object):
         """
         Performs the Query operation and returns the result
         """
+        if limit is not None and limit <= 0:
+            raise ValueError("Invalid 'limit' parameter")
         self._check_condition('range_key_condition', range_key_condition, key_conditions, conditional_operator)
         self._check_condition('filter_condition', filter_condition, query_filters, conditional_operator)
 
