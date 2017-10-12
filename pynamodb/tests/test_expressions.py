@@ -467,7 +467,7 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {}
 
     def test_add_action(self):
-        action = Path('foo').update(0)
+        action = Path('foo').add(0)
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 :0"
@@ -475,7 +475,7 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'N': '0'}}
 
     def test_add_action_set(self):
-        action = NumberSetAttribute(attr_name='foo').update({'NS': ['0']})
+        action = NumberSetAttribute(attr_name='foo').add({'NS': ['0']})
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 :0"
@@ -484,10 +484,10 @@ class UpdateExpressionTestCase(TestCase):
 
     def test_add_action_list(self):
         with self.assertRaises(ValueError):
-            Path('foo').update({'L': [{'N': '0'}]})
+            Path('foo').add({'L': [{'N': '0'}]})
 
     def test_delete_action(self):
-        action = NumberSetAttribute(attr_name='foo').difference_update({'NS': ['0']})
+        action = NumberSetAttribute(attr_name='foo').delete({'NS': ['0']})
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 :0"
@@ -496,14 +496,14 @@ class UpdateExpressionTestCase(TestCase):
 
     def test_delete_action_non_set(self):
         with self.assertRaises(ValueError):
-            Path('foo').difference_update({'N': '0'})
+            Path('foo').delete({'N': '0'})
 
     def test_update(self):
         update = Update(
             self.attribute.set({'S': 'bar'}),
             self.attribute.remove(),
-            self.attribute.update({'N': '0'}),
-            self.attribute.difference_update({'NS': ['0']})
+            self.attribute.add({'N': '0'}),
+            self.attribute.delete({'NS': ['0']})
         )
         placeholder_names, expression_attribute_values = {}, {}
         expression = update.serialize(placeholder_names, expression_attribute_values)
