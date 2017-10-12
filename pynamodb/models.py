@@ -684,8 +684,7 @@ class Model(AttributeContainer):
                 if not limit:
                     return
 
-            # If limit is a multiple of page_size, don't read next page
-            while limit and last_evaluated_key:
+            while last_evaluated_key:
                 query_kwargs['exclusive_start_key'] = last_evaluated_key
                 log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
                 data = cls._get_connection().query(hash_key, **query_kwargs)
@@ -846,8 +845,7 @@ class Model(AttributeContainer):
                 if not limit:
                     return
 
-            # If limit is a multiple of page_size, don't read next page
-            while limit and last_evaluated_key:
+            while last_evaluated_key:
                 log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
                 data = cls._get_connection().scan(
                     filter_condition=filter_condition,
