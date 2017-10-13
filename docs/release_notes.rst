@@ -1,6 +1,28 @@
 Release Notes
 =============
 
+v3.2.0
+------
+
+:date: 2017-10-13
+
+This is a backwards compatible, minor candidate.
+
+This release updates PynamoDB to interact with Dynamo via the current version of Dynamo's API.
+Condition and update expressions can now be created from attributes and used in model operations.
+Legacy filter and attribute update keyword arguments have been deprecated. Using these arguments
+will cause a warning to be logged.
+
+New features in this release:
+
+* Add support for current version of `DynamoDB API <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Appendix.CurrentAPI.html>`_
+* Improved ``MapAttribute`` item assignment and access.
+
+Contributors to this release:
+
+* @jpinner-lyft
+
+
 v3.2.0rc2
 ---------
 
@@ -15,6 +37,7 @@ Contributors to this release:
 
 * @jpinner-lyft
 
+
 v3.2.0rc1
 ---------
 
@@ -28,7 +51,7 @@ If your project was calling those low level methods a warning will be logged.
 
 New features in this release:
 
-* Add support for current version of `DynamoDB API <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Appendix.CurrentAPI.html>`__
+* Add support for current version of `DynamoDB API <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Appendix.CurrentAPI.html>`_
 
 Contributors to this release:
 
