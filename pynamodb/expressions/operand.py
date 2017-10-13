@@ -271,17 +271,17 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         # Returns an update action that sets this attribute to the given value
         return SetAction(self, self._to_operand(value))
 
-    def update(self, subset):
-        # Returns an update action that adds the subset to this set attribute
-        return AddAction(self, self._to_operand(subset))
-
-    def difference_update(self, subset):
-        # Returns an update action that deletes the subset from this set attribute
-        return DeleteAction(self, self._to_operand(subset))
-
     def remove(self):
         # Returns an update action that removes this attribute from the item
         return RemoveAction(self)
+
+    def add(self, value):
+        # Returns an update action that appends the given value to a set or mathematically adds it to a number
+        return AddAction(self, self._to_operand(value))
+
+    def delete(self, value):
+        # Returns an update action that removes the given value from a set attribute
+        return DeleteAction(self, self._to_operand(value))
 
     def exists(self):
         return Exists(self)

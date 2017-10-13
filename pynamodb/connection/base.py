@@ -886,12 +886,11 @@ class Connection(object):
                 attr_type = self.get_attribute_type(table_name, key, value)
             value = {attr_type: value}
             if action == DELETE:
-                action = path.remove() if attr_type is None else path.difference_update(value)
+                action = path.remove() if attr_type is None else path.delete(value)
             elif action == PUT:
                 action = path.set(value)
             else:
-                # right now update() returns an AddAction
-                action = path.update(value)
+                action = path.add(value)
             update_expression.add_action(action)
         operation_kwargs[UPDATE_EXPRESSION] = update_expression.serialize(name_placeholders, expression_attribute_values)
 

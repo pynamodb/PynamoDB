@@ -2,7 +2,7 @@ Release Notes
 =============
 
 v3.2.0rc2
--------
+---------
 
 :date 2017-10-09
 
@@ -16,7 +16,7 @@ Contributors to this release:
 * @jpinner-lyft
 
 v3.2.0rc1
--------
+---------
 
 :date: 2017-09-22
 

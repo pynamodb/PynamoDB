@@ -167,25 +167,21 @@ print(thread_item.save(Thread.forum_name.exists()))
 
 # DynamoDB will update the item, by adding 1 to the views attribute,
 # if the forum_name attribute equals 'Some Forum' or the subject attribute exists
-print(thread_item.update_item(
-    'views',
-    1,
-    action='add',
-    condition=((Thread.forum_name == 'Some Forum') | Thread.subject.exists())
+print(thread_item.update(
+    actions=[
+        Thread.views.add(1)
+    ],
+    condition=(
+        (Thread.forum_name == 'Some Forum') | Thread.subject.exists()
+    )
 ))
 
 # DynamoDB will atomically update the attributes `replies` (increase value by 1),
 # and `last_post_datetime` (set value to the current datetime)
-print(thread_item.update({
-    'replies': {
-        'action': 'add',
-        'value': 1,
-    },
-    'last_post_datetime': {
-        'action': 'put',
-        'value': datetime.now(),
-    },
-}))
+print(thread_item.update(actions=[
+    Thread.replies.add(1),
+    Thread.last_post_datetime.set(datetime.now()),
+]))
 
 # DynamoDB will delete the item, only if the views attribute is equal to one
 try:
@@ -193,11 +189,10 @@ try:
 except:
     pass
 
-# Delete an item's attribute
-print(thread_item.update_item(
-    'tags',
-    action='delete'
-))
+# Remove an item's attribute
+print(thread_item.update(actions=[
+    Thread.tags.remove()
+]))
 
 # Backup/restore example
 # Print the size of the table

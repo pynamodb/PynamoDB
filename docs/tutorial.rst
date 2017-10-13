@@ -284,6 +284,7 @@ atomically updating the view count of an item + updating the value of the last p
             Thread.last_post_datetime.set(datetime.now()),
         ])
 
+Update actions use the update expression syntax (see :ref:`updates`).
 
 .. deprecated:: 2.0
 

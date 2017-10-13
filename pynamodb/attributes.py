@@ -159,14 +159,14 @@ class Attribute(object):
     def set(self, value):
         return Path(self).set(value)
 
-    def update(self, subset):
-        return Path(self).update(subset)
-
-    def difference_update(self, subset):
-        return Path(self).difference_update(subset)
-
     def remove(self):
         return Path(self).remove()
+
+    def add(self, value):
+        return Path(self).add(value)
+
+    def delete(self, value):
+        return Path(self).delete(value)
 
 
 class AttributeContainerMeta(type):

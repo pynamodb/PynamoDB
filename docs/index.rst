@@ -30,6 +30,7 @@ Topics
    tutorial
    indexes
    batch
+   updates
    conditional
    attributes
    local
