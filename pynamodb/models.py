@@ -344,7 +344,6 @@ class Model(AttributeContainer):
         attribute_cls = None
         for attr_name, attr_cls in self._get_attributes().items():
             if attr_name == attribute:
-                value = attr_cls.serialize(value)
                 attribute_cls = attr_cls
                 break
         if not attribute_cls:
@@ -360,8 +359,10 @@ class Model(AttributeContainer):
                 ACTION: action.upper() if action else None,
             }
         }
-        if action is not None and action.upper() != DELETE:
-            kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name][VALUE] = {ATTR_TYPE_MAP[attribute_cls.attr_type]: value}
+        if value is not None:
+            kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name][VALUE] = {
+                ATTR_TYPE_MAP[attribute_cls.attr_type]: attribute_cls.serialize(value)
+            }
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)

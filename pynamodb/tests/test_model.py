@@ -1577,6 +1577,38 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
 
+        # Reproduces https://github.com/pynamodb/PynamoDB/issues/132
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "aliases": {
+                        "SS": set(["alias1", "alias3"])
+                    }
+                }
+            }
+            item.update_item('custom_aliases', set(['alias2']), action='delete')
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'UpdateExpression': 'DELETE #0 :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'aliases'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'SS': set(['alias2'])
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+            self.assertEqual(set(["alias1", "alias3"]), item.custom_aliases)
 
     def test_save(self):
         """
