@@ -415,7 +415,7 @@ class Model(AttributeContainer):
             attribute_cls = attrs[attr]
             action = params['action'] and params['action'].upper()
             attr_values = {ACTION: action}
-            if action != DELETE:
+            if 'value' in params:
                 attr_values[VALUE] = self._serialize_value(attribute_cls, params['value'])
 
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name] = attr_values
