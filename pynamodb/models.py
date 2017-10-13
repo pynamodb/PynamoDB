@@ -360,7 +360,7 @@ class Model(AttributeContainer):
                 ACTION: action.upper() if action else None,
             }
         }
-        if action is not None and action.upper() != DELETE:
+        if action is not None and (action.upper() != DELETE or (value is not None and not(isinstance(value, str) and value.upper() == 'NULL'))):
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name][VALUE] = {ATTR_TYPE_MAP[attribute_cls.attr_type]: value}
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)
@@ -415,8 +415,9 @@ class Model(AttributeContainer):
             attribute_cls = attrs[attr]
             action = params['action'] and params['action'].upper()
             attr_values = {ACTION: action}
-            if action != DELETE:
-                attr_values[VALUE] = self._serialize_value(attribute_cls, params['value'])
+            update_value = params.get('value')
+            if action != DELETE or (update_value is not None and not(isinstance(update_value, str))):
+                attr_values[VALUE] = self._serialize_value(attribute_cls, update_value)
 
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name] = attr_values
 
