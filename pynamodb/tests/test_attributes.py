@@ -557,6 +557,23 @@ class TestMapAttribute:
         serialized = attr.serialize(person_attribute)
         assert attr.deserialize(serialized) == person_attribute
 
+    # Special case for raw map attributes
+    def test_null_attribute_raw_map(self):
+        null_attribute = {
+            'skip': None
+        }
+        attr = MapAttribute()
+        serialized = attr.serialize(null_attribute)
+        assert serialized == {'skip': {'NULL': True}}
+
+    def test_null_attribute_subclassed_map(self):
+        null_attribute = {
+            'map_field': None
+        }
+        attr = DefaultsMap()
+        serialized = attr.serialize(null_attribute)
+        assert serialized == {}
+
     def test_map_of_map(self):
         attribute = {
             'name': 'Justin',
