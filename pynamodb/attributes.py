@@ -744,7 +744,9 @@ class MapAttribute(Attribute, AttributeContainer):
         rval = {}
         for k in values:
             v = values[k]
-            if v is None:
+            # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
+            # This special case behavior for "raw" attribtues should be removed in the future.
+            if not self.is_raw() and v is None:
                 continue
             attr_class = self._get_serialize_class(k, v)
             if attr_class is None:
