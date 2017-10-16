@@ -177,11 +177,11 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
                     if not hasattr(attr_obj, 'max_retry_attempts'):
                         setattr(attr_obj, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
-                elif issubclass(attr_obj.__class__, (Index, )):
+                elif issubclass(attr_obj.__class__, (Index,)):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
                         attr_obj.Meta.index_name = attr_name
-                elif issubclass(attr_obj.__class__, (Attribute, )):
+                elif issubclass(attr_obj.__class__, (Attribute,)):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
@@ -194,7 +194,7 @@ class MetaModel(AttributeContainerMeta):
                 exception_attrs = {'__module__': attrs.get('__module__')}
                 if hasattr(cls, '__qualname__'):  # On Python 3, Model.DoesNotExist
                     exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'DoesNotExist')
-                cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
+                cls.DoesNotExist = type('DoesNotExist', (DoesNotExist,), exception_attrs)
 
 
 @add_metaclass(MetaModel)
@@ -617,6 +617,8 @@ class Model(AttributeContainer):
         :param page_size: Page size of the query to DynamoDB
         :param filters: A dictionary of filters to be used in the query
         """
+        if limit is not None and limit <= 0:
+            raise ValueError("Invalid 'limit' parameter")
         cls._conditional_operator_check(conditional_operator)
         cls._get_indexes()
         if index_name:
@@ -663,25 +665,37 @@ class Model(AttributeContainer):
 
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
-        for item in data.get(ITEMS):
-            if limit is not None:
-                if limit == 0:
-                    return
-                limit -= 1
-            yield cls.from_raw_data(item)
-
-        while last_evaluated_key:
-            query_kwargs['exclusive_start_key'] = last_evaluated_key
-            log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
-            data = cls._get_connection().query(hash_key, **query_kwargs)
-            cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
+        if limit is None:
+            # Fast path
             for item in data.get(ITEMS):
-                if limit is not None:
-                    if limit == 0:
-                        return
-                    limit -= 1
                 yield cls.from_raw_data(item)
-            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+
+            while last_evaluated_key:
+                query_kwargs['exclusive_start_key'] = last_evaluated_key
+                log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
+                data = cls._get_connection().query(hash_key, **query_kwargs)
+                cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
+                for item in data.get(ITEMS):
+                    yield cls.from_raw_data(item)
+                last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        else:
+            for item in data.get(ITEMS):
+                yield cls.from_raw_data(item)
+                limit -= 1
+                if not limit:
+                    return
+
+            while last_evaluated_key:
+                query_kwargs['exclusive_start_key'] = last_evaluated_key
+                log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
+                data = cls._get_connection().query(hash_key, **query_kwargs)
+                cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
+                for item in data.get(ITEMS):
+                    yield cls.from_raw_data(item)
+                    limit -= 1
+                    if not limit:
+                        return
+                last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
     @classmethod
     def rate_limited_scan(cls,
@@ -780,6 +794,8 @@ class Model(AttributeContainer):
         :param filters: A list of item filters
         :param consistent_read: If True, a consistent read is performed
         """
+        if limit is not None and limit <= 0:
+            raise ValueError("Invalid 'limit' parameter")
         cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
@@ -804,31 +820,49 @@ class Model(AttributeContainer):
         log.debug("Fetching first scan page")
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
         cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
-        for item in data.get(ITEMS):
-            yield cls.from_raw_data(item)
-            if limit is not None:
+        if limit is None:
+            # Fast path
+            for item in data.get(ITEMS):
+                yield cls.from_raw_data(item)
+
+            while last_evaluated_key:
+                log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
+                data = cls._get_connection().scan(
+                    filter_condition=filter_condition,
+                    exclusive_start_key=last_evaluated_key,
+                    limit=page_size,
+                    scan_filter=key_filter,
+                    segment=segment,
+                    total_segments=total_segments,
+                    conditional_operator=conditional_operator
+                )
+                for item in data.get(ITEMS):
+                    yield cls.from_raw_data(item)
+                last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        else:
+            for item in data.get(ITEMS):
+                yield cls.from_raw_data(item)
                 limit -= 1
                 if not limit:
                     return
-        while last_evaluated_key:
-            log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
-            data = cls._get_connection().scan(
-                filter_condition=filter_condition,
-                exclusive_start_key=last_evaluated_key,
-                limit=page_size,
-                scan_filter=key_filter,
-                segment=segment,
-                total_segments=total_segments,
-                conditional_operator=conditional_operator
-            )
-            for item in data.get(ITEMS):
-                yield cls.from_raw_data(item)
-                if limit is not None:
+
+            while last_evaluated_key:
+                log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
+                data = cls._get_connection().scan(
+                    filter_condition=filter_condition,
+                    exclusive_start_key=last_evaluated_key,
+                    limit=page_size,
+                    scan_filter=key_filter,
+                    segment=segment,
+                    total_segments=total_segments,
+                    conditional_operator=conditional_operator
+                )
+                for item in data.get(ITEMS):
+                    yield cls.from_raw_data(item)
                     limit -= 1
                     if not limit:
                         return
-
-            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+                last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
     @classmethod
     def exists(cls):
@@ -1152,7 +1186,7 @@ class Model(AttributeContainer):
                 item_cls = getattr(getattr(cls, item), "__class__", None)
                 if item_cls is None:
                     continue
-                if issubclass(item_cls, (Index, )):
+                if issubclass(item_cls, (Index,)):
                     item_cls = getattr(cls, item)
                     cls._index_classes[item_cls.Meta.index_name] = item_cls
                     schema = item_cls._get_schema()
@@ -1204,7 +1238,7 @@ class Model(AttributeContainer):
         serialized = self._serialize(null_check=null_check)
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
-        args = (hash_key, )
+        args = (hash_key,)
         if range_key is not None:
             kwargs[pythonic(RANGE_KEY)] = range_key
         if attributes:
