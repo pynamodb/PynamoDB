@@ -530,6 +530,18 @@ class MapAttribute(AttributeContainer, Attribute):
             return cls._get_attributes().get(key)
         return _get_class_for_deserialize(value)
 
+    @classmethod
+    def _has_unicode_set_attribute(cls):
+        if cls.is_raw():
+            return False
+
+        for attr_value in cls._get_attributes().values():
+            if isinstance(attr_value, UnicodeSetAttribute):
+                return True
+            if isinstance(attr_value, MapAttribute):
+                return attr_value._has_unicode_set_attribute()
+
+        return False
 
 def _get_value_for_deserialize(value):
     key = next(iter(value.keys()))

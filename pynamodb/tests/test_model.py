@@ -3619,3 +3619,40 @@ class ModelInitTestCase(TestCase):
         self.assertEquals(actual.left.left.value, left_instance.left.value)
         self.assertEquals(actual.right.right.left.value, right_instance.right.left.value)
         self.assertEquals(actual.right.right.value, right_instance.right.value)
+
+
+class JSONUnicodeSetTestCase(TestCase):
+
+    def test_needs_unidode_set_fix_false(self):
+        test_item = {
+            'string_set_attr': {
+                'SS': ['a', 'b']
+            },
+            'map_attr': {'M': {
+                'foo': {'S': 'bar'},
+                'num': {'N': '1'},
+                'bool_type': {'BOOL': True},
+                'other_b_type': {'BOOL': False},
+                'floaty': {'N': '1.2'},
+                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'N': '12345678909876543211234234324234'}]},
+                'mapy': {'M': {'baz': {'S': 'bongo'}}}
+            }}
+        }
+        assert Model._has_json_unicode_set_value(test_item) == False
+
+    def test_needs_unidode_set_fix_true(self):
+        test_item = {
+            'string_set_attr': {
+                'SS': ['a', 'b']
+            },
+            'map_attr': {'M': {
+                'foo': {'S': 'bar'},
+                'num': {'N': '1'},
+                'bool_type': {'BOOL': True},
+                'other_b_type': {'BOOL': False},
+                'floaty': {'N': '1.2'},
+                'listy': {'L': [{'N': '1'}, {'N': '2'}, {'SS': ['"a"', '"b"']}]},
+                'mapy': {'M': {'baz': {'S': 'bongo'}}}
+            }}
+        }
+        assert Model._has_json_unicode_set_value(test_item) == True
