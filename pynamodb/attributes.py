@@ -140,6 +140,24 @@ class UnicodeSetAttribute(SetMixin, Attribute):
     attr_type = STRING_SET
     null = True
 
+    def element_deserialize(self, value):
+        """
+        This prepares for a future serialization change in v1.6.0 which will stop
+        serializing json encoded strings. This method attempts to deserialize a json
+        encoded value and falls back to returning the raw value if json decoding fails.
+        """
+        result = value
+        try:
+            result = json.loads(value)
+        except ValueError:
+            # it's serialized in the new way so pass
+            pass
+        return result
+
+    def deserialize(self, value):
+        if value and len(value):
+            return set([self.element_deserialize(val) for val in value])
+
 
 class UnicodeAttribute(Attribute):
     """

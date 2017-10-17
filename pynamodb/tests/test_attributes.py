@@ -353,9 +353,22 @@ class UnicodeAttributeTestCase(TestCase):
         UnicodeSetAttribute.deserialize
         """
         attr = UnicodeSetAttribute()
+        value = set([six.u('foo'), six.u('bar')])
         self.assertEqual(
-            attr.deserialize([json.dumps(val) for val in sorted(set([six.u('foo'), six.u('bar')]))]),
-            set([six.u('foo'), six.u('bar')])
+            attr.deserialize(value),
+            value
+        )
+
+    def test_unicode_set_deserialize_json(self):
+        """
+        UnicodeSetAttribute.deserialize old way
+        """
+        attr = UnicodeSetAttribute()
+        value = set([six.u('foo'), six.u('bar')])
+        old_value = set([json.dumps(val) for val in value])
+        self.assertEqual(
+            attr.deserialize(old_value),
+            value
         )
 
     def test_unicode_set_attribute(self):
