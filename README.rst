@@ -31,8 +31,38 @@ From GitHub::
 
     $ pip install git+https://github.com/pynamodb/PynamoDB#egg=pynamodb
 
+Upgrading
+=========
+
+.. warning::
+
+    The behavior of 'UnicodeSetAttribute' has changed in backwards-incompatible ways
+    as of the 1.6.0 and 3.0.1 releases of PynamoDB.
+
+When upgrading services that use PynamoDB with tables that contain UnicodeSetAttributes
+with a version < 1.6.0, first deploy version 1.5.4 to prepare the read path for the new
+serialization format.
+
+Once all services that read from the tables have been deployed, then deploy version 2.2.0
+and migrate your data using the provided convenience methods on the Model:
+
+.. code-block:: python
+
+    def get_save_kwargs(item):
+        # any conditional args needed to ensure data does not get overwritten
+        # for example if your item has a `version` attribute
+        {'version__eq': item.version}
+
+    # Re-serialize all UnicodeSetAttributes in the table
+    Model.fix_unicode_set_attributes(get_save_kwargs)
+
+    # Verify the migration is complete
+    print("Migration Complete? " + Model.needs_unicode_set_fix())
+
+Once all data has been migrated then upgrade to a version >= 3.0.1.
+
 Basic Usage
-^^^^^^^^^^^
+===========
 
 Create a model that describes your DynamoDB table.
 
@@ -83,7 +113,7 @@ Retrieve an existing user:
         print("User does not exist")
 
 Advanced Usage
-^^^^^^^^^^^^^^
+==============
 
 Want to use indexes? No problem:
 
