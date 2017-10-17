@@ -10,7 +10,6 @@ import warnings
 
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
-from pynamodb.throttle import NoThrottle
 from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
@@ -111,12 +110,10 @@ class BatchWrite(ModelContextManager):
         self.pending_operations = []
         if not len(put_items) and not len(delete_items):
             return
-        self.model.get_throttle().throttle()
         data = self.model._get_connection().batch_write_item(
             put_items=put_items,
             delete_items=delete_items
         )
-        self.model.add_throttle_record(data.get(CONSUMED_CAPACITY, None))
         if data is None:
             return
         unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
@@ -128,13 +125,11 @@ class BatchWrite(ModelContextManager):
                     put_items.append(item.get(PUT_REQUEST).get(ITEM))
                 elif DELETE_REQUEST in item:
                     delete_items.append(item.get(DELETE_REQUEST).get(KEY))
-            self.model.get_throttle().throttle()
             log.info("Resending %s unprocessed keys for batch operation", len(unprocessed_items))
             data = self.model._get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items
             )
-            self.model.add_throttle_record(data.get(CONSUMED_CAPACITY))
             unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
 
 
@@ -212,7 +207,6 @@ class Model(AttributeContainer):
     _indexes = None
     _connection = None
     _index_classes = None
-    _throttle = NoThrottle()
     DoesNotExist = DoesNotExist
 
     def __init__(self, hash_key=None, range_key=None, **attributes):
@@ -370,7 +364,6 @@ class Model(AttributeContainer):
             *args,
             **kwargs
         )
-        self._throttle.add_record(data.get(CONSUMED_CAPACITY))
 
         for name, value in data.get(ATTRIBUTES).items():
             attr_name = self._dynamo_to_python_attr(name)
@@ -424,7 +417,6 @@ class Model(AttributeContainer):
         kwargs.update(condition=condition)
         kwargs.update(actions=actions)
         data = self._get_connection().update_item(*args, **kwargs)
-        self._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for name, value in data[ATTRIBUTES].items():
             attr_name = self._dynamo_to_python_attr(name)
             attr = self._get_attributes().get(attr_name)
@@ -442,10 +434,7 @@ class Model(AttributeContainer):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)
-        data = self._get_connection().put_item(*args, **kwargs)
-        if isinstance(data, dict):
-            self._throttle.add_record(data.get(CONSUMED_CAPACITY))
-        return data
+        return self._get_connection().put_item(*args, **kwargs)
 
     def refresh(self, consistent_read=False):
         """
@@ -456,7 +445,6 @@ class Model(AttributeContainer):
         args, kwargs = self._get_save_args(attributes=False)
         kwargs.setdefault('consistent_read', consistent_read)
         attrs = self._get_connection().get_item(*args, **kwargs)
-        self._throttle.add_record(attrs.get(CONSUMED_CAPACITY))
         item_data = attrs.get(ITEM, None)
         if item_data is None:
             raise self.DoesNotExist("This item does not exist in the table.")
@@ -482,7 +470,6 @@ class Model(AttributeContainer):
         if data:
             item_data = data.get(ITEM)
             if item_data:
-                cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
                 return cls.from_raw_data(item_data)
         raise cls.DoesNotExist()
 
@@ -642,7 +629,6 @@ class Model(AttributeContainer):
             key_attribute_classes=key_attribute_classes,
             non_key_attribute_classes=non_key_attribute_classes,
             filters=filters)
-        log.debug("Fetching first query page")
 
         query_kwargs = dict(
             range_key_condition=range_key_condition,
@@ -659,7 +645,6 @@ class Model(AttributeContainer):
         )
 
         data = cls._get_connection().query(hash_key, **query_kwargs)
-        cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
 
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
 
@@ -672,9 +657,7 @@ class Model(AttributeContainer):
 
         while last_evaluated_key:
             query_kwargs['exclusive_start_key'] = last_evaluated_key
-            log.debug("Fetching query page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().query(hash_key, **query_kwargs)
-            cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
             for item in data.get(ITEMS):
                 if limit is not None:
                     if limit == 0:
@@ -801,9 +784,7 @@ class Model(AttributeContainer):
             conditional_operator=conditional_operator,
             consistent_read=consistent_read
         )
-        log.debug("Fetching first scan page")
         last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
-        cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         for item in data.get(ITEMS):
             yield cls.from_raw_data(item)
             if limit is not None:
@@ -811,7 +792,6 @@ class Model(AttributeContainer):
                 if not limit:
                     return
         while last_evaluated_key:
-            log.debug("Fetching scan page with exclusive start key: %s", last_evaluated_key)
             data = cls._get_connection().scan(
                 filter_condition=filter_condition,
                 exclusive_start_key=last_evaluated_key,
@@ -1263,32 +1243,9 @@ class Model(AttributeContainer):
         data = cls._get_connection().batch_get_item(
             keys_to_get, consistent_read=consistent_read, attributes_to_get=attributes_to_get
         )
-        cls._throttle.add_record(data.get(CONSUMED_CAPACITY))
         item_data = data.get(RESPONSES).get(cls.Meta.table_name)
         unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.Meta.table_name, {}).get(KEYS, None)
         return item_data, unprocessed_items
-
-    @classmethod
-    def add_throttle_record(cls, records):
-        """
-        (Experimental)
-        Pulls out the table name and capacity units from `records` and
-        puts it in `self.throttle`
-
-        :param records: A list of usage records
-        """
-        if records:
-            for record in records:
-                if record.get(TABLE_NAME) == cls.Meta.table_name:
-                    cls._throttle.add_record(record.get(CAPACITY_UNITS))
-                    break
-
-    @classmethod
-    def get_throttle(cls):
-        """
-        Returns the throttle implementation for this Model
-        """
-        return cls._throttle
 
     @classmethod
     def _get_meta_data(cls):

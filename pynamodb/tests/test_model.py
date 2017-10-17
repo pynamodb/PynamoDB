@@ -14,7 +14,6 @@ import pytest
 
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.tests.deep_eq import deep_eq
-from pynamodb.throttle import Throttle
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import DoesNotExist, TableError
 from pynamodb.types import RANGE
@@ -192,19 +191,6 @@ class SimpleUserModel(Model):
     views = NumberAttribute(null=True)
     is_active = BooleanAttribute(null=True)
     signature = UnicodeAttribute(null=True)
-
-
-class ThrottledUserModel(Model):
-    """
-    A testing model
-    """
-
-    class Meta:
-        table_name = 'UserModel'
-
-    user_name = UnicodeAttribute(hash_key=True)
-    user_id = UnicodeAttribute(range_key=True)
-    throttle = Throttle('50')
 
 
 class CustomAttrIndex(LocalSecondaryIndex):
@@ -3660,19 +3646,6 @@ class ModelTestCase(TestCase):
                 pass
 
             BadIndex()
-
-    def test_throttle(self):
-        """
-        Throttle.add_record
-        """
-        throt = Throttle(30)
-        throt.add_record(None)
-        for i in range(10):
-            throt.add_record(1)
-            throt.throttle()
-        for i in range(2):
-            throt.add_record(50)
-            throt.throttle()
 
     def test_old_style_model_exception(self):
         """
