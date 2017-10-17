@@ -283,6 +283,9 @@ v1.6.0
 
 :date: 2016-10-20
 
+This release changes the way json serialization and deserialization works. This can break systems that are distributed and have a rolling deploy.
+Old hosts will not be able to read the new records until they are upgraded.
+
 This is a minor release, with some changes to BinaryAttribute handling and new options for configuration.
 
 BooleanAttribute now uses the native API type "B". BooleanAttribute is also compatible with the legacy BooleanAttributes
