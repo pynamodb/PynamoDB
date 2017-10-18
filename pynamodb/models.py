@@ -616,8 +616,11 @@ class Model(AttributeContainer):
         :param page_size: Page size of the query to DynamoDB
         :param filters: A dictionary of filters to be used in the query
         """
-        if limit is not None and limit <= 0:
-            raise ValueError("Invalid 'limit' parameter")
+        if limit is not None:
+            if limit < 0:
+                raise ValueError("Invalid 'limit' parameter")
+            elif not limit:
+                return
         cls._conditional_operator_check(conditional_operator)
         cls._get_indexes()
         if index_name:
@@ -738,7 +741,11 @@ class Model(AttributeContainer):
             exceptions for scan to exit
         :param consistent_read: If True, a consistent read is performed
         """
-
+        if limit is not None:
+            if limit < 0:
+                raise ValueError("Invalid 'limit' parameter")
+            elif not limit:
+                return
         cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
@@ -793,8 +800,11 @@ class Model(AttributeContainer):
         :param filters: A list of item filters
         :param consistent_read: If True, a consistent read is performed
         """
-        if limit is not None and limit <= 0:
-            raise ValueError("Invalid 'limit' parameter")
+        if limit is not None:
+            if limit < 0:
+                raise ValueError("Invalid 'limit' parameter")
+            elif not limit:
+                return
         cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
