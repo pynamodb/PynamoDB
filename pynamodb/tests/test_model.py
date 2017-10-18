@@ -18,7 +18,7 @@ from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import DoesNotExist, TableError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
-    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, ITEM_COUNT,
+    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
     UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT, NUMBER_SHORT
 )
@@ -686,7 +686,7 @@ class ModelTestCase(TestCase):
 
         self.assertRaises(ValueError, UserModel, user_name="bob")
 
-        self.assertRaises(ValueError, list, CustomAttrNameModel.query("bob", foo_attr="bar"))
+        self.assertRaises(ValueError, CustomAttrNameModel.query, "bob", foo_attr="bar")
 
     def test_refresh(self):
         """
@@ -2084,7 +2084,7 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
 
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             results = list(UserModel.query('foo', limit=25))
             self.assertEqual(len(results), 5)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 25)
@@ -2101,7 +2101,7 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
 
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             results = list(UserModel.query('foo', limit=5))
             self.assertEqual(len(results), 5)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 5)
@@ -2119,16 +2119,18 @@ class ModelTestCase(TestCase):
                 items.append(item)
 
             req.side_effect = [
-                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
-                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
-                {'Items': items[20:30]},
+                {'Count': 10, 'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Count': 10, 'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Count': 10, 'Items': items[20:30], 'LastEvaluatedKey': 'z'},
             ]
-            results = list(UserModel.query('foo', limit=25))
+            results_iter = UserModel.query('foo', limit=25)
+            results = list(results_iter)
             self.assertEqual(len(results), 25)
             self.assertEqual(len(req.mock_calls), 3)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 25)
             self.assertEquals(req.mock_calls[1][1][1]['Limit'], 25)
             self.assertEquals(req.mock_calls[2][1][1]['Limit'], 25)
+            self.assertEquals(results_iter.last_evaluated_key, 'z')
 
     def test_query_limit_less_than_available_and_page_size(self):
         with patch(PATCH_METHOD) as req:
@@ -2143,16 +2145,18 @@ class ModelTestCase(TestCase):
                 items.append(item)
 
             req.side_effect = [
-                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
-                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
-                {'Items': items[20:30]},
+                {'Count': 10, 'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Count': 10, 'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Count': 10, 'Items': items[20:30], 'LastEvaluatedKey': 'z'},
             ]
-            results = list(UserModel.query('foo', limit=25, page_size=10))
+            results_iter = UserModel.query('foo', limit=25, page_size=10)
+            results = list(results_iter)
             self.assertEqual(len(results), 25)
             self.assertEqual(len(req.mock_calls), 3)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
             self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
             self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
+            self.assertEquals(results_iter.last_evaluated_key, 'z')
 
     def test_query_limit_greater_than_available_items_multiple_page(self):
         with patch(PATCH_METHOD) as req:
@@ -2167,16 +2171,18 @@ class ModelTestCase(TestCase):
                 items.append(item)
 
             req.side_effect = [
-                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
-                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
-                {'Items': items[20:30]},
+                {'Count': 10, 'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Count': 10, 'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Count': 10, 'Items': items[20:30]},
             ]
-            results = list(UserModel.query('foo', limit=50))
+            results_iter = UserModel.query('foo', limit=50)
+            results = list(results_iter)
             self.assertEqual(len(results), 30)
             self.assertEqual(len(req.mock_calls), 3)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 50)
             self.assertEquals(req.mock_calls[1][1][1]['Limit'], 50)
             self.assertEquals(req.mock_calls[2][1][1]['Limit'], 50)
+            self.assertEquals(results_iter.last_evaluated_key, None)
 
     def test_query_limit_greater_than_available_items_and_page_size(self):
         with patch(PATCH_METHOD) as req:
@@ -2191,16 +2197,18 @@ class ModelTestCase(TestCase):
                 items.append(item)
 
             req.side_effect = [
-                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
-                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
-                {'Items': items[20:30]},
+                {'Count': 10, 'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Count': 10, 'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Count': 10, 'Items': items[20:30]},
             ]
-            results = list(UserModel.query('foo', limit=50, page_size=10))
+            results_iter = UserModel.query('foo', limit=50, page_size=10)
+            results = list(results_iter)
             self.assertEqual(len(results), 30)
             self.assertEqual(len(req.mock_calls), 3)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
             self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
             self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
+            self.assertEquals(results_iter.last_evaluated_key, None)
 
     def test_query(self):
         """
@@ -2216,7 +2224,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id.between('id-1', 'id-3')):
                 queried.append(item._serialize().get(RANGE))
@@ -2231,7 +2239,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__between=['id-1', 'id-3']):
                 queried.append(item._serialize().get(RANGE))
@@ -2256,7 +2264,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id < 'id-1'):
                 queried.append(item._serialize())
@@ -2268,7 +2276,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__lt='id-1'):
                 queried.append(item._serialize())
@@ -2280,7 +2288,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id >= 'id-1'):
                 queried.append(item._serialize())
@@ -2292,7 +2300,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__ge='id-1'):
                 queried.append(item._serialize())
@@ -2304,7 +2312,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id <= 'id-1'):
                 queried.append(item._serialize())
@@ -2316,7 +2324,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__le='id-1'):
                 queried.append(item._serialize())
@@ -2328,7 +2336,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id == 'id-1'):
                 queried.append(item._serialize())
@@ -2340,7 +2348,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__eq='id-1'):
                 queried.append(item._serialize())
@@ -2352,7 +2360,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id.startswith('id')):
                 queried.append(item._serialize())
@@ -2364,7 +2372,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', user_id__begins_with='id'):
                 queried.append(item._serialize())
@@ -2376,7 +2384,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo'):
                 queried.append(item._serialize())
@@ -2395,6 +2403,7 @@ class ModelTestCase(TestCase):
             else:
                 query_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[:1]
             data = {
+                CAMEL_COUNT: len(query_items),
                 ITEMS: query_items,
                 LAST_EVALUATED_KEY: query_items[-1] if len(query_items) else None
             }
@@ -2414,7 +2423,7 @@ class ModelTestCase(TestCase):
         # Note this test is not valid -- this is request user_name == 'bar' and user_name == 'foo'
         # The new condition api correctly throws an exception for in this case.
         with patch(PATCH_METHOD) as req:
-            req.return_value = {ITEMS: [CUSTOM_ATTR_NAME_ITEM_DATA.get(ITEM)]}
+            req.return_value = {CAMEL_COUNT: 1, ITEMS: [CUSTOM_ATTR_NAME_ITEM_DATA.get(ITEM)]}
             for item in CustomAttrNameModel.query('bar', overidden_user_name__eq='foo'):
                 self.assertIsNotNone(item)
 
@@ -2424,7 +2433,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query(
                     'foo',
@@ -2470,7 +2479,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
             for item in UserModel.query(
                     'foo',
@@ -2521,16 +2530,18 @@ class ModelTestCase(TestCase):
                 items.append(item)
 
             req.side_effect = [
-                {'Items': items[:10], 'LastEvaluatedKey': 'x'},
-                {'Items': items[10:20], 'LastEvaluatedKey': 'y'},
-                {'Items': items[20:30]},
+                {'Count': 10, 'Items': items[:10], 'LastEvaluatedKey': 'x'},
+                {'Count': 10, 'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Count': 10, 'Items': items[20:30], 'LastEvaluatedKey': 'z'},
             ]
-            results = list(UserModel.scan(limit=25, page_size=10))
+            results_iter = UserModel.scan(limit=25, page_size=10)
+            results = list(results_iter)
             self.assertEqual(len(results), 25)
             self.assertEqual(len(req.mock_calls), 3)
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
             self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
             self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
+            self.assertEquals(results_iter.last_evaluated_key, 'z')
 
     def test_scan_limit(self):
         """
@@ -2540,7 +2551,7 @@ class ModelTestCase(TestCase):
         def fake_scan(*args):
             scan_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)
             data = {
-                ITEM_COUNT: len(scan_items),
+                CAMEL_COUNT: len(scan_items),
                 ITEMS: scan_items,
             }
             return data
@@ -2671,7 +2682,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             for item in UserModel.scan(
                     user_id__contains='tux',
                     zip_code__null=False,
@@ -2714,7 +2725,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             scanned_items = []
             for item in UserModel.scan():
                 scanned_items.append(item._serialize().get(RANGE))
@@ -2736,6 +2747,7 @@ class ModelTestCase(TestCase):
             else:
                 scan_items = BATCH_GET_ITEMS.get(RESPONSES).get(UserModel.Meta.table_name)[:1]
             data = {
+                CAMEL_COUNT: len(scan_items),
                 ITEMS: scan_items,
                 LAST_EVALUATED_KEY: scan_items[-1] if len(scan_items) else None
             }
@@ -2754,7 +2766,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             for item in UserModel.scan(user_id__contains='tux', zip_code__null=False, email__null=True):
                 self.assertIsNotNone(item)
             params = {
@@ -2780,7 +2792,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             for item in UserModel.scan(
                     user_id__contains='tux',
                     zip_code__null=False,
@@ -3179,7 +3191,7 @@ class ModelTestCase(TestCase):
                 item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
 
             for item in IndexedModel.email_index.query('foo', IndexedModel.user_name.startswith('bar'), limit=2):
@@ -3215,7 +3227,7 @@ class ModelTestCase(TestCase):
                 item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
 
             for item in IndexedModel.email_index.query('foo', limit=2, user_name__begins_with='bar'):
@@ -3249,7 +3261,7 @@ class ModelTestCase(TestCase):
                 item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
 
             for item in LocalIndexedModel.email_index.query(
@@ -3292,7 +3304,7 @@ class ModelTestCase(TestCase):
                 item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
 
             for item in LocalIndexedModel.email_index.query(
@@ -3334,7 +3346,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
 
             for item in CustomAttrNameModel.uid_index.query(
@@ -3372,7 +3384,7 @@ class ModelTestCase(TestCase):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
                 item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             queried = []
 
             for item in CustomAttrNameModel.uid_index.query('foo', limit=2, overidden_user_name__begins_with='bar'):
@@ -3669,7 +3681,7 @@ class ModelTestCase(TestCase):
                 item['email'] = {STRING_SHORT: 'email-{0}'.format(random.randint(0, 65536))}
                 item['picture'] = {BINARY_SHORT: BINARY_ATTR_DATA}
                 items.append(item)
-            req.return_value = {'Items': items}
+            req.return_value = {'Count': len(items), 'Items': items}
             content = UserModel.dumps()
             serialized_items = json.loads(content)
             for original, new_item in zip(items, serialized_items):

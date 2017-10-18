@@ -17,6 +17,7 @@ from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler
 from pynamodb.indexes import Index, GlobalSecondaryIndex
+from pynamodb.pagination import ResultIterator
 from pynamodb.settings import get_settings_value
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
@@ -551,27 +552,29 @@ class Model(AttributeContainer):
             non_key_attribute_classes=non_key_attribute_classes,
             filters=filters)
 
-        count_buffer = 0
-        last_evaluated_key = None
-        started = False
-        while not started or last_evaluated_key:
-            started = True
-            data = cls._get_connection().query(
-                hash_key,
-                range_key_condition=range_key_condition,
-                filter_condition=filter_condition,
-                index_name=index_name,
-                consistent_read=consistent_read,
-                key_conditions=key_conditions,
-                query_filters=query_filters,
-                exclusive_start_key=last_evaluated_key,
-                limit=limit,
-                select=COUNT
-            )
-            count_buffer += data.get(CAMEL_COUNT)
-            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        query_args = (hash_key,)
+        query_kwargs = dict(
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
+            index_name=index_name,
+            consistent_read=consistent_read,
+            key_conditions=key_conditions,
+            query_filters=query_filters,
+            limit=limit,
+            select=COUNT
+        )
 
-        return count_buffer
+        result_iterator = ResultIterator(
+            cls._get_connection().query,
+            query_args,
+            query_kwargs,
+            limit=limit
+        )
+
+        # iterate through results
+        list(result_iterator)
+
+        return result_iterator.total_count
 
     @classmethod
     def query(cls,
@@ -630,6 +633,7 @@ class Model(AttributeContainer):
             non_key_attribute_classes=non_key_attribute_classes,
             filters=filters)
 
+        query_args = (hash_key,)
         query_kwargs = dict(
             range_key_condition=range_key_condition,
             filter_condition=filter_condition,
@@ -644,27 +648,13 @@ class Model(AttributeContainer):
             conditional_operator=conditional_operator
         )
 
-        data = cls._get_connection().query(hash_key, **query_kwargs)
-
-        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
-
-        for item in data.get(ITEMS):
-            if limit is not None:
-                if limit == 0:
-                    return
-                limit -= 1
-            yield cls.from_raw_data(item)
-
-        while last_evaluated_key:
-            query_kwargs['exclusive_start_key'] = last_evaluated_key
-            data = cls._get_connection().query(hash_key, **query_kwargs)
-            for item in data.get(ITEMS):
-                if limit is not None:
-                    if limit == 0:
-                        return
-                    limit -= 1
-                yield cls.from_raw_data(item)
-            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        return ResultIterator(
+            cls._get_connection().query,
+            query_args,
+            query_kwargs,
+            map_fn=cls.from_raw_data,
+            limit=limit
+        )
 
     @classmethod
     def rate_limited_scan(cls,
@@ -771,10 +761,12 @@ class Model(AttributeContainer):
             filters=filters
         )
         key_filter.update(scan_filter)
+
         if page_size is None:
             page_size = limit
 
-        data = cls._get_connection().scan(
+        scan_args = ()
+        scan_kwargs = dict(
             filter_condition=filter_condition,
             exclusive_start_key=last_evaluated_key,
             segment=segment,
@@ -784,31 +776,14 @@ class Model(AttributeContainer):
             conditional_operator=conditional_operator,
             consistent_read=consistent_read
         )
-        last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
-        for item in data.get(ITEMS):
-            yield cls.from_raw_data(item)
-            if limit is not None:
-                limit -= 1
-                if not limit:
-                    return
-        while last_evaluated_key:
-            data = cls._get_connection().scan(
-                filter_condition=filter_condition,
-                exclusive_start_key=last_evaluated_key,
-                limit=page_size,
-                scan_filter=key_filter,
-                segment=segment,
-                total_segments=total_segments,
-                conditional_operator=conditional_operator
-            )
-            for item in data.get(ITEMS):
-                yield cls.from_raw_data(item)
-                if limit is not None:
-                    limit -= 1
-                    if not limit:
-                        return
 
-            last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
+        return ResultIterator(
+            cls._get_connection().scan,
+            scan_args,
+            scan_kwargs,
+            map_fn=cls.from_raw_data,
+            limit=limit
+        )
 
     @classmethod
     def exists(cls):
