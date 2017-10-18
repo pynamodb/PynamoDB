@@ -29,7 +29,7 @@ from pynamodb.constants import (
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP, NOT_NULL,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
+    TAGS, NEXT_TOKEN, CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
     STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET)
@@ -889,6 +889,46 @@ class Model(AttributeContainer):
                         time.sleep(2)
                 else:
                     raise TableError("No TableStatus returned for table")
+
+    @classmethod
+    def add_tags(cls, tags):
+        """
+        Add tags to this model's table.
+
+        If you try to add an existing tag (same key), the existing tag value will be updated to the new value.
+
+        :param tags: dictionary of tag's keys and values
+        """
+        cls._get_connection().add_tags(table_arn=cls._get_meta_data().table_arn,
+                                       tags=tags)
+
+    @classmethod
+    def remove_tags(cls, tags):
+        """
+        Remove tags from this model's table.
+
+        :param tags: list of tag's keys to remove
+        """
+        cls._get_connection().remove_tags(table_arn=cls._get_meta_data().table_arn,
+                                          tags=tags)
+
+    @classmethod
+    def list_tags(cls):
+        """
+        Returns tags of this model's table as a dictionary.
+        """
+        table_arn = cls._get_meta_data().table_arn
+        connection = cls._get_connection()
+        tags = {}
+        data = connection.list_tags(table_arn=table_arn)
+        for tag in data[TAGS]:
+            tags[tag[KEY]] = tag[VALUE]
+        while NEXT_TOKEN in data:
+            data = connection.list_tags(table_arn=table_arn,
+                                        next_token=data[NEXT_TOKEN])
+            for tag in data[TAGS]:
+                tags[tag[KEY]] = tag[VALUE]
+        return tags
 
     @classmethod
     def dumps(cls):
