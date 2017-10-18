@@ -608,8 +608,6 @@ class Connection(object):
         """
         Performs the ListTables operation
         """
-        if limit is not None and limit <= 0:
-            raise ValueError("Invalid 'limit' parameter")
         operation_kwargs = {}
         if exclusive_start_table_name:
             operation_kwargs.update({
@@ -1107,8 +1105,6 @@ class Connection(object):
             exception for scan to exit
         :param consistent_read: enable consistent read
         """
-        if limit is not None and limit <= 0:
-            raise ValueError("Invalid 'limit' parameter")
         read_capacity_to_consume_per_ms = float(read_capacity_to_consume_per_second) / 1000
         if allow_rate_limited_scan_without_consumed_capacity is None:
             allow_rate_limited_scan_without_consumed_capacity = get_settings_value(
@@ -1232,8 +1228,6 @@ class Connection(object):
         """
         Performs the scan operation
         """
-        if limit is not None and limit <= 0:
-            raise ValueError("Invalid 'limit' parameter")
         self._check_condition('filter_condition', filter_condition, scan_filter, conditional_operator)
 
         operation_kwargs = {TABLE_NAME: table_name}
@@ -1292,8 +1286,6 @@ class Connection(object):
         """
         Performs the Query operation and returns the result
         """
-        if limit is not None and limit <= 0:
-            raise ValueError("Invalid 'limit' parameter")
         self._check_condition('range_key_condition', range_key_condition, key_conditions, conditional_operator)
         self._check_condition('filter_condition', filter_condition, query_filters, conditional_operator)
 
