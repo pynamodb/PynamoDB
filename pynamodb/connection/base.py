@@ -301,9 +301,8 @@ class Connection(object):
 
         Raises TableDoesNotExist if the specified table does not exist
         """
-        if operation_name not in FREE_OPERATIONS:
-            if RETURN_CONSUMED_CAPACITY not in operation_kwargs:
-                operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
+        if operation_name not in FREE_OPERATIONS and RETURN_CONSUMED_CAPACITY not in operation_kwargs:
+            operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         self._log_debug(operation_name, operation_kwargs)
 
         table_name = operation_kwargs.get(TABLE_NAME)
