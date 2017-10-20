@@ -15,9 +15,7 @@ from threading import local
 import six
 from botocore.client import ClientError
 from botocore.exceptions import BotoCoreError
-from botocore.session import get_session
-from botocore.vendored import requests
-from botocore.vendored.requests import Request
+from botocore.vendored.requests import Request, RequestException
 from six.moves import range
 
 from pynamodb.compat import NullHandler
@@ -48,7 +46,7 @@ from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
 from pynamodb.expressions.update import Update
-from pynamodb.settings import get_settings_value
+from pynamodb.settings import Settings
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
 
@@ -223,36 +221,22 @@ class Connection(object):
     """
 
     def __init__(self, region=None, host=None, session_cls=None,
-                 request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None):
+                 request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None,
+                 settings=None):
         self._tables = {}
-        self.host = host
         self._local = local()
         self._requests_session = None
         self._client = None
-        if region:
-            self.region = region
-        else:
-            self.region = get_settings_value('region')
+        if not settings:
+            settings = Settings()
+        self._settings = settings
 
-        if session_cls:
-            self.session_cls = session_cls
-        else:
-            self.session_cls = get_settings_value('session_cls')
-
-        if request_timeout_seconds is not None:
-            self._request_timeout_seconds = request_timeout_seconds
-        else:
-            self._request_timeout_seconds = get_settings_value('request_timeout_seconds')
-
-        if max_retry_attempts is not None:
-            self._max_retry_attempts_exception = max_retry_attempts
-        else:
-            self._max_retry_attempts_exception = get_settings_value('max_retry_attempts')
-
-        if base_backoff_ms is not None:
-            self._base_backoff_ms = base_backoff_ms
-        else:
-            self._base_backoff_ms = get_settings_value('base_backoff_ms')
+        self.region = region or settings.region
+        self.host = host or settings.host
+        self.session_cls = session_cls or settings.session_cls
+        self._request_timeout_seconds = request_timeout_seconds or settings.request_timeout_seconds
+        self._max_retry_attempts = max_retry_attempts or settings.max_retry_attempts
+        self._base_backoff_ms = base_backoff_ms or settings.base_backoff_ms
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
@@ -345,9 +329,9 @@ class Connection(object):
         )
         prepared_request = self._create_prepared_request(request_dict, operation_model)
 
-        for i in range(0, self._max_retry_attempts_exception + 1):
+        for i in range(0, self._max_retry_attempts + 1):
             attempt_number = i + 1
-            is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
+            is_last_attempt = i == self._max_retry_attempts
 
             response = None
             try:
@@ -362,8 +346,8 @@ class Connection(object):
                     proxies=proxies,
                 )
                 data = response.json()
-            except (requests.RequestException, ValueError) as e:
-                if is_last_attempt_for_exceptions:
+            except (RequestException, ValueError) as e:
+                if is_last_attempt:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                     if response:
                         e.args += (str(response.content),)
@@ -398,7 +382,7 @@ class Connection(object):
                 try:
                     raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
                 except VerboseClientError as e:
-                    if is_last_attempt_for_exceptions:
+                    if is_last_attempt:
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise
                     elif response.status_code < 500 and code != 'ProvisionedThroughputExceededException':
@@ -1137,9 +1121,7 @@ class Connection(object):
         """
         read_capacity_to_consume_per_ms = float(read_capacity_to_consume_per_second) / 1000
         if allow_rate_limited_scan_without_consumed_capacity is None:
-            allow_rate_limited_scan_without_consumed_capacity = get_settings_value(
-                'allow_rate_limited_scan_without_consumed_capacity'
-            )
+            allow_rate_limited_scan_without_consumed_capacity = self._settings.allow_rate_limited_scan_without_consumed_capacity
         total_consumed_read_capacity = 0.0
         last_evaluated_key = exclusive_start_key
         rate_available = True

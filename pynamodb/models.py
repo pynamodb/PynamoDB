@@ -18,7 +18,7 @@ from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler, getmembers_issubclass
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.pagination import ResultIterator
-from pynamodb.settings import get_settings_value
+from pynamodb.settings import DefaultSettingsDescriptor
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS, CAMEL_COUNT,
@@ -29,10 +29,11 @@ from pynamodb.constants import (
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP, NOT_NULL,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
+    CAPACITY_UNITS, META_CLASS_NAME, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
-    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET)
+    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET,
+    SETTINGS, META_ATTRIBUTES)
 
 
 log = logging.getLogger(__name__)
@@ -172,23 +173,13 @@ class MetaModel(AttributeContainerMeta):
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
-                    if not hasattr(attr_obj, REGION):
-                        setattr(attr_obj, REGION, get_settings_value('region'))
-                    if not hasattr(attr_obj, HOST):
-                        setattr(attr_obj, HOST, get_settings_value('host'))
-                    if not hasattr(attr_obj, 'session_cls'):
-                        setattr(attr_obj, 'session_cls', get_settings_value('session_cls'))
-                    if not hasattr(attr_obj, 'request_timeout_seconds'):
-                        setattr(attr_obj, 'request_timeout_seconds', get_settings_value('request_timeout_seconds'))
-                    if not hasattr(attr_obj, 'base_backoff_ms'):
-                        setattr(attr_obj, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
-                    if not hasattr(attr_obj, 'max_retry_attempts'):
-                        setattr(attr_obj, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
-                    if not hasattr(attr_obj, 'aws_access_key_id'):
-                        setattr(attr_obj, 'aws_access_key_id', None)
-                    if not hasattr(attr_obj, 'aws_secret_access_key'):
-                        setattr(attr_obj, 'aws_secret_access_key', None)
-                elif issubclass(attr_obj.__class__, (Index, )):
+                    # Bypass __getattribute__ to avoid invoking descriptor
+                    if SETTINGS not in attr_obj.__dict__:
+                        setattr(attr_obj, SETTINGS, DefaultSettingsDescriptor())
+                    for meta_attr in META_ATTRIBUTES:
+                        if not hasattr(attr_obj, meta_attr):
+                            setattr(attr_obj, meta_attr, None)
+                elif issubclass(attr_obj.__class__, (Index,)):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
                         attr_obj.Meta.index_name = attr_name
@@ -1292,7 +1283,8 @@ class Model(AttributeContainer):
                                               max_retry_attempts=cls.Meta.max_retry_attempts,
                                               base_backoff_ms=cls.Meta.base_backoff_ms,
                                               aws_access_key_id=cls.Meta.aws_access_key_id,
-                                              aws_secret_access_key=cls.Meta.aws_secret_access_key)
+                                              aws_secret_access_key=cls.Meta.aws_secret_access_key,
+                                              settings=cls.Meta.settings)
         return cls._connection
 
     def _deserialize(self, attrs):

@@ -285,3 +285,14 @@ CONDITIONAL_OPERATOR = 'ConditionalOperator'
 AND = 'AND'
 OR = 'OR'
 CONDITIONAL_OPERATORS = [AND, OR]
+
+# These are constants used in Pynamodb settings
+SETTINGS = 'settings'
+SESSION_CLS = 'session_cls'
+REQUEST_TIMEOUT_SECONDS = 'request_timeout_seconds'
+BASE_BACKOFF_MS = 'base_backoff_ms'
+MAX_RETRY_ATTEMPTS = 'max_retry_attempts'
+AWS_ACCESS_KEY_ID = 'aws_access_key_id'
+AWS_SECRET_ACCESS_KEY = 'aws_secret_access_key'
+ALLOW_RATE_LIMITED_SCAN_WITHOUT_CONSUMED_CAPACITY = 'allow_rate_limited_scan_without_consumed_capacity'
+META_ATTRIBUTES = frozenset((REGION, HOST, SESSION_CLS, REQUEST_TIMEOUT_SECONDS, BASE_BACKOFF_MS, MAX_RETRY_ATTEMPTS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
