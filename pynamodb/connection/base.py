@@ -231,12 +231,12 @@ class Connection(object):
             settings = Settings()
         self._settings = settings
 
-        self.region = region or settings.region
-        self.host = host or settings.host
-        self.session_cls = session_cls or settings.session_cls
-        self._request_timeout_seconds = request_timeout_seconds or settings.request_timeout_seconds
-        self._max_retry_attempts = max_retry_attempts or settings.max_retry_attempts
-        self._base_backoff_ms = base_backoff_ms or settings.base_backoff_ms
+        self.region = region if region is not None else settings.region
+        self.host = host if host is not None else settings.host
+        self.session_cls = session_cls if session_cls is not None else settings.session_cls
+        self._request_timeout_seconds = request_timeout_seconds if request_timeout_seconds is not None else settings.request_timeout_seconds
+        self._max_retry_attempts = max_retry_attempts if max_retry_attempts is not None else settings.max_retry_attempts
+        self._base_backoff_ms = base_backoff_ms if base_backoff_ms is not None else settings.base_backoff_ms
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
