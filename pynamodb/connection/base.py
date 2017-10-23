@@ -228,7 +228,7 @@ class Connection(object):
         self._requests_session = None
         self._client = None
         if not settings:
-            settings = Settings()
+            settings = Settings.default
         self._settings = settings
 
         self.region = region if region is not None else settings.region

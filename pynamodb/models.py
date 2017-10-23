@@ -18,7 +18,6 @@ from pynamodb.types import HASH, RANGE
 from pynamodb.compat import NullHandler, getmembers_issubclass
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.pagination import ResultIterator
-from pynamodb.settings import DefaultSettingsDescriptor
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS, CAMEL_COUNT,
@@ -33,7 +32,7 @@ from pynamodb.constants import (
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
     STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET,
-    SETTINGS, META_ATTRIBUTES)
+    META_ATTRIBUTES)
 
 
 log = logging.getLogger(__name__)
@@ -173,9 +172,6 @@ class MetaModel(AttributeContainerMeta):
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
-                    # Bypass __getattribute__ to avoid invoking descriptor
-                    if SETTINGS not in attr_obj.__dict__:
-                        setattr(attr_obj, SETTINGS, DefaultSettingsDescriptor())
                     for meta_attr in META_ATTRIBUTES:
                         if not hasattr(attr_obj, meta_attr):
                             setattr(attr_obj, meta_attr, None)

@@ -9,7 +9,7 @@ from botocore.session import Session
 from botocore.vendored import requests
 
 from pynamodb.constants import (
-    SETTINGS, REGION, SESSION_CLS, REQUEST_TIMEOUT_SECONDS, BASE_BACKOFF_MS,
+    REGION, SESSION_CLS, REQUEST_TIMEOUT_SECONDS, BASE_BACKOFF_MS,
     MAX_RETRY_ATTEMPTS, ALLOW_RATE_LIMITED_SCAN_WITHOUT_CONSUMED_CAPACITY
 )
 
@@ -24,6 +24,47 @@ DEFAULT_SETTINGS = {
 }
 
 
+class SettingsMeta(type):
+    """
+    Settings meta class
+
+    Implements a default Settings singleton to avoid multiple Settings instantiation.
+
+    Note that the instantiation will be invoked at runtime
+    but this implementation is thread-safe.
+    """
+
+    DEFAULT = 'default'
+
+    def __init__(self, name, bases, attrs):
+        super(SettingsMeta, self).__init__(name, bases, attrs)
+        self._settings = None
+        self._lock = threading.Lock()
+
+    def __getattr__(self, key):
+        if key == self.DEFAULT:
+            # Fast path if already instantiated
+            settings = self._settings
+            if settings:
+                return settings
+
+            with self._lock:
+                if not self._settings:
+                    self._settings = Settings()
+                return self._settings
+        return super(SettingsMeta, self).__getattr__(key)
+
+    def __setattr__(self, key, value):
+        if key == self.DEFAULT:
+            if not isinstance(value, Settings):
+                raise ValueError("'{0}' must be an instance of Settings".format(self.DEFAULT))
+            with self._lock:
+                self._settings = value
+        else:
+            super(SettingsMeta, self).__setattr__(key, value)
+
+
+@add_metaclass(SettingsMeta)
 class Settings(object):
     """
     A class for accessing settings values and create botocore sessions.
@@ -63,50 +104,3 @@ class Settings(object):
         :return: Returns a botocore Session with default settings
         """
         return Session()
-
-
-class DefaultSettingsMeta(type):
-    """
-    DefaultSettingsDescriptor meta class
-
-    Implements a singleton to avoid multiple Settings instantiation.
-
-    Note that the instantiation will be invoked at runtime
-    but this implementation is thread-safe.
-    """
-
-    def __init__(self, name, bases, attrs):
-        super(DefaultSettingsMeta, self).__init__(name, bases, attrs)
-        self._settings = None
-        self._lock = threading.Lock()
-
-    def __getattr__(self, key):
-        if key == SETTINGS:
-            # Fast path if already instantiated
-            settings = self._settings
-            if settings:
-                return settings
-
-            with self._lock:
-                if not self._settings:
-                    self._settings = Settings()
-                return self._settings
-        return super(DefaultSettingsMeta, self).__getattr__(key)
-
-    def __setattr__(self, key, value):
-        if key == SETTINGS:
-            if not isinstance(value, Settings):
-                raise ValueError("'{0}' must be an instance of Settings".format(SETTINGS))
-            self._settings = value
-        else:
-            super(DefaultSettingsMeta, self).__setattr__(key, value)
-
-
-@add_metaclass(DefaultSettingsMeta)
-class DefaultSettingsDescriptor(object):
-    """
-    Implements a descriptor for default Settings.
-    """
-
-    def __get__(self, unused_obj, unused_cls=None):
-        return DefaultSettingsDescriptor.settings
