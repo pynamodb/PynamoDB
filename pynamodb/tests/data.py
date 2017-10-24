@@ -831,7 +831,7 @@ COMPLEX_MODEL_SERIALIZED_TABLE_DATA = [
         "123",
         {
             "attributes": {
-                'person': {  # TODO(jpinner) fix deserialize lookup to use attr_name
+                'weird_person': {
                     'M': {
                         'firstName': {
                             'S': 'Justin'

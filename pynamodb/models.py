@@ -1261,12 +1261,13 @@ class Model(AttributeContainer):
         :param attrs: A dictionary of attributes to update this item with.
         """
         for name, attr in attrs.items():
-            attr_instance = self._get_attributes().get(name, None)
+            attr_name = self._dynamo_to_python_attr(name)
+            attr_instance = self._get_attributes().get(attr_name, None)
             if attr_instance:
                 attr_type = ATTR_TYPE_MAP[attr_instance.attr_type]
                 value = attr.get(attr_type, None)
                 if value is not None:
-                    setattr(self, name, attr_instance.deserialize(value))
+                    setattr(self, attr_name, attr_instance.deserialize(value))
 
     def _serialize(self, attr_map=False, null_check=True):
         """
