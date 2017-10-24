@@ -899,13 +899,18 @@ class Model(AttributeContainer):
         hash_key = hash_key_attr.deserialize(hash_key)
         range_key = attrs.pop('range_key', None)
         attributes = attrs.pop(pythonic(ATTRIBUTES))
+        hash_keyname = cls._get_meta_data().hash_keyname
+        hash_keytype = cls._get_meta_data().get_attribute_type(hash_keyname)
+        attributes[hash_keyname] = {
+            hash_keytype: hash_key
+        }
         if range_key is not None:
             range_keyname = cls._get_meta_data().range_keyname
             range_keytype = cls._get_meta_data().get_attribute_type(range_keyname)
             attributes[range_keyname] = {
                 range_keytype: range_key
             }
-        item = cls(hash_key)
+        item = cls()
         item._deserialize(attributes)
         return item
 
@@ -1260,13 +1265,15 @@ class Model(AttributeContainer):
 
         :param attrs: A dictionary of attributes to update this item with.
         """
-        for name, attr in attrs.items():
-            attr_instance = self._get_attributes().get(name, None)
-            if attr_instance:
-                attr_type = ATTR_TYPE_MAP[attr_instance.attr_type]
-                value = attr.get(attr_type, None)
+        for name, attr in self._get_attributes().items():
+            if attr.attr_name in attrs:
+                attr_type = ATTR_TYPE_MAP[attr.attr_type]
+                value = attrs[attr.attr_name].get(attr_type, None)
                 if value is not None:
-                    setattr(self, name, attr_instance.deserialize(value))
+                    setattr(self, name, attr.deserialize(value))
+                # FIXME: what if it is not found? Maybe set to None?..
+            else:
+                setattr(self, name, None)
 
     def _serialize(self, attr_map=False, null_check=True):
         """
