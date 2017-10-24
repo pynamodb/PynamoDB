@@ -466,7 +466,7 @@ COMPLEX_MODEL_ITEM_DATA = {
                     'N': '31'
                 },
                 'is_dude': {
-                    'N': '1'
+                    'BOOL': True
                 }
             }
         }
@@ -821,6 +821,33 @@ SERIALIZED_TABLE_DATA = [
                     "B": "aGVsbG8sIHdvcmxk"
                 },
                 "zip_code": {"N": "88030"}
+            }
+        }
+    ]
+]
+
+COMPLEX_MODEL_SERIALIZED_TABLE_DATA = [
+    [
+        "123",
+        {
+            "attributes": {
+                'person': {  # TODO(jpinner) fix deserialize lookup to use attr_name
+                    'M': {
+                        'firstName': {
+                            'S': 'Justin'
+                        },
+                        'lname': {
+                            'S': 'Phillips'
+                        },
+                        'age': {
+                            'N': '31'
+                        },
+                        'is_dude': {
+                            'N': '1'
+                        }
+                    }
+
+                }
             }
         }
     ]

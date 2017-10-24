@@ -894,6 +894,9 @@ class Model(AttributeContainer):
         Reconstructs a model object from JSON.
         """
         hash_key, attrs = data
+        hash_keyname = cls._get_meta_data().hash_keyname
+        hash_key_attr = cls._get_attributes().get(cls._dynamo_to_python_attr(hash_keyname))
+        hash_key = hash_key_attr.deserialize(hash_key)
         range_key = attrs.pop('range_key', None)
         attributes = attrs.pop(pythonic(ATTRIBUTES))
         if range_key is not None:
