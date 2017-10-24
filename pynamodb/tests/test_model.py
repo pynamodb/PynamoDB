@@ -702,7 +702,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = GET_MODEL_ITEM_DATA
-            item.picture = 'to-be-removed'
+            item.picture = b'to-be-removed'
             item.refresh()
             self.assertEqual(
                 item.custom_user_name,
