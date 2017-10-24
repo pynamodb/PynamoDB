@@ -44,7 +44,8 @@ with a version < 1.6.0, first deploy version 1.5.4 to prepare the read path for 
 serialization format.
 
 Once all services that read from the tables have been deployed, then deploy version 2.2.0
-and migrate your data using the provided convenience methods on the Model:
+and migrate your data using the provided convenience methods on the Model.
+(Note: these methods are only available in version 2.2.0)
 
 .. code-block:: python
 
@@ -53,7 +54,9 @@ and migrate your data using the provided convenience methods on the Model:
         # for example if your item has a `version` attribute
         {'version__eq': item.version}
 
-    # Re-serialize all UnicodeSetAttributes in the table
+    # Re-serialize all UnicodeSetAttributes in the table by scanning all items.
+    # See documentation of fix_unicode_set_attributes for rate limiting options
+    # to avoid exceeding provisioned capacity.
     Model.fix_unicode_set_attributes(get_save_kwargs)
 
     # Verify the migration is complete
