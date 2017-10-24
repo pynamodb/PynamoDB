@@ -894,18 +894,20 @@ class Model(AttributeContainer):
         Reconstructs a model object from JSON.
         """
         hash_key, attrs = data
-        hash_keyname = cls._get_meta_data().hash_keyname
-        hash_key_attr = cls._get_attributes().get(cls._dynamo_to_python_attr(hash_keyname))
-        hash_key = hash_key_attr.deserialize(hash_key)
         range_key = attrs.pop('range_key', None)
         attributes = attrs.pop(pythonic(ATTRIBUTES))
+        hash_keyname = cls._get_meta_data().hash_keyname
+        hash_keytype = cls._get_meta_data().get_attribute_type(hash_keyname)
+        attributes[hash_keyname] = {
+            hash_keytype: hash_key
+        }
         if range_key is not None:
             range_keyname = cls._get_meta_data().range_keyname
             range_keytype = cls._get_meta_data().get_attribute_type(range_keyname)
             attributes[range_keyname] = {
                 range_keytype: range_key
             }
-        item = cls(hash_key)
+        item = cls()
         item._deserialize(attributes)
         return item
 
@@ -1260,14 +1262,13 @@ class Model(AttributeContainer):
 
         :param attrs: A dictionary of attributes to update this item with.
         """
-        for name, attr in attrs.items():
-            attr_name = self._dynamo_to_python_attr(name)
-            attr_instance = self._get_attributes().get(attr_name, None)
-            if attr_instance:
-                attr_type = ATTR_TYPE_MAP[attr_instance.attr_type]
-                value = attr.get(attr_type, None)
+        for name, attr in self._get_attributes().items():
+            value = attrs.get(attr.attr_name, None)
+            if value is not None:
+                value = value.get(ATTR_TYPE_MAP[attr.attr_type], None)
                 if value is not None:
-                    setattr(self, attr_name, attr_instance.deserialize(value))
+                    value = attr.deserialize(value)
+            setattr(self, name, value)
 
     def _serialize(self, attr_map=False, null_check=True):
         """

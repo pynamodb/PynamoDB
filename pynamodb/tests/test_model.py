@@ -702,10 +702,12 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = GET_MODEL_ITEM_DATA
+            item.picture = b'to-be-removed'
             item.refresh()
             self.assertEqual(
                 item.custom_user_name,
                 GET_MODEL_ITEM_DATA.get(ITEM).get('user_name').get(STRING_SHORT))
+            self.assertIsNone(item.picture)
 
     def test_complex_key(self):
         """
@@ -4207,8 +4209,8 @@ class ModelTestCase(TestCase):
                 'mapy': {'M': {'baz': {'S': 'bongo'}}}
             }
         }
-        instance = ExplicitRawMapModel(map_attr=map_native)
-        instance._deserialize(map_serialized)
+        instance = ExplicitRawMapModel()
+        instance._deserialize({'map_attr': map_serialized})
         actual = instance.map_attr
         for k, v in six.iteritems(map_native):
             self.assertEqual(v, actual[k])
