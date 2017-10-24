@@ -36,7 +36,7 @@ from pynamodb.tests.data import (
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
-    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA, COMPLEX_MODEL_SERIALIZED_TABLE_DATA,
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
     GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
@@ -3731,6 +3731,20 @@ class ModelTestCase(TestCase):
             ]
         }
         self.assert_dict_lists_equal(req.call_args[0][1]['RequestItems']['UserModel'], args['UserModel'])
+
+    def test_loads_complex_model(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            ComplexModel.loads(json.dumps(COMPLEX_MODEL_SERIALIZED_TABLE_DATA))
+
+        args = {
+            'ComplexModel': [
+                {
+                    'PutRequest': COMPLEX_MODEL_ITEM_DATA
+                }
+            ]
+        }
+        self.assert_dict_lists_equal(req.call_args[0][1]['RequestItems']['ComplexModel'], args['ComplexModel'])
 
     def _get_office_employee(self):
         justin = Person(
