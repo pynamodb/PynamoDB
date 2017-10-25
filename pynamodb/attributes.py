@@ -14,6 +14,7 @@ from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
+from pynamodb.compat import getmembers_issubclass
 from pynamodb.expressions.operand import Path
 import collections
 
@@ -183,34 +184,24 @@ class AttributeContainerMeta(type):
         cls._attributes = {}
         cls._dynamo_to_python_attrs = {}
 
-        for item_name in dir(cls):
-            try:
-                item_cls = getattr(getattr(cls, item_name), "__class__", None)
-            except AttributeError:
-                continue
+        for name, attribute in getmembers_issubclass(cls, Attribute):
+            initialized = False
+            if isinstance(attribute, MapAttribute):
+                # MapAttribute instances that are class attributes of an AttributeContainer class
+                # should behave like an Attribute instance and not an AttributeContainer instance.
+                initialized = attribute._make_attribute()
 
-            if item_cls is None:
-                continue
+            cls._attributes[name] = attribute
+            if attribute.attr_name is not None:
+                cls._dynamo_to_python_attrs[attribute.attr_name] = name
+            else:
+                attribute.attr_name = name
 
-            if issubclass(item_cls, Attribute):
-                instance = getattr(cls, item_name)
-                initialized = False
-                if isinstance(instance, MapAttribute):
-                    # MapAttribute instances that are class attributes of an AttributeContainer class
-                    # should behave like an Attribute instance and not an AttributeContainer instance.
-                    initialized = instance._make_attribute()
-
-                cls._attributes[item_name] = instance
-                if instance.attr_name is not None:
-                    cls._dynamo_to_python_attrs[instance.attr_name] = item_name
-                else:
-                    instance.attr_name = item_name
-
-                if initialized and isinstance(instance, MapAttribute):
-                    # To support creating expressions from nested attributes, MapAttribute instances
-                    # store local copies of the attributes in cls._attributes with `attr_path` set.
-                    # Prepend the `attr_path` lists with the dynamo attribute name.
-                    instance._update_attribute_paths(instance.attr_name)
+            if initialized and isinstance(attribute, MapAttribute):
+                # To support creating expressions from nested attributes, MapAttribute instances
+                # store local copies of the attributes in cls._attributes with `attr_path` set.
+                # Prepend the `attr_path` lists with the dynamo attribute name.
+                attribute._update_attribute_paths(attribute.attr_name)
 
 
 @add_metaclass(AttributeContainerMeta)

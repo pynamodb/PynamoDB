@@ -59,3 +59,21 @@ class CompatTestCase(unittest.TestCase):
 class NullHandler(logging.Handler):
     def emit(self, record):
         pass
+
+
+# Replace this function with inspect.getmembers() once we drop Python 2.6 support
+# see https://bugs.python.org/issue1785
+# see https://bugs.launchpad.net/zope.interface/+bug/181371
+def getmembers_issubclass(object, classinfo):
+    results = []
+    for key in dir(object):
+        try:
+            value = getattr(object, key)
+        except AttributeError:
+            continue
+
+        value_cls = getattr(value, '__class__', None)
+        if value_cls and issubclass(value_cls, classinfo):
+            results.append((key, value))
+    results.sort()
+    return results

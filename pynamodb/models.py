@@ -15,7 +15,7 @@ from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
-from pynamodb.compat import NullHandler
+from pynamodb.compat import NullHandler, getmembers_issubclass
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import get_settings_value
@@ -1108,34 +1108,29 @@ class Model(AttributeContainer):
                 pythonic(ATTR_DEFINITIONS): []
             }
             cls._index_classes = {}
-            for item in dir(cls):
-                item_cls = getattr(getattr(cls, item), "__class__", None)
-                if item_cls is None:
-                    continue
-                if issubclass(item_cls, (Index, )):
-                    item_cls = getattr(cls, item)
-                    cls._index_classes[item_cls.Meta.index_name] = item_cls
-                    schema = item_cls._get_schema()
-                    idx = {
-                        pythonic(INDEX_NAME): item_cls.Meta.index_name,
-                        pythonic(KEY_SCHEMA): schema.get(pythonic(KEY_SCHEMA)),
-                        pythonic(PROJECTION): {
-                            PROJECTION_TYPE: item_cls.Meta.projection.projection_type,
-                        },
+            for name, index in getmembers_issubclass(cls, Index):
+                cls._index_classes[index.Meta.index_name] = index
+                schema = index._get_schema()
+                idx = {
+                    pythonic(INDEX_NAME): index.Meta.index_name,
+                    pythonic(KEY_SCHEMA): schema.get(pythonic(KEY_SCHEMA)),
+                    pythonic(PROJECTION): {
+                        PROJECTION_TYPE: index.Meta.projection.projection_type,
+                    },
 
+                }
+                if issubclass(index.__class__, GlobalSecondaryIndex):
+                    idx[pythonic(PROVISIONED_THROUGHPUT)] = {
+                        READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
+                        WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
                     }
-                    if issubclass(item_cls.__class__, GlobalSecondaryIndex):
-                        idx[pythonic(PROVISIONED_THROUGHPUT)] = {
-                            READ_CAPACITY_UNITS: item_cls.Meta.read_capacity_units,
-                            WRITE_CAPACITY_UNITS: item_cls.Meta.write_capacity_units
-                        }
-                    cls._indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
-                    if item_cls.Meta.projection.non_key_attributes:
-                        idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = item_cls.Meta.projection.non_key_attributes
-                    if issubclass(item_cls.__class__, GlobalSecondaryIndex):
-                        cls._indexes[pythonic(GLOBAL_SECONDARY_INDEXES)].append(idx)
-                    else:
-                        cls._indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
+                cls._indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
+                if index.Meta.projection.non_key_attributes:
+                    idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
+                if issubclass(index.__class__, GlobalSecondaryIndex):
+                    cls._indexes[pythonic(GLOBAL_SECONDARY_INDEXES)].append(idx)
+                else:
+                    cls._indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
         return cls._indexes
 
     def _get_json(self):

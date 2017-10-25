@@ -7,6 +7,7 @@ from pynamodb.constants import (
 )
 from pynamodb.attributes import Attribute
 from pynamodb.types import HASH, RANGE
+from pynamodb.compat import getmembers_issubclass
 from pynamodb.connection.util import pythonic
 from six import with_metaclass
 
@@ -131,10 +132,8 @@ class Index(with_metaclass(IndexMeta)):
         """
         if cls.Meta.attributes is None:
             cls.Meta.attributes = {}
-            for item in dir(cls):
-                item_cls = getattr(getattr(cls, item), "__class__", None)
-                if item_cls and issubclass(item_cls, (Attribute, )):
-                    cls.Meta.attributes[item] = getattr(cls, item)
+            for name, attribute in getmembers_issubclass(cls, Attribute):
+                cls.Meta.attributes[name] = attribute
         return cls.Meta.attributes
 
 
