@@ -2605,7 +2605,8 @@ class ModelTestCase(TestCase):
                 max_sleep_between_retry=4,
                 max_consecutive_exceptions=22,
                 attributes_to_get=['X1', 'X2'],
-                consistent_read=True
+                consistent_read=True,
+                index_name='index'
             )
             self.assertEqual(1, len(list(result)))
             self.assertEqual('UserModel', req.call_args[0][0])
@@ -2624,7 +2625,8 @@ class ModelTestCase(TestCase):
                 'allow_rate_limited_scan_without_consumed_capacity': False,
                 'max_sleep_between_retry': 4,
                 'max_consecutive_exceptions': 22,
-                'consistent_read': True
+                'consistent_read': True,
+                'index_name': 'index'
             }
             self.assertEqual(params, req.call_args[1])
 

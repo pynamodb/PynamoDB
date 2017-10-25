@@ -90,6 +90,33 @@ class Index(with_metaclass(IndexMeta)):
         )
 
     @classmethod
+    def scan(self,
+             filter_condition=None,
+             segment=None,
+             total_segments=None,
+             limit=None,
+             conditional_operator=None,
+             last_evaluated_key=None,
+             page_size=None,
+             consistent_read=None,
+             **filters):
+        """
+        Scans an index
+        """
+        return self.Meta.model.scan(
+            filter_condition=filter_condition,
+            segment=segment,
+            total_segments=total_segments,
+            limit=limit,
+            conditional_operator=conditional_operator,
+            last_evaluated_key=last_evaluated_key,
+            page_size=page_size,
+            consistent_read=consistent_read,
+            index_name=self.Meta.index_name,
+            **filters
+        )
+
+    @classmethod
     def _hash_key_attribute(cls):
         """
         Returns the attribute class for the hash key
