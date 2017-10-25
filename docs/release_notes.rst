@@ -1,6 +1,32 @@
 Release Notes
 =============
 
+v3.2.1
+------
+
+:date: 2017-10-25
+
+This is a backwards compatible, minor bug fix release.
+
+Removed features in this release:
+
+* Remove experimental Throttle api. (#378)
+
+Fixes in this release:
+
+* Handle attributes that cannot be retrieved by getattr. Fixes #104 (#385)
+* Model.refresh() should reset all model attribuets. Fixes #166 (#388)
+* Model.loads() should deserialize using custom attribute names. Fixes #168 (#387)
+* Deserialize hash key during table loads. Fixes #143 (#386)
+* Support pagination in high-level api query and scan methods. Fixes #50, #118, #207, and #248 (#379)
+* Don't serialize null nested attributed. Fixes #240 and #309 (#375)
+* Legacy update item subset removal using DELETE operator. Fixes #132 (#374)
+
+Contributors to this release:
+
+* @jpinner-lyft
+
+
 v3.2.0
 ------
 
@@ -127,7 +153,7 @@ Contributors to this release:
 v2.2.0
 ------
 
-:date: 2017-10-xx
+:date: 2017-10-25
 
 This is a backwards compatible, minor release.
 
@@ -334,7 +360,7 @@ Contributors to this release:
 v1.5.4
 ------
 
-:date: 2017-10-xx
+:date: 2017-10-25
 
 This is a backwards compatible, minor bug fix release.
 
