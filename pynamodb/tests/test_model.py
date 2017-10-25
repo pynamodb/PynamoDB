@@ -455,18 +455,17 @@ class ModelTestCase(TestCase):
     def assert_dict_lists_equal(self, list1, list2):
         """
         Compares two lists of dictionaries
+        This function allows both the lists and dictionaries to have any order
         """
+        if len(list1) != len(list2):
+            raise AssertionError("Values not equal: {0} {1}".format(list1, list2))
         for d1_item in list1:
             found = False
             for d2_item in list2:
-                if d2_item.items() == d1_item.items():
+                if d2_item == d1_item:
                     found = True
             if not found:
-                if six.PY3:
-                    # TODO WTF python2?
-                    raise AssertionError("Values not equal: {0} {1}".format(d1_item, list2))
-        if len(list1) != len(list2):
-            raise AssertionError("Values not equal: {0} {1}".format(list1, list2))
+                raise AssertionError("Values not equal: {0} {1}".format(list1, list2))
 
     def test_create_model(self):
         """
