@@ -6,7 +6,7 @@ v3.2.0
 
 :date: 2017-10-13
 
-This is a backwards compatible, minor candidate.
+This is a backwards compatible, minor release.
 
 This release updates PynamoDB to interact with Dynamo via the current version of Dynamo's API.
 Condition and update expressions can now be created from attributes and used in model operations.
@@ -26,7 +26,7 @@ Contributors to this release:
 v3.2.0rc2
 ---------
 
-:date 2017-10-09
+:date: 2017-10-09
 
 This is a backwards compatible, release candidate.
 
@@ -122,6 +122,29 @@ Contributors to this release:
 * @lita
 * @garretheel
 * @jmphilli
+
+
+v2.2.0
+------
+
+:date: 2017-10-xx
+
+This is a backwards compatible, minor release.
+
+The purpose of this release is to prepare users to upgrade to v3.0.1+
+(see issue #377 for details).
+
+Pull request #294 removes the backwards compatible deserialization of
+UnicodeSetAttributes introduced in #151.
+
+This release introduces a migration function on the Model class to help
+re-serialize any data that was written with v1.5.4 and below.
+
+Temporary feature in this release:
+
+* Model.fix_unicode_set_attributes() migration helper
+# Model.needs_unicode_set_fix() migration helper
+
 
 v2.1.6
 ------
@@ -306,6 +329,29 @@ Contributors to this release:
 * @anandswaminathan
 * @jmphilli
 * @lita
+
+
+v1.5.4
+------
+
+:date: 2017-10-xx
+
+This is a backwards compatible, minor bug fix release.
+
+The purpose of this release is to prepare users to upgrade to v1.6.0+
+(see issue #377 for details).
+
+Pull request #151 introduces a backwards incompatible change to how
+UnicodeSetAttributes are serialized. While the commit attempts to
+provide compatibility by deserializing values written with v1.5.3 and
+below, it prevents users from upgrading because it starts writing non
+JSON-encoded values to dynamo.
+
+Anyone using UnicodeSetAttribute must first deploy this version.
+
+Fixes in this release:
+
+* Backport UnicodeSetAttribute deserialization code from #151
 
 
 v1.5.3
