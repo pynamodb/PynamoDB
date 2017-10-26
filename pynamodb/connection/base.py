@@ -10,6 +10,7 @@ import time
 import uuid
 import warnings
 from base64 import b64decode
+from threading import local
 
 import six
 from botocore.client import ClientError
@@ -209,7 +210,7 @@ class Connection(object):
                  request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None):
         self._tables = {}
         self.host = host
-        self._session = None
+        self._local = local()
         self._requests_session = None
         self._client = None
         if region:
@@ -437,9 +438,10 @@ class Connection(object):
         """
         Returns a valid botocore session
         """
-        if self._session is None:
-            self._session = get_session()
-        return self._session
+        # botocore client creation is not thread safe as of v1.2.5+ (see issue #153)
+        if getattr(self._local, 'session', None) is None:
+            self._local.session = get_session()
+        return self._local.session
 
     @property
     def requests_session(self):
