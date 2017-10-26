@@ -2022,7 +2022,8 @@ class ConnectionTestCase(TestCase):
                 limit=1,
                 segment=2,
                 total_segments=4,
-                attributes_to_get=['ForumName']
+                attributes_to_get=['ForumName'],
+                index_name='LastPostIndex',
             )
             params = {
                 'ProjectionExpression': '#0',
@@ -2038,7 +2039,8 @@ class ConnectionTestCase(TestCase):
                 'Limit': 1,
                 'Segment': 2,
                 'TotalSegments': 4,
-                'ReturnConsumedCapacity': 'TOTAL'
+                'ReturnConsumedCapacity': 'TOTAL',
+                'IndexName': 'LastPostIndex'
             }
             self.assertEqual(req.call_args[0][1], params)
 

@@ -672,6 +672,7 @@ class Model(AttributeContainer):
             max_sleep_between_retry=10,
             max_consecutive_exceptions=30,
             consistent_read=None,
+            index_name=None,
             **filters):
         """
         Scans the items in the table at a definite rate.
@@ -724,6 +725,7 @@ class Model(AttributeContainer):
             max_sleep_between_retry=max_sleep_between_retry,
             max_consecutive_exceptions=max_consecutive_exceptions,
             consistent_read=consistent_read,
+            index_name=index_name
         )
 
         for item in scan_result:
@@ -739,6 +741,7 @@ class Model(AttributeContainer):
              last_evaluated_key=None,
              page_size=None,
              consistent_read=None,
+             index_name=None,
              **filters):
         """
         Iterates through all items in the table
@@ -774,7 +777,8 @@ class Model(AttributeContainer):
             scan_filter=key_filter,
             total_segments=total_segments,
             conditional_operator=conditional_operator,
-            consistent_read=consistent_read
+            consistent_read=consistent_read,
+            index_name=index_name
         )
 
         return ResultIterator(

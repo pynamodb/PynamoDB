@@ -1076,7 +1076,8 @@ class Connection(object):
                           allow_rate_limited_scan_without_consumed_capacity=None,
                           max_sleep_between_retry=10,
                           max_consecutive_exceptions=10,
-                          consistent_read=None):
+                          consistent_read=None,
+                          index_name=None):
         """
         Performs a rate limited scan on the table. The API uses the scan API to fetch items from
         DynamoDB. The rate_limited_scan uses the 'ConsumedCapacity' value returned from DynamoDB to
@@ -1103,6 +1104,7 @@ class Connection(object):
         :param max_consecutive_exceptions: Max number of consecutive ProvisionedThroughputExceededException
             exception for scan to exit
         :param consistent_read: enable consistent read
+        :param index_name: an index to perform the scan on
         """
         read_capacity_to_consume_per_ms = float(read_capacity_to_consume_per_second) / 1000
         if allow_rate_limited_scan_without_consumed_capacity is None:
@@ -1136,7 +1138,8 @@ class Connection(object):
                         scan_filter=scan_filter,
                         segment=segment,
                         total_segments=total_segments,
-                        consistent_read=consistent_read
+                        consistent_read=consistent_read,
+                        index_name=index_name
                     )
                     for item in data.get(ITEMS):
                         yield item
@@ -1220,7 +1223,8 @@ class Connection(object):
              exclusive_start_key=None,
              segment=None,
              total_segments=None,
-             consistent_read=None):
+             consistent_read=None,
+             index_name=None):
         """
         Performs the scan operation
         """
@@ -1236,6 +1240,8 @@ class Connection(object):
         if attributes_to_get is not None:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
+        if index_name:
+            operation_kwargs[INDEX_NAME] = index_name
         if limit is not None:
             operation_kwargs[LIMIT] = limit
         if return_consumed_capacity:

@@ -571,7 +571,8 @@ class ConnectionTestCase(TestCase):
                 allow_rate_limited_scan_without_consumed_capacity=False,
                 max_sleep_between_retry=3,
                 max_consecutive_exceptions=7,
-                consistent_read=True
+                consistent_read=True,
+                index_name='index'
             )
             self.assertEqual(self.test_table_name, req.call_args[0][0])
             params = {
@@ -589,6 +590,7 @@ class ConnectionTestCase(TestCase):
                 'allow_rate_limited_scan_without_consumed_capacity': False,
                 'max_sleep_between_retry': 3,
                 'max_consecutive_exceptions': 7,
-                'consistent_read': True
+                'consistent_read': True,
+                'index_name': 'index'
             }
             self.assertEqual(params, req.call_args[1])
