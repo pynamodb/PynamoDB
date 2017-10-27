@@ -32,6 +32,10 @@ PynamoDB allows you to create the table:
 
     >>> UserModel.create_table(read_capacity_units=1, write_capacity_units=1)
 
+If you prefer to manage with CloudFormation, you can print the CloudFormation representation of your table:
+
+    >>> UserModel.print_cloudformation(read_capacity_units=1, write_capacity_units=1)
+
 Now you can create a user:
 
     >>> user = UserModel('test@example.com', first_name='Samuel', last_name='Adams')

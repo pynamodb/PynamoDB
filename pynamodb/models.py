@@ -7,6 +7,7 @@ import six
 import copy
 import logging
 import warnings
+import yaml
 
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
@@ -825,29 +826,7 @@ class Model(AttributeContainer):
         """
         if not cls.exists():
             schema = cls._get_schema()
-            if hasattr(cls.Meta, pythonic(READ_CAPACITY_UNITS)):
-                schema[pythonic(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
-            if hasattr(cls.Meta, pythonic(WRITE_CAPACITY_UNITS)):
-                schema[pythonic(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
-            if hasattr(cls.Meta, pythonic(STREAM_VIEW_TYPE)):
-                schema[pythonic(STREAM_SPECIFICATION)] = {
-                    pythonic(STREAM_ENABLED): True,
-                    pythonic(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
-                }
-            if read_capacity_units is not None:
-                schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
-            if write_capacity_units is not None:
-                schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
-            index_data = cls._get_indexes()
-            schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
-            schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
-            index_attrs = index_data.get(pythonic(ATTR_DEFINITIONS))
-            attr_keys = [attr.get(pythonic(ATTR_NAME)) for attr in schema.get(pythonic(ATTR_DEFINITIONS))]
-            for attr in index_attrs:
-                attr_name = attr.get(pythonic(ATTR_NAME))
-                if attr_name not in attr_keys:
-                    schema[pythonic(ATTR_DEFINITIONS)].append(attr)
-                    attr_keys.append(attr_name)
+            schema = cls._enrich_schema(schema, read_capacity_units, write_capacity_units)
             cls._get_connection().create_table(
                 **schema
             )
@@ -862,6 +841,25 @@ class Model(AttributeContainer):
                         time.sleep(2)
                 else:
                     raise TableError("No TableStatus returned for table")
+
+    @classmethod
+    def print_cloudformation(cls, output='json', read_capacity_units=None, write_capacity_units=None):
+        """
+        Print the generated CloudFormation for this table
+
+        :param output: Specify if you want printed in JSON or YAML. Options are 'json, 'yaml', and 'yml'. Default is JSON.
+        :param read_capacity_units: Sets the read capacity units for this table
+        :param write_capacity_units: Sets the write capacity units for this table
+        """
+        schema = cls._get_schema()
+        schema = cls._enrich_schema(schema, read_capacity_units, write_capacity_units)
+
+        schema['table_name'] = cls.Meta.table_name
+        obj = make_cloudformation_object(schema)
+        if output.lower() in ['yaml', 'yml']:
+            print(yaml.dump(obj, default_flow_style=False))
+        else:
+            print(json.dumps(obj, indent=2))
 
     @classmethod
     def dumps(cls):
@@ -1101,6 +1099,37 @@ class Model(AttributeContainer):
         return schema
 
     @classmethod
+    def _enrich_schema(cls, schema, read_capacity_units, write_capacity_units):
+        """
+        Enriches the given schema with all additional metadata, such as secondary indexes
+        """
+        if hasattr(cls.Meta, pythonic(READ_CAPACITY_UNITS)):
+            schema[pythonic(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
+        if hasattr(cls.Meta, pythonic(WRITE_CAPACITY_UNITS)):
+            schema[pythonic(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
+        if hasattr(cls.Meta, pythonic(STREAM_VIEW_TYPE)):
+            schema[pythonic(STREAM_SPECIFICATION)] = {
+                pythonic(STREAM_ENABLED): True,
+                pythonic(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
+            }
+        if read_capacity_units is not None:
+            schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
+        if write_capacity_units is not None:
+            schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+        index_data = cls._get_indexes()
+        schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
+        schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
+        index_attrs = index_data.get(pythonic(ATTR_DEFINITIONS))
+        attr_keys = [attr.get(pythonic(ATTR_NAME)) for attr in schema.get(pythonic(ATTR_DEFINITIONS))]
+        for attr in index_attrs:
+            attr_name = attr.get(pythonic(ATTR_NAME))
+            if attr_name not in attr_keys:
+                schema[pythonic(ATTR_DEFINITIONS)].append(attr)
+                attr_keys.append(attr_name)
+
+        return schema
+
+    @classmethod
     def _get_indexes(cls):
         """
         Returns a list of the secondary indexes
@@ -1333,3 +1362,74 @@ class Model(AttributeContainer):
         if range_key is not None:
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key
+
+
+def make_cloudformation_object(schema):
+    properties = {}
+    properties['AttributeDefinitions'] = _make_attribute_definitions(schema.get('attribute_definitions'))
+    properties['KeySchema'] = _make_key_schema(schema.get('key_schema'))
+    properties['ProvisionedThroughpout'] = {
+        'ReadCapacityUnits': schema.get('read_capacity_units'),
+        'WriteCapacityUnits': schema.get('write_capacity_units'),
+    }
+    properties['TableName'] = schema.get('table_name')
+    if schema.get('global_secondary_indexes'):
+        properties['GlobalSecondaryIndexes'] = _make_global_secondary_indexes(schema.get('global_secondary_indexes'))
+    if schema.get('local_secondary_indexes'):
+        properties['LocalSecondaryIndexes'] = _make_local_secondary_indexes(schema.get('local_secondary_indexes'))
+    if schema.get('stream_specification'):
+        properties['StreamSpecification'] = {
+            'StreamViewType': schema.get('stream_specification').get('stream_view_type'),
+        }
+    obj = {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": properties
+    }
+    return obj
+
+
+def _make_attribute_definitions(attributes):
+    definitions = []
+    for attribute in attributes:
+        definitions.append({
+            "AttributeName": attribute['attribute_name'],
+            "AttributeType": attribute['attribute_type'],
+        })
+
+    return definitions
+
+
+def _make_key_schema(keys):
+    schema = []
+    for key in keys:
+        schema.append({
+            "AttributeName": key["attribute_name"],
+            "KeyType": key["key_type"]
+        })
+
+    return schema
+
+
+def _make_global_secondary_indexes(indexes):
+    global_secondary_indexes = []
+    for index in indexes:
+        global_secondary_indexes.append({
+            "IndexName": index.get('index_name'),
+            "ProvisionedThroughpout": index.get('provisioned_throughput'),
+            "Projection": index.get('projection'),
+            "KeySchema": index.get('key_schema'),
+        })
+
+    return global_secondary_indexes
+
+
+def _make_local_secondary_indexes(indexes):
+    local_secondary_indexes = []
+    for index in indexes:
+        local_secondary_indexes.append({
+            "IndexName": index.get('index_name'),
+            "Projection": index.get('projection'),
+            "KeySchema": index.get('key_schema'),
+        })
+
+    return local_secondary_indexes
