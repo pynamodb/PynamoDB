@@ -62,6 +62,9 @@ KEYS = 'Keys'
 UTC = 'UTC'
 KEY = 'Key'
 
+# Response Parameters
+SCANNED_COUNT = 'ScannedCount'
+
 # Expression Parameters
 CONDITION_EXPRESSION = 'ConditionExpression'
 EXPRESSION_ATTRIBUTE_NAMES = 'ExpressionAttributeNames'
