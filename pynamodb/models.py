@@ -61,9 +61,14 @@ class BatchWrite(ModelContextManager):
     """
     def save(self, put_item):
         """
-        This adds `put_item` to the list of pending writes to be performed.
-        Additionally, the a BatchWriteItem will be performed if the length of items
-        reaches 25.
+        This adds `put_item` to the list of pending operations to be performed.
+
+        If the list currently contains 25 items, which is the DynamoDB imposed
+        limit on a BatchWriteItem call, one of two things will happen. If auto_commit
+        is True, a BatchWriteItem operation will be sent with the already pending
+        writes after which put_item is appended to the (now empty) list. If auto_commit
+        is False, ValueError is raised to indicate additional items cannot be accepted
+        due to the DynamoDB imposed limit.
 
         :param put_item: Should be an instance of a `Model` to be written
         """
@@ -76,8 +81,14 @@ class BatchWrite(ModelContextManager):
 
     def delete(self, del_item):
         """
-        This adds `del_item` to the list of pending deletes to be performed.
-        If the list of items reaches 25, a BatchWriteItem will be called.
+        This adds `del_item` to the list of pending operations to be performed.
+
+        If the list currently contains 25 items, which is the DynamoDB imposed
+        limit on a BatchWriteItem call, one of two things will happen. If auto_commit
+        is True, a BatchWriteItem operation will be sent with the already pending
+        operations after which put_item is appended to the (now empty) list. If auto_commit
+        is False, ValueError is raised to indicate additional items cannot be accepted
+        due to the DynamoDB imposed limit.
 
         :param del_item: Should be an instance of a `Model` to be deleted
         """
@@ -294,9 +305,13 @@ class Model(AttributeContainer):
     @classmethod
     def batch_write(cls, auto_commit=True):
         """
-        Returns a context manager for a batch operation'
+        Returns a BatchWrite context manager for a batch operation.
 
-        :param auto_commit: Commits writes automatically if `True`
+        :param auto_commit: If true, the context manager will commit writes incrementally
+                            as items are written to as necessary to honor item count limits
+                            in the DynamoDB API (see BatchWrite). Regardless of the value
+                            passed here, changes automatically commit on context exit
+                            (whether successful or not).
         """
         return BatchWrite(cls, auto_commit=auto_commit)
 
