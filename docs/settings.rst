@@ -61,7 +61,9 @@ Default: ``False``
 
 If ``True``, ``rate_limited_scan()`` will proceed silently (without
 rate limiting) if the DynamoDB server does not return consumed
-capacity information in responses.
+capacity information in responses. If ``False``, scans will fail
+should the server not return consumed capacity information in an
+effort to prevent unintentional capacity usage..
 
 Overriding settings
 ~~~~~~~~~~~~~~~~~~~
