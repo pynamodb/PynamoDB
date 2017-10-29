@@ -32,7 +32,7 @@ PynamoDB allows you to create the table:
 
     >>> UserModel.create_table(read_capacity_units=1, write_capacity_units=1)
 
-Now you can create a user:
+Now you can create a user in local memory:
 
     >>> user = UserModel('test@example.com', first_name='Samuel', last_name='Adams')
     dynamodb-user<test@example.com>
@@ -61,6 +61,49 @@ Did another process update the user? We can refresh the user with data from Dyna
 Ready to delete the user?
 
     >>> user.delete()
+
+Changing items
+^^^^^^^^^^^^^^
+
+Changing existing items in the database can be done using either
+`update()` or `save()`. There are important differences between the
+two.
+
+Use of `save()` looks like this::
+
+    user = UserModel.get('test@example.com')
+    user.first_name = 'Robert'
+    user.save()
+
+Use of `update()` (in its simplest form) looks like this::
+
+    user = UserModel.get('test@example.com')
+    user.update(
+      actions=[
+        UserModel.first_name.set('Robert')
+      ]
+    )
+
+`save()` will entirely replace an object (it internally uses `PutItem
+<http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html>`_). As
+a consequence, even if you modify only one attribute prior to calling
+`save()`, the entire object is re-written. Any modifications done to
+the same user by other processes will be lost, even if made to other
+attributues that you did not change. To avoid this, use `update()` to
+perform more fine grained updates or see the
+:ref:`conditional_operations` for how to avoid race conditions
+entirely.
+
+Additionally, PynamoDB ignores attributes it does not know about when
+reading an object from the database. As a result, if the item in
+DynamoDB contains attributes not declared in your model, `save()` will
+cause those attributes to be deleted.
+
+In particular, performing a rolling upgrade of your application after
+having added an attribute is an example of such a situation. To avoid
+data loss, either avoid using `save()` or perform a multi-step update
+with the first step is to upgrade to a version that merely declares
+the attribute on the model without ever setting it to any value.
 
 Querying
 ^^^^^^^^
