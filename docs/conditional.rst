@@ -1,3 +1,5 @@
+.. _conditional_operations:
+
 Conditional Operations
 ======================
 
