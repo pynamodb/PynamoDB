@@ -102,7 +102,7 @@ Here is an example that specifies both the ``host`` and the ``region`` to use:
             table_name = 'Thread'
             # Specifies the region
             region = 'us-west-1'
-            # Specifies the hostname
+            # Optional: Specify the hostname only if it needs to be changed from the default AWS setting
             host = 'http://localhost'
             # Specifies the write capacity
             write_capacity_units = 10
