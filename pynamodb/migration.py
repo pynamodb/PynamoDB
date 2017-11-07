@@ -97,12 +97,12 @@ def migrate_boolean_attributes(model_class,
         condition = None
         for attr_name in attribute_names:
             if not hasattr(item, attr_name):
-                raise ValueError('attribute {} does not exist on model'.format(attr_name))
+                raise ValueError('attribute {0} does not exist on model'.format(attr_name))
             old_value = getattr(item, attr_name)
             if old_value is None:
                 continue
             if not isinstance(old_value, bool):
-                raise ValueError('attribute {} does not appear to be a boolean attribute'.format(attr_name))
+                raise ValueError('attribute {0} does not appear to be a boolean attribute'.format(attr_name))
 
             actions.append(getattr(model_class, attr_name).set(getattr(item, attr_name)))
 
