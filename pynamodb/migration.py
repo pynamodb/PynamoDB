@@ -64,7 +64,7 @@ def migrate_boolean_attributes(model_class,
                                               read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
                                               allow_rate_limited_scan_without_consumed_capacity=unit_testing):
         actions = []
-        conditional_operator = None
+        condition = None
         for attr_name in attribute_names:
             if not hasattr(item, attr_name):
                 raise ValueError('attribute {} does not exist on model'.format(attr_name))
@@ -76,13 +76,13 @@ def migrate_boolean_attributes(model_class,
 
             actions.append(getattr(model_class, attr_name).set(getattr(item, attr_name)))
 
-            if conditional_operator is None:
-                conditional_operator = getattr(model_class, attr_name) == old_value
+            if condition is None:
+                condition = Path(attr_name) == old_value
             else:
-                conditional_operator = conditional_operator & getattr(model_class, attr_name) == old_value
+                condition = conditional_operator & Path(attr_name) == old_value
 
         if actions:
-            item.update(actions=actions, conditional_operator=conditional_operator)
+            item.update(actions=actions, condition=condition)
             num_items_with_actions += 1
     log.info('finished migrating; %s items required updates', num_items_with_actions, model_class.__name__)
     return num_items_with_actions
