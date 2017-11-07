@@ -77,9 +77,9 @@ def migrate_boolean_attributes(model_class,
             actions.append(getattr(model_class, attr_name).set(getattr(item, attr_name)))
 
             if condition is None:
-                condition = Path(attr_name) == old_value
+                condition = Path(attr_name) == (1 if old_value else 0)
             else:
-                condition = conditional_operator & Path(attr_name) == old_value
+                condition = conditional_operator & Path(attr_name) == (1 if old_value else 0)
 
         if actions:
             item.update(actions=actions, condition=condition)
