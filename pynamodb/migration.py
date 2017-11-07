@@ -5,6 +5,7 @@ PynamoDB to the next, in cases where breaking changes have happened.
 
 import logging
 
+from pynamodb.exceptions import UpdateError
 from pynamodb.expressions.operand import Path
 
 log = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ def migrate_boolean_attributes(model_class,
     """
     log.info('migrating items; no progress will be reported until completed; this may take a while')
     num_items_with_actions = 0
+    num_update_failures = 0
 
     for item in model_class.rate_limited_scan(_build_lba_filter_condition(attribute_names),
                                               read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
@@ -82,7 +84,19 @@ def migrate_boolean_attributes(model_class,
                 condition = conditional_operator & Path(attr_name) == (1 if old_value else 0)
 
         if actions:
-            item.update(actions=actions, condition=condition)
-            num_items_with_actions += 1
-    log.info('finished migrating; %s items required updates', num_items_with_actions, model_class.__name__)
+            try:
+                num_items_with_actions += 1
+                item.update(actions=actions, condition=condition)
+            except UpdateError as e:
+                if isinstance(e.cause, ClientError):
+                    code = e.cause.response['Error'].get('Code')
+                    if code == 'ConditionalCheckFailedException':
+                        log.warn('conditional update failed (concurrent writes?) for object: %s (you will need to re-run migration)', item)
+                        num_update_failures += 1
+                    else:
+                        raise
+                else:
+                    raise
+    log.info('finished migrating; %s items required updates, %s failed due to racing writes and require re-running migration',
+             num_items_with_actions, num_update_failures)
     return num_items_with_actions
