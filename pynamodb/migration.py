@@ -31,34 +31,60 @@ def _build_lba_filter_condition(attribute_names):
 def migrate_boolean_attributes(model_class,
                                attribute_names,
                                read_capacity_to_consume_per_second=10,
-                               unit_testing=False,
+                               allow_rate_limited_scan_without_consumed_capacity=False,
                                mock_conditional_update_failure=False):
     """
     Migrates boolean attributes per GitHub issue 404.
 
     For context, see https://github.com/pynamodb/PynamoDB/issues/404
 
-    Scan through all items for the given model (using
-    `rate_limited_scan`) and use `update()` to re-set any attributes
-    given in attribute_names.
+    Will scan through all objects and perform a conditional update
+    against any items that store any of the given attribute names as
+    integers. Rate limiting is performed by passing an appropriate
+    value as `read_capacity_to_consume_per_second` (which defaults to
+    something extremely conservative and slow).
 
-    All attribute names must signify attributes that are of type BooleanAttribute.
+    Note that updates require provisioned write capacity as
+    well. Please see
+    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html
+    for more information. Keep in mind that there is not a simple 1:1
+    mapping between provisioned read capacity and write capacity. Make
+    sure they are balanced. A conservative calculation would assume
+    that every object visted results in an update.
 
-    Attributes that are None are ignored.
+    The function with log at level `INFO` the final outcome, and the
+    return values help identify how many items needed changing and how
+    many of them succeed. For example, if you had 10 items in the
+    table and every one of them had an attribute that needed
+    migration, and upon migration we had one item which failed the
+    migration due to a concurrent update by another writer, the return
+    value would be:
 
-    The scan is rate limited as a result of our use of
-    `rate_limited_scan`, but the subsequent writes will also consume
-    capacity. Therefor, the value passed to
-    read_capacity_to_consume_per_second must take into account the
-    fact that writes will be generated. The caller should assume every
-    object found is updated, and consider the provisioned *write*
-    capacity.
+      `(10, 1)`
 
-    See http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html
+    Suggesting that 9 were updated successfully.
 
-    Note that read and write capacity units are not directly 1:1 comparable.
+    It is suggested that the migration step be re-ran until the return
+    value is `(0, 0)`.
 
-    Returns: (num_items_visited, num_items_changed)
+    :param model_class: The Model class for which you are migrating. This should
+                        be the up-to-date Model class using a BooleanAttribute for
+                        the relevant attributes.
+    :param attribute_names: List of strings that signifiy the names of attributes which
+                            are potentially in need of migration.
+    :param read_capacity_to_consume_per_second: Passed along to the underlying
+                                                `rate_limited_scan` and intended as
+                                                the mechanism to rate limit progress. Please
+                                                see notes below around write capacity.
+    :param allow_rate_limited_scan_without_consumed_capacity: Passed along to `rate_limited_scan`; intended
+                                                              to allow unit tests to pass against DynamoDB Local.
+    :param mock_conditional_update_failure: Only used for unit testing. When True, the conditional update expression
+                                            used internally is updated such that it is guaranteed to fail. This is
+                                            meant to trigger the code path in boto, to allow us to unit test that
+                                            we are jumping through appropriate hoops handling the resulting
+                                            failure and distinguishing it from other failures.
+
+    :return: (number_of_items_in_need_of_update, number_of_them_that_failed_due_to_conditional_update)
     """
     log.info('migrating items; no progress will be reported until completed; this may take a while')
     num_items_with_actions = 0
