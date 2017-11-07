@@ -1,3 +1,4 @@
+import os
 import pytest
 
 from pynamodb.attributes import BooleanAttribute, LegacyBooleanAttribute, UnicodeAttribute
@@ -8,8 +9,9 @@ from pynamodb.models import Model
 
 @pytest.fixture()
 def ddb_url():
-    # TODO: proper solution rather than assuming it's running on localhost:8000
-    return "http://localhost:8000"
+    ddb_url = os.getenv("PYNAMODB_INTEGRATION_TEST_DDB_URL")
+    return "http://localhost:8000" if ddb_url is None else ddb_url
+
 
 @pytest.mark.ddblocal
 def test_migrate_boolean_attributes_upgrade_path(ddb_url):
