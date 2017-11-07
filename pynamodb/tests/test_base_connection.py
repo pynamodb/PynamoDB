@@ -2586,6 +2586,44 @@ class ConnectionTestCase(TestCase):
             _assert=True
         )
 
+    def test_handle_binary_attributes_for_unprocessed_keys(self):
+        binary_blob = six.b('\x00\xFF\x00\xFF')
+        unprocessed_keys = {
+            'UnprocessedKeys': {
+                'MyTable': {
+                    'AttributesToGet': ['ForumName'],
+                    'Keys': [
+                        {
+                            'ForumName': {'S': 'FooForum'},
+                            'Subject': {'B': base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
+                        },
+                        {
+                            'ForumName': {'S': 'FooForum'},
+                            'Subject': {'S': 'thread-1'}
+                        }
+                    ],
+                    'ConsistentRead': False
+                },
+                'MyOtherTable': {
+                    'AttributesToGet': ['ForumName'],
+                    'Keys': [
+                        {
+                            'ForumName': {'S': 'FooForum'},
+                            'Subject': {'B': base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
+                        },
+                        {
+                            'ForumName': {'S': 'FooForum'},
+                            'Subject': {'S': 'thread-1'}
+                        }
+                    ],
+                    'ConsistentRead': False
+                }
+            }
+        }
+        data = Connection._handle_binary_attributes(unprocessed_keys)
+        self.assertEqual(data['UnprocessedKeys']['MyTable']['Keys'][0]['Subject']['B'], binary_blob)
+        self.assertEqual(data['UnprocessedKeys']['MyOtherTable']['Keys'][0]['Subject']['B'], binary_blob)
+
     def test_get_expected_map(self):
         conn = Connection(self.region)
         with patch(PATCH_METHOD) as req:
