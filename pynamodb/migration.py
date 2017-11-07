@@ -92,7 +92,7 @@ def migrate_boolean_attributes(model_class,
 
     for item in model_class.rate_limited_scan(_build_lba_filter_condition(attribute_names),
                                               read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
-                                              allow_rate_limited_scan_without_consumed_capacity=unit_testing):
+                                              allow_rate_limited_scan_without_consumed_capacity=allow_rate_limited_scan_without_consumed_capacity):
         actions = []
         condition = None
         for attr_name in attribute_names:
