@@ -5,6 +5,7 @@ PynamoDB to the next, in cases where breaking changes have happened.
 
 import logging
 
+from botocore.exceptions import ClientError
 from pynamodb.exceptions import UpdateError
 from pynamodb.expressions.operand import Path
 
@@ -30,7 +31,8 @@ def _build_lba_filter_condition(attribute_names):
 def migrate_boolean_attributes(model_class,
                                attribute_names,
                                read_capacity_to_consume_per_second=10,
-                               unit_testing=False):
+                               unit_testing=False,
+                               mock_conditional_update_failure=False):
     """
     Migrates boolean attributes per GitHub issue 404.
 
@@ -81,9 +83,11 @@ def migrate_boolean_attributes(model_class,
             if condition is None:
                 condition = Path(attr_name) == (1 if old_value else 0)
             else:
-                condition = conditional_operator & Path(attr_name) == (1 if old_value else 0)
+                condition = condition & Path(attr_name) == (1 if old_value else 0)
 
         if actions:
+            if mock_conditional_update_failure:
+                condition = condition & (Path('__bogus_mock_attribute') == 5)
             try:
                 num_items_with_actions += 1
                 item.update(actions=actions, condition=condition)
@@ -99,4 +103,4 @@ def migrate_boolean_attributes(model_class,
                     raise
     log.info('finished migrating; %s items required updates, %s failed due to racing writes and require re-running migration',
              num_items_with_actions, num_update_failures)
-    return num_items_with_actions
+    return num_items_with_actions, num_update_failures

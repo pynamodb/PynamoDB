@@ -40,7 +40,7 @@ def test_migrate_boolean_attributes_upgrade_path(ddb_url):
     assert 1 == len([_ for _ in BAModel.query('pkey', Path('flag') == 1)])
 
     # Migrate the object to being stored as Boolean.
-    assert 1 == migrate_boolean_attributes(BAModel, ['flag'], unit_testing=True)
+    assert (1, 0) == migrate_boolean_attributes(BAModel, ['flag'], unit_testing=True)
 
     # We should now be able to read it using BA.
     assert 1 == len([_ for _ in BAModel.query('pkey', BAModel.flag == True)])
@@ -60,7 +60,22 @@ def test_migrate_boolean_attributes_none_okay(ddb_url):
 
     LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
     LBAModel('pkey', flag=None).save()
-    assert 0 == migrate_boolean_attributes(LBAModel, ['flag'], unit_testing=True)
+    assert (0, 0) == migrate_boolean_attributes(LBAModel, ['flag'], unit_testing=True)
+
+
+def test_migrate_boolean_attributes_conditional_update_failure(ddb_url):
+    """Ensure migration works for attributes whose value is None."""
+    class LBAModel(Model):
+        class Meta:
+            table_name = 'migration_test_lba_to_ba'
+            host = ddb_url
+        id = UnicodeAttribute(hash_key=True)
+        flag = LegacyBooleanAttribute(null=True)
+
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    LBAModel('pkey', flag=1).save()
+    assert (1, 1) == migrate_boolean_attributes(LBAModel, ['flag'],
+                                                unit_testing=True, mock_conditional_update_failure=True)
 
 
 def test_migrate_boolean_attributes_missing_attribute(ddb_url):
@@ -106,7 +121,7 @@ def test_migrate_boolean_attributes_multiple_attributes(ddb_url):
     LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
     # specifically use None and True here rather than two Trues
     LBAModel('pkey', flag=None, flag2=True).save()
-    assert 1 == migrate_boolean_attributes(LBAModel, ['flag', 'flag2'], unit_testing=True)
+    assert (1, 0) == migrate_boolean_attributes(LBAModel, ['flag', 'flag2'], unit_testing=True)
 
 
 def test_migrate_boolean_attributes_skip_native_booleans(ddb_url):
@@ -119,4 +134,4 @@ def test_migrate_boolean_attributes_skip_native_booleans(ddb_url):
 
     BAModel.create_table(read_capacity_units=1, write_capacity_units=1)
     BAModel('pkey', flag=True).save()
-    assert 0 == migrate_boolean_attributes(BAModel, ['flag'], unit_testing=True)
+    assert (0, 0) == migrate_boolean_attributes(BAModel, ['flag'], unit_testing=True)
