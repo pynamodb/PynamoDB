@@ -94,7 +94,7 @@ def test_migrate_boolean_attributes_missing_attribute(ddb_url):
     LBAModel('pkey', flag=True).save()
     with pytest.raises(ValueError) as e:
         migrate_boolean_attributes(LBAModel, ['flag', 'bogus'], allow_rate_limited_scan_without_consumed_capacity=True)
-    assert e.value.message.find('does not exist on model') != -1
+    assert str(e.value).find('does not exist on model') != -1
 
 
 @pytest.mark.ddblocal
@@ -111,7 +111,7 @@ def test_migrate_boolean_attributes_wrong_attribute_type(ddb_url):
     LBAModel('pkey', flag=True, other='test').save()
     with pytest.raises(ValueError) as e:
         migrate_boolean_attributes(LBAModel, ['flag', 'other'], allow_rate_limited_scan_without_consumed_capacity=True)
-    assert e.value.message.find('does not appear to be a boolean attribute') != -1
+    assert str(e.value).find('does not appear to be a boolean attribute') != -1
 
 
 @pytest.mark.ddblocal
