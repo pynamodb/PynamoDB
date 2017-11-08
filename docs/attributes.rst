@@ -192,3 +192,5 @@ These attributes can then be used inside of Model classes just like any other at
     class CarInfoMap(MapAttribute):
         make = UnicodeAttribute(null=False)
         model = UnicodeAttribute(null=True)
+
+`As with a model and its top-level attributes <https://github.com/pynamodb/PynamoDB/blob/master/docs/quickstart.rst#changing-items>`_, a PynamoDB MapAttribute will ignore sub-attributes it does not know about during deserialization. As a result, if the item in DynamoDB contains sub-attributes not declared as properties of the corresponding MapAttribute, save() will cause those sub-attributes to be deleted.
