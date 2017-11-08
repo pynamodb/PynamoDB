@@ -475,6 +475,14 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'N': '0'}}
 
     def test_add_action_set(self):
+        action = NumberSetAttribute(attr_name='foo').add(0, 1)
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'NS': ['0', '1']}}
+
+    def test_add_action_serialized(self):
         action = NumberSetAttribute(attr_name='foo').add({'NS': ['0']})
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
@@ -487,6 +495,22 @@ class UpdateExpressionTestCase(TestCase):
             Path('foo').add({'L': [{'N': '0'}]})
 
     def test_delete_action(self):
+        action = NumberSetAttribute(attr_name='foo').delete(0, 1)
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'NS': ['0', '1']}}
+
+    def test_delete_action_set(self):
+        action = NumberSetAttribute(attr_name='foo').delete(set([0, 1]))
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'NS': ['0', '1']}}
+
+    def test_delete_action_serialized(self):
         action = NumberSetAttribute(attr_name='foo').delete({'NS': ['0']})
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
