@@ -34,9 +34,7 @@ def migrate_boolean_attributes(model_class,
                                allow_rate_limited_scan_without_consumed_capacity=False,
                                mock_conditional_update_failure=False):
     """
-    Migrates boolean attributes per GitHub issue 404.
-
-    For context, see https://github.com/pynamodb/PynamoDB/issues/404
+    Migrates boolean attributes per GitHub `issue 404 <https://github.com/pynamodb/PynamoDB/issues/404>`_.
 
     Will scan through all objects and perform a conditional update
     against any items that store any of the given attribute names as
@@ -45,8 +43,8 @@ def migrate_boolean_attributes(model_class,
     something extremely conservative and slow).
 
     Note that updates require provisioned write capacity as
-    well. Please see
-    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html
+    well. Please see `the DynamoDB docs
+    <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ProvisionedThroughput.html>`_
     for more information. Keep in mind that there is not a simple 1:1
     mapping between provisioned read capacity and write capacity. Make
     sure they are balanced. A conservative calculation would assume
@@ -63,7 +61,7 @@ def migrate_boolean_attributes(model_class,
     Suggesting that 9 were updated successfully.
 
     It is suggested that the migration step be re-ran until the return
-    value is ``(0, 0)`.
+    value is ``(0, 0)``.
 
     :param model_class: The Model class for which you are migrating. This should
                         be the up-to-date Model class using a BooleanAttribute for
