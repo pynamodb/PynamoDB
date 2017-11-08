@@ -41,7 +41,7 @@ def migrate_boolean_attributes(model_class,
     Will scan through all objects and perform a conditional update
     against any items that store any of the given attribute names as
     integers. Rate limiting is performed by passing an appropriate
-    value as `read_capacity_to_consume_per_second` (which defaults to
+    value as ``read_capacity_to_consume_per_second`` (which defaults to
     something extremely conservative and slow).
 
     Note that updates require provisioned write capacity as
@@ -52,20 +52,18 @@ def migrate_boolean_attributes(model_class,
     sure they are balanced. A conservative calculation would assume
     that every object visted results in an update.
 
-    The function with log at level `INFO` the final outcome, and the
+    The function with log at level ``INFO`` the final outcome, and the
     return values help identify how many items needed changing and how
     many of them succeed. For example, if you had 10 items in the
     table and every one of them had an attribute that needed
     migration, and upon migration we had one item which failed the
     migration due to a concurrent update by another writer, the return
-    value would be:
-
-      `(10, 1)`
+    value would be: ``(10, 1)``
 
     Suggesting that 9 were updated successfully.
 
     It is suggested that the migration step be re-ran until the return
-    value is `(0, 0)`.
+    value is ``(0, 0)`.
 
     :param model_class: The Model class for which you are migrating. This should
                         be the up-to-date Model class using a BooleanAttribute for
