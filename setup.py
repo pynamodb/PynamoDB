@@ -13,6 +13,9 @@ if sys.argv[-1] == 'publish':
 
 install_requires = [
     'six',
+    # Most recent reason to bump to >=1.6.0 rather than >=1.2.0 is this:
+    #
+    #   https://github.com/boto/botocore/issues/1079
     'botocore>=1.6.0',
     'python-dateutil>=2.1,<3.0.0',
 ]
