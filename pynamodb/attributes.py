@@ -765,6 +765,8 @@ class MapAttribute(Attribute, AttributeContainer):
             attr_value = _get_value_for_deserialize(v)
             key = self._dynamo_to_python_attr(k)
             attr_class = self._get_deserialize_class(key, v)
+            if attr_class is None:
+                continue
             deserialized_value = None
             if attr_value is not None:
                 deserialized_value = attr_class.deserialize(attr_value)
