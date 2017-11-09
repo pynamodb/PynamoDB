@@ -163,11 +163,11 @@ class Attribute(object):
     def remove(self):
         return Path(self).remove()
 
-    def add(self, value):
-        return Path(self).add(value)
+    def add(self, *values):
+        return Path(self).add(*values)
 
-    def delete(self, value):
-        return Path(self).delete(value)
+    def delete(self, *values):
+        return Path(self).delete(*values)
 
 
 class AttributeContainerMeta(type):

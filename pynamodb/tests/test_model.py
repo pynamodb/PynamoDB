@@ -966,7 +966,8 @@ class ModelTestCase(TestCase):
                 SimpleUserModel.views.remove(),
                 SimpleUserModel.is_active.set(None),
                 SimpleUserModel.signature.set(None),
-                SimpleUserModel.custom_aliases.set(['bob'])
+                SimpleUserModel.custom_aliases.set(['bob']),
+                SimpleUserModel.numbers.delete(0, 1)
             ])
 
             args = req.call_args[0][1]
@@ -978,13 +979,14 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3 REMOVE #4',
+                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3 REMOVE #4 DELETE #5 :4',
                 'ExpressionAttributeNames': {
                     '#0': 'email',
                     '#1': 'is_active',
                     '#2': 'signature',
                     '#3': 'aliases',
-                    '#4': 'views'
+                    '#4': 'views',
+                    '#5': 'numbers'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
@@ -997,7 +999,10 @@ class ModelTestCase(TestCase):
                         'NULL': True
                     },
                     ':3': {
-                        'SS': set(['bob'])
+                        'SS': ['bob']
+                    },
+                    ':4': {
+                        'NS': ['0', '1']
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL'

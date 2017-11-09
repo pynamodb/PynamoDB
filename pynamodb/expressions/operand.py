@@ -275,12 +275,14 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         # Returns an update action that removes this attribute from the item
         return RemoveAction(self)
 
-    def add(self, value):
-        # Returns an update action that appends the given value to a set or mathematically adds it to a number
+    def add(self, *values):
+        # Returns an update action that appends the given values to a set or mathematically adds a value to a number
+        value = values[0] if len(values) == 1 else values
         return AddAction(self, self._to_operand(value))
 
-    def delete(self, value):
-        # Returns an update action that removes the given value from a set attribute
+    def delete(self, *values):
+        # Returns an update action that removes the given values from a set attribute
+        value = values[0] if len(values) == 1 else values
         return DeleteAction(self, self._to_operand(value))
 
     def exists(self):
