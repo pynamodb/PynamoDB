@@ -630,7 +630,11 @@ class MapAttribute(Attribute, AttributeContainer):
         # Determine if this instance is being used as an AttributeContainer or an Attribute.
         # AttributeContainer instances have an internal `attribute_values` dictionary that is removed
         # by the `_make_attribute` call during initialization of the containing class.
-        return hasattr(self, 'attribute_values')
+        try:
+            object.__getattribute__(self, 'attribute_values')
+        except AttributeError:
+            return False
+        return True
 
     def _make_attribute(self):
         # WARNING! This function is only intended to be called from the AttributeContainerMeta metaclass.
