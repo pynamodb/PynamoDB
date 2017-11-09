@@ -442,6 +442,16 @@ class Dog(Animal):
     breed = UnicodeAttribute()
 
 
+class ModelWithoutDict(Model):
+
+    __slots__ = ()
+
+    class Meta:
+        table_name = 'foo'
+
+    hk = UnicodeAttribute(hash_key=True)
+
+
 class ModelTestCase(TestCase):
     """
     Tests for the models API
@@ -4432,3 +4442,10 @@ class ModelInitTestCase(TestCase):
         self.assertEquals(actual.left.left.value, left_instance.left.value)
         self.assertEquals(actual.right.right.left.value, right_instance.right.left.value)
         self.assertEquals(actual.right.right.value, right_instance.right.value)
+
+    # See https://github.com/pynamodb/PynamoDB/issues/331
+    def test_undefined_attribute(self):
+        model_without_dict = ModelWithoutDict()
+        model_without_dict.hk = 'foo'
+        with self.assertRaises(AttributeError):
+            model_without_dict.sk = 'bar'

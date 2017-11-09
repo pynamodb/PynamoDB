@@ -221,6 +221,9 @@ class Model(AttributeContainer):
     _index_classes = None
     DoesNotExist = DoesNotExist
 
+    # Allow users to create models that will not store undefined attributes.
+    __slots__ = ()
+
     def __init__(self, hash_key=None, range_key=None, **attributes):
         """
         :param hash_key: Required. The hash key for this object.
