@@ -6,10 +6,12 @@ import json
 import six
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import Connection
+from pynamodb.connection.base import MetaTable
 from botocore.vendored import requests
 from pynamodb.exceptions import (VerboseClientError,
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
-from pynamodb.constants import DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING
+from pynamodb.constants import (
+    DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING, TABLE_KEY)
 from pynamodb.expressions.operand import Path
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from pynamodb.tests.deep_eq import deep_eq
@@ -23,6 +25,23 @@ else:
     import mock
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
+
+
+class MetaTableTestCase(TestCase):
+    """
+    Tests for the meta table class
+    """
+
+    def setUp(self):
+        self.meta_table = MetaTable(DESCRIBE_TABLE_DATA.get(TABLE_KEY))
+
+    def test_get_key_names(self):
+        key_names = self.meta_table.get_key_names()
+        self.assertEqual(key_names, ["ForumName", "Subject"])
+
+    def test_get_key_names_index(self):
+        key_names = self.meta_table.get_key_names("LastPostIndex")
+        self.assertEqual(key_names, ["ForumName", "Subject", "LastPostDateTime"])
 
 
 class ConnectionTestCase(TestCase):
