@@ -32,7 +32,7 @@ class TableConnection(object):
         """
         Returns a MetaTable
         """
-        return self.connection.get_meta_table(self.table_name, refresh)
+        return self.connection.get_meta_table(self.table_name, refresh=refresh)
 
     def delete_item(self, hash_key,
                     range_key=None,
