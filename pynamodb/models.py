@@ -11,7 +11,6 @@ import warnings
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute
-from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
@@ -145,21 +144,6 @@ class BatchWrite(ModelContextManager):
             unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
 
 
-class DefaultMeta(object):
-    pass
-
-
-class ResultSet(object):
-
-    def __init__(self, results, operation, arguments):
-        self.results = results
-        self.operation = operation
-        self.arguments = arguments
-
-    def __iter__(self):
-        return iter(self.results)
-
-
 class MetaModel(AttributeContainerMeta):
     """
     Model meta class
@@ -192,9 +176,6 @@ class MetaModel(AttributeContainerMeta):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
-            if META_CLASS_NAME not in attrs:
-                setattr(cls, META_CLASS_NAME, DefaultMeta)
-
             # create a custom Model.DoesNotExist derived from pynamodb.exceptions.DoesNotExist,
             # so that "except Model.DoesNotExist:" would not catch other models' exceptions
             if 'DoesNotExist' not in attrs:
@@ -215,7 +196,6 @@ class Model(AttributeContainer):
 
     # These attributes are named to avoid colliding with user defined
     # DynamoDB attributes
-    _meta_table = None
     _indexes = None
     _connection = None
     _index_classes = None
@@ -1248,9 +1228,7 @@ class Model(AttributeContainer):
         """
         A helper object that contains meta data about this table
         """
-        if cls._meta_table is None:
-            cls._meta_table = MetaTable(cls._get_connection().describe_table())
-        return cls._meta_table
+        return cls._get_connection().get_meta_table()
 
     @classmethod
     def _get_connection(cls):

@@ -22,7 +22,7 @@ from pynamodb.constants import (
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
     UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT, NUMBER_SHORT, SCANNED_COUNT
 )
-from pynamodb.models import Model, ResultSet
+from pynamodb.models import Model
 from pynamodb.indexes import (
     GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
     IncludeProjection, KeysOnlyProjection, Index
@@ -724,7 +724,7 @@ class ModelTestCase(TestCase):
         """
         Model.delete
         """
-        UserModel._meta_table = None
+        del UserModel._get_connection().connection._tables[UserModel.Meta.table_name]
         with patch(PATCH_METHOD) as req:
             req.return_value = MODEL_TABLE_DATA
             item = UserModel('foo', 'bar')
@@ -4169,23 +4169,6 @@ class ModelTestCase(TestCase):
                 list(ComplexModel.query(123, limit=20, conditional_operator='OR'))
             with self.assertRaises(NotImplementedError):
                 list(ComplexModel.scan(conditional_operator='OR'))
-
-    def test_result_set_init(self):
-        results = []
-        operations = 1
-        arguments = 'args'
-        rs = ResultSet(results=results, operation=operations, arguments=arguments)
-        self.assertEquals(rs.results, results)
-        self.assertEquals(rs.operation, operations)
-        self.assertEquals(rs.arguments, arguments)
-
-    def test_result_set_iter(self):
-        results = [1, 2, 3]
-        operations = 1
-        arguments = 'args'
-        rs = ResultSet(results=results, operation=operations, arguments=arguments)
-        for k in rs:
-            self.assertTrue(k in results)
 
     def test_explicit_raw_map_serialize_pass(self):
         map_native = {'foo': 'bar'}
