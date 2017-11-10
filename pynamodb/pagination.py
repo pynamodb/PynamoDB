@@ -36,6 +36,16 @@ class PageIterator(object):
         return self.__next__()
 
     @property
+    def key_names(self):
+        # If the current page has a last_evaluated_key, use it to determine key attributes
+        if self._last_evaluated_key:
+            return self._last_evaluated_key.keys()
+
+        # Use the table meta data to determine the key attributes
+        table_meta = self._operation.im_self.get_meta_table()
+        return table_meta.get_key_names(self._kwargs.get('index_name'))
+
+    @property
     def page_size(self):
         return self._kwargs.get('limit')
 
@@ -113,26 +123,7 @@ class ResultIterator(object):
         # The operation should be resumed starting at the last item returned, not the last item evaluated.
         # This can occur if the 'limit' is reached in the middle of a page.
         item = self._items[self._index - 1]
-        last_evaluated_key = {}
-        if self.page_iter.last_evaluated_key:
-            # If the current page has a last_evaluated_key, use it to determine key attributes
-            for key in self.page_iter.last_evaluated_key.keys():
-                last_evaluated_key[key] = item[key]
-        else:
-            # Use the table meta data to determine the key attributes
-            table_connection = self.page_iter._operation.im_self
-            table_meta = table_connection.connection.get_meta_table(table_connection.table_name)
-            last_evaluated_key[table_meta.hash_keyname] = item[table_meta.hash_keyname]
-            if table_meta.range_keyname:
-                last_evaluated_key[table_meta.range_keyname] = item[table_meta.range_keyname]
-            index_name = self.page_iter._kwargs.get('index_name')
-            if index_name:
-                index_hash_keyname = table_meta.get_index_hash_keyname(index_name)
-                last_evaluated_key[index_hash_keyname] = item[index_hash_keyname]
-                index_range_keyname = table_meta.get_index_range_keyname(index_name)
-                if index_range_keyname:
-                    last_evaluated_key[index_range_keyname] = item[index_range_keyname]
-        return last_evaluated_key
+        return dict((key, item[key]) for key in self.page_iter.key_names)
 
     @property
     def total_count(self):

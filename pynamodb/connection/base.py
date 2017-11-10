@@ -95,6 +95,22 @@ class MetaTable(object):
                     break
         return self._hash_keyname
 
+    def get_key_names(self, index_name=None):
+        """
+        Returns the names of the primary key attributes and index key attributes (if index_name is specified)
+        """
+        key_names = [self.hash_keyname]
+        if self.range_keyname:
+            key_names.append(self.range_keyname)
+        if index_name is not None:
+            index_hash_keyname = self.get_index_hash_keyname(index_name)
+            if index_hash_keyname not in key_names:
+                key_names.append(index_hash_keyname)
+            index_range_keyname = self.get_index_range_keyname(index_name)
+            if index_range_keyname is not None and index_range_keyname not in key_names:
+                key_names.append(index_range_keyname)
+        return key_names
+
     def get_index_hash_keyname(self, index_name):
         """
         Returns the name of the hash key for a given index
