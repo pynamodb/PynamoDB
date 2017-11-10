@@ -2125,9 +2125,9 @@ class ModelTestCase(TestCase):
                 items.append(item)
 
             req.side_effect = [
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[:10], 'LastEvaluatedKey': 'x'},
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[10:20], 'LastEvaluatedKey': 'y'},
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[20:30], 'LastEvaluatedKey': 'z'},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[:10], 'LastEvaluatedKey': {'user_id': 'x'}},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[10:20], 'LastEvaluatedKey': {'user_id': 'y'}},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[20:30], 'LastEvaluatedKey': {'user_id': 'z'}},
             ]
             results_iter = UserModel.query('foo', limit=25)
             results = list(results_iter)
@@ -2136,7 +2136,7 @@ class ModelTestCase(TestCase):
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 25)
             self.assertEquals(req.mock_calls[1][1][1]['Limit'], 25)
             self.assertEquals(req.mock_calls[2][1][1]['Limit'], 25)
-            self.assertEquals(results_iter.last_evaluated_key, 'z')
+            self.assertEquals(results_iter.last_evaluated_key, {'user_id': items[24]['user_id']})
             self.assertEquals(results_iter.total_count, 30)
             self.assertEquals(results_iter.page_iter.total_scanned_count, 60)
 
@@ -2153,9 +2153,9 @@ class ModelTestCase(TestCase):
                 items.append(item)
 
             req.side_effect = [
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[:10], 'LastEvaluatedKey': 'x'},
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[10:20], 'LastEvaluatedKey': 'y'},
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[20:30], 'LastEvaluatedKey': 'z'},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[:10], 'LastEvaluatedKey': {'user_id': 'x'}},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[10:20], 'LastEvaluatedKey': {'user_id': 'y'}},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[20:30], 'LastEvaluatedKey': {'user_id': 'x'}},
             ]
             results_iter = UserModel.query('foo', limit=25, page_size=10)
             results = list(results_iter)
@@ -2164,7 +2164,7 @@ class ModelTestCase(TestCase):
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
             self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
             self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
-            self.assertEquals(results_iter.last_evaluated_key, 'z')
+            self.assertEquals(results_iter.last_evaluated_key, {'user_id': items[24]['user_id']})
             self.assertEquals(results_iter.total_count, 30)
             self.assertEquals(results_iter.page_iter.total_scanned_count, 60)
 
@@ -2181,8 +2181,8 @@ class ModelTestCase(TestCase):
                 items.append(item)
 
             req.side_effect = [
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[:10], 'LastEvaluatedKey': 'x'},
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[:10], 'LastEvaluatedKey': {'user_id': 'x'}},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[10:20], 'LastEvaluatedKey': {'user_id': 'y'}},
                 {'Count': 10, 'ScannedCount': 20, 'Items': items[20:30]},
             ]
             results_iter = UserModel.query('foo', limit=50)
@@ -2209,8 +2209,8 @@ class ModelTestCase(TestCase):
                 items.append(item)
 
             req.side_effect = [
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[:10], 'LastEvaluatedKey': 'x'},
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[10:20], 'LastEvaluatedKey': 'y'},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[:10], 'LastEvaluatedKey': {'user_id': 'x'}},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[10:20], 'LastEvaluatedKey': {'user_id': 'y'}},
                 {'Count': 10, 'ScannedCount': 20, 'Items': items[20:30]},
             ]
             results_iter = UserModel.query('foo', limit=50, page_size=10)
@@ -2545,9 +2545,9 @@ class ModelTestCase(TestCase):
                 items.append(item)
 
             req.side_effect = [
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[:10], 'LastEvaluatedKey': 'x'},
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[10:20], 'LastEvaluatedKey': 'y'},
-                {'Count': 10, 'ScannedCount': 20, 'Items': items[20:30], 'LastEvaluatedKey': 'z'},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[:10], 'LastEvaluatedKey': {'user_id': 'x'}},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[10:20], 'LastEvaluatedKey': {'user_id': 'y'}},
+                {'Count': 10, 'ScannedCount': 20, 'Items': items[20:30], 'LastEvaluatedKey': {'user_id': 'z'}},
             ]
             results_iter = UserModel.scan(limit=25, page_size=10)
             results = list(results_iter)
@@ -2556,7 +2556,7 @@ class ModelTestCase(TestCase):
             self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
             self.assertEquals(req.mock_calls[1][1][1]['Limit'], 10)
             self.assertEquals(req.mock_calls[2][1][1]['Limit'], 10)
-            self.assertEquals(results_iter.last_evaluated_key, 'z')
+            self.assertEquals(results_iter.last_evaluated_key, {'user_id': items[24]['user_id']})
             self.assertEquals(results_iter.total_count, 30)
             self.assertEquals(results_iter.page_iter.total_scanned_count, 60)
 
