@@ -36,6 +36,16 @@ class PageIterator(object):
         return self.__next__()
 
     @property
+    def key_names(self):
+        # If the current page has a last_evaluated_key, use it to determine key attributes
+        if self._last_evaluated_key:
+            return self._last_evaluated_key.keys()
+
+        # Use the table meta data to determine the key attributes
+        table_meta = self._operation.im_self.get_meta_table()
+        return table_meta.get_key_names(self._kwargs.get('index_name'))
+
+    @property
     def page_size(self):
         return self._kwargs.get('limit')
 
@@ -100,7 +110,20 @@ class ResultIterator(object):
 
     @property
     def last_evaluated_key(self):
-        return self.page_iter.last_evaluated_key
+        if self._first_iteration:
+            # Not started iterating yet: there cannot be a last_evaluated_key
+            return None
+
+        if self._index == self._count:
+            # Entire page has been consumed: last_evaluated_key is whatever DynamoDB returned
+            # It may correspond to the current item, or it may correspond to an item evaluated but not returned.
+            return self.page_iter.last_evaluated_key
+
+        # In the middle of a page of results: reconstruct a last_evaluated_key from the current item
+        # The operation should be resumed starting at the last item returned, not the last item evaluated.
+        # This can occur if the 'limit' is reached in the middle of a page.
+        item = self._items[self._index - 1]
+        return dict((key, item[key]) for key in self.page_iter.key_names)
 
     @property
     def total_count(self):
