@@ -100,7 +100,39 @@ class ResultIterator(object):
 
     @property
     def last_evaluated_key(self):
-        return self.page_iter.last_evaluated_key
+        if self._first_iteration:
+            # Not started iterating yet: there cannot be a last_evaluated_key
+            return None
+
+        if self._index == self._count:
+            # Entire page has been consumed: last_evaluated_key is whatever DynamoDB returned
+            # It may correspond to the current item, or it may correspond to an item evaluated but not returned.
+            return self.page_iter.last_evaluated_key
+
+        # In the middle of a page of results: reconstruct a last_evaluated_key from the current item
+        # The operation should be resumed starting at the last item returned, not the last item evaluated.
+        # This can occur if the 'limit' is reached in the middle of a page.
+        item = self._items[self._index - 1]
+        last_evaluated_key = {}
+        if self.page_iter.last_evaluated_key:
+            # If the current page has a last_evaluated_key, use it to determine key attributes
+            for key in self.page_iter.last_evaluated_key.keys():
+                last_evaluated_key[key] = item[key]
+        else:
+            # Use the table meta data to determine the key attributes
+            table_connection = self.page_iter._operation.im_self
+            table_meta = table_connection.connection.get_meta_table(table_connection.table_name)
+            last_evaluated_key[table_meta.hash_keyname] = item[table_meta.hash_keyname]
+            if table_meta.range_keyname:
+                last_evaluated_key[table_meta.range_keyname] = item[table_meta.range_keyname]
+            index_name = self.page_iter._kwargs.get('index_name')
+            if index_name:
+                index_hash_keyname = table_meta.get_index_hash_keyname(index_name)
+                last_evaluated_key[index_hash_keyname] = item[index_hash_keyname]
+                index_range_keyname = table_meta.get_index_range_keyname(index_name)
+                if index_range_keyname:
+                    last_evaluated_key[index_range_keyname] = item[index_range_keyname]
+        return last_evaluated_key
 
     @property
     def total_count(self):
