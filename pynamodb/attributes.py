@@ -760,18 +760,14 @@ class MapAttribute(Attribute, AttributeContainer):
         Decode as a dict.
         """
         deserialized_dict = dict()
-        for k in values:
-            v = values[k]
-            attr_value = _get_value_for_deserialize(v)
-            key = self._dynamo_to_python_attr(k)
-            attr_class = self._get_deserialize_class(key, v)
-            if attr_class is None:
-                continue
-            deserialized_value = None
-            if attr_value is not None:
-                deserialized_value = attr_class.deserialize(attr_value)
-
-            deserialized_dict[key] = deserialized_value
+        for name, value in six.iteritems(values):
+            name = self._dynamo_to_python_attr(name)
+            (attr_type, value), = value.items()
+            attr_class = self._get_deserialize_class(name, attr_type)
+            # Previous deserialization logic had special case handling for "NULL" values
+            # in MapAttribute subclasses -- preserve that behavior by checking attr_type
+            if attr_type is not NULL and attr_class is not None:
+                 deserialized_dict[name] = attr_class.deserialize(value)
 
         # If this is a subclass of a MapAttribute (i.e typed), instantiate an instance
         if not self.is_raw():
@@ -795,10 +791,13 @@ class MapAttribute(Attribute, AttributeContainer):
         return _get_class_for_serialize(value)
 
     @classmethod
-    def _get_deserialize_class(cls, key, value):
+    def _get_deserialize_class(cls, attr_name, attr_type):
         if not cls.is_raw():
-            return cls._get_attributes().get(key)
-        return _get_class_for_deserialize(value)
+            return cls._get_attributes().get(attr_name)
+        attr_class = DESERIALIZE_CLASS_MAP.get(attr_type)
+        if attr_class is None:
+            raise ValueError('Unknown Attribute Type: {0} ({1})'.format(attr_type, attr_name))
+        return attr_class
 
 
 def _get_value_for_deserialize(value):
@@ -841,12 +840,8 @@ class ListAttribute(Attribute):
     attr_type = LIST
     element_type = None
 
-    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, of=None):
-        super(ListAttribute, self).__init__(hash_key=hash_key,
-                                            range_key=range_key,
-                                            null=null,
-                                            default=default,
-                                            attr_name=attr_name)
+    def __init__(self, of=None, **kwargs):
+        super(ListAttribute, self).__init__(**kwargs)
         if of:
             if not issubclass(of, MapAttribute):
                 raise ValueError("'of' must be subclass of MapAttribute")
