@@ -4437,3 +4437,17 @@ class ModelInitTestCase(TestCase):
         self.assertEquals(actual.left.left.value, left_instance.left.value)
         self.assertEquals(actual.right.right.left.value, right_instance.right.left.value)
         self.assertEquals(actual.right.right.value, right_instance.right.value)
+
+    def test_subclassed_model_has_different_connection(self):
+        class Parent(Model):
+            class Meta:
+                table_name = 'parent'
+
+        class Child(Parent):
+            class Meta:
+                table_name = 'child'
+
+        parent_connection = Parent._get_connection()
+        child_connection = Child._get_connection()
+
+        self.assertIsNot(parent_connection, child_connection)
