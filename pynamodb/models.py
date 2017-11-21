@@ -1262,7 +1262,7 @@ class Model(AttributeContainer):
                 """As of v1.0 PynamoDB Models require a `Meta` class.
                 See https://pynamodb.readthedocs.io/en/latest/release_notes.html"""
             )
-        if cls._connection is None:
+        if cls.__dict__.get('_connection') is None:
             cls._connection = TableConnection(cls.Meta.table_name,
                                               region=cls.Meta.region,
                                               host=cls.Meta.host,
