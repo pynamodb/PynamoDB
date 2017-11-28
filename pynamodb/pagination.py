@@ -111,6 +111,7 @@ class ResultIterator(object):
     @property
     def last_evaluated_key(self):
         if self._first_iteration or self._index == self._count:
+            # Not started iterating yet: return `exclusive_start_key` if set, otherwise expect None; or,
             # Entire page has been consumed: last_evaluated_key is whatever DynamoDB returned
             # It may correspond to the current item, or it may correspond to an item evaluated but not returned.
             return self.page_iter.last_evaluated_key
