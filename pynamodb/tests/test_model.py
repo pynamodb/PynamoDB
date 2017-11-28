@@ -2224,6 +2224,32 @@ class ModelTestCase(TestCase):
             self.assertEquals(results_iter.total_count, 30)
             self.assertEquals(results_iter.page_iter.total_scanned_count, 60)
 
+    def test_query_with_exclusive_start_key(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Count': 10, 'ScannedCount': 10, 'Items': items[10:20], 'LastEvaluatedKey': {'user_id': items[19]['user_id']}},
+            ]
+            results_iter = UserModel.query('foo', limit=10, page_size=10, last_evaluated_key={'user_id': items[9]['user_id']})
+            self.assertEquals(results_iter.last_evaluated_key, {'user_id': items[9]['user_id']})
+
+            results = list(results_iter)
+            self.assertEqual(len(results), 10)
+            self.assertEqual(len(req.mock_calls), 1)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
+            self.assertEquals(results_iter.last_evaluated_key, {'user_id': items[19]['user_id']})
+            self.assertEquals(results_iter.total_count, 10)
+            self.assertEquals(results_iter.page_iter.total_scanned_count, 10)
+
     def test_query(self):
         """
         Model.query

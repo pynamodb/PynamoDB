@@ -13,7 +13,7 @@ class PageIterator(object):
         self._args = args
         self._kwargs = kwargs
         self._first_iteration = True
-        self._last_evaluated_key = None
+        self._last_evaluated_key = kwargs.get('exclusive_start_key')
         self._total_scanned_count = 0
 
     def __iter__(self):
@@ -110,11 +110,8 @@ class ResultIterator(object):
 
     @property
     def last_evaluated_key(self):
-        if self._first_iteration:
-            # Not started iterating yet: there cannot be a last_evaluated_key
-            return None
-
-        if self._index == self._count:
+        if self._first_iteration or self._index == self._count:
+            # Not started iterating yet: return `exclusive_start_key` if set, otherwise expect None; or,
             # Entire page has been consumed: last_evaluated_key is whatever DynamoDB returned
             # It may correspond to the current item, or it may correspond to an item evaluated but not returned.
             return self.page_iter.last_evaluated_key
