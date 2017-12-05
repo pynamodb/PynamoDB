@@ -5,6 +5,7 @@ PynamoDB to the next, in cases where breaking changes have happened.
 
 import logging
 
+from time import sleep
 from botocore.exceptions import ClientError
 from pynamodb.exceptions import UpdateError
 from pynamodb.expressions.operand import Path
@@ -31,6 +32,9 @@ def _build_lba_filter_condition(attribute_names):
 def migrate_boolean_attributes(model_class,
                                attribute_names,
                                read_capacity_to_consume_per_second=10,
+                               page_size=None,
+                               limit=None,
+                               back_off=1,
                                allow_rate_limited_scan_without_consumed_capacity=False,
                                mock_conditional_update_failure=False):
     """
@@ -68,6 +72,9 @@ def migrate_boolean_attributes(model_class,
                         the relevant attributes.
     :param attribute_names: List of strings that signifiy the names of attributes which
                             are potentially in need of migration.
+    :param page_size: Passed along to the underlying 'page_size'. Page size of the scan to DynamoDB.
+    :param limit: Passed along to the underlying 'limit'. Used to limit the number of results returned.
+    :param back_off: Number of seconds to sleep when exceeding capacity.
     :param read_capacity_to_consume_per_second: Passed along to the underlying
                                                 `rate_limited_scan` and intended as
                                                 the mechanism to rate limit progress. Please
@@ -85,9 +92,12 @@ def migrate_boolean_attributes(model_class,
     log.info('migrating items; no progress will be reported until completed; this may take a while')
     num_items_with_actions = 0
     num_update_failures = 0
+    items_processed = 0
 
     for item in model_class.rate_limited_scan(_build_lba_filter_condition(attribute_names),
                                               read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
+                                              page_size=page_size,
+                                              limit=limit,
                                               allow_rate_limited_scan_without_consumed_capacity=allow_rate_limited_scan_without_consumed_capacity):
         actions = []
         condition = None
@@ -119,10 +129,17 @@ def migrate_boolean_attributes(model_class,
                     if code == 'ConditionalCheckFailedException':
                         log.warn('conditional update failed (concurrent writes?) for object: %s (you will need to re-run migration)', item)
                         num_update_failures += 1
+                    elif code == 'ProvisionedThroughputExceededException':
+                        sleep(back_off)
+                        log.warn('provisioned write capacity exceeded at object: %s backing off (you will need to re-run migration)', item)
+                        num_update_failures += 1
                     else:
                         raise
                 else:
                     raise
-    log.info('finished migrating; %s items required updates, %s failed due to racing writes and require re-running migration',
+        items_processed += 1
+        if items_processed % 1000 == 0:
+            log.info('processed items: %s Thousand',items_processed/1000)
+    log.info('finished migrating; %s items required updates, %s failed due to racing writes and/or exceeding capacity and require re-running migration',
              num_items_with_actions, num_update_failures)
     return num_items_with_actions, num_update_failures
