@@ -32,11 +32,11 @@ def _build_lba_filter_condition(attribute_names):
 def migrate_boolean_attributes(model_class,
                                attribute_names,
                                read_capacity_to_consume_per_second=10,
+                               allow_rate_limited_scan_without_consumed_capacity=False,
+                               mock_conditional_update_failure=False,
                                page_size=None,
                                limit=None,
-                               back_off=1,
-                               allow_rate_limited_scan_without_consumed_capacity=False,
-                               mock_conditional_update_failure=False):
+                               back_off=1):
     """
     Migrates boolean attributes per GitHub `issue 404 <https://github.com/pynamodb/PynamoDB/issues/404>`_.
 
@@ -72,9 +72,6 @@ def migrate_boolean_attributes(model_class,
                         the relevant attributes.
     :param attribute_names: List of strings that signifiy the names of attributes which
                             are potentially in need of migration.
-    :param page_size: Passed along to the underlying 'page_size'. Page size of the scan to DynamoDB.
-    :param limit: Passed along to the underlying 'limit'. Used to limit the number of results returned.
-    :param back_off: Number of seconds to sleep when exceeding capacity.
     :param read_capacity_to_consume_per_second: Passed along to the underlying
                                                 `rate_limited_scan` and intended as
                                                 the mechanism to rate limit progress. Please
@@ -86,6 +83,9 @@ def migrate_boolean_attributes(model_class,
                                             meant to trigger the code path in boto, to allow us to unit test that
                                             we are jumping through appropriate hoops handling the resulting
                                             failure and distinguishing it from other failures.
+    :param page_size: Passed along to the underlying 'page_size'. Page size of the scan to DynamoDB.
+    :param limit: Passed along to the underlying 'limit'. Used to limit the number of results returned.
+    :param back_off: Number of seconds to sleep when exceeding capacity.
 
     :return: (number_of_items_in_need_of_update, number_of_them_that_failed_due_to_conditional_update)
     """
