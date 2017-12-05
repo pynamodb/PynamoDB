@@ -36,7 +36,7 @@ def migrate_boolean_attributes(model_class,
                                mock_conditional_update_failure=False,
                                page_size=None,
                                limit=None,
-                               back_off=1):
+                               number_of_secs_to_back_off=1):
     """
     Migrates boolean attributes per GitHub `issue 404 <https://github.com/pynamodb/PynamoDB/issues/404>`_.
 
@@ -85,7 +85,7 @@ def migrate_boolean_attributes(model_class,
                                             failure and distinguishing it from other failures.
     :param page_size: Passed along to the underlying 'page_size'. Page size of the scan to DynamoDB.
     :param limit: Passed along to the underlying 'limit'. Used to limit the number of results returned.
-    :param back_off: Number of seconds to sleep when exceeding capacity.
+    :param number_of_secs_to_back_off: Number of seconds to sleep when exceeding capacity.
 
     :return: (number_of_items_in_need_of_update, number_of_them_that_failed_due_to_conditional_update)
     """
@@ -130,7 +130,7 @@ def migrate_boolean_attributes(model_class,
                         log.warn('conditional update failed (concurrent writes?) for object: %s (you will need to re-run migration)', item)
                         num_update_failures += 1
                     elif code == 'ProvisionedThroughputExceededException':
-                        time.sleep(back_off)
+                        time.sleep(number_of_secs_to_back_off)
                         log.warn('provisioned write capacity exceeded at object: %s backing off (you will need to re-run migration)', item)
                         num_update_failures += 1
                     else:
