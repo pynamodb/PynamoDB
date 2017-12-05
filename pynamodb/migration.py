@@ -4,8 +4,8 @@ PynamoDB to the next, in cases where breaking changes have happened.
 """
 
 import logging
+import time
 
-from time import sleep
 from botocore.exceptions import ClientError
 from pynamodb.exceptions import UpdateError
 from pynamodb.expressions.operand import Path
@@ -130,7 +130,7 @@ def migrate_boolean_attributes(model_class,
                         log.warn('conditional update failed (concurrent writes?) for object: %s (you will need to re-run migration)', item)
                         num_update_failures += 1
                     elif code == 'ProvisionedThroughputExceededException':
-                        sleep(back_off)
+                        time.sleep(back_off)
                         log.warn('provisioned write capacity exceeded at object: %s backing off (you will need to re-run migration)', item)
                         num_update_failures += 1
                     else:
