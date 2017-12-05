@@ -130,9 +130,9 @@ def migrate_boolean_attributes(model_class,
                         log.warn('conditional update failed (concurrent writes?) for object: %s (you will need to re-run migration)', item)
                         num_update_failures += 1
                     elif code == 'ProvisionedThroughputExceededException':
-                        time.sleep(number_of_secs_to_back_off)
                         log.warn('provisioned write capacity exceeded at object: %s backing off (you will need to re-run migration)', item)
                         num_update_failures += 1
+                        time.sleep(number_of_secs_to_back_off)
                     else:
                         raise
                 else:
