@@ -95,7 +95,7 @@ def migrate_boolean_attributes(model_class,
     num_items_with_actions = 0
     num_update_failures = 0
     items_processed = 0
-    time_of_last_update = 0
+    time_of_last_update = 0.0
     if max_items_updated_per_second <= 0.0:
         raise ValueError('max_items_updated_per_second must be greater than zero')
 
