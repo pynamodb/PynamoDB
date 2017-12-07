@@ -36,7 +36,8 @@ def migrate_boolean_attributes(model_class,
                                mock_conditional_update_failure=False,
                                page_size=None,
                                limit=None,
-                               number_of_secs_to_back_off=1):
+                               number_of_secs_to_back_off=1,
+                               max_items_updated_per_second=1):
     """
     Migrates boolean attributes per GitHub `issue 404 <https://github.com/pynamodb/PynamoDB/issues/404>`_.
 
@@ -86,6 +87,7 @@ def migrate_boolean_attributes(model_class,
     :param page_size: Passed along to the underlying 'page_size'. Page size of the scan to DynamoDB.
     :param limit: Passed along to the underlying 'limit'. Used to limit the number of results returned.
     :param number_of_secs_to_back_off: Number of seconds to sleep when exceeding capacity.
+    :param max_items_updated_per_second: An upper limit on the rate of items update.
 
     :return: (number_of_items_in_need_of_update, number_of_them_that_failed_due_to_conditional_update)
     """
@@ -93,6 +95,7 @@ def migrate_boolean_attributes(model_class,
     num_items_with_actions = 0
     num_update_failures = 0
     items_processed = 0
+    time_of_last_update = 0
 
     for item in model_class.rate_limited_scan(_build_lba_filter_condition(attribute_names),
                                               read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
@@ -122,6 +125,9 @@ def migrate_boolean_attributes(model_class,
                 condition = condition & (Path('__bogus_mock_attribute') == 5)
             try:
                 num_items_with_actions += 1
+                # Sleep amount of time to satisfy the maximum items updated per sec requirement
+                time.sleep(max(0, 1 / max_items_updated_per_second - (time.time() - time_of_last_update)))
+                time_of_last_update = time.time()
                 item.update(actions=actions, condition=condition)
             except UpdateError as e:
                 if isinstance(e.cause, ClientError):
@@ -132,6 +138,7 @@ def migrate_boolean_attributes(model_class,
                     elif code == 'ProvisionedThroughputExceededException':
                         log.warn('provisioned write capacity exceeded at object: %s backing off (you will need to re-run migration)', item)
                         num_update_failures += 1
+                        # In case of throttling, back off amount of seconds before continuing
                         time.sleep(number_of_secs_to_back_off)
                     else:
                         raise
@@ -139,7 +146,7 @@ def migrate_boolean_attributes(model_class,
                     raise
         items_processed += 1
         if items_processed % 1000 == 0:
-            log.info('processed items: %s Thousand',items_processed/1000)
+            print('processed items: %s Thousand',items_processed/1000)
     log.info('finished migrating; %s items required updates, %s failed due to racing writes and/or exceeding capacity and require re-running migration',
              num_items_with_actions, num_update_failures)
     return num_items_with_actions, num_update_failures
