@@ -37,7 +37,7 @@ def migrate_boolean_attributes(model_class,
                                page_size=None,
                                limit=None,
                                number_of_secs_to_back_off=1,
-                               max_items_updated_per_second=1):
+                               max_items_updated_per_second=1.0):
     """
     Migrates boolean attributes per GitHub `issue 404 <https://github.com/pynamodb/PynamoDB/issues/404>`_.
 
@@ -96,6 +96,8 @@ def migrate_boolean_attributes(model_class,
     num_update_failures = 0
     items_processed = 0
     time_of_last_update = 0
+    if max_items_updated_per_second <= 0.0:
+        raise ValueError('max_items_updated_per_second must be greater than zero')
 
     for item in model_class.rate_limited_scan(_build_lba_filter_condition(attribute_names),
                                               read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
