@@ -184,6 +184,10 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
                     if not hasattr(attr_obj, 'max_retry_attempts'):
                         setattr(attr_obj, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
+                    if not hasattr(attr_obj, 'aws_access_key_id'):
+                        setattr(attr_obj, 'aws_access_key_id', None)
+                    if not hasattr(attr_obj, 'aws_secret_access_key'):
+                        setattr(attr_obj, 'aws_secret_access_key', None)
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
