@@ -548,7 +548,8 @@ class Model(AttributeContainer):
              page_size=None,
              consistent_read=None,
              index_name=None,
-             rate_limit=None):
+             rate_limit=None,
+             attributes_to_get=None):
         """
         Iterates through all items in the table
 
@@ -561,6 +562,7 @@ class Model(AttributeContainer):
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
         :param rate_limit: If set then consumed capacity will be limited to this amount per second
+        :param attributes_to_get: If set, specifies the properties to include in the projection expression
         """
         if page_size is None:
             page_size = limit
@@ -573,7 +575,8 @@ class Model(AttributeContainer):
             limit=page_size,
             total_segments=total_segments,
             consistent_read=consistent_read,
-            index_name=index_name
+            index_name=index_name,
+            attributes_to_get=attributes_to_get
         )
 
         return ResultIterator(
