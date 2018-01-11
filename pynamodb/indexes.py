@@ -114,6 +114,7 @@ class Index(with_metaclass(IndexMeta)):
             page_size=page_size,
             consistent_read=consistent_read,
             index_name=self.Meta.index_name,
+            attributes_to_get=attributes_to_get,
             **filters
         )
 
