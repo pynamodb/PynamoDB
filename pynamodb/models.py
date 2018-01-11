@@ -759,6 +759,7 @@ class Model(AttributeContainer):
              page_size=None,
              consistent_read=None,
              index_name=None,
+             attributes_to_get=None,
              **filters):
         """
         Iterates through all items in the table
@@ -772,6 +773,7 @@ class Model(AttributeContainer):
         :param page_size: Page size of the scan to DynamoDB
         :param filters: A list of item filters
         :param consistent_read: If True, a consistent read is performed
+        :param attributes_to_get: If set, specifies the properties to include in the projection expression
         """
         cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
@@ -795,7 +797,8 @@ class Model(AttributeContainer):
             total_segments=total_segments,
             conditional_operator=conditional_operator,
             consistent_read=consistent_read,
-            index_name=index_name
+            index_name=index_name,
+            attributes_to_get=attributes_to_get
         )
 
         return ResultIterator(

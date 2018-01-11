@@ -2863,6 +2863,26 @@ class ModelTestCase(TestCase):
             }
             self.assertEquals(params, req.call_args[0][1])
 
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
+            for item in UserModel.scan(
+                    attributes_to_get=['email']):
+                self.assertIsNotNone(item)
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ProjectionExpression': '#0',
+                'ExpressionAttributeNames': {
+                    '#0': 'email'
+                },
+                'TableName': 'UserModel'
+            }
+            self.assertEquals(params, req.call_args[0][1])
+
         # you cannot scan with multiple conditions against the same key
         self.assertRaises(
             ValueError,
