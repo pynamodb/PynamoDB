@@ -125,6 +125,7 @@ Examples of ways to query your table with filter conditions:
 
 .. code-block:: python
 
+    # Deprecated, use UserModel.email=="djohn@company.org" instead
     for user in UserModel.query("John", email__eq="djohn@company.org"):
         print(user.first_name)
 
