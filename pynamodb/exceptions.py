@@ -85,6 +85,13 @@ class NotAllowedWhenAbstract(PynamoDBException):
     msg = "Operation is not allowed on abstract model"
 
 
+class InheritanceError(PynamoDBException):
+    """
+    Raised when violating model inheritance rules
+    """
+    msg = "Rules of model inheritance has been violated"
+
+
 class TableDoesNotExist(PynamoDBException):
     """
     Raised when an operation is attempted on a table that doesn't exist

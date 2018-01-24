@@ -9,7 +9,7 @@ import logging
 import warnings
 
 from six import add_metaclass
-from pynamodb.exceptions import NotAllowedWhenAbstract, DoesNotExist, TableDoesNotExist, TableError
+from pynamodb.exceptions import InheritanceError, NotAllowedWhenAbstract, DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
@@ -169,38 +169,68 @@ class MetaModel(AttributeContainerMeta):
     """
     def __init__(cls, name, bases, attrs):
         super(MetaModel, cls).__init__(name, bases, attrs)
+
+        # We don't' allow inheritance from multiple direct parents
+        if (len(bases) > 1):
+            raise InheritanceError("Model can't inherit from multiple direct parents")
+
         if isinstance(attrs, dict):
+            meta_class = attrs.get(META_CLASS_NAME, None)
+            parent = None if len(bases) == 0 else bases[0]
+            if parent.__name__ == "Model":
+                parent = None
+            parent_meta_class = None if not parent else getattr(parent, META_CLASS_NAME, None)
+
+            if parent:
+                if not meta_class:
+                    # Prepare an empty meta class
+                    print("new empty meta")
+                    meta_class = type(META_CLASS_NAME, (), {})
+                    setattr(cls, META_CLASS_NAME, meta_class)
+
+                if parent_meta_class:
+                        # Copying missing meta attributes from parent(s)
+                        for item in dir(parent_meta_class):
+                            # Avoid both private and existant attributes
+                            if not item.startswith("__") and not hasattr(meta_class, item):
+                                setattr(meta_class, item, copy.deepcopy(getattr(parent_meta_class, item)))
+
+            is_abstract = False
+            has_table_name = False
+            has_indexes = False
+            if meta_class:
+                if not hasattr(meta_class, REGION):
+                    setattr(meta_class, REGION, get_settings_value('region'))
+                if not hasattr(meta_class, HOST):
+                    setattr(meta_class, HOST, get_settings_value('host'))
+                if not hasattr(meta_class, 'session_cls'):
+                    setattr(meta_class, 'session_cls', get_settings_value('session_cls'))
+                if not hasattr(meta_class, 'request_timeout_seconds'):
+                    setattr(meta_class, 'request_timeout_seconds', get_settings_value('request_timeout_seconds'))
+                if not hasattr(meta_class, 'base_backoff_ms'):
+                    setattr(meta_class, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
+                if not hasattr(meta_class, 'max_retry_attempts'):
+                    setattr(meta_class, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
+                if not hasattr(meta_class, '_abstract_'):
+                    setattr(meta_class, '_abstract_', False)
+                is_abstract = getattr(meta_class, '_abstract_', False)
+                if hasattr(meta_class, 'table_name'):
+                    has_table_name = True
+            else:
+                setattr(cls, META_CLASS_NAME, DefaultMeta)
+
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
-                    if not hasattr(attr_obj, REGION):
-                        setattr(attr_obj, REGION, get_settings_value('region'))
-                    if not hasattr(attr_obj, HOST):
-                        setattr(attr_obj, HOST, get_settings_value('host'))
-                    if not hasattr(attr_obj, 'session_cls'):
-                        setattr(attr_obj, 'session_cls', get_settings_value('session_cls'))
-                    if not hasattr(attr_obj, 'request_timeout_seconds'):
-                        setattr(attr_obj, 'request_timeout_seconds', get_settings_value('request_timeout_seconds'))
-                    if not hasattr(attr_obj, 'base_backoff_ms'):
-                        setattr(attr_obj, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
-                    if not hasattr(attr_obj, 'max_retry_attempts'):
-                        setattr(attr_obj, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
-                    if not hasattr(attr_obj, '_abstract_'):
-                        setattr(attr_obj, '_abstract_', False)
-                    if hasattr(attr_obj, 'table_name'):
-                        if getattr(attr_obj, '_abstract_', False):
-                            raise cls.NotAllowedWhenAbstract("Abstract model can't have a table name")
+                    continue
                 elif issubclass(attr_obj.__class__, (Index, )):
-                    if getattr(attr_obj, '_abstract_', False):
-                        raise cls.NotAllowedWhenAbstract("Abstract model can't have an index")
                     attr_obj.Meta.model = cls
+                    has_indexes = True
                     if not hasattr(attr_obj.Meta, "index_name"):
                         attr_obj.Meta.index_name = attr_name
                 elif issubclass(attr_obj.__class__, (Attribute, )):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
-            if not hasattr(cls, META_CLASS_NAME):
-                setattr(cls, META_CLASS_NAME, DefaultMeta)
 
             # create a custom Model.DoesNotExist derived from pynamodb.exceptions.DoesNotExist,
             # so that "except Model.DoesNotExist:" would not catch other models' exceptions
@@ -215,6 +245,12 @@ class MetaModel(AttributeContainerMeta):
                 if hasattr(cls, '__qualname__'):  # On Python 3, Model.NotAllowedWhenAbstract
                     exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'NotAllowedWhenAbstract')
                 cls.NotAllowedWhenAbstract = type('NotAllowedWhenAbstract', (NotAllowedWhenAbstract, ), exception_attrs)
+
+            if is_abstract:
+                if has_table_name:
+                    raise cls.NotAllowedWhenAbstract("Abstract model can't have a table name")
+                if has_indexes:
+                    raise cls.NotAllowedWhenAbstract("Abstract model can't have an index")
 
 @add_metaclass(MetaModel)
 class Model(AttributeContainer):
@@ -241,7 +277,7 @@ class Model(AttributeContainer):
         """
         # Abstract models aren't allowed to have instance
         if self.Meta._abstract_:
-            raise self.NotAllowedWhenAbstract()
+            raise self.__class__.NotAllowedWhenAbstract()
 
         if hash_key is not None:
             attributes[self._dynamo_to_python_attr(self._get_meta_data().hash_keyname)] = hash_key
