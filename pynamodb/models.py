@@ -190,6 +190,8 @@ class MetaModel(AttributeContainerMeta):
                         if getattr(attr_obj, '_abstract_', False):
                             raise cls.NotAllowedWhenAbstract("Abstract model can't have a table name")
                 elif issubclass(attr_obj.__class__, (Index, )):
+                    if getattr(attr_obj, '_abstract_', False):
+                        raise cls.NotAllowedWhenAbstract("Abstract model can't have an index")
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
                         attr_obj.Meta.index_name = attr_name
