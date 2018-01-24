@@ -78,6 +78,13 @@ class DoesNotExist(PynamoDBException):
     msg = "Item does not exist"
 
 
+class NotAllowedWhenAbstract(PynamoDBException):
+    """
+    Raised when an operation is not allowed on abstract model
+    """
+    msg = "Operation is not allowed on abstract model"
+
+
 class TableDoesNotExist(PynamoDBException):
     """
     Raised when an operation is attempted on a table that doesn't exist
