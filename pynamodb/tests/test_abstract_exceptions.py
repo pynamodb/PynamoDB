@@ -15,7 +15,7 @@ import pytest
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.tests.deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
-from pynamodb.exceptions import DoesNotExist, TableError
+from pynamodb.exceptions import DoesNotExist, TableError, NotAllowedWhenAbstract, InheritanceError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
@@ -57,11 +57,18 @@ else:
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
 
-class AbstractModel1(Model):
+class AbstractModel0(Model):
     class Meta:
         _abstract_ = True
     atrr1 = UnicodeAttribute(hash_key=True)
     atrr2 = BinaryAttribute(null=True)
+
+
+class AbstractModel1(Model):
+    class Meta:
+        _abstract_ = True
+    atrr3 = UnicodeAttribute(hash_key=True)
+    atrr4 = BinaryAttribute(null=True)
 
 
 
@@ -105,6 +112,21 @@ class ModelTestCase(TestCase):
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
         with patch(PATCH_METHOD, new=fake_db) as req:
+            with self.assertRaises(AbstractModel0.NotAllowedWhenAbstract):
+                AbstractModel0.create_table(read_capacity_units=2, write_capacity_units=2)
             with self.assertRaises(AbstractModel1.NotAllowedWhenAbstract):
                 AbstractModel1.create_table(read_capacity_units=2, write_capacity_units=2)
-        pass
+            with self.assertRaises(NotAllowedWhenAbstract):
+                class NonAbstractModel0(Model):
+                    class Meta:
+                        _abstract_ = True
+                        table_name = "NonAbstractTable0"
+                    pass
+            with self.assertRaises(NotAllowedWhenAbstract):
+                class NonAbstractModel0(AbstractModel0):
+                    class Meta:
+                        table_name = "NonAbstractTable0"
+                    pass
+            with self.assertRaises(InheritanceError):
+                class NonAbstractModel0(AbstractModel0, AbstractModel1):
+                    pass
