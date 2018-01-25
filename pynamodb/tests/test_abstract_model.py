@@ -81,15 +81,21 @@ class GameOpponentTimeIndex(GlobalSecondaryIndex):
     created_time = UnicodeAttribute(range_key=True)
 
 
-class GameModel(Model):
+class GameModelBase(Model):
     class Meta:
         read_capacity_units = 1
         write_capacity_units = 1
-        table_name = "GameModel"
         host = "http://localhost:8000"
+        _abstract_ = True
 
     player_id = UnicodeAttribute(hash_key=True)
     created_time = UTCDateTimeAttribute(range_key=True)
+
+
+class GameModel(GameModelBase):
+    class Meta:
+        _abstract_ = False
+        table_name = "GameModel"
     winner_id = UnicodeAttribute()
     loser_id = UnicodeAttribute(null=True)
 
