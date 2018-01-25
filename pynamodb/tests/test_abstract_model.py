@@ -148,53 +148,80 @@ class NonKeyAttrIndex(LocalSecondaryIndex):
     numbers = NumberSetAttribute(range_key=True)
 
 
-class IndexedModel(Model):
-    """
-    A model with an index
-    """
-
+class IndexedModelBase(Model):
     class Meta:
-        table_name = 'IndexedModel'
+        _abstract_ = True
 
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
+    numbers = NumberSetAttribute()
+    aliases = UnicodeSetAttribute()
+
+
+class IndexedModel(IndexedModelBase):
+    """
+    A model with an index
+    """
+    class Meta:
+        table_name = 'IndexedModel'
+        _abstract_ = False
     email_index = EmailIndex()
     include_index = NonKeyAttrIndex()
+    icons = BinarySetAttribute()
+
+
+class LocalIndexedModelBase(Model):
+    class Meta:
+        _abstract_ = True
+
+    user_name = UnicodeAttribute(hash_key=True)
     numbers = NumberSetAttribute()
     aliases = UnicodeSetAttribute()
     icons = BinarySetAttribute()
 
 
-class LocalIndexedModel(Model):
+class LocalIndexedModel(LocalIndexedModelBase):
     """
     A model with an index
     """
 
     class Meta:
         table_name = 'LocalIndexedModel'
+        _abstract_ = False
 
-    user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     email_index = LocalEmailIndex()
-    numbers = NumberSetAttribute()
-    aliases = UnicodeSetAttribute()
+
+
+class SimpleUserModelBase1(Model):
+    class Meta:
+        _abstract_ = True
+    user_name = UnicodeAttribute(hash_key=True)
+    email = UnicodeAttribute()
+
+
+class SimpleUserModelBase2(SimpleUserModelBase1):
+    custom_aliases = UnicodeSetAttribute(attr_name='aliases')
+    views = NumberAttribute(null=True)
+
+
+class SimpleUserModelBase3(SimpleUserModelBase2):
     icons = BinarySetAttribute()
+    class Meta:
+        _abstract_ = True
 
 
-class SimpleUserModel(Model):
+class SimpleUserModel(SimpleUserModelBase3):
     """
     A hash key only model
     """
 
     class Meta:
         table_name = 'SimpleModel'
+        _abstract_ = False
 
-    user_name = UnicodeAttribute(hash_key=True)
-    email = UnicodeAttribute()
+
     numbers = NumberSetAttribute()
-    custom_aliases = UnicodeSetAttribute(attr_name='aliases')
-    icons = BinarySetAttribute()
-    views = NumberAttribute(null=True)
     is_active = BooleanAttribute(null=True)
     signature = UnicodeAttribute(null=True)
 

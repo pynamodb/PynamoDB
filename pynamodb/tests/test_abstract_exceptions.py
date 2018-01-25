@@ -160,15 +160,26 @@ class ModelTestCase(TestCase):
 
             # Abstract models can't have a table_name
             with self.assertRaises(NotAllowedWhenAbstract):
-                class NonAbstractModel0(Model):
+                class AbstractModel3(Model):
                     class Meta:
                         _abstract_ = True
-                        table_name = "NonAbstractTable0"
+                        table_name = "AbstractTable3"
                     pass
             with self.assertRaises(NotAllowedWhenAbstract):
-                class NonAbstractModel0(AbstractModel0):
+                class AbstractModel3(AbstractModel0):
                     class Meta:
-                        table_name = "NonAbstractTable0"
+                        table_name = "AbstractTable3"
+
+            # Non Abstract models need a table_name
+            #with self.assertRaises(InheritanceError):
+            #    class NonAbstractModel0(Model):
+            #        class Meta:
+            #            _abstract_ = False
+            #        pass
+            #with self.assertRaises(InheritanceError):
+            #    class NonAbstractModel0(AbstractModel0):
+            #        class Meta:
+            #            _abstract_ = False
 
             # Inheritance from multiple direct parents isn't allowed
             with self.assertRaises(InheritanceError):

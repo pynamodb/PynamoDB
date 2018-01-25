@@ -178,21 +178,20 @@ class MetaModel(AttributeContainerMeta):
 
         parent = None if len(bases) == 0 else bases[0]
         # TODO: better way to check parent
-        if parent.__name__ == 'Model' or parent.__name__ == 'AttributeContainer':
-            parent = None
-        parent_meta_class = None if not parent else getattr(parent, META_CLASS_NAME, None)
+        special_parent = parent.__name__ == 'Model' or parent.__name__ == 'AttributeContainer'
+        parent_meta_class = None if not parent  or special_parent else getattr(parent, META_CLASS_NAME, None)
         is_parent_abstract = True if not parent_meta_class or not hasattr(parent_meta_class, ABSTRACT) else parent_meta_class._abstract_
 
-        if parent and not is_parent_abstract:
+        if parent and not special_parent and not is_parent_abstract:
             raise NotImplementedError("Inheritance from non abstract models is not supported now")
 
         if isinstance(attrs, dict):
             meta_class = attrs.get(META_CLASS_NAME, None)
 
-            if parent:
+            # Check special parents to deal with DefaultMeta
+            if parent and not special_parent:
                 if not meta_class:
                     # Prepare an empty meta class
-                    print("new empty meta")
                     meta_class = type(META_CLASS_NAME, (), {})
                     setattr(cls, META_CLASS_NAME, meta_class)
 
@@ -225,6 +224,7 @@ class MetaModel(AttributeContainerMeta):
                 if hasattr(meta_class, 'table_name'):
                     has_table_name = True
             else:
+                # TODO: decide what to do with DefaultMeta
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
 
             for attr_name, attr_obj in attrs.items():
@@ -265,6 +265,11 @@ class MetaModel(AttributeContainerMeta):
                     raise cls.NotAllowedWhenAbstract("Abstract model can't have a table name")
                 if has_indexes:
                     raise cls.NotAllowedWhenAbstract("Abstract model can't have an index")
+            else:
+                # TODO: is there a better way for this check
+                if not has_table_name:
+                    pass
+                    #raise InheritanceError("Non abstract models need a table name")
 
 @add_metaclass(MetaModel)
 class Model(AttributeContainer):
