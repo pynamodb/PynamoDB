@@ -56,20 +56,39 @@ else:
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
+class Attrbuite3GlobalIndex(GlobalSecondaryIndex):
+    class Meta:
+        index_name = "AttrbuiteIndex1"
+        read_capacity_units = 2
+        write_capacity_units = 2
+        projection = AllProjection()
+    atrr3 = NumberAttribute(hash_key=True)
+
+class Attrbuite4LocalIndex(LocalSecondaryIndex):
+    class Meta:
+        index_name = "AttrbuiteIndex2"
+        read_capacity_units = 2
+        write_capacity_units = 2
+        projection = AllProjection()
+    atrr4 = UnicodeAttribute(hash_key=True)
 
 class AbstractModel0(Model):
     class Meta:
         _abstract_ = True
     atrr1 = UnicodeAttribute(hash_key=True)
     atrr2 = BinaryAttribute(null=True)
+    atrr3 = NumberAttribute()
+    atrr4 = UnicodeAttribute()
 
 
 class AbstractModel1(Model):
     class Meta:
         _abstract_ = True
-    atrr3 = UnicodeAttribute(hash_key=True)
-    atrr4 = BinaryAttribute(null=True)
+    atrr4 = UnicodeAttribute(hash_key=True)
+    atrr5 = BinaryAttribute(null=True)
 
+class AbstractModel2(AbstractModel0):
+    pass
 
 
 class ModelTestCase(TestCase):
@@ -97,25 +116,49 @@ class ModelTestCase(TestCase):
             if not found:
                 raise AssertionError("Values not equal: {0} {1}".format(list1, list2))
 
-    def test_abstract(self):
-        #with patch(PATCH_METHOD) as req:
-        scope_args = {'count': 0}
-
-        def fake_dynamodb(*args, **kwargs):
-            if scope_args['count'] == 0:
-                scope_args['count'] += 1
-                raise ClientError({'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Not Found'}},
-                                  "DescribeTable")
-            else:
-                return {}
-
-        fake_db = MagicMock()
-        fake_db.side_effect = fake_dynamodb
-        with patch(PATCH_METHOD, new=fake_db) as req:
+    def test_faulty_creation(self):
+        with patch(PATCH_METHOD) as req:
+            # Can't call create_table on abstract models
             with self.assertRaises(AbstractModel0.NotAllowedWhenAbstract):
                 AbstractModel0.create_table(read_capacity_units=2, write_capacity_units=2)
             with self.assertRaises(AbstractModel1.NotAllowedWhenAbstract):
                 AbstractModel1.create_table(read_capacity_units=2, write_capacity_units=2)
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.create_table(read_capacity_units=2, write_capacity_units=2)
+
+            # Abstract models can't have GlobalSecondaryIndex
+            with self.assertRaises(NotAllowedWhenAbstract):
+                class AbstractModel3(AbstractModel0):
+                    atrr3_index = Attrbuite3GlobalIndex()
+            with self.assertRaises(NotAllowedWhenAbstract):
+                class AbstractModel3(AbstractModel2):
+                    atrr3_index = Attrbuite3GlobalIndex()
+            with self.assertRaises(NotAllowedWhenAbstract):
+                class AbstractModel3(Model):
+                    class Meta:
+                        _abstract_ = True
+                    atrr1 = UnicodeAttribute(hash_key=True)
+                    atrr2 = BinaryAttribute(null=True)
+                    atrr3 = NumberAttribute()
+                    atrr3_index = Attrbuite3GlobalIndex()
+
+            # Abstract models can't have LocalSecondaryIndex
+            with self.assertRaises(NotAllowedWhenAbstract):
+                class AbstractModel3(AbstractModel0):
+                    atrr4_index = Attrbuite4LocalIndex()
+            with self.assertRaises(NotAllowedWhenAbstract):
+                class AbstractModel3(AbstractModel2):
+                    atrr4_index = Attrbuite4LocalIndex()
+            with self.assertRaises(NotAllowedWhenAbstract):
+                class AbstractModel3(Model):
+                    class Meta:
+                        _abstract_ = True
+                    atrr1 = UnicodeAttribute(hash_key=True)
+                    atrr2 = BinaryAttribute(null=True)
+                    atrr4 = UnicodeAttribute()
+                    atrr4_index = Attrbuite4LocalIndex()
+
+            # Abstract models can't have a table_name
             with self.assertRaises(NotAllowedWhenAbstract):
                 class NonAbstractModel0(Model):
                     class Meta:
@@ -126,7 +169,53 @@ class ModelTestCase(TestCase):
                 class NonAbstractModel0(AbstractModel0):
                     class Meta:
                         table_name = "NonAbstractTable0"
-                    pass
+
+            # Inheritance from multiple direct parents isn't allowed
             with self.assertRaises(InheritanceError):
                 class NonAbstractModel0(AbstractModel0, AbstractModel1):
                     pass
+
+            # Inheritance from non abstract parent isn't supported now
+            with self.assertRaises(NotImplementedError):
+                class NonAbstractModel0(AbstractModel0):
+                    class Meta:
+                        _abstract_ = False
+                        table_name = "NonAbstractTable0"
+                class NonAbstractModel1(NonAbstractModel0):
+                    pass
+
+    def test_not_allowed_class_methods(self):
+        return
+        with patch(PATCH_METHOD) as req:
+            with self.assertRaises(AbstractModel0.NotAllowedWhenAbstract):
+                AbstractModel0._check_not_abstract()
+            with self.assertRaises(AbstractModel1.NotAllowedWhenAbstract):
+                AbstractModel1._check_not_abstract()
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2._check_not_abstract()
+
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.batch_get({}, None, {})
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.batch_write()
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.get()
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.from_raw_data()
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.batch_write()
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.batch_write(True)
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.batch_write(True)
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.batch_write(True)
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.batch_write(True)
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.batch_write(True)
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.batch_write(True)
+            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
+                AbstractModel2.batch_write(True)
+

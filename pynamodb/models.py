@@ -176,12 +176,18 @@ class MetaModel(AttributeContainerMeta):
         if (len(bases) > 1):
             raise InheritanceError("Model can't inherit from multiple direct parents")
 
+        parent = None if len(bases) == 0 else bases[0]
+        # TODO: better way to check parent
+        if parent.__name__ == 'Model' or parent.__name__ == 'AttributeContainer':
+            parent = None
+        parent_meta_class = None if not parent else getattr(parent, META_CLASS_NAME, None)
+        is_parent_abstract = True if not parent_meta_class or not hasattr(parent_meta_class, ABSTRACT) else parent_meta_class._abstract_
+
+        if parent and not is_parent_abstract:
+            raise NotImplementedError("Inheritance from non abstract models is not supported now")
+
         if isinstance(attrs, dict):
             meta_class = attrs.get(META_CLASS_NAME, None)
-            parent = None if len(bases) == 0 else bases[0]
-            if parent.__name__ == "Model":
-                parent = None
-            parent_meta_class = None if not parent else getattr(parent, META_CLASS_NAME, None)
 
             if parent:
                 if not meta_class:
