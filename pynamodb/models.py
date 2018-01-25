@@ -9,6 +9,8 @@ import logging
 import warnings
 
 from six import add_metaclass
+
+import pynamodb.exceptions
 from pynamodb.exceptions import InheritanceError, NotAllowedWhenAbstract, DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute
 from pynamodb.connection.base import MetaTable
@@ -29,7 +31,7 @@ from pynamodb.constants import (
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP, NOT_NULL,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
+    CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, ABSTRACT, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
     STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET)
@@ -240,11 +242,17 @@ class MetaModel(AttributeContainerMeta):
                     exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'DoesNotExist')
                 cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
 
-            if 'NotAllowedWhenAbstract' not in attrs:
-                exception_attrs = {'__module__': attrs.get('__module__')}
-                if hasattr(cls, '__qualname__'):  # On Python 3, Model.NotAllowedWhenAbstract
-                    exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'NotAllowedWhenAbstract')
-                cls.NotAllowedWhenAbstract = type('NotAllowedWhenAbstract', (NotAllowedWhenAbstract, ), exception_attrs)
+            #if 'NotAllowedWhenAbstract' not in attrs:
+            #    exception_attrs = {'__module__': attrs.get('__module__')}
+            #    if hasattr(cls, '__qualname__'):  # On Python 3, Model.NotAllowedWhenAbstract
+            #        exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'NotAllowedWhenAbstract')
+            #    cls.NotAllowedWhenAbstract = type('NotAllowedWhenAbstract', (NotAllowedWhenAbstract, ), exception_attrs)
+
+            exception_attrs = {'__module__': attrs.get('__module__')}
+            class NotAllowedWhenAbstract(pynamodb.exceptions.NotAllowedWhenAbstract):
+                pass
+
+            cls.NotAllowedWhenAbstract = type('NotAllowedWhenAbstract', (NotAllowedWhenAbstract,), exception_attrs)
 
             if is_abstract:
                 if has_table_name:
@@ -276,8 +284,7 @@ class Model(AttributeContainer):
         :param attrs: A dictionary of attributes to set on this object.
         """
         # Abstract models aren't allowed to have instance
-        if self.Meta._abstract_:
-            raise self.__class__.NotAllowedWhenAbstract()
+        self.__class__._check_not_abstract()
 
         if hash_key is not None:
             attributes[self._dynamo_to_python_attr(self._get_meta_data().hash_keyname)] = hash_key
@@ -291,8 +298,8 @@ class Model(AttributeContainer):
         super(Model, self).__init__(**attributes)
 
     @classmethod
-    def dummy(cls):
-        if cls.Meta._abstract_:
+    def _check_not_abstract(cls):
+        if hasattr(cls.Meta, ABSTRACT) and cls.Meta._abstract_:
             raise cls.NotAllowedWhenAbstract()
 
     @classmethod
@@ -315,8 +322,7 @@ class Model(AttributeContainer):
         :param items: Should be a list of hash keys to retrieve, or a list of
             tuples if range keys are used.
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         items = list(items)
         hash_keyname = cls._get_meta_data().hash_keyname
         range_keyname = cls._get_meta_data().range_keyname
@@ -372,14 +378,12 @@ class Model(AttributeContainer):
                             passed here, changes automatically commit on context exit
                             (whether successful or not).
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         return BatchWrite(cls, auto_commit=auto_commit)
 
     def __repr__(self):
-        # Sanity check, abstract models aren't allowed to have instance
-        if self.__class__.Meta._abstract_:
-            raise self.__class__.NotAllowedWhenAbstract()
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
 
         if self.Meta.table_name:
             serialized = self._serialize(null_check=False)
@@ -393,9 +397,8 @@ class Model(AttributeContainer):
         """
         Deletes this object from dynamodb
         """
-        # Sanity check, abstract models aren't allowed to have instance
-        if self.__class__.Meta._abstract_:
-            raise self.__class__.NotAllowedWhenAbstract()
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
 
         self._conditional_operator_check(conditional_operator)
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
@@ -418,9 +421,8 @@ class Model(AttributeContainer):
         """
         warnings.warn("`Model.update_item` is deprecated in favour of `Model.update` now")
 
-        # Sanity check, abstract models aren't allowed to have instance
-        if self.__class__.Meta._abstract_:
-            raise self.__class__.NotAllowedWhenAbstract()
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
 
         self._conditional_operator_check(conditional_operator)
         args, save_kwargs = self._get_save_args(null_check=False)
@@ -471,9 +473,8 @@ class Model(AttributeContainer):
                                 next_attr: {'value': True, 'action': 'PUT'},
                             }
         """
-        # Sanity check, abstract models aren't allowed to have instance
-        if self.__class__.Meta._abstract_:
-            raise self.__class__.NotAllowedWhenAbstract()
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
 
         if attributes is not None and not isinstance(attributes, dict):
             raise TypeError("the value of `attributes` is expected to be a dictionary")
@@ -521,9 +522,8 @@ class Model(AttributeContainer):
         """
         Save this object to dynamodb
         """
-        # Sanity check, abstract models aren't allowed to have instance
-        if self.__class__.Meta._abstract_:
-            raise self.__class__.NotAllowedWhenAbstract()
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
 
         self._conditional_operator_check(conditional_operator)
         args, kwargs = self._get_save_args()
@@ -539,9 +539,8 @@ class Model(AttributeContainer):
 
         :param consistent_read: If True, then a consistent read is performed.
         """
-        # Sanity check, abstract models aren't allowed to have instance
-        if self.__class__.Meta._abstract_:
-            raise self.__class__.NotAllowedWhenAbstract()
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
 
         args, kwargs = self._get_save_args(attributes=False)
         kwargs.setdefault('consistent_read', consistent_read)
@@ -563,8 +562,7 @@ class Model(AttributeContainer):
         :param hash_key: The hash key of the desired item
         :param range_key: The range key of the desired item, only used when appropriate.
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
         data = cls._get_connection().get_item(
             hash_key,
@@ -586,8 +584,7 @@ class Model(AttributeContainer):
 
         :param data: A serialized DynamoDB object
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         mutable_data = copy.copy(data)
         if mutable_data is None:
             raise ValueError("Received no mutable_data to construct object")
@@ -632,8 +629,7 @@ class Model(AttributeContainer):
         :param index_name: If set, then this index is used
         :param filters: A dictionary of filters to be used in the query. Requires a hash_key to be passed.
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         if hash_key is None:
             if filters:
                 raise ValueError('A hash_key must be given to use filters')
@@ -715,8 +711,7 @@ class Model(AttributeContainer):
         :param page_size: Page size of the query to DynamoDB
         :param filters: A dictionary of filters to be used in the query
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         cls._conditional_operator_check(conditional_operator)
         cls._get_indexes()
         if index_name:
@@ -809,9 +804,7 @@ class Model(AttributeContainer):
             exceptions for scan to exit
         :param consistent_read: If True, a consistent read is performed
         """
-
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
@@ -868,8 +861,7 @@ class Model(AttributeContainer):
         :param filters: A list of item filters
         :param consistent_read: If True, a consistent read is performed
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
@@ -908,8 +900,7 @@ class Model(AttributeContainer):
         """
         Returns True if this table exists, False otherwise
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         try:
             cls._get_connection().describe_table()
             return True
@@ -921,8 +912,7 @@ class Model(AttributeContainer):
         """
         Delete the table for this model
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         return cls._get_connection().delete_table()
 
     @classmethod
@@ -930,8 +920,7 @@ class Model(AttributeContainer):
         """
         Returns the result of a DescribeTable operation on this model's table
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         return cls._get_connection().describe_table()
 
     @classmethod
@@ -943,8 +932,7 @@ class Model(AttributeContainer):
         :param read_capacity_units: Sets the read capacity units for this table
         :param write_capacity_units: Sets the write capacity units for this table
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         if not cls.exists():
             schema = cls._get_schema()
             if hasattr(cls.Meta, pythonic(READ_CAPACITY_UNITS)):
@@ -990,8 +978,7 @@ class Model(AttributeContainer):
         """
         Returns a JSON representation of this model's table
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         return json.dumps([item._get_json() for item in cls.scan()])
 
     @classmethod
@@ -999,15 +986,13 @@ class Model(AttributeContainer):
         """
         Writes the contents of this model's table as JSON to the given filename
         """
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         with open(filename, 'w') as out:
             out.write(cls.dumps())
 
     @classmethod
     def loads(cls, data):
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         content = json.loads(data)
         with cls.batch_write() as batch:
             for item_data in content:
@@ -1016,8 +1001,7 @@ class Model(AttributeContainer):
 
     @classmethod
     def load(cls, filename):
-        if cls.Meta._abstract_:
-            raise cls.NotAllowedWhenAbstract()
+        cls._check_not_abstract()
         with open(filename, 'r') as inf:
             cls.loads(inf.read())
 
@@ -1271,9 +1255,9 @@ class Model(AttributeContainer):
         """
         Returns a Python object suitable for serialization
         """
-        # Sanity check, abstract models aren't allowed to have instance
-        if self.Meta._abstract_:
-            raise NotAllowedWhenAbstract()
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
+
         kwargs = {}
         serialized = self._serialize(null_check=False)
         hash_key = serialized.get(HASH)
@@ -1292,9 +1276,6 @@ class Model(AttributeContainer):
         :param attributes: If True, then attributes are included.
         :param null_check: If True, then attributes are checked for null.
         """
-        # Sanity check, abstract models aren't allowed to have instance
-        if self.Meta._abstract_:
-            raise NotAllowedWhenAbstract()
         kwargs = {}
         serialized = self._serialize(null_check=null_check)
         hash_key = serialized.get(HASH)
