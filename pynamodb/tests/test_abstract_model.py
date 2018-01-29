@@ -366,23 +366,35 @@ class Person(MapAttribute):
         return 1
 
 
-class ComplexModel(Model):
+class ComplexModelBase(Model):
     class Meta:
-        table_name = 'ComplexModel'
+        abstract = True
     person = Person(attr_name='weird_person')
     key = NumberAttribute(hash_key=True)
 
 
-class OfficeEmployee(Model):
+class ComplexModel(ComplexModelBase):
     class Meta:
-        table_name = 'OfficeEmployeeModel'
+        abstract = False
+        table_name = 'ComplexModel'
 
-    office_employee_id = NumberAttribute(hash_key=True)
+
+class OfficeEmployeeBase(Model):
+    class Meta:
+        abstract = True
+
     person = Person()
-    office_location = Location()
-
     def foo(self):
         return 1
+
+
+class OfficeEmployee(OfficeEmployeeBase):
+    class Meta:
+        table_name = 'OfficeEmployeeModel'
+        abstract = False
+
+    office_employee_id = NumberAttribute(hash_key=True)
+    office_location = Location()
 
 
 class CarInfoMap(MapAttribute):
@@ -390,18 +402,30 @@ class CarInfoMap(MapAttribute):
     model = UnicodeAttribute(null=True)
 
 
-class CarModel(Model):
+class CarModelBase(Model):
+    class Meta:
+        abstract = True
+    car_id = NumberAttribute(null=False)
+
+
+class CarModel(CarModelBase):
     class Meta:
         table_name = 'CarModel'
-    car_id = NumberAttribute(null=False)
+        abstract = False
     car_info = CarInfoMap(null=False)
 
 
-class CarModelWithNull(Model):
-    class Meta:
-        table_name = 'CarModelWithNull'
+class CarModelWithNullBase(Model):
     car_id = NumberAttribute(null=False)
     car_color = UnicodeAttribute(null=True)
+    class Meta:
+        abstract = True
+
+
+class CarModelWithNull(CarModelWithNullBase):
+    class Meta:
+        table_name = 'CarModelWithNull'
+        abstract = False
     car_info = CarInfoMap(null=True)
 
 
@@ -415,27 +439,48 @@ class OfficeEmployeeMap(MapAttribute):
         return 1
 
 
-class GroceryList(Model):
+class GroceryListBase1(Model):
     class Meta:
-        table_name = 'GroceryListModel'
-
-    store_name = UnicodeAttribute(hash_key=True)
+        abstract = True
     groceries = ListAttribute()
 
 
-class Office(Model):
+class GroceryListBase2(GroceryListBase1):
+    store_name = UnicodeAttribute(hash_key=True)
+
+
+class GroceryList(GroceryListBase2):
     class Meta:
-        table_name = 'OfficeModel'
-    office_id = NumberAttribute(hash_key=True)
+        abstract = False
+        table_name = 'GroceryListModel'
+
+
+class OfficeBase(Model):
+    class Meta:
+        abstract = True
     address = Location()
     employees = ListAttribute(of=OfficeEmployeeMap)
 
 
-class BooleanConversionModel(Model):
+class Office(OfficeBase):
     class Meta:
-        table_name = 'BooleanConversionTable'
+        abstract = False
+        table_name = 'OfficeModel'
+    office_id = NumberAttribute(hash_key=True)
+
+
+class BooleanConversionModelBase(Model):
+    class Meta:
+        abstract = True
 
     user_name = UnicodeAttribute(hash_key=True)
+
+
+class BooleanConversionModel(BooleanConversionModelBase):
+    class Meta:
+        table_name = 'BooleanConversionTable'
+        abstract = False
+
     is_human = BooleanAttribute()
 
 
@@ -455,20 +500,32 @@ class TreeLeaf(MapAttribute):
     right = TreeLeaf1()
 
 
-class TreeModel(Model):
+class TreeModelBase(Model):
     class Meta:
-        table_name = 'TreeModelTable'
-
+        abstract = True
     tree_key = UnicodeAttribute(hash_key=True)
     left = TreeLeaf()
+
+
+class TreeModel(TreeModelBase):
+    class Meta:
+        table_name = 'TreeModelTable'
+        abstract = False
+
     right = TreeLeaf()
 
 
-class ExplicitRawMapModel(Model):
+class ExplicitRawMapModelBase(Model):
+    class Meta:
+        abstract = True
+    map_attr = MapAttribute()
+
+
+class ExplicitRawMapModel(ExplicitRawMapModelBase):
     class Meta:
         table_name = 'ExplicitRawMapModel'
+        abstract = False
     map_id = NumberAttribute(hash_key=True, default=123)
-    map_attr = MapAttribute()
 
 
 class MapAttrSubClassWithRawMapAttr(MapAttribute):
@@ -477,11 +534,17 @@ class MapAttrSubClassWithRawMapAttr(MapAttribute):
     map_field = MapAttribute()
 
 
-class ExplicitRawMapAsMemberOfSubClass(Model):
+class ExplicitRawMapAsMemberOfSubClassBase(Model):
     class Meta:
-        table_name = 'ExplicitRawMapAsMemberOfSubClass'
+        abstract = True
     map_id = NumberAttribute(hash_key=True)
     sub_attr = MapAttrSubClassWithRawMapAttr()
+
+
+class ExplicitRawMapAsMemberOfSubClass(ExplicitRawMapAsMemberOfSubClassBase):
+    class Meta:
+        table_name = 'ExplicitRawMapAsMemberOfSubClass'
+        abstract = False
 
 
 class OverriddenSession(requests.Session):
@@ -492,19 +555,38 @@ class OverriddenSession(requests.Session):
         super(OverriddenSession, self).__init__()
 
 
-class OverriddenSessionModel(Model):
+class OverriddenSessionModelBase1(Model):
+    class Meta:
+        abstract = True
+
+
+class OverriddenSessionModelBase2(OverriddenSessionModelBase1):
+    class Meta:
+        request_timeout_seconds = 9999
+        max_retry_attempts = -1
+    random_attr = UnicodeAttribute(attr_name='random_attr_1', null=True)
+
+
+class OverriddenSessionModelBase3(OverriddenSessionModelBase2):
+    class Meta:
+        request_timeout_seconds = 9999
+        session_cls = OverriddenSession
+    random_user_name = UnicodeAttribute(hash_key=True, attr_name='random_name_1')
+
+
+class OverriddenSessionModelBase4(OverriddenSessionModelBase3):
+    class Meta:
+        max_retry_attempts = 200
+        base_backoff_ms = 4120
+
+
+class OverriddenSessionModel(OverriddenSessionModelBase4):
     """
     A testing model
     """
     class Meta:
         table_name = 'OverriddenSessionModel'
-        request_timeout_seconds = 9999
-        max_retry_attempts = 200
-        base_backoff_ms = 4120
-        session_cls = OverriddenSession
-
-    random_user_name = UnicodeAttribute(hash_key=True, attr_name='random_name_1')
-    random_attr = UnicodeAttribute(attr_name='random_attr_1', null=True)
+        abstract = False
 
 
 class Animal(Model):
