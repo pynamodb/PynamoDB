@@ -86,7 +86,7 @@ class GameModelBase(Model):
         read_capacity_units = 1
         write_capacity_units = 1
         host = "http://localhost:8000"
-        _abstract_ = True
+        abstract = True
 
     player_id = UnicodeAttribute(hash_key=True)
     created_time = UTCDateTimeAttribute(range_key=True)
@@ -94,18 +94,13 @@ class GameModelBase(Model):
 
 class GameModel(GameModelBase):
     class Meta:
-        _abstract_ = False
+        abstract = False
         table_name = "GameModel"
     winner_id = UnicodeAttribute()
     loser_id = UnicodeAttribute(null=True)
 
     player_opponent_index = GamePlayerOpponentIndex()
     opponent_time_index = GameOpponentTimeIndex()
-
-
-class OldStyleModel(Model):
-    _table_name = 'IndexedModel'
-    user_name = UnicodeAttribute(hash_key=True)
 
 
 class EmailIndex(GlobalSecondaryIndex):
@@ -150,7 +145,7 @@ class NonKeyAttrIndex(LocalSecondaryIndex):
 
 class IndexedModelBase(Model):
     class Meta:
-        _abstract_ = True
+        abstract = True
 
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
@@ -164,7 +159,7 @@ class IndexedModel(IndexedModelBase):
     """
     class Meta:
         table_name = 'IndexedModel'
-        _abstract_ = False
+        abstract = False
     email_index = EmailIndex()
     include_index = NonKeyAttrIndex()
     icons = BinarySetAttribute()
@@ -172,7 +167,7 @@ class IndexedModel(IndexedModelBase):
 
 class LocalIndexedModelBase(Model):
     class Meta:
-        _abstract_ = True
+        abstract = True
 
     user_name = UnicodeAttribute(hash_key=True)
     numbers = NumberSetAttribute()
@@ -187,7 +182,7 @@ class LocalIndexedModel(LocalIndexedModelBase):
 
     class Meta:
         table_name = 'LocalIndexedModel'
-        _abstract_ = False
+        abstract = False
 
     email = UnicodeAttribute()
     email_index = LocalEmailIndex()
@@ -195,7 +190,7 @@ class LocalIndexedModel(LocalIndexedModelBase):
 
 class SimpleUserModelBase1(Model):
     class Meta:
-        _abstract_ = True
+        abstract = True
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
 
@@ -208,7 +203,7 @@ class SimpleUserModelBase2(SimpleUserModelBase1):
 class SimpleUserModelBase3(SimpleUserModelBase2):
     icons = BinarySetAttribute()
     class Meta:
-        _abstract_ = True
+        abstract = True
 
 
 class SimpleUserModel(SimpleUserModelBase3):
@@ -218,7 +213,7 @@ class SimpleUserModel(SimpleUserModelBase3):
 
     class Meta:
         table_name = 'SimpleModel'
-        _abstract_ = False
+        abstract = False
 
 
     numbers = NumberSetAttribute()
@@ -235,52 +230,94 @@ class CustomAttrIndex(LocalSecondaryIndex):
     overidden_uid = UnicodeAttribute(hash_key=True, attr_name='user_id')
 
 
-class CustomAttrNameModel(Model):
+class CustomAttrNameModelBase1(Model):
+    class Meta:
+        abstract = True
+
+    overidden_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
+    overidden_attr = UnicodeAttribute(attr_name='foo_attr', null=True)
+
+
+class CustomAttrNameModelBase2(CustomAttrNameModelBase1):
+    overidden_user_id = UnicodeAttribute(range_key=True, attr_name='user_id')
+
+
+class CustomAttrNameModel(CustomAttrNameModelBase2):
     """
     A testing model
     """
-
     class Meta:
+        abstract = False
         table_name = 'CustomAttrModel'
 
-    overidden_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
-    overidden_user_id = UnicodeAttribute(range_key=True, attr_name='user_id')
-    overidden_attr = UnicodeAttribute(attr_name='foo_attr', null=True)
     uid_index = CustomAttrIndex()
 
 
-class UserModel(Model):
-    """
-    A testing model
-    """
-
+class UserModelBase1(Model):
     class Meta:
-        table_name = 'UserModel'
-        read_capacity_units = 25
-        write_capacity_units = 25
+        abstract = True
 
+
+class UserModelBase2(UserModelBase1):
+    class Meta:
+        read_capacity_units = 25
+        write_capacity_units = 0
     custom_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
+
+
+class UserModelBase3(UserModelBase2):
     user_id = UnicodeAttribute(range_key=True)
+
+
+class UserModelBase4(UserModelBase3):
     picture = BinaryAttribute(null=True)
     zip_code = NumberAttribute(null=True)
+
+
+class UserModelBase5(UserModelBase4):
+    class Meta:
+        write_capacity_units = 25
+
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)
 
 
-class HostSpecificModel(Model):
+class UserModel(UserModelBase5):
     """
     A testing model
     """
 
     class Meta:
-        host = 'http://localhost'
-        table_name = 'RegionSpecificModel'
+        abstract = False
+        table_name = 'UserModel'
 
+
+class HostSpecificModelBase(Model):
+    class Meta:
+        host = 'http://localhost'
+        abstract = True
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
 
 
-class RegionSpecificModel(Model):
+class HostSpecificModel(HostSpecificModelBase):
+    """
+    A testing model
+    """
+
+    class Meta:
+        table_name = 'RegionSpecificModel'
+        abstract = False
+
+
+class RegionSpecificModelBase(Model):
+    class Meta:
+        abstract = True
+        region = 'invalid region'
+    user_id = UnicodeAttribute(range_key=True)
+
+
+class RegionSpecificModel(RegionSpecificModelBase):
     """
     A testing model
     """
@@ -288,21 +325,27 @@ class RegionSpecificModel(Model):
     class Meta:
         region = 'us-west-1'
         table_name = 'RegionSpecificModel'
+        abstract = False
 
     user_name = UnicodeAttribute(hash_key=True)
-    user_id = UnicodeAttribute(range_key=True)
 
 
-class ComplexKeyModel(Model):
+class ComplexKeyModelBase(Model):
+    date_created = UTCDateTimeAttribute(default=datetime.utcnow)
+    class Meta:
+        abstract = True
+
+
+class ComplexKeyModel(ComplexKeyModelBase):
     """
     This model has a key that must be serialized/deserialized properly
     """
 
     class Meta:
         table_name = 'ComplexKey'
+        abstract = False
 
     name = UnicodeAttribute(hash_key=True)
-    date_created = UTCDateTimeAttribute(default=datetime.utcnow)
 
 
 class Location(MapAttribute):
@@ -465,11 +508,14 @@ class OverriddenSessionModel(Model):
 
 
 class Animal(Model):
+    class Meta:
+        abstract = True
     name = UnicodeAttribute(hash_key=True)
 
 
 class Dog(Animal):
     class Meta:
+        abstract = False
         table_name = 'Dog'
 
     breed = UnicodeAttribute()
@@ -3738,16 +3784,6 @@ class ModelTestCase(TestCase):
                 pass
 
             BadIndex()
-
-    def test_old_style_model_exception(self):
-        """
-        Display warning for pre v1.0 Models
-        """
-        with self.assertRaises(AttributeError):
-            OldStyleModel._get_meta_data()
-
-        with self.assertRaises(AttributeError):
-            OldStyleModel.exists()
 
     def test_dumps(self):
         """

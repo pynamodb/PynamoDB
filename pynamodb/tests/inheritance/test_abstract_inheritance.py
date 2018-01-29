@@ -59,7 +59,7 @@ PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
 class AbstractModel1(Model):
     class Meta:
-        _abstract_ = True
+        abstract = True
     atrr1 = UnicodeAttribute(hash_key=True)
     atrr2 = BinaryAttribute(null=True)
 
@@ -69,7 +69,7 @@ class InheritedNonAbstractModel1(AbstractModel1):
     - Non abstract model can inherit abstract models
     """
     class Meta:
-        _abstract_ = False
+        abstract = False
         table_name = "InheritedNonAbstractTable1"
         host = "http://localhost:8000"
 
@@ -110,7 +110,7 @@ class InheritedNonAbstractModel2(AbstractModel3):
     - Non abstract model can inherit abstract models
     """
     class Meta:
-        _abstract_ = False
+        abstract = False
         table_name = "InheritedNonAbstractTable2"
         host = "http://localhost:8000"
     #attr6 = ListAttribute()

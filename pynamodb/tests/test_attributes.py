@@ -715,6 +715,8 @@ class TestMapAttribute:
             map_attr = MapAttribute()
 
         class SomeModel(Model):
+            class Meta:
+                table_name = "SomeModelTable"
             typed_map = TypedMap()
 
         item = SomeModel(
@@ -757,6 +759,8 @@ class TestMapAttribute:
             double_nested_renamed = MapAttribute(attr_name='something_else')
 
         class ThingModel(Model):
+            class Meta:
+                table_name = "ThingModelTable"
             nested = NestedThing()
 
         t = ThingModel(nested=NestedThing(
@@ -795,6 +799,8 @@ class TestMapAttribute:
             bar = UnicodeAttribute(attr_name='dyn_bar')
 
         class SubModel(Model):
+            class Meta:
+                abstract = True
             sub_map = SubMapAttribute(attr_name='dyn_sub_map')
 
         class SubSubModel(SubModel):
@@ -824,6 +830,8 @@ class TestMapAttribute:
             mid_map_b = MiddleMapAttributeB()
 
         class MyModel(Model):
+            class Meta:
+                table_name = "MyModelTable"
             outer_map = OuterMapAttribute(attr_name='dyn_out_map')
 
         mid_map_a_map_attr = MyModel.outer_map.mid_map_a.inner_map.map_attr

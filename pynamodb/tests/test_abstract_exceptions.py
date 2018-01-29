@@ -74,7 +74,7 @@ class Attrbuite4LocalIndex(LocalSecondaryIndex):
 
 class AbstractModel0(Model):
     class Meta:
-        _abstract_ = True
+        abstract = True
     atrr1 = UnicodeAttribute(hash_key=True)
     atrr2 = BinaryAttribute(null=True)
     atrr3 = NumberAttribute()
@@ -83,7 +83,7 @@ class AbstractModel0(Model):
 
 class AbstractModel1(Model):
     class Meta:
-        _abstract_ = True
+        abstract = True
     atrr4 = UnicodeAttribute(hash_key=True)
     atrr5 = BinaryAttribute(null=True)
 
@@ -136,7 +136,7 @@ class ModelTestCase(TestCase):
             with self.assertRaises(NotAllowedWhenAbstract):
                 class AbstractModel3(Model):
                     class Meta:
-                        _abstract_ = True
+                        abstract = True
                     atrr1 = UnicodeAttribute(hash_key=True)
                     atrr2 = BinaryAttribute(null=True)
                     atrr3 = NumberAttribute()
@@ -152,7 +152,7 @@ class ModelTestCase(TestCase):
             with self.assertRaises(NotAllowedWhenAbstract):
                 class AbstractModel3(Model):
                     class Meta:
-                        _abstract_ = True
+                        abstract = True
                     atrr1 = UnicodeAttribute(hash_key=True)
                     atrr2 = BinaryAttribute(null=True)
                     atrr4 = UnicodeAttribute()
@@ -162,7 +162,7 @@ class ModelTestCase(TestCase):
             with self.assertRaises(NotAllowedWhenAbstract):
                 class AbstractModel3(Model):
                     class Meta:
-                        _abstract_ = True
+                        abstract = True
                         table_name = "AbstractTable3"
                     pass
             with self.assertRaises(NotAllowedWhenAbstract):
@@ -171,15 +171,15 @@ class ModelTestCase(TestCase):
                         table_name = "AbstractTable3"
 
             # Non Abstract models need a table_name
-            #with self.assertRaises(InheritanceError):
-            #    class NonAbstractModel0(Model):
-            #        class Meta:
-            #            _abstract_ = False
-            #        pass
-            #with self.assertRaises(InheritanceError):
-            #    class NonAbstractModel0(AbstractModel0):
-            #        class Meta:
-            #            _abstract_ = False
+            with self.assertRaises(InheritanceError):
+                class NonAbstractModel0(Model):
+                    class Meta:
+                        abstract = False
+                    pass
+            with self.assertRaises(InheritanceError):
+                class NonAbstractModel0(AbstractModel0):
+                    class Meta:
+                        abstract = False
 
             # Inheritance from multiple direct parents isn't allowed
             with self.assertRaises(InheritanceError):
@@ -190,7 +190,7 @@ class ModelTestCase(TestCase):
             with self.assertRaises(NotImplementedError):
                 class NonAbstractModel0(AbstractModel0):
                     class Meta:
-                        _abstract_ = False
+                        abstract = False
                         table_name = "NonAbstractTable0"
                 class NonAbstractModel1(NonAbstractModel0):
                     pass

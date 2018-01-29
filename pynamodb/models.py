@@ -177,19 +177,25 @@ class MetaModel(AttributeContainerMeta):
             raise InheritanceError("Model can't inherit from multiple direct parents")
 
         parent = None if len(bases) == 0 else bases[0]
-        # TODO: better way to check parent
-        special_parent = parent.__name__ == 'Model' or parent.__name__ == 'AttributeContainer'
-        parent_meta_class = None if not parent  or special_parent else getattr(parent, META_CLASS_NAME, None)
-        is_parent_abstract = True if not parent_meta_class or not hasattr(parent_meta_class, ABSTRACT) else parent_meta_class._abstract_
+        # TODO: special parents as constants
+        parent_is_attribute_container = parent.__name__ == 'AttributeContainer'
+        parent_is_model = parent.__name__ == 'Model'
+        parent_meta_class = None
+        is_parent_abstract = None
+        if parent  and not parent_is_attribute_container:
+            parent_meta_class = getattr(parent, META_CLASS_NAME, None)
+        if parent_meta_class and hasattr(parent_meta_class, ABSTRACT):
+            is_parent_abstract = getattr(parent_meta_class, ABSTRACT)
 
-        if parent and not special_parent and not is_parent_abstract:
+        # Temporary check until implementing other inheritance types
+        if parent and not parent_is_attribute_container and not parent_is_model and not is_parent_abstract:
             raise NotImplementedError("Inheritance from non abstract models is not supported now")
 
         if isinstance(attrs, dict):
             meta_class = attrs.get(META_CLASS_NAME, None)
 
-            # Check special parents to deal with DefaultMeta
-            if parent and not special_parent:
+            # Check special parents to avoid copying DefaultMeta
+            if parent and not parent_is_attribute_container and not parent_is_model:
                 if not meta_class:
                     # Prepare an empty meta class
                     meta_class = type(META_CLASS_NAME, (), {})
@@ -202,7 +208,7 @@ class MetaModel(AttributeContainerMeta):
                             if not item.startswith("__") and not hasattr(meta_class, item):
                                 setattr(meta_class, item, copy.deepcopy(getattr(parent_meta_class, item)))
 
-            is_abstract = False
+            is_abstract = None
             has_table_name = False
             has_indexes = False
             if meta_class:
@@ -218,9 +224,9 @@ class MetaModel(AttributeContainerMeta):
                     setattr(meta_class, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
                 if not hasattr(meta_class, 'max_retry_attempts'):
                     setattr(meta_class, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
-                if not hasattr(meta_class, '_abstract_'):
-                    setattr(meta_class, '_abstract_', False)
-                is_abstract = getattr(meta_class, '_abstract_', False)
+                if not hasattr(meta_class, ABSTRACT):
+                    setattr(meta_class, ABSTRACT, False)
+                is_abstract = getattr(meta_class, ABSTRACT, None)
                 if hasattr(meta_class, 'table_name'):
                     has_table_name = True
             else:
@@ -240,36 +246,29 @@ class MetaModel(AttributeContainerMeta):
                         attr_obj.attr_name = attr_name
 
 
+            exception_attrs = {'__module__': attrs.get('__module__')}
+
             # create a custom Model.DoesNotExist derived from pynamodb.exceptions.DoesNotExist,
             # so that "except Model.DoesNotExist:" would not catch other models' exceptions
-            if 'DoesNotExist' not in attrs:
-                exception_attrs = {'__module__': attrs.get('__module__')}
-                if hasattr(cls, '__qualname__'):  # On Python 3, Model.DoesNotExist
-                    exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'DoesNotExist')
-                cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
+            class DoesNotExist(pynamodb.exceptions.DoesNotExist):
+                pass
+            cls.DoesNotExist = type('DoesNotExist', (DoesNotExist,), exception_attrs)
 
-            #if 'NotAllowedWhenAbstract' not in attrs:
-            #    exception_attrs = {'__module__': attrs.get('__module__')}
-            #    if hasattr(cls, '__qualname__'):  # On Python 3, Model.NotAllowedWhenAbstract
-            #        exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'NotAllowedWhenAbstract')
-            #    cls.NotAllowedWhenAbstract = type('NotAllowedWhenAbstract', (NotAllowedWhenAbstract, ), exception_attrs)
-
-            exception_attrs = {'__module__': attrs.get('__module__')}
+            # create a custom Model.NotAllowedWhenAbstract derived from pynamodb.exceptions.NotAllowedWhenAbstract,
+            # so that "except Model.NotAllowedWhenAbstract:" would not catch other models' exceptions
             class NotAllowedWhenAbstract(pynamodb.exceptions.NotAllowedWhenAbstract):
                 pass
-
             cls.NotAllowedWhenAbstract = type('NotAllowedWhenAbstract', (NotAllowedWhenAbstract,), exception_attrs)
 
-            if is_abstract:
+            if is_abstract is True:
                 if has_table_name:
                     raise cls.NotAllowedWhenAbstract("Abstract model can't have a table name")
                 if has_indexes:
                     raise cls.NotAllowedWhenAbstract("Abstract model can't have an index")
-            else:
-                # TODO: is there a better way for this check
-                if not has_table_name:
-                    pass
-                    #raise InheritanceError("Non abstract models need a table name")
+            elif is_abstract is False or is_abstract is None:
+                # Enforce that non abstract tables have table_name
+                if not has_table_name and not parent_is_attribute_container:
+                    raise InheritanceError("Non abstract models need a table name")
 
 @add_metaclass(MetaModel)
 class Model(AttributeContainer):
@@ -310,7 +309,7 @@ class Model(AttributeContainer):
 
     @classmethod
     def _check_not_abstract(cls):
-        if hasattr(cls.Meta, ABSTRACT) and cls.Meta._abstract_:
+        if hasattr(cls.Meta, ABSTRACT) and getattr(cls.Meta, ABSTRACT, False):
             raise cls.NotAllowedWhenAbstract()
 
     @classmethod
