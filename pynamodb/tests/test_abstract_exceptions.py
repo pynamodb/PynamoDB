@@ -196,7 +196,6 @@ class ModelTestCase(TestCase):
                     pass
 
     def test_not_allowed_class_methods(self):
-        return
         with patch(PATCH_METHOD) as req:
             with self.assertRaises(AbstractModel0.NotAllowedWhenAbstract):
                 AbstractModel0._check_not_abstract()
@@ -204,29 +203,3 @@ class ModelTestCase(TestCase):
                 AbstractModel1._check_not_abstract()
             with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
                 AbstractModel2._check_not_abstract()
-
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.batch_get({}, None, {})
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.batch_write()
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.get()
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.from_raw_data()
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.batch_write()
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.batch_write(True)
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.batch_write(True)
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.batch_write(True)
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.batch_write(True)
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.batch_write(True)
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.batch_write(True)
-            with self.assertRaises(AbstractModel2.NotAllowedWhenAbstract):
-                AbstractModel2.batch_write(True)
-
