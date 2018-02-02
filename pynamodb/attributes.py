@@ -768,7 +768,7 @@ class MapAttribute(Attribute, AttributeContainer):
             if attr_class is None:
                 continue
             deserialized_value = None
-            if attr_value is not None:
+            if attr_value is not None and attr_class is not None:
                 deserialized_value = attr_class.deserialize(attr_value)
 
             deserialized_dict[key] = deserialized_value
