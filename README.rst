@@ -142,6 +142,16 @@ Retrieve an existing user:
 Advanced Usage
 ==============
 
+Conditional update can be done like this:
+
+.. code-block:: python
+
+    user = UserModel("John", "Denver")
+    # Update user email only if it's current email is set to a@b.com
+    user.update(actions=[UserModel.email.set('djohn@company.org')],
+                conditon=(UserModel.email == 'a@b.com'))
+
+
 Want to use indexes? No problem:
 
 .. code-block:: python
@@ -171,6 +181,24 @@ Now query the index for all items with 0 views:
 
     for item in TestModel.view_index.query(0):
         print("Item queried from index: {0}".format(item))
+
+You can also further filter the query like this:
+
+.. code-block:: python
+
+    for item in TestModel.view_index.query(hash_key=0,
+                                           filter_condition=(TestModel.thread == 'some thread')):
+        print("Item queried from index: {0}".format(item))
+
+Pynamodb also allows you to specify range_key conditions
+
+.. code-block:: python
+    for item in TestModel.query(hash_key='some forum',
+                                range_key_condition=(TestModel.thread.is_in(*['some thread 1',
+                                                                              'some thread 2'])),
+                                filter_condition=(TestModel.view == 123)):
+        print("Item queried from index: {0}".format(item))
+
 
 It's really that simple.
 
