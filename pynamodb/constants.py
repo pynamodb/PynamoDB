@@ -278,6 +278,7 @@ BATCH_WRITE_PAGE_LIMIT = 25
 META_CLASS_NAME = "Meta"
 REGION = "region"
 HOST = "host"
+ABSTRACT = "abstract"
 
 # The constants are needed for the ConditionalOperator argument used
 # UpdateItem, PutItem and DeleteItem

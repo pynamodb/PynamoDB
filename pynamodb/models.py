@@ -9,7 +9,9 @@ import logging
 import warnings
 
 from six import add_metaclass
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
+
+import pynamodb.exceptions
+from pynamodb.exceptions import InheritanceError, NotAllowedWhenAbstract, DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
@@ -29,7 +31,7 @@ from pynamodb.constants import (
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
     PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP, NOT_NULL,
     SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
+    CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, ABSTRACT, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
     STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET)
@@ -169,40 +171,104 @@ class MetaModel(AttributeContainerMeta):
     """
     def __init__(cls, name, bases, attrs):
         super(MetaModel, cls).__init__(name, bases, attrs)
+
+        # We don't' allow inheritance from multiple direct parents
+        if (len(bases) > 1):
+            raise InheritanceError("Model can't inherit from multiple direct parents")
+
+        parent = None if len(bases) == 0 else bases[0]
+        # TODO: special parents as constants
+        parent_is_attribute_container = parent.__name__ == 'AttributeContainer'
+        parent_is_model = parent.__name__ == 'Model'
+        parent_meta_class = None
+        is_parent_abstract = None
+        if parent  and not parent_is_attribute_container:
+            parent_meta_class = getattr(parent, META_CLASS_NAME, None)
+        if parent_meta_class and hasattr(parent_meta_class, ABSTRACT):
+            is_parent_abstract = getattr(parent_meta_class, ABSTRACT)
+
+        # Temporary check until implementing other inheritance types
+        if parent and not parent_is_attribute_container and not parent_is_model and not is_parent_abstract:
+            raise NotImplementedError("Inheritance from non abstract models is not supported now")
+
         if isinstance(attrs, dict):
+            meta_class = attrs.get(META_CLASS_NAME, None)
+
+            # Check special parents to avoid copying DefaultMeta
+            if parent and not parent_is_attribute_container and not parent_is_model:
+                if not meta_class:
+                    # Prepare an empty meta class
+                    meta_class = type(META_CLASS_NAME, (), {})
+                    setattr(cls, META_CLASS_NAME, meta_class)
+
+                if parent_meta_class:
+                        # Copying missing meta attributes from parent(s)
+                        for item in dir(parent_meta_class):
+                            # Avoid both private and existant attributes
+                            if not item.startswith("__") and not hasattr(meta_class, item):
+                                setattr(meta_class, item, copy.deepcopy(getattr(parent_meta_class, item)))
+
+            is_abstract = None
+            has_table_name = False
+            has_indexes = False
+            if meta_class:
+                if not hasattr(meta_class, REGION):
+                    setattr(meta_class, REGION, get_settings_value('region'))
+                if not hasattr(meta_class, HOST):
+                    setattr(meta_class, HOST, get_settings_value('host'))
+                if not hasattr(meta_class, 'session_cls'):
+                    setattr(meta_class, 'session_cls', get_settings_value('session_cls'))
+                if not hasattr(meta_class, 'request_timeout_seconds'):
+                    setattr(meta_class, 'request_timeout_seconds', get_settings_value('request_timeout_seconds'))
+                if not hasattr(meta_class, 'base_backoff_ms'):
+                    setattr(meta_class, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
+                if not hasattr(meta_class, 'max_retry_attempts'):
+                    setattr(meta_class, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
+                if not hasattr(meta_class, ABSTRACT):
+                    setattr(meta_class, ABSTRACT, False)
+                is_abstract = getattr(meta_class, ABSTRACT, None)
+                if hasattr(meta_class, 'table_name'):
+                    has_table_name = True
+            else:
+                # TODO: decide what to do with DefaultMeta
+                setattr(cls, META_CLASS_NAME, DefaultMeta)
+
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
-                    if not hasattr(attr_obj, REGION):
-                        setattr(attr_obj, REGION, get_settings_value('region'))
-                    if not hasattr(attr_obj, HOST):
-                        setattr(attr_obj, HOST, get_settings_value('host'))
-                    if not hasattr(attr_obj, 'session_cls'):
-                        setattr(attr_obj, 'session_cls', get_settings_value('session_cls'))
-                    if not hasattr(attr_obj, 'request_timeout_seconds'):
-                        setattr(attr_obj, 'request_timeout_seconds', get_settings_value('request_timeout_seconds'))
-                    if not hasattr(attr_obj, 'base_backoff_ms'):
-                        setattr(attr_obj, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
-                    if not hasattr(attr_obj, 'max_retry_attempts'):
-                        setattr(attr_obj, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
+                    continue
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
+                    has_indexes = True
                     if not hasattr(attr_obj.Meta, "index_name"):
                         attr_obj.Meta.index_name = attr_name
                 elif issubclass(attr_obj.__class__, (Attribute, )):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
-            if META_CLASS_NAME not in attrs:
-                setattr(cls, META_CLASS_NAME, DefaultMeta)
+
+            exception_attrs = {'__module__': attrs.get('__module__')}
 
             # create a custom Model.DoesNotExist derived from pynamodb.exceptions.DoesNotExist,
             # so that "except Model.DoesNotExist:" would not catch other models' exceptions
-            if 'DoesNotExist' not in attrs:
-                exception_attrs = {'__module__': attrs.get('__module__')}
-                if hasattr(cls, '__qualname__'):  # On Python 3, Model.DoesNotExist
-                    exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'DoesNotExist')
-                cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
+            class DoesNotExist(pynamodb.exceptions.DoesNotExist):
+                pass
+            cls.DoesNotExist = type('DoesNotExist', (DoesNotExist,), exception_attrs)
 
+            # create a custom Model.NotAllowedWhenAbstract derived from pynamodb.exceptions.NotAllowedWhenAbstract,
+            # so that "except Model.NotAllowedWhenAbstract:" would not catch other models' exceptions
+            class NotAllowedWhenAbstract(pynamodb.exceptions.NotAllowedWhenAbstract):
+                pass
+            cls.NotAllowedWhenAbstract = type('NotAllowedWhenAbstract', (NotAllowedWhenAbstract,), exception_attrs)
+
+            if is_abstract is True:
+                if has_table_name:
+                    raise cls.NotAllowedWhenAbstract("Abstract model can't have a table name")
+                if has_indexes:
+                    raise cls.NotAllowedWhenAbstract("Abstract model can't have an index")
+            elif is_abstract is False or is_abstract is None:
+                # Enforce that non abstract tables have table_name
+                if not has_table_name and not parent_is_attribute_container:
+                    raise InheritanceError("Non abstract models need a table name")
 
 @add_metaclass(MetaModel)
 class Model(AttributeContainer):
@@ -227,6 +293,9 @@ class Model(AttributeContainer):
         :param range_key: Only required if the table has a range key attribute.
         :param attrs: A dictionary of attributes to set on this object.
         """
+        # Abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
+
         if hash_key is not None:
             attributes[self._dynamo_to_python_attr(self._get_meta_data().hash_keyname)] = hash_key
         if range_key is not None:
@@ -237,6 +306,11 @@ class Model(AttributeContainer):
                 )
             attributes[self._dynamo_to_python_attr(range_keyname)] = range_key
         super(Model, self).__init__(**attributes)
+
+    @classmethod
+    def _check_not_abstract(cls):
+        if hasattr(cls.Meta, ABSTRACT) and getattr(cls.Meta, ABSTRACT, False):
+            raise cls.NotAllowedWhenAbstract()
 
     @classmethod
     def has_map_or_list_attributes(cls):
@@ -258,6 +332,7 @@ class Model(AttributeContainer):
         :param items: Should be a list of hash keys to retrieve, or a list of
             tuples if range keys are used.
         """
+        cls._check_not_abstract()
         items = list(items)
         hash_keyname = cls._get_meta_data().hash_keyname
         range_keyname = cls._get_meta_data().range_keyname
@@ -313,9 +388,13 @@ class Model(AttributeContainer):
                             passed here, changes automatically commit on context exit
                             (whether successful or not).
         """
+        cls._check_not_abstract()
         return BatchWrite(cls, auto_commit=auto_commit)
 
     def __repr__(self):
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
+
         if self.Meta.table_name:
             serialized = self._serialize(null_check=False)
             if self._get_meta_data().range_keyname:
@@ -328,6 +407,9 @@ class Model(AttributeContainer):
         """
         Deletes this object from dynamodb
         """
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
+
         self._conditional_operator_check(conditional_operator)
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
         if len(expected_values):
@@ -348,6 +430,9 @@ class Model(AttributeContainer):
             See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html#DDB-UpdateItem-request-AttributeUpdate
         """
         warnings.warn("`Model.update_item` is deprecated in favour of `Model.update` now")
+
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
 
         self._conditional_operator_check(conditional_operator)
         args, save_kwargs = self._get_save_args(null_check=False)
@@ -398,6 +483,9 @@ class Model(AttributeContainer):
                                 next_attr: {'value': True, 'action': 'PUT'},
                             }
         """
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
+
         if attributes is not None and not isinstance(attributes, dict):
             raise TypeError("the value of `attributes` is expected to be a dictionary")
         if actions is not None and not isinstance(actions, list):
@@ -444,6 +532,9 @@ class Model(AttributeContainer):
         """
         Save this object to dynamodb
         """
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
+
         self._conditional_operator_check(conditional_operator)
         args, kwargs = self._get_save_args()
         if len(expected_values):
@@ -458,6 +549,9 @@ class Model(AttributeContainer):
 
         :param consistent_read: If True, then a consistent read is performed.
         """
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
+
         args, kwargs = self._get_save_args(attributes=False)
         kwargs.setdefault('consistent_read', consistent_read)
         attrs = self._get_connection().get_item(*args, **kwargs)
@@ -478,6 +572,7 @@ class Model(AttributeContainer):
         :param hash_key: The hash key of the desired item
         :param range_key: The range key of the desired item, only used when appropriate.
         """
+        cls._check_not_abstract()
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
         data = cls._get_connection().get_item(
             hash_key,
@@ -499,6 +594,7 @@ class Model(AttributeContainer):
 
         :param data: A serialized DynamoDB object
         """
+        cls._check_not_abstract()
         mutable_data = copy.copy(data)
         if mutable_data is None:
             raise ValueError("Received no mutable_data to construct object")
@@ -543,6 +639,7 @@ class Model(AttributeContainer):
         :param index_name: If set, then this index is used
         :param filters: A dictionary of filters to be used in the query. Requires a hash_key to be passed.
         """
+        cls._check_not_abstract()
         if hash_key is None:
             if filters:
                 raise ValueError('A hash_key must be given to use filters')
@@ -624,6 +721,7 @@ class Model(AttributeContainer):
         :param page_size: Page size of the query to DynamoDB
         :param filters: A dictionary of filters to be used in the query
         """
+        cls._check_not_abstract()
         cls._conditional_operator_check(conditional_operator)
         cls._get_indexes()
         if index_name:
@@ -716,7 +814,7 @@ class Model(AttributeContainer):
             exceptions for scan to exit
         :param consistent_read: If True, a consistent read is performed
         """
-
+        cls._check_not_abstract()
         cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
@@ -773,6 +871,7 @@ class Model(AttributeContainer):
         :param filters: A list of item filters
         :param consistent_read: If True, a consistent read is performed
         """
+        cls._check_not_abstract()
         cls._conditional_operator_check(conditional_operator)
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
@@ -811,6 +910,7 @@ class Model(AttributeContainer):
         """
         Returns True if this table exists, False otherwise
         """
+        cls._check_not_abstract()
         try:
             cls._get_connection().describe_table()
             return True
@@ -822,6 +922,7 @@ class Model(AttributeContainer):
         """
         Delete the table for this model
         """
+        cls._check_not_abstract()
         return cls._get_connection().delete_table()
 
     @classmethod
@@ -829,6 +930,7 @@ class Model(AttributeContainer):
         """
         Returns the result of a DescribeTable operation on this model's table
         """
+        cls._check_not_abstract()
         return cls._get_connection().describe_table()
 
     @classmethod
@@ -840,6 +942,7 @@ class Model(AttributeContainer):
         :param read_capacity_units: Sets the read capacity units for this table
         :param write_capacity_units: Sets the write capacity units for this table
         """
+        cls._check_not_abstract()
         if not cls.exists():
             schema = cls._get_schema()
             if hasattr(cls.Meta, pythonic(READ_CAPACITY_UNITS)):
@@ -885,6 +988,7 @@ class Model(AttributeContainer):
         """
         Returns a JSON representation of this model's table
         """
+        cls._check_not_abstract()
         return json.dumps([item._get_json() for item in cls.scan()])
 
     @classmethod
@@ -892,11 +996,13 @@ class Model(AttributeContainer):
         """
         Writes the contents of this model's table as JSON to the given filename
         """
+        cls._check_not_abstract()
         with open(filename, 'w') as out:
             out.write(cls.dumps())
 
     @classmethod
     def loads(cls, data):
+        cls._check_not_abstract()
         content = json.loads(data)
         with cls.batch_write() as batch:
             for item_data in content:
@@ -905,6 +1011,7 @@ class Model(AttributeContainer):
 
     @classmethod
     def load(cls, filename):
+        cls._check_not_abstract()
         with open(filename, 'r') as inf:
             cls.loads(inf.read())
 
@@ -1158,6 +1265,9 @@ class Model(AttributeContainer):
         """
         Returns a Python object suitable for serialization
         """
+        # Sanity check, as abstract models aren't allowed to have instance
+        self.__class__._check_not_abstract()
+
         kwargs = {}
         serialized = self._serialize(null_check=False)
         hash_key = serialized.get(HASH)

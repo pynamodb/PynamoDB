@@ -34,7 +34,7 @@ from pynamodb.attributes import (
 from pynamodb.tests.data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
-    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA,
+    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
     BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA, COMPLEX_MODEL_SERIALIZED_TABLE_DATA,
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
@@ -81,15 +81,21 @@ class GameOpponentTimeIndex(GlobalSecondaryIndex):
     created_time = UnicodeAttribute(range_key=True)
 
 
-class GameModel(Model):
+class GameModelBase(Model):
     class Meta:
         read_capacity_units = 1
         write_capacity_units = 1
-        table_name = "GameModel"
         host = "http://localhost:8000"
+        abstract = True
 
     player_id = UnicodeAttribute(hash_key=True)
     created_time = UTCDateTimeAttribute(range_key=True)
+
+
+class GameModel(GameModelBase):
+    class Meta:
+        abstract = False
+        table_name = "GameModel"
     winner_id = UnicodeAttribute()
     loser_id = UnicodeAttribute(null=True)
 
@@ -137,53 +143,80 @@ class NonKeyAttrIndex(LocalSecondaryIndex):
     numbers = NumberSetAttribute(range_key=True)
 
 
-class IndexedModel(Model):
-    """
-    A model with an index
-    """
-
+class IndexedModelBase(Model):
     class Meta:
-        table_name = 'IndexedModel'
+        abstract = True
 
     user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
+    numbers = NumberSetAttribute()
+    aliases = UnicodeSetAttribute()
+
+
+class IndexedModel(IndexedModelBase):
+    """
+    A model with an index
+    """
+    class Meta:
+        table_name = 'IndexedModel'
+        abstract = False
     email_index = EmailIndex()
     include_index = NonKeyAttrIndex()
+    icons = BinarySetAttribute()
+
+
+class LocalIndexedModelBase(Model):
+    class Meta:
+        abstract = True
+
+    user_name = UnicodeAttribute(hash_key=True)
     numbers = NumberSetAttribute()
     aliases = UnicodeSetAttribute()
     icons = BinarySetAttribute()
 
 
-class LocalIndexedModel(Model):
+class LocalIndexedModel(LocalIndexedModelBase):
     """
     A model with an index
     """
 
     class Meta:
         table_name = 'LocalIndexedModel'
+        abstract = False
 
-    user_name = UnicodeAttribute(hash_key=True)
     email = UnicodeAttribute()
     email_index = LocalEmailIndex()
-    numbers = NumberSetAttribute()
-    aliases = UnicodeSetAttribute()
+
+
+class SimpleUserModelBase1(Model):
+    class Meta:
+        abstract = True
+    user_name = UnicodeAttribute(hash_key=True)
+    email = UnicodeAttribute()
+
+
+class SimpleUserModelBase2(SimpleUserModelBase1):
+    custom_aliases = UnicodeSetAttribute(attr_name='aliases')
+    views = NumberAttribute(null=True)
+
+
+class SimpleUserModelBase3(SimpleUserModelBase2):
     icons = BinarySetAttribute()
+    class Meta:
+        abstract = True
 
 
-class SimpleUserModel(Model):
+class SimpleUserModel(SimpleUserModelBase3):
     """
     A hash key only model
     """
 
     class Meta:
         table_name = 'SimpleModel'
+        abstract = False
 
-    user_name = UnicodeAttribute(hash_key=True)
-    email = UnicodeAttribute()
+
     numbers = NumberSetAttribute()
-    custom_aliases = UnicodeSetAttribute(attr_name='aliases')
-    icons = BinarySetAttribute()
-    views = NumberAttribute(null=True)
     is_active = BooleanAttribute(null=True)
     signature = UnicodeAttribute(null=True)
 
@@ -197,52 +230,94 @@ class CustomAttrIndex(LocalSecondaryIndex):
     overidden_uid = UnicodeAttribute(hash_key=True, attr_name='user_id')
 
 
-class CustomAttrNameModel(Model):
+class CustomAttrNameModelBase1(Model):
+    class Meta:
+        abstract = True
+
+    overidden_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
+    overidden_attr = UnicodeAttribute(attr_name='foo_attr', null=True)
+
+
+class CustomAttrNameModelBase2(CustomAttrNameModelBase1):
+    overidden_user_id = UnicodeAttribute(range_key=True, attr_name='user_id')
+
+
+class CustomAttrNameModel(CustomAttrNameModelBase2):
     """
     A testing model
     """
-
     class Meta:
+        abstract = False
         table_name = 'CustomAttrModel'
 
-    overidden_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
-    overidden_user_id = UnicodeAttribute(range_key=True, attr_name='user_id')
-    overidden_attr = UnicodeAttribute(attr_name='foo_attr', null=True)
     uid_index = CustomAttrIndex()
 
 
-class UserModel(Model):
-    """
-    A testing model
-    """
-
+class UserModelBase1(Model):
     class Meta:
-        table_name = 'UserModel'
-        read_capacity_units = 25
-        write_capacity_units = 25
+        abstract = True
 
+
+class UserModelBase2(UserModelBase1):
+    class Meta:
+        read_capacity_units = 25
+        write_capacity_units = 0
     custom_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
+
+
+class UserModelBase3(UserModelBase2):
     user_id = UnicodeAttribute(range_key=True)
+
+
+class UserModelBase4(UserModelBase3):
     picture = BinaryAttribute(null=True)
     zip_code = NumberAttribute(null=True)
+
+
+class UserModelBase5(UserModelBase4):
+    class Meta:
+        write_capacity_units = 25
+
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)
 
 
-class HostSpecificModel(Model):
+class UserModel(UserModelBase5):
     """
     A testing model
     """
 
     class Meta:
-        host = 'http://localhost'
-        table_name = 'RegionSpecificModel'
+        abstract = False
+        table_name = 'UserModel'
 
+
+class HostSpecificModelBase(Model):
+    class Meta:
+        host = 'http://localhost'
+        abstract = True
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
 
 
-class RegionSpecificModel(Model):
+class HostSpecificModel(HostSpecificModelBase):
+    """
+    A testing model
+    """
+
+    class Meta:
+        table_name = 'RegionSpecificModel'
+        abstract = False
+
+
+class RegionSpecificModelBase(Model):
+    class Meta:
+        abstract = True
+        region = 'invalid region'
+    user_id = UnicodeAttribute(range_key=True)
+
+
+class RegionSpecificModel(RegionSpecificModelBase):
     """
     A testing model
     """
@@ -250,21 +325,27 @@ class RegionSpecificModel(Model):
     class Meta:
         region = 'us-west-1'
         table_name = 'RegionSpecificModel'
+        abstract = False
 
     user_name = UnicodeAttribute(hash_key=True)
-    user_id = UnicodeAttribute(range_key=True)
 
 
-class ComplexKeyModel(Model):
+class ComplexKeyModelBase(Model):
+    date_created = UTCDateTimeAttribute(default=datetime.utcnow)
+    class Meta:
+        abstract = True
+
+
+class ComplexKeyModel(ComplexKeyModelBase):
     """
     This model has a key that must be serialized/deserialized properly
     """
 
     class Meta:
         table_name = 'ComplexKey'
+        abstract = False
 
     name = UnicodeAttribute(hash_key=True)
-    date_created = UTCDateTimeAttribute(default=datetime.utcnow)
 
 
 class Location(MapAttribute):
@@ -285,23 +366,35 @@ class Person(MapAttribute):
         return 1
 
 
-class ComplexModel(Model):
+class ComplexModelBase(Model):
     class Meta:
-        table_name = 'ComplexModel'
+        abstract = True
     person = Person(attr_name='weird_person')
     key = NumberAttribute(hash_key=True)
 
 
-class OfficeEmployee(Model):
+class ComplexModel(ComplexModelBase):
     class Meta:
-        table_name = 'OfficeEmployeeModel'
+        abstract = False
+        table_name = 'ComplexModel'
 
-    office_employee_id = NumberAttribute(hash_key=True)
+
+class OfficeEmployeeBase(Model):
+    class Meta:
+        abstract = True
+
     person = Person()
-    office_location = Location()
-
     def foo(self):
         return 1
+
+
+class OfficeEmployee(OfficeEmployeeBase):
+    class Meta:
+        table_name = 'OfficeEmployeeModel'
+        abstract = False
+
+    office_employee_id = NumberAttribute(hash_key=True)
+    office_location = Location()
 
 
 class CarInfoMap(MapAttribute):
@@ -309,18 +402,30 @@ class CarInfoMap(MapAttribute):
     model = UnicodeAttribute(null=True)
 
 
-class CarModel(Model):
+class CarModelBase(Model):
+    class Meta:
+        abstract = True
+    car_id = NumberAttribute(null=False)
+
+
+class CarModel(CarModelBase):
     class Meta:
         table_name = 'CarModel'
-    car_id = NumberAttribute(null=False)
+        abstract = False
     car_info = CarInfoMap(null=False)
 
 
-class CarModelWithNull(Model):
-    class Meta:
-        table_name = 'CarModelWithNull'
+class CarModelWithNullBase(Model):
     car_id = NumberAttribute(null=False)
     car_color = UnicodeAttribute(null=True)
+    class Meta:
+        abstract = True
+
+
+class CarModelWithNull(CarModelWithNullBase):
+    class Meta:
+        table_name = 'CarModelWithNull'
+        abstract = False
     car_info = CarInfoMap(null=True)
 
 
@@ -334,27 +439,48 @@ class OfficeEmployeeMap(MapAttribute):
         return 1
 
 
-class GroceryList(Model):
+class GroceryListBase1(Model):
     class Meta:
-        table_name = 'GroceryListModel'
-
-    store_name = UnicodeAttribute(hash_key=True)
+        abstract = True
     groceries = ListAttribute()
 
 
-class Office(Model):
+class GroceryListBase2(GroceryListBase1):
+    store_name = UnicodeAttribute(hash_key=True)
+
+
+class GroceryList(GroceryListBase2):
     class Meta:
-        table_name = 'OfficeModel'
-    office_id = NumberAttribute(hash_key=True)
+        abstract = False
+        table_name = 'GroceryListModel'
+
+
+class OfficeBase(Model):
+    class Meta:
+        abstract = True
     address = Location()
     employees = ListAttribute(of=OfficeEmployeeMap)
 
 
-class BooleanConversionModel(Model):
+class Office(OfficeBase):
     class Meta:
-        table_name = 'BooleanConversionTable'
+        abstract = False
+        table_name = 'OfficeModel'
+    office_id = NumberAttribute(hash_key=True)
+
+
+class BooleanConversionModelBase(Model):
+    class Meta:
+        abstract = True
 
     user_name = UnicodeAttribute(hash_key=True)
+
+
+class BooleanConversionModel(BooleanConversionModelBase):
+    class Meta:
+        table_name = 'BooleanConversionTable'
+        abstract = False
+
     is_human = BooleanAttribute()
 
 
@@ -374,20 +500,32 @@ class TreeLeaf(MapAttribute):
     right = TreeLeaf1()
 
 
-class TreeModel(Model):
+class TreeModelBase(Model):
     class Meta:
-        table_name = 'TreeModelTable'
-
+        abstract = True
     tree_key = UnicodeAttribute(hash_key=True)
     left = TreeLeaf()
+
+
+class TreeModel(TreeModelBase):
+    class Meta:
+        table_name = 'TreeModelTable'
+        abstract = False
+
     right = TreeLeaf()
 
 
-class ExplicitRawMapModel(Model):
+class ExplicitRawMapModelBase(Model):
+    class Meta:
+        abstract = True
+    map_attr = MapAttribute()
+
+
+class ExplicitRawMapModel(ExplicitRawMapModelBase):
     class Meta:
         table_name = 'ExplicitRawMapModel'
+        abstract = False
     map_id = NumberAttribute(hash_key=True, default=123)
-    map_attr = MapAttribute()
 
 
 class MapAttrSubClassWithRawMapAttr(MapAttribute):
@@ -396,11 +534,17 @@ class MapAttrSubClassWithRawMapAttr(MapAttribute):
     map_field = MapAttribute()
 
 
-class ExplicitRawMapAsMemberOfSubClass(Model):
+class ExplicitRawMapAsMemberOfSubClassBase(Model):
     class Meta:
-        table_name = 'ExplicitRawMapAsMemberOfSubClass'
+        abstract = True
     map_id = NumberAttribute(hash_key=True)
     sub_attr = MapAttrSubClassWithRawMapAttr()
+
+
+class ExplicitRawMapAsMemberOfSubClass(ExplicitRawMapAsMemberOfSubClassBase):
+    class Meta:
+        table_name = 'ExplicitRawMapAsMemberOfSubClass'
+        abstract = False
 
 
 class OverriddenSession(requests.Session):
@@ -411,19 +555,52 @@ class OverriddenSession(requests.Session):
         super(OverriddenSession, self).__init__()
 
 
-class OverriddenSessionModel(Model):
+class OverriddenSessionModelBase1(Model):
+    class Meta:
+        abstract = True
+
+
+class OverriddenSessionModelBase2(OverriddenSessionModelBase1):
+    class Meta:
+        request_timeout_seconds = 9999
+        max_retry_attempts = -1
+    random_attr = UnicodeAttribute(attr_name='random_attr_1', null=True)
+
+
+class OverriddenSessionModelBase3(OverriddenSessionModelBase2):
+    class Meta:
+        request_timeout_seconds = 9999
+        session_cls = OverriddenSession
+    random_user_name = UnicodeAttribute(hash_key=True, attr_name='random_name_1')
+
+
+class OverriddenSessionModelBase4(OverriddenSessionModelBase3):
+    class Meta:
+        max_retry_attempts = 200
+        base_backoff_ms = 4120
+
+
+class OverriddenSessionModel(OverriddenSessionModelBase4):
     """
     A testing model
     """
     class Meta:
         table_name = 'OverriddenSessionModel'
-        request_timeout_seconds = 9999
-        max_retry_attempts = 200
-        base_backoff_ms = 4120
-        session_cls = OverriddenSession
+        abstract = False
 
-    random_user_name = UnicodeAttribute(hash_key=True, attr_name='random_name_1')
-    random_attr = UnicodeAttribute(attr_name='random_attr_1', null=True)
+
+class Animal(Model):
+    class Meta:
+        abstract = True
+    name = UnicodeAttribute(hash_key=True)
+
+
+class Dog(Animal):
+    class Meta:
+        abstract = False
+        table_name = 'Dog'
+
+    breed = UnicodeAttribute()
 
 
 class ModelTestCase(TestCase):
@@ -4330,6 +4507,29 @@ class ModelTestCase(TestCase):
                              map_native.get('floaty'))
             self.assertEqual(actual.map_field['mapy']['baz'],
                              map_native.get('mapy').get('baz'))
+
+    def test_model_subclass_attributes_inherited_on_create(self):
+        scope_args = {'count': 0}
+
+        def fake_dynamodb(*args, **kwargs):
+            if scope_args['count'] == 0:
+                scope_args['count'] += 1
+                raise ClientError({'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Not Found'}},
+                                  "DescribeTable")
+            return {}
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            Dog.create_table(read_capacity_units=2, write_capacity_units=2)
+
+            actual = req.call_args_list[1][0][1]
+
+            self.assertEquals(actual['TableName'], DOG_TABLE_DATA['Table']['TableName'])
+            self.assert_dict_lists_equal(actual['KeySchema'], DOG_TABLE_DATA['Table']['KeySchema'])
+            self.assert_dict_lists_equal(actual['AttributeDefinitions'],
+                                         DOG_TABLE_DATA['Table']['AttributeDefinitions'])
 
 
 class ModelInitTestCase(TestCase):
