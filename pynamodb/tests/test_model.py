@@ -425,6 +425,8 @@ class OverriddenSessionModel(Model):
         request_timeout_seconds = 9999
         max_retry_attempts = 200
         base_backoff_ms = 4120
+        aws_access_key_id = 'access_key_id'
+        aws_secret_access_key = 'secret_access_key'
         session_cls = OverriddenSession
 
     random_user_name = UnicodeAttribute(hash_key=True, attr_name='random_name_1')
@@ -671,6 +673,8 @@ class ModelTestCase(TestCase):
         self.assertEqual(OverriddenSessionModel.Meta.request_timeout_seconds, 9999)
         self.assertEqual(OverriddenSessionModel.Meta.max_retry_attempts, 200)
         self.assertEqual(OverriddenSessionModel.Meta.base_backoff_ms, 4120)
+        self.assertEqual(OverriddenSessionModel.Meta.aws_access_key_id, 'access_key_id')
+        self.assertEqual(OverriddenSessionModel.Meta.aws_secret_access_key, 'secret_access_key')
         self.assertTrue(OverriddenSessionModel.Meta.session_cls is OverriddenSession)
 
         self.assertEqual(OverriddenSessionModel._connection.connection._request_timeout_seconds, 9999)
