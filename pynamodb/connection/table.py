@@ -17,7 +17,9 @@ class TableConnection(object):
                  session_cls=None,
                  request_timeout_seconds=None,
                  max_retry_attempts=None,
-                 base_backoff_ms=None):
+                 base_backoff_ms=None,
+                 aws_access_key_id=None,
+                 aws_secret_access_key=None):
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
@@ -27,6 +29,10 @@ class TableConnection(object):
                                      request_timeout_seconds=request_timeout_seconds,
                                      max_retry_attempts=max_retry_attempts,
                                      base_backoff_ms=base_backoff_ms)
+
+        if aws_access_key_id and aws_secret_access_key:
+            self.connection.session.set_credentials(aws_access_key_id,
+                                                    aws_secret_access_key)
 
     def get_meta_table(self, refresh=False):
         """
@@ -145,7 +151,8 @@ class TableConnection(object):
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get)
 
-    def rate_limited_scan(self,
+    def rate_limited_scan(
+             self,
              filter_condition=None,
              attributes_to_get=None,
              page_size=None,

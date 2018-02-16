@@ -12,5 +12,16 @@ policies as required, see the
 `DynamoDB <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/UsingIAMWithDDB.html>`_ docs for more
 information.
 
+If for some reason you can't use conventional AWS configuration methods, you can set the credentials in the Model Meta class:
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+
+    class MyModel(Model):
+        class Meta:
+            aws_access_key_id = 'my_access_key_id'
+            aws_secret_access_key = 'my_secret_access_key'
+
 Finally, see the `AWS CLI documentation <http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-installing-credentials>`_
 for more details on how to pass credentials to botocore.
