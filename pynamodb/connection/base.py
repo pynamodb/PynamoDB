@@ -22,6 +22,7 @@ from six.moves import range
 
 from pynamodb.compat import NullHandler
 from pynamodb.connection.util import pythonic
+from pynamodb.connection.dax import DaxClient
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -223,9 +224,10 @@ class Connection(object):
     """
 
     def __init__(self, region=None, host=None, session_cls=None,
-                 request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None):
+                 request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None, dax_endpoints=[]):
         self._tables = {}
         self.host = host
+        self.dax_endpoints = dax_endpoints
         self._local = local()
         self._requests_session = None
         self._client = None
@@ -310,7 +312,12 @@ class Connection(object):
         req_uuid = uuid.uuid4()
 
         self.send_pre_boto_callback(operation_name, req_uuid, table_name)
-        data = self._make_api_call(operation_name, operation_kwargs)
+
+        if self.dax_endpoints is not None and operation_name in DaxClient.OP_NAME_TO_METHOD.keys():
+            dax_client = DaxClient(self.session, endpoints=self.dax_endpoints)
+            data = dax_client.dispatch(operation_name, operation_kwargs)
+        else:
+            data = self._make_api_call(operation_name, operation_kwargs)
         self.send_post_boto_callback(operation_name, req_uuid, table_name)
 
         if data and CONSUMED_CAPACITY in data:
