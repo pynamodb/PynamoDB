@@ -5,7 +5,7 @@ from amazondax import AmazonDaxClient
 
 
 def get_connection_hash(endpoints):
-    return sha256(str(''.join(endpoints))).hexdigest()
+    return sha256(''.join(endpoints).encode('utf-8')).hexdigest()
 
 
 class DaxClient(object):
@@ -32,7 +32,7 @@ class DaxClient(object):
         connection_hash = get_connection_hash(endpoints)
 
         if connection_hash not in cls._connections.keys():
-            cls.connections[connection_hash] = AmazonDaxClient(session, endpoints=endpoints)
+            cls._connections[connection_hash] = AmazonDaxClient(session, endpoints=endpoints)
 
         return cls._connections[connection_hash]
 
