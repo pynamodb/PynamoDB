@@ -14,6 +14,7 @@ default_settings_dict = {
     'region': 'us-east-1',
     'session_cls': requests.Session,
     'allow_rate_limited_scan_without_consumed_capacity': False,
+    'dax_endpoints': [],
 }
 
 OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default_settings.py')
