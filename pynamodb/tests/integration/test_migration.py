@@ -176,23 +176,35 @@ def test_legacy_boolean_attribute_deserialization_compatibility(ddb_url):
 
     BAModel.create_table(read_capacity_units=1, write_capacity_units=1)
 
-    # Create an object with a BooleanAttribute flag
-    BAModel('pkey', flag=True, value = 'value0').save()
+    # Create objects with a BooleanAttribute flag
+    BAModel('pkey1', flag=True, value = 'value0').save()
+    BAModel('pkey2', flag=False, value = 'value0').save()
+    BAModel('pkey3', flag=None, value = 'value0').save()
 
     # Check we are able to read the flag with LegacyBooleanAttribute
-    assert True == LBAModel.get('pkey').flag
+    assert True == LBAModel.get('pkey1').flag
+    assert False == LBAModel.get('pkey2').flag
+    assert None == LBAModel.get('pkey3').flag
 
     # Update a value in the model causing LegacyBooleanAttribute to be deserialized
-    LBAModel.get('pkey').update_item('value', 'value1', 'PUT')
+    LBAModel.get('pkey1').update_item('value', 'value1', 'PUT')
+    LBAModel.get('pkey2').update_item('value', 'value1', 'PUT')
+    LBAModel.get('pkey3').update_item('value', 'value1', 'PUT')
 
     # Check we are able to read the flag with LegacyBooleanAttribute
-    assert True == LBAModel.get('pkey').flag
+    assert True == LBAModel.get('pkey1').flag
+    assert False == LBAModel.get('pkey2').flag
+    assert None == LBAModel.get('pkey3').flag
 
     # Update a value in the model causing LegacyBooleanAttribute to be deserialized
-    LBAModel.get('pkey').update(actions=[LBAModel.value.set('value2')])
+    LBAModel.get('pkey1').update(actions=[LBAModel.value.set('value2')])
+    LBAModel.get('pkey2').update(actions=[LBAModel.value.set('value2')])
+    LBAModel.get('pkey3').update(actions=[LBAModel.value.set('value2')])
 
     # Check we are able to read the flag with LegacyBooleanAttribute
-    assert True == LBAModel.get('pkey').flag
+    assert True == LBAModel.get('pkey1').flag
+    assert False == LBAModel.get('pkey2').flag
+    assert None == LBAModel.get('pkey3').flag
 
 
 @pytest.mark.ddblocal
@@ -216,19 +228,31 @@ def test_boolean_attribute_deserialization_compatibility(ddb_url):
     LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
 
     # Create an object with a LegacyBooleanAttribute flag
-    LBAModel('pkey', flag=True, value = 'value0').save()
+    LBAModel('pkey1', flag=True, value = 'value0').save()
+    LBAModel('pkey2', flag=False, value = 'value0').save()
+    LBAModel('pkey3', flag=None, value = 'value0').save()
 
     # Check we are able to read the flag with BooleanAttribute
-    assert True == BAModel.get('pkey').flag
+    assert True == BAModel.get('pkey1').flag
+    assert False == BAModel.get('pkey2').flag
+    assert None == BAModel.get('pkey3').flag
 
     # Update a value in the model causing BooleanAttribute to be deserialized
-    BAModel.get('pkey').update_item('value', 'value1', 'PUT')
+    BAModel.get('pkey1').update_item('value', 'value1', 'PUT')
+    BAModel.get('pkey2').update_item('value', 'value1', 'PUT')
+    BAModel.get('pkey3').update_item('value', 'value1', 'PUT')
 
     # Check we are able to read the flag with BooleanAttribute
-    assert True == BAModel.get('pkey').flag
+    assert True == BAModel.get('pkey1').flag
+    assert False == BAModel.get('pkey2').flag
+    assert None == BAModel.get('pkey3').flag
 
     # Update a value in the model causing BooleanAttribute to be deserialized
-    BAModel.get('pkey').update(actions=[BAModel.value.set('value2')])
+    BAModel.get('pkey1').update(actions=[BAModel.value.set('value2')])
+    BAModel.get('pkey2').update(actions=[BAModel.value.set('value2')])
+    BAModel.get('pkey3').update(actions=[BAModel.value.set('value2')])
 
     # Check we are able to read the flag with BooleanAttribute
-    assert True == BAModel.get('pkey').flag
+    assert True == BAModel.get('pkey1').flag
+    assert False == BAModel.get('pkey2').flag
+    assert None == BAModel.get('pkey3').flag
