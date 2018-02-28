@@ -154,3 +154,81 @@ def test_migrate_boolean_attributes_skip_native_booleans(ddb_url):
     BAModel.create_table(read_capacity_units=1, write_capacity_units=1)
     BAModel('pkey', flag=True).save()
     assert (0, 0) == migrate_boolean_attributes(BAModel, ['flag'], allow_rate_limited_scan_without_consumed_capacity=True)
+
+
+@pytest.mark.ddblocal
+def test_legacy_boolean_attribute_deserialization_compatibility(ddb_url):
+    class BAModel(Model):
+        class Meta:
+            table_name = 'lba_deserialization_test'
+            host = ddb_url
+        id = UnicodeAttribute(hash_key=True)
+        flag = BooleanAttribute(null=True)
+        value = UnicodeAttribute(null=True)
+
+    class LBAModel(Model):
+        class Meta:
+            table_name = 'lba_deserialization_test'
+            host = ddb_url
+        id = UnicodeAttribute(hash_key=True)
+        flag = LegacyBooleanAttribute(null=True)
+        value = UnicodeAttribute(null=True)
+
+    BAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+
+    # Create an object with a BooleanAttribute flag
+    BAModel('pkey', flag=True, value = 'value0').save()
+
+    # Check we are able to read the flag with LegacyBooleanAttribute
+    assert True == LBAModel.get('pkey').flag
+
+    # Update a value in the model causing LegacyBooleanAttribute to be deserialized
+    LBAModel.get('pkey').update_item('value', 'value1', 'PUT')
+
+    # Check we are able to read the flag with LegacyBooleanAttribute
+    assert True == LBAModel.get('pkey').flag
+
+    # Update a value in the model causing LegacyBooleanAttribute to be deserialized
+    LBAModel.get('pkey').update(actions=[LBAModel.value.set('value2')])
+
+    # Check we are able to read the flag with LegacyBooleanAttribute
+    assert True == LBAModel.get('pkey').flag
+
+
+@pytest.mark.ddblocal
+def test_boolean_attribute_deserialization_compatibility(ddb_url):
+    class BAModel(Model):
+        class Meta:
+            table_name = 'ba_deserialization_test'
+            host = ddb_url
+        id = UnicodeAttribute(hash_key=True)
+        flag = BooleanAttribute(null=True)
+        value = UnicodeAttribute(null=True)
+
+    class LBAModel(Model):
+        class Meta:
+            table_name = 'ba_deserialization_test'
+            host = ddb_url
+        id = UnicodeAttribute(hash_key=True)
+        flag = LegacyBooleanAttribute(null=True)
+        value = UnicodeAttribute(null=True)
+
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+
+    # Create an object with a LegacyBooleanAttribute flag
+    LBAModel('pkey', flag=True, value = 'value0').save()
+
+    # Check we are able to read the flag with BooleanAttribute
+    assert True == BAModel.get('pkey').flag
+
+    # Update a value in the model causing BooleanAttribute to be deserialized
+    BAModel.get('pkey').update_item('value', 'value1', 'PUT')
+
+    # Check we are able to read the flag with BooleanAttribute
+    assert True == BAModel.get('pkey').flag
+
+    # Update a value in the model causing BooleanAttribute to be deserialized
+    BAModel.get('pkey').update(actions=[BAModel.value.set('value2')])
+
+    # Check we are able to read the flag with BooleanAttribute
+    assert True == BAModel.get('pkey').flag
