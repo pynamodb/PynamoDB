@@ -313,7 +313,7 @@ class Connection(object):
 
         self.send_pre_boto_callback(operation_name, req_uuid, table_name)
 
-        if self.dax_endpoints is not None and operation_name in DaxClient.OP_NAME_TO_METHOD.keys():
+        if self.dax_endpoints and operation_name in DaxClient.OP_NAME_TO_METHOD.keys():
             dax_client = DaxClient(self.session, endpoints=self.dax_endpoints)
             data = dax_client.dispatch(operation_name, operation_kwargs)
         else:
