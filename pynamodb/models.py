@@ -1284,6 +1284,7 @@ class Model(AttributeContainer):
 
         :param attr: an instance of `Attribute` for serialization
         :param value: a value to be checked
+        :param null_check: If True, then attributes are checked for null
         """
         if isinstance(value, MapAttribute):
             if not value.validate():
