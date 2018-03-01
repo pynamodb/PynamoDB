@@ -231,6 +231,7 @@ class Connection(object):
         self._local = local()
         self._requests_session = None
         self._client = None
+        self._dax_client = None
         if region:
             self.region = region
         else:
@@ -313,9 +314,8 @@ class Connection(object):
 
         self.send_pre_boto_callback(operation_name, req_uuid, table_name)
 
-        if self.dax_endpoints and operation_name in DaxClient.OP_NAME_TO_METHOD.keys():
-            dax_client = DaxClient(self.session, endpoints=self.dax_endpoints)
-            data = dax_client.dispatch(operation_name, operation_kwargs)
+        if self.dax_client is not None and operation_name in DaxClient.OP_NAME_TO_METHOD.keys():
+            data = self.dax_client.dispatch(operation_name, operation_kwargs)
         else:
             data = self._make_api_call(operation_name, operation_kwargs)
         self.send_post_boto_callback(operation_name, req_uuid, table_name)
@@ -498,6 +498,12 @@ class Connection(object):
         if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host)
         return self._client
+
+    @property
+    def dax_client(self):
+        if self.dax_endpoints and self._dax_client is None:
+            self._dax_client = DaxClient(self.session, endpoints=self.dax_endpoints)
+        return self._dax_client
 
     def get_meta_table(self, table_name, refresh=False):
         """
