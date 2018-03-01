@@ -468,7 +468,7 @@ class BooleanAttribute(Attribute):
         # previously, BOOL was serialized as N
         value_to_deserialize = super(BooleanAttribute, self).get_value(value)
         if value_to_deserialize is None:
-            value_to_deserialize = json.loads(value.get(NUMBER_SHORT, 0))
+            value_to_deserialize = json.loads(value.get(NUMBER_SHORT, '0'))
         return value_to_deserialize
 
 

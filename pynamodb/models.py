@@ -389,7 +389,7 @@ class Model(AttributeContainer):
             attr_name = self._dynamo_to_python_attr(name)
             attr = self._get_attributes().get(attr_name)
             if attr:
-                setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
+                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
         return data
 
     def update(self, attributes=None, actions=None, condition=None, conditional_operator=None, **expected_values):
@@ -441,7 +441,7 @@ class Model(AttributeContainer):
             attr_name = self._dynamo_to_python_attr(name)
             attr = self._get_attributes().get(attr_name)
             if attr:
-                setattr(self, attr_name, attr.deserialize(value.get(ATTR_TYPE_MAP[attr.attr_type])))
+                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
         return data
 
     def save(self, condition=None, conditional_operator=None, **expected_values):
