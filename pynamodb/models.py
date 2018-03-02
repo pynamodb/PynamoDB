@@ -1291,13 +1291,12 @@ class Model(AttributeContainer):
                 raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
         elif isinstance(value, list):
             for element in value:
-                if isinstance(element, AttributeContainer):
-                    for name, child_attr in element._get_attributes().items():
-                        child_value = getattr(element, name)
-                        self._validate_value(child_attr, child_value)
-        else:
+                self._validate_value(element, element, null_check)
+        elif isinstance(value, Attribute):
             if null_check and not attr.null and value is None:
                 raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
+
+        return True
 
     def _deserialize(self, attrs):
         """
