@@ -18,6 +18,8 @@ class DaxClient(object):
         'Query': 'query',
     }
 
+    OP_NAME_TO_METHOD = OP_WRITE + OP_READ
+
     def __init__(self, session, endpoints):
         self.connection = AmazonDaxClient(session, endpoints=endpoints)
 
