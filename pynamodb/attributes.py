@@ -7,6 +7,7 @@ import json
 from base64 import b64encode, b64decode
 from copy import deepcopy
 from datetime import datetime
+import warnings
 from dateutil.parser import parse
 from dateutil.tz import tzutc
 from inspect import getargspec
@@ -216,6 +217,16 @@ class AttributeContainer(object):
         self.attribute_values = {}
         self._set_defaults()
         self._set_attributes(**attributes)
+
+    @classmethod
+    def _get_attributes(cls):
+        """
+        Returns the attributes of this class as a mapping from `python_attr_name` => `attribute`.
+
+        :rtype: dict[str, Attribute]
+        """
+        warnings.warn("`Model._get_attributes` is deprecated in favor of `Model.get_attributes` now")
+        return cls.get_attributes()
 
     @classmethod
     def get_attributes(cls):
