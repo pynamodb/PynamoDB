@@ -224,10 +224,12 @@ class Connection(object):
     """
 
     def __init__(self, region=None, host=None, session_cls=None,
-                 request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None, dax_endpoints=[]):
+                 request_timeout_seconds=None, max_retry_attempts=None,
+                 base_backoff_ms=None, dax_write_endpoints=[], dax_read_endpoints=[]):
         self._tables = {}
         self.host = host
-        self.dax_endpoints = dax_endpoints
+        self.dax_write_endpoints = dax_write_endpoints
+        self.dax_read_endpoints = dax_read_endpoints
         self._local = local()
         self._requests_session = None
         self._client = None
@@ -314,10 +316,12 @@ class Connection(object):
 
         self.send_pre_boto_callback(operation_name, req_uuid, table_name)
 
-        if self.dax_client is not None and operation_name in DaxClient.OP_NAME_TO_METHOD.keys():
+        if (operation_name in DaxClient.OP_READ.keys() and self.dax_read_endpoints) or \
+                (operation_name in DaxClient.OP_WRITE.keys() and self.dax_write_endpoints):
             data = self.dax_client.dispatch(operation_name, operation_kwargs)
         else:
             data = self._make_api_call(operation_name, operation_kwargs)
+
         self.send_post_boto_callback(operation_name, req_uuid, table_name)
 
         if data and CONSUMED_CAPACITY in data:
@@ -501,7 +505,7 @@ class Connection(object):
 
     @property
     def dax_client(self):
-        if self.dax_endpoints and self._dax_client is None:
+        if self._dax_client is None:
             self._dax_client = DaxClient(self.session, endpoints=self.dax_endpoints)
         return self._dax_client
 

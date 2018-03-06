@@ -4,15 +4,18 @@ from amazondax import AmazonDaxClient
 
 class DaxClient(object):
 
-    OP_NAME_TO_METHOD = {
-        'GetItem': 'get_item',
+    OP_WRITE = {
         'PutItem': 'put_item',
         'DeleteItem': 'delete_item',
         'UpdateItem': 'update_item',
-        'Query': 'query',
+        'BatchWriteItem': 'batch_write_item',
+    }
+
+    OP_READ = {
+        'GetItem': 'get_item',
         'Scan': 'scan',
         'BatchGetItem': 'batch_get_item',
-        'BatchWriteItem': 'batch_write_item',
+        'Query': 'query',
     }
 
     def __init__(self, session, endpoints):
