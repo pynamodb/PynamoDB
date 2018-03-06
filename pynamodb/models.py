@@ -244,7 +244,7 @@ class Model(AttributeContainer):
 
     @classmethod
     def has_map_or_list_attributes(cls):
-        for attr_value in cls._get_attributes().values():
+        for attr_value in cls.get_attributes().values():
             if isinstance(attr_value, MapAttribute) or isinstance(attr_value, ListAttribute):
                 return True
         return False
@@ -356,7 +356,7 @@ class Model(AttributeContainer):
         self._conditional_operator_check(conditional_operator)
         args, save_kwargs = self._get_save_args(null_check=False)
         attribute_cls = None
-        for attr_name, attr_cls in self._get_attributes().items():
+        for attr_name, attr_cls in self.get_attributes().items():
             if attr_name == attribute:
                 attribute_cls = attr_cls
                 break
@@ -387,7 +387,7 @@ class Model(AttributeContainer):
 
         for name, value in data.get(ATTRIBUTES).items():
             attr_name = self._dynamo_to_python_attr(name)
-            attr = self._get_attributes().get(attr_name)
+            attr = self.get_attributes().get(attr_name)
             if attr:
                 setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
         return data
@@ -423,7 +423,7 @@ class Model(AttributeContainer):
         if expected_values:
             kwargs['expected'] = self._build_expected_values(expected_values, UPDATE_FILTER_OPERATOR_MAP)
 
-        attrs = self._get_attributes()
+        attrs = self.get_attributes()
         attributes = attributes or {}
         for attr, params in attributes.items():
             attribute_cls = attrs[attr]
@@ -439,7 +439,7 @@ class Model(AttributeContainer):
         data = self._get_connection().update_item(*args, **kwargs)
         for name, value in data[ATTRIBUTES].items():
             attr_name = self._dynamo_to_python_attr(name)
-            attr = self._get_attributes().get(attr_name)
+            attr = self.get_attributes().get(attr_name)
             if attr:
                 setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
         return data
@@ -511,19 +511,19 @@ class Model(AttributeContainer):
         hash_key_type = cls._get_meta_data().get_attribute_type(hash_keyname)
         hash_key = mutable_data.pop(hash_keyname).get(hash_key_type)
 
-        hash_key_attr = cls._get_attributes().get(cls._dynamo_to_python_attr(hash_keyname))
+        hash_key_attr = cls.get_attributes().get(cls._dynamo_to_python_attr(hash_keyname))
 
         hash_key = hash_key_attr.deserialize(hash_key)
         args = (hash_key,)
         kwargs = {}
         if range_keyname:
-            range_key_attr = cls._get_attributes().get(cls._dynamo_to_python_attr(range_keyname))
+            range_key_attr = cls.get_attributes().get(cls._dynamo_to_python_attr(range_keyname))
             range_key_type = cls._get_meta_data().get_attribute_type(range_keyname)
             range_key = mutable_data.pop(range_keyname).get(range_key_type)
             kwargs['range_key'] = range_key_attr.deserialize(range_key)
         for name, value in mutable_data.items():
             attr_name = cls._dynamo_to_python_attr(name)
-            attr = cls._get_attributes().get(attr_name, None)
+            attr = cls.get_attributes().get(attr_name, None)
             if attr:
                 kwargs[attr_name] = attr.deserialize(attr.get_value(value))
         return cls(*args, **kwargs)
@@ -556,12 +556,12 @@ class Model(AttributeContainer):
         if index_name:
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
             key_attribute_classes = cls._index_classes[index_name]._get_attributes()
-            non_key_attribute_classes = cls._get_attributes()
+            non_key_attribute_classes = cls.get_attributes()
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
-            non_key_attribute_classes = dict(cls._get_attributes())
-            key_attribute_classes = dict(cls._get_attributes())
-            for name, attr in cls._get_attributes().items():
+            non_key_attribute_classes = dict(cls.get_attributes())
+            key_attribute_classes = dict(cls.get_attributes())
+            for name, attr in cls.get_attributes().items():
                 if attr.is_range_key or attr.is_hash_key:
                     key_attribute_classes[name] = attr
                 else:
@@ -633,12 +633,12 @@ class Model(AttributeContainer):
         if index_name:
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
             key_attribute_classes = cls._index_classes[index_name]._get_attributes()
-            non_key_attribute_classes = cls._get_attributes()
+            non_key_attribute_classes = cls.get_attributes()
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
             non_key_attribute_classes = {}
             key_attribute_classes = {}
-            for name, attr in cls._get_attributes().items():
+            for name, attr in cls.get_attributes().items():
                 if attr.is_range_key or attr.is_hash_key:
                     key_attribute_classes[name] = attr
                 else:
@@ -725,7 +725,7 @@ class Model(AttributeContainer):
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
             non_key_operator_map=SCAN_OPERATOR_MAP,
-            key_attribute_classes=cls._get_attributes(),
+            key_attribute_classes=cls.get_attributes(),
             filters=filters
         )
         key_filter.update(scan_filter)
@@ -781,7 +781,7 @@ class Model(AttributeContainer):
         key_filter, scan_filter = cls._build_filters(
             SCAN_OPERATOR_MAP,
             non_key_operator_map=SCAN_OPERATOR_MAP,
-            key_attribute_classes=cls._get_attributes(),
+            key_attribute_classes=cls.get_attributes(),
             filters=filters
         )
         key_filter.update(scan_filter)
@@ -944,7 +944,7 @@ class Model(AttributeContainer):
         :param expected_values: A list of expected values
         """
         expected_values_result = {}
-        attributes = cls._get_attributes()
+        attributes = cls.get_attributes()
         filters = {}
         for attr_name, attr_value in expected_values.items():
             attr_cond = VALUE
@@ -1103,7 +1103,7 @@ class Model(AttributeContainer):
             pythonic(ATTR_DEFINITIONS): [],
             pythonic(KEY_SCHEMA): []
         }
-        for attr_name, attr_cls in cls._get_attributes().items():
+        for attr_name, attr_cls in cls.get_attributes().items():
             if attr_cls.is_hash_key or attr_cls.is_range_key:
                 schema[pythonic(ATTR_DEFINITIONS)].append({
                     pythonic(ATTR_NAME): attr_cls.attr_name,
@@ -1196,7 +1196,7 @@ class Model(AttributeContainer):
         """
         Returns the attribute class for the hash key
         """
-        attributes = cls._get_attributes()
+        attributes = cls.get_attributes()
         range_keyname = cls._get_meta_data().range_keyname
         if range_keyname:
             attr = attributes[cls._dynamo_to_python_attr(range_keyname)]
@@ -1209,7 +1209,7 @@ class Model(AttributeContainer):
         """
         Returns the attribute class for the hash key
         """
-        attributes = cls._get_attributes()
+        attributes = cls.get_attributes()
         hash_keyname = cls._get_meta_data().hash_keyname
         return attributes[cls._dynamo_to_python_attr(hash_keyname)]
 
@@ -1295,7 +1295,7 @@ class Model(AttributeContainer):
 
         :param attrs: A dictionary of attributes to update this item with.
         """
-        for name, attr in self._get_attributes().items():
+        for name, attr in self.get_attributes().items():
             value = attrs.get(attr.attr_name, None)
             if value is not None:
                 value = value.get(ATTR_TYPE_MAP[attr.attr_type], None)
@@ -1312,7 +1312,7 @@ class Model(AttributeContainer):
         """
         attributes = pythonic(ATTRIBUTES)
         attrs = {attributes: {}}
-        for name, attr in self._get_attributes().items():
+        for name, attr in self.get_attributes().items():
             value = getattr(self, name)
             if isinstance(value, MapAttribute):
                 if not value.validate():
