@@ -22,7 +22,11 @@ from six.moves import range
 
 from pynamodb.compat import NullHandler
 from pynamodb.connection.util import pythonic
-from pynamodb.connection.dax import DaxClient
+from pynamodb.connection.dax import (
+    OP_READ,
+    OP_WRITE,
+    DaxClient,
+)
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -317,9 +321,9 @@ class Connection(object):
 
         self.send_pre_boto_callback(operation_name, req_uuid, table_name)
 
-        if operation_name in DaxClient.OP_WRITE.keys() and self.dax_write_endpoints:
+        if operation_name in OP_WRITE.keys() and self.dax_write_endpoints:
             data = self.dax_write_client.dispatch(operation_name, operation_kwargs)
-        elif operation_name in DaxClient.OP_READ.keys() and self.dax_read_endpoints:
+        elif operation_name in OP_READ.keys() and self.dax_read_endpoints:
             data = self.dax_read_client.dispatch(operation_name, operation_kwargs)
         else:
             data = self._make_api_call(operation_name, operation_kwargs)
