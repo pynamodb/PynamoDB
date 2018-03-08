@@ -26,5 +26,5 @@ class DaxClient(object):
         self.connection = AmazonDaxClient(session, endpoints=endpoints)
 
     def dispatch(self, operation_name, kwargs):
-        method = getattr(self.connection, self.OP_NAME_TO_METHOD[operation_name])
+        method = getattr(self.connection, OP_NAME_TO_METHOD[operation_name])
         return method(**kwargs)
