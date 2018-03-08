@@ -319,7 +319,7 @@ class Connection(object):
 
         if operation_name in DaxClient.OP_WRITE.keys() and self.dax_write_endpoints:
             data = self.dax_write_client.dispatch(operation_name, operation_kwargs)
-        if operation_name in DaxClient.OP_READ.keys() and self.dax_read_endpoints:
+        elif operation_name in DaxClient.OP_READ.keys() and self.dax_read_endpoints:
             data = self.dax_read_client.dispatch(operation_name, operation_kwargs)
         else:
             data = self._make_api_call(operation_name, operation_kwargs)
@@ -503,6 +503,7 @@ class Connection(object):
         # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
         if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host)
+            log.info('create client')
         return self._client
 
     @property
