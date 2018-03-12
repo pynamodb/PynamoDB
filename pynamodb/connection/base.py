@@ -518,7 +518,7 @@ class Connection(object):
     @property
     def dax_read_client(self):
         if self._dax_read_client is None:
-            self._dax_read_client = DaxClient(self.session, endpoints=self.dax_read_endpoints)
+            self._dax_read_client = DaxClient(endpoints=self.dax_read_endpoints)
         return self._dax_read_client
 
     def get_meta_table(self, table_name, refresh=False):
