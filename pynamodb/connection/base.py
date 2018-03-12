@@ -512,7 +512,7 @@ class Connection(object):
     @property
     def dax_write_client(self):
         if self._dax_write_client is None:
-            self._dax_write_client = DaxClient(self.session, endpoints=self.dax_write_endpoints)
+            self._dax_write_client = DaxClient(endpoints=self.dax_write_endpoints)
         return self._dax_write_client
 
     @property
