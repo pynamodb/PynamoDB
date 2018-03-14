@@ -735,9 +735,7 @@ class MapAttribute(Attribute, AttributeContainer):
         rval = {}
         for k in values:
             v = values[k]
-            # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
-            # This special case behavior for "raw" attribtues should be removed in the future.
-            if not self.is_raw() and v is None:
+            if self._should_skip(v):
                 continue
             attr_class = self._get_serialize_class(k, v)
             if attr_class is None:
@@ -751,7 +749,12 @@ class MapAttribute(Attribute, AttributeContainer):
             attr = self._get_attributes().get(k)
             attr_name = attr.attr_name if attr else k
 
-            rval[attr_name] = {attr_key: attr_class.serialize(v)}
+            serialized = attr_class.serialize(v)
+            if self._should_skip(serialized):
+                # Check after we serialize in case the serialized value is null
+                continue
+
+            rval[attr_name] = {attr_key: serialized}
 
         return rval
 
@@ -787,6 +790,11 @@ class MapAttribute(Attribute, AttributeContainer):
         for key, value in six.iteritems(self.attribute_values):
             result[key] = value.as_dict() if isinstance(value, MapAttribute) else value
         return result
+
+    def _should_skip(self, value):
+        # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
+        # This special case behavior for "raw" attribtues should be removed in the future.
+        return not self.is_raw() and value is None
 
     @classmethod
     def _get_serialize_class(cls, key, value):
