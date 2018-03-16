@@ -359,7 +359,9 @@ class Connection(object):
             except (requests.RequestException, ValueError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
-                    raise
+
+                    e.args += (str(response.content),)
+                    raise e
                 else:
                     # No backoff for fast-fail exceptions that likely failed at the frontend
                     log.debug(
