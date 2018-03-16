@@ -51,6 +51,7 @@ class CustomAttrMap(MapAttribute):
 
 class DefaultsMap(MapAttribute):
     map_field = MapAttribute(default={})
+    string_field = UnicodeAttribute(null=True)
 
 
 class TestAttributeDescriptor:
@@ -569,6 +570,14 @@ class TestMapAttribute:
     def test_null_attribute_subclassed_map(self):
         null_attribute = {
             'map_field': None
+        }
+        attr = DefaultsMap()
+        serialized = attr.serialize(null_attribute)
+        assert serialized == {}
+
+    def test_null_attribute_map_after_serialization(self):
+        null_attribute = {
+            'string_field': '',
         }
         attr = DefaultsMap()
         serialized = attr.serialize(null_attribute)
