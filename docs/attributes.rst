@@ -36,10 +36,10 @@ You can write your own attribute class which defines the necessary methods like 
         # attribute
         attr_type = BINARY
 
-        def serialize(value):
+        def serialize(self, value):
             # convert the value to binary and return it
 
-        def deserialize(value):
+        def deserialize(self, value):
             # convert the value from binary back into whatever type you require
 
 
