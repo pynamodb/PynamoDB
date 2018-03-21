@@ -466,8 +466,6 @@ class EnumAttribute(Attribute):
         value = other[1]
         ret = copy.deepcopy(self.multikey_map)
         ret[key]=value
-        result = self.serialize(ret)
-        print (result)
         return Path(self).__eq__(ret)
 
 class JSONAttribute(Attribute):
