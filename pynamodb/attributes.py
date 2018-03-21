@@ -426,7 +426,7 @@ class EnumAttribute(Attribute):
     attr_type = STRING
 
     def __init__(self, type_set={}, *args, **kwargs):
-        self.type_set = {ATTR_TYPE_MAP[x.attr_type]: x for x in type_set}
+        self.type_set = {(ATTR_TYPE_MAP[x.attr_type]): x for x in type_set}
         self.multikey_map = MultiKeyMap()
         for t in type_set:
             self.multikey_map.add_keys(ATTR_TYPE_MAP[t.attr_type], [t.attr_type, t.__class__, t.__class__.__name__ ])
