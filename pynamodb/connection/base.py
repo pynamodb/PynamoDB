@@ -321,12 +321,7 @@ class Connection(object):
 
         self.send_pre_boto_callback(operation_name, req_uuid, table_name)
 
-        if operation_name in OP_WRITE.keys() and self.dax_write_endpoints:
-            data = self.dax_write_client.dispatch(operation_name, operation_kwargs)
-        elif operation_name in OP_READ.keys() and self.dax_read_endpoints:
-            data = self.dax_read_client.dispatch(operation_name, operation_kwargs)
-        else:
-            data = self._make_api_call(operation_name, operation_kwargs)
+        data = self._make_api_call(operation_name, operation_kwargs)
 
         self.send_post_boto_callback(operation_name, req_uuid, table_name)
 
@@ -355,6 +350,11 @@ class Connection(object):
         1. It's faster to avoid using botocore's response parsing
         2. It provides a place to monkey patch requests for unit testing
         """
+        if operation_name in OP_WRITE.keys() and self.dax_write_endpoints:
+            return self.dax_write_client.dispatch(operation_name, operation_kwargs)
+        elif operation_name in OP_READ.keys() and self.dax_read_endpoints:
+            return self.dax_read_client.dispatch(operation_name, operation_kwargs)
+
         operation_model = self.client._service_model.operation_model(operation_name)
         request_dict = self.client._convert_to_request_dict(
             operation_kwargs,
