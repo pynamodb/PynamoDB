@@ -60,7 +60,7 @@ def test_basic_rate_limiting_small_increment():
         r.consume(1)
 
     # Since the first acquire doesn't take time, thus we should be expecting (100-1) * 10 seconds = 990 delay
-    # plus 1 for the last increment_time(1) operation
+    # plus 2 for the last increment_time(2) operation
     assert mock_time.time() == 992.0
 
 
