@@ -2,9 +2,6 @@ import pytest
 from pynamodb.pagination import RateLimiter
 
 
-PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
-
-
 class MockTime():
     def __init__(self):
         self.current_time = 0.0
