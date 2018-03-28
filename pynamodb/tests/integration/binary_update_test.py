@@ -34,12 +34,12 @@ def test_binary_set_attribute_update(ddb_url):
         data = BinarySetAttribute()
 
     DataModel.create_table(read_capacity_units=1, write_capacity_units=1)
-    data = {b'\x00hey\xfb', b'\x00beautiful\xfb'}
+    data = set([b'\x00hey\xfb', b'\x00beautiful\xfb'])
     pkey = 'pkey'
     DataModel(pkey, data=data).save()
     m = DataModel.get(pkey)
     assert m.data == data
 
-    new_data = {b'\xff'}
+    new_data = set([b'\xff'])
     m.update(actions=[DataModel.data.set(new_data)])
     assert new_data == m.data
