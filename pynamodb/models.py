@@ -536,6 +536,7 @@ class Model(AttributeContainer):
               consistent_read=False,
               index_name=None,
               limit=None,
+              rate_limit=None,
               **filters):
         """
         Provides a filtered count
@@ -589,7 +590,8 @@ class Model(AttributeContainer):
             cls._get_connection().query,
             query_args,
             query_kwargs,
-            limit=limit
+            limit=limit,
+            rate_limit=rate_limit
         )
 
         # iterate through results
@@ -674,7 +676,8 @@ class Model(AttributeContainer):
             query_args,
             query_kwargs,
             map_fn=cls.from_raw_data,
-            limit=limit
+            limit=limit,
+            rate_limit=None
         )
 
     @classmethod
@@ -807,7 +810,8 @@ class Model(AttributeContainer):
             scan_args,
             scan_kwargs,
             map_fn=cls.from_raw_data,
-            limit=limit
+            limit=limit,
+            rate_limit=None,
         )
 
     @classmethod
