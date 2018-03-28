@@ -328,8 +328,11 @@ class BinarySetAttribute(SetMixin, Attribute):
         """
         Returns a decoded string from base64
         """
-        if value and len(value):
-            return set([b64decode(val.encode(DEFAULT_ENCODING)) for val in value])
+        try:
+            if value and len(value):
+                return set([b64decode(val.decode(DEFAULT_ENCODING)) for val in value])
+        except AttributeError:
+            return set([b64decode(val) for val in value])
 
 
 class UnicodeSetAttribute(SetMixin, Attribute):
