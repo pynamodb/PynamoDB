@@ -21,6 +21,7 @@ class RateLimiter(object):
     def __init__(self, rate_limit, time_module = None):
         """
         Initializes a RateLimiter object
+
         :param rate_limit: The desired rate
         :param time_module: Optional: the module responsible for calculating time. Intended to be used for testing purposes.
         """
@@ -34,7 +35,9 @@ class RateLimiter(object):
     def consume(self, units):
         """
         Records the amount of units consumed.
+
         :param units: Number of units consumed
+
         :return: None
         """
         self._consumed += units
@@ -42,6 +45,7 @@ class RateLimiter(object):
     def acquire(self):
         """
         Sleeps the appropriate amount of time to follow the rate limit restriction
+
         :return: None
         """
 
