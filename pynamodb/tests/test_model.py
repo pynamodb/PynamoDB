@@ -3306,6 +3306,33 @@ class ModelTestCase(TestCase):
             self.assertEqual(req.call_args[0][1], params)
 
         with patch(PATCH_METHOD) as req:
+            # equal to:
+            # for item in IndexedModel.email_index.query('foo', IndexedModel.numbers == [1, 2], limit=1):
+            for item in IndexedModel.email_index.get('foo', range_key=[1, 2]):
+                pass
+
+            params = {
+                'KeyConditionExpression': '(#0 = :0 AND #1 = :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'numbers'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
+                    },
+                    ':1': {
+                        'NS': ['1', '2']
+                    }
+                },
+                'IndexName': 'custom_idx_name',
+                'TableName': 'IndexedModel',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Limit': 1
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
