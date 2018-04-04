@@ -9,6 +9,7 @@ from pynamodb.attributes import Attribute
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import getmembers_issubclass
 from pynamodb.connection.util import pythonic
+from pynamodb.exceptions import DoesNotExist
 from six import with_metaclass
 
 
@@ -136,11 +137,17 @@ class Index(with_metaclass(IndexMeta)):
             if range_attr is not None:
                 range_key_condition = (range_attr == range_key)
 
-        return cls.query(hash_key,
-                         range_key_condition=range_key_condition,
-                         consistent_read=consistent_read,
-                         limit=1,
-                         attributes_to_get=attributes_to_get)
+        items = cls.query(hash_key,
+                          range_key_condition=range_key_condition,
+                          consistent_read=consistent_read,
+                          limit=1,
+                          attributes_to_get=attributes_to_get)
+
+        item = next(items, None)
+        if item is None:
+            raise DoesNotExist()
+
+        return item
 
     @classmethod
     def _hash_key_attribute(cls):
