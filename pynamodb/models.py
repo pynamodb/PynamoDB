@@ -612,6 +612,7 @@ class Model(AttributeContainer):
               last_evaluated_key=None,
               attributes_to_get=None,
               page_size=None,
+              rate_limit=None,
               **filters):
         """
         Provides a high level query API
@@ -677,7 +678,7 @@ class Model(AttributeContainer):
             query_kwargs,
             map_fn=cls.from_raw_data,
             limit=limit,
-            rate_limit=None
+            rate_limit=rate_limit
         )
 
     @classmethod
@@ -766,6 +767,7 @@ class Model(AttributeContainer):
              page_size=None,
              consistent_read=None,
              index_name=None,
+             rate_limit=None,
              **filters):
         """
         Iterates through all items in the table
@@ -811,7 +813,7 @@ class Model(AttributeContainer):
             scan_kwargs,
             map_fn=cls.from_raw_data,
             limit=limit,
-            rate_limit=None,
+            rate_limit=rate_limit,
         )
 
     @classmethod
