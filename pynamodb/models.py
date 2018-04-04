@@ -536,6 +536,7 @@ class Model(AttributeContainer):
               consistent_read=False,
               index_name=None,
               limit=None,
+              rate_limit=None,
               **filters):
         """
         Provides a filtered count
@@ -589,7 +590,8 @@ class Model(AttributeContainer):
             cls._get_connection().query,
             query_args,
             query_kwargs,
-            limit=limit
+            limit=limit,
+            rate_limit=rate_limit
         )
 
         # iterate through results
@@ -610,6 +612,7 @@ class Model(AttributeContainer):
               last_evaluated_key=None,
               attributes_to_get=None,
               page_size=None,
+              rate_limit=None,
               **filters):
         """
         Provides a high level query API
@@ -674,7 +677,8 @@ class Model(AttributeContainer):
             query_args,
             query_kwargs,
             map_fn=cls.from_raw_data,
-            limit=limit
+            limit=limit,
+            rate_limit=rate_limit
         )
 
     @classmethod
@@ -763,6 +767,7 @@ class Model(AttributeContainer):
              page_size=None,
              consistent_read=None,
              index_name=None,
+             rate_limit=None,
              **filters):
         """
         Iterates through all items in the table
@@ -807,7 +812,8 @@ class Model(AttributeContainer):
             scan_args,
             scan_kwargs,
             map_fn=cls.from_raw_data,
-            limit=limit
+            limit=limit,
+            rate_limit=rate_limit,
         )
 
     @classmethod
