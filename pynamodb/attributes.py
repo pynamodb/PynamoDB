@@ -89,11 +89,15 @@ class Attribute(object):
 
     # Condition Expression Support
     def __eq__(self, other):
+        if isinstance(other, MapAttribute) and other._is_attribute_container():
+            return Path(self).__eq__(other)
         if other is None or isinstance(other, Attribute):  # handle object identity comparison
             return self is other
         return Path(self).__eq__(other)
 
     def __ne__(self, other):
+        if isinstance(other, MapAttribute) and other._is_attribute_container():
+            return Path(self).__ne__(other)
         if other is None or isinstance(other, Attribute):  # handle object identity comparison
             return self is not other
         return Path(self).__ne__(other)
@@ -256,6 +260,14 @@ class AttributeContainer(object):
             if attr_name not in self._get_attributes():
                 raise ValueError("Attribute {0} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
+
+    def __eq__(self, other):
+        # This is required for python 2 support so that MapAttribute can call this method.
+        return self is other
+
+    def __ne__(self, other):
+        # This is required for python 2 support so that MapAttribute can call this method.
+        return self is not other
 
 
 class SetMixin(object):
@@ -660,6 +672,16 @@ class MapAttribute(Attribute, AttributeContainer):
             local_attr.attr_path.insert(0, path_segment)
             if isinstance(local_attr, MapAttribute):
                 local_attr._update_attribute_paths(path_segment)
+
+    def __eq__(self, other):
+        if self._is_attribute_container():
+            return AttributeContainer.__eq__(self, other)
+        return Attribute.__eq__(self, other)
+
+    def __ne__(self, other):
+        if self._is_attribute_container():
+            return AttributeContainer.__ne__(self, other)
+        return Attribute.__ne__(self, other)
 
     def __iter__(self):
         if self._is_attribute_container():
