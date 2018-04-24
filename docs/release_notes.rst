@@ -1,6 +1,50 @@
 Release Notes
 =============
 
+v3.3.0
+------
+
+:date: 2018-04-24
+
+This is a backwards compatible, major bug fix release.
+
+New features in this release:
+
+
+* Support scan operations on secondary indexes. (#141, #392)
+* Support projections in model get function. (#337, #403)
+* Handle values from keys when batch get returns unprocessed keys. (#252, #376)
+* Externalizes AWS Credentials. (#426)
+* Add migration support for LegacyBooleanAttribute. (#404, #405)
+* Add python 3.5 for Travis ci builds. (#437)
+* Rate limited Page Iterator. (#481)
+
+
+Fixes in this release:
+
+* Thread-safe client creation in botocore. (#153, #393)
+* Use attr.get_value(value) when deserialize. (#450) 
+* Skip null attributes post serialization for maps. (#455)
+* Fix deserialization bug in BinaryAttribute and BinarySetAttribute. (#459, #480)
+* Allow MapAttribute instances to be used as the RHS in expressions. (#488)
+* Return the correct last_evaluated_key for limited queries/scans. (#406, #410)
+* Fix exclusive_start_key getting lost in PageIterator. (#421)
+
+Contributors to this release:
+
+* @jpinner-lyft
+* @scode
+* @behos
+* @jmphilli
+* @drewisme
+* @nicysneiros
+* @jcomo
+* @kevgliss
+* @asottile 
+* @harleyk
+* @betamoo
+
+
 v3.2.1
 ------
 
