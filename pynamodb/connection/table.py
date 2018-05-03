@@ -19,7 +19,8 @@ class TableConnection(object):
                  max_retry_attempts=None,
                  base_backoff_ms=None,
                  aws_access_key_id=None,
-                 aws_secret_access_key=None):
+                 aws_secret_access_key=None,
+                 aws_session_token=None):
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
@@ -29,10 +30,34 @@ class TableConnection(object):
                                      request_timeout_seconds=request_timeout_seconds,
                                      max_retry_attempts=max_retry_attempts,
                                      base_backoff_ms=base_backoff_ms)
+        if aws_access_key_id:
+            self.connection.requests_session.aws_access_key_id = (
+                aws_access_key_id)
 
+        if aws_secret_access_key:
+            self.connection.requests_session.aws_secret_access_key = (
+                    aws_secret_access_key)
+
+        if aws_session_token:
+            self.connection.requests_session.aws_session_token = (
+                    aws_session_token)
+
+        session_args = []
         if aws_access_key_id and aws_secret_access_key:
-            self.connection.session.set_credentials(aws_access_key_id,
-                                                    aws_secret_access_key)
+            session_args.append(aws_access_key_id)
+            session_args.append(aws_secret_access_key)
+
+            if aws_session_token:
+                session_args.append(aws_session_token)
+
+            session_args = tuple(session_args)
+            self.connection.session.set_credentials(*session_args)
+
+    def get_meta_table(self, refresh=False):
+        """
+        Returns a MetaTable
+        """
+        return self.connection.get_meta_table(self.table_name, refresh=refresh)
 
     def get_meta_table(self, refresh=False):
         """

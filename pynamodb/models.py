@@ -188,6 +188,8 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_access_key_id', None)
                     if not hasattr(attr_obj, 'aws_secret_access_key'):
                         setattr(attr_obj, 'aws_secret_access_key', None)
+                    if not hasattr(attr_obj, 'aws_session_token'):
+                        setattr(attr_obj, 'aws_session_token', None)
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -1292,7 +1294,8 @@ class Model(AttributeContainer):
                                               max_retry_attempts=cls.Meta.max_retry_attempts,
                                               base_backoff_ms=cls.Meta.base_backoff_ms,
                                               aws_access_key_id=cls.Meta.aws_access_key_id,
-                                              aws_secret_access_key=cls.Meta.aws_secret_access_key)
+                                              aws_secret_access_key=cls.Meta.aws_secret_access_key,
+                                              aws_session_token=cls.Meta.aws_session_token)
         return cls._connection
 
     def _deserialize(self, attrs):
