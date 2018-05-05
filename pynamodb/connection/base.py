@@ -229,9 +229,14 @@ class Connection(object):
 
     def __init__(self, region=None, host=None, session_cls=None,
                  request_timeout_seconds=None, max_retry_attempts=None,
-                 base_backoff_ms=None, dax_write_endpoints=[], dax_read_endpoints=[]):
+                 base_backoff_ms=None, dax_write_endpoints=None, dax_read_endpoints=None,
+                 fall_back_to_dynamodb=False):
         self._tables = {}
         self.host = host
+        if not dax_write_endpoints:
+            dax_write_endpoints = []
+        if not dax_read_endpoints:
+            dax_read_endpoints = []
         self.dax_write_endpoints = dax_write_endpoints
         self.dax_read_endpoints = dax_read_endpoints
         self._local = local()
@@ -263,6 +268,11 @@ class Connection(object):
             self._base_backoff_ms = base_backoff_ms
         else:
             self._base_backoff_ms = get_settings_value('base_backoff_ms')
+
+        if fall_back_to_dynamodb is not None:
+            self._fall_back_to_dynamodb = fall_back_to_dynamodb
+        else:
+            self._fall_back_to_dynamodb = get_settings_value('fall_back_to_dynamodb')
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
@@ -350,10 +360,15 @@ class Connection(object):
         1. It's faster to avoid using botocore's response parsing
         2. It provides a place to monkey patch requests for unit testing
         """
-        if operation_name in OP_WRITE.keys() and self.dax_write_endpoints:
-            return self.dax_write_client.dispatch(operation_name, operation_kwargs)
-        elif operation_name in OP_READ.keys() and self.dax_read_endpoints:
-            return self.dax_read_client.dispatch(operation_name, operation_kwargs)
+        from amazondax.DaxError import DaxClientError
+        try:
+            if operation_name in OP_WRITE.keys() and self.dax_write_endpoints:
+                return self.dax_write_client.dispatch(operation_name, operation_kwargs)
+            elif operation_name in OP_READ.keys() and self.dax_read_endpoints:
+                return self.dax_read_client.dispatch(operation_name, operation_kwargs)
+        except DaxClientError as err:
+            if not self._fall_back_to_dynamodb:
+                raise err
 
         operation_model = self.client._service_model.operation_model(operation_name)
         request_dict = self.client._convert_to_request_dict(
@@ -512,13 +527,19 @@ class Connection(object):
     @property
     def dax_write_client(self):
         if self._dax_write_client is None:
-            self._dax_write_client = DaxClient(endpoints=self.dax_write_endpoints)
+            self._dax_write_client = DaxClient(
+                endpoints=self.dax_write_endpoints,
+                region_name=self.region
+            )
         return self._dax_write_client
 
     @property
     def dax_read_client(self):
         if self._dax_read_client is None:
-            self._dax_read_client = DaxClient(endpoints=self.dax_read_endpoints)
+            self._dax_read_client = DaxClient(
+                endpoints=self.dax_read_endpoints,
+                region_name=self.region
+            )
         return self._dax_read_client
 
     def get_meta_table(self, table_name, refresh=False):
