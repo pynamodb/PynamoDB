@@ -42,7 +42,7 @@ class TestModel(Model):
         host = cfg.DYNAMODB_HOST
     forum = UnicodeAttribute(hash_key=True)
     thread = UnicodeAttribute(range_key=True)
-    view = NumberAttribute(default=0)
+    view = NumberAttribute(default=lambda: 0)
     view_index = LSIndex()
     epoch_index = GSIndex()
     epoch = UTCDateTimeAttribute(default=datetime.now)

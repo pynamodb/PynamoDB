@@ -391,7 +391,7 @@ class TreeModel(Model):
 class ExplicitRawMapModel(Model):
     class Meta:
         table_name = 'ExplicitRawMapModel'
-    map_id = NumberAttribute(hash_key=True, default=123)
+    map_id = NumberAttribute(hash_key=True, default=lambda: 123)
     map_attr = MapAttribute()
 
 

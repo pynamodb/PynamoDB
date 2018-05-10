@@ -21,7 +21,7 @@ class ViewIndex(GlobalSecondaryIndex):
     # This attribute is the hash key for the index
     # Note that this attribute must also exist
     # in the model
-    view = NumberAttribute(default=0, hash_key=True)
+    view = NumberAttribute(default=lambda: 0, hash_key=True)
 
 
 class TestModel(Model):
@@ -35,7 +35,7 @@ class TestModel(Model):
     forum = UnicodeAttribute(hash_key=True)
     thread = UnicodeAttribute(range_key=True)
     view_index = ViewIndex()
-    view = NumberAttribute(default=0)
+    view = NumberAttribute(default=lambda: 0)
 
 if not TestModel.exists():
     TestModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)

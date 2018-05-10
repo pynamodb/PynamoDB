@@ -155,14 +155,14 @@ Want to use indexes? No problem:
             read_capacity_units = 2
             write_capacity_units = 1
             projection = AllProjection()
-        view = NumberAttribute(default=0, hash_key=True)
+        view = NumberAttribute(default=lambda: 0, hash_key=True)
 
     class TestModel(Model):
         class Meta:
             table_name = "TestModel"
         forum = UnicodeAttribute(hash_key=True)
         thread = UnicodeAttribute(range_key=True)
-        view = NumberAttribute(default=0)
+        view = NumberAttribute(default=lambda: 0)
         view_index = ViewIndex()
 
 Now query the index for all items with 0 views:

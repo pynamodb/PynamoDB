@@ -23,7 +23,7 @@ Suppose that you have defined a `Thread` Model for the examples below.
 
         forum_name = UnicodeAttribute(hash_key=True)
         subject = UnicodeAttribute(range_key=True)
-        views = NumberAttribute(default=0)
+        views = NumberAttribute(default=lambda: 0)
 
 .. _conditions:
 

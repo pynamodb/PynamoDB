@@ -40,7 +40,7 @@ Indexes are defined as classes, just like models. Here is a simple index class:
         # This attribute is the hash key for the index
         # Note that this attribute must also exist
         # in the model
-        view = NumberAttribute(default=0, hash_key=True)
+        view = NumberAttribute(default=lambda: 0, hash_key=True)
 
 
 Global indexes require you to specify the read and write capacity, as we have done
@@ -70,7 +70,7 @@ a class attribute on the model, as in this example:
         forum = UnicodeAttribute(hash_key=True)
         thread = UnicodeAttribute(range_key=True)
         view_index = ViewIndex()
-        view = NumberAttribute(default=0)
+        view = NumberAttribute(default=lambda: 0)
 
 
 Local Secondary Indexes

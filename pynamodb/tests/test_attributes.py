@@ -50,7 +50,7 @@ class CustomAttrMap(MapAttribute):
 
 
 class DefaultsMap(MapAttribute):
-    map_field = MapAttribute(default={})
+    map_field = MapAttribute(default=dict)
     string_field = UnicodeAttribute(null=True)
 
 
@@ -126,6 +126,15 @@ class TestAttributeDescriptor:
         assert self.instance.json_attr == {'foo': 'bar', 'bar': 42}
 
 
+class TestAttribute:
+    def test_default_must_be_callable(self):
+        Attribute(default=lambda: 42)
+        with pytest.raises(TypeError):
+            Attribute(default=None)
+        with pytest.raises(TypeError):
+            Attribute(default=42)
+
+
 class TestUTCDateTimeAttribute:
     """
     Tests UTCDateTime attributes
@@ -137,9 +146,8 @@ class TestUTCDateTimeAttribute:
         attr = UTCDateTimeAttribute()
         assert attr is not None
         assert attr.attr_type == STRING
-        tstamp = datetime.now()
-        attr = UTCDateTimeAttribute(default=tstamp)
-        assert attr.default == tstamp
+        attr = UTCDateTimeAttribute(default=datetime.now)
+        assert attr.default == datetime.now
 
     def test_utc_date_time_deserialize(self):
         """
@@ -192,9 +200,6 @@ class TestBinaryAttribute:
         attr = BinaryAttribute()
         assert attr is not None
         assert attr.attr_type == BINARY
-
-        attr = BinaryAttribute(default=b'foo')
-        assert attr.default == b'foo'
 
     def test_binary_round_trip(self):
         """
@@ -258,9 +263,6 @@ class TestBinaryAttribute:
         attr = BinarySetAttribute()
         assert attr is not None
 
-        attr = BinarySetAttribute(default=set([b'foo', b'bar']))
-        assert attr.default == set([b'foo', b'bar'])
-
 
 class TestNumberAttribute:
     """
@@ -273,9 +275,6 @@ class TestNumberAttribute:
         attr = NumberAttribute()
         assert attr is not None
         assert attr.attr_type == NUMBER
-
-        attr = NumberAttribute(default=1)
-        assert attr.default == 1
 
     def test_number_serialize(self):
         """
@@ -318,9 +317,6 @@ class TestNumberAttribute:
         attr = NumberSetAttribute()
         assert attr is not None
 
-        attr = NumberSetAttribute(default=set([1, 2]))
-        assert attr.default == set([1, 2])
-
 
 class TestUnicodeAttribute:
     """
@@ -333,9 +329,6 @@ class TestUnicodeAttribute:
         attr = UnicodeAttribute()
         assert attr is not None
         assert attr.attr_type == STRING
-
-        attr = UnicodeAttribute(default=six.u('foo'))
-        assert attr.default == six.u('foo')
 
     def test_unicode_serialize(self):
         """
@@ -413,8 +406,6 @@ class TestUnicodeAttribute:
         attr = UnicodeSetAttribute()
         assert attr is not None
         assert attr.attr_type == STRING_SET
-        attr = UnicodeSetAttribute(default=set([six.u('foo'), six.u('bar')]))
-        assert attr.default == set([six.u('foo'), six.u('bar')])
 
 
 class TestLegacyBooleanAttribute:
@@ -467,10 +458,7 @@ class TestBooleanAttribute:
         """
         attr = BooleanAttribute()
         assert attr is not None
-
         assert attr.attr_type == BOOLEAN
-        attr = BooleanAttribute(default=True)
-        assert attr.default is True
 
     def test_boolean_serialize(self):
         """
@@ -510,10 +498,7 @@ class TestJSONAttribute:
         """
         attr = JSONAttribute()
         assert attr is not None
-
         assert attr.attr_type == STRING
-        attr = JSONAttribute(default={})
-        assert attr.default == {}
 
     def test_json_serialize(self):
         """
@@ -929,7 +914,7 @@ class TestMapAndListAttribute:
 
         inp = [person1, person2]
 
-        list_attribute = ListAttribute(default=[], of=Person)
+        list_attribute = ListAttribute(default=list, of=Person)
         serialized = list_attribute.serialize(inp)
         deserialized = list_attribute.deserialize(serialized)
         assert sorted(deserialized) == sorted(inp)
@@ -953,7 +938,7 @@ class TestMapAndListAttribute:
 
         inp = [attribute1, attribute2]
 
-        list_attribute = ListAttribute(default=[], of=CustomMapAttribute)
+        list_attribute = ListAttribute(default=list, of=CustomMapAttribute)
         serialized = list_attribute.serialize(inp)
         deserialized = list_attribute.deserialize(serialized)
 
