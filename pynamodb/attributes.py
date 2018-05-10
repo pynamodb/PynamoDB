@@ -27,13 +27,17 @@ class Attribute(object):
     attr_type = None
     null = False
 
+    _no_default = object()
+
     def __init__(self,
                  hash_key=False,
                  range_key=False,
                  null=None,
-                 default=None,
+                 default=_no_default,
                  attr_name=None
                  ):
+        if not (default is self._no_default or callable(default)):
+            raise TypeError("'default' should be a callable")
         self.default = default
         if null is not None:
             self.null = null
@@ -255,11 +259,10 @@ class AttributeContainer(object):
         Sets and fields that provide a default value
         """
         for name, attr in self.get_attributes().items():
-            default = attr.default
-            if callable(default):
-                value = default()
+            if callable(attr.default):
+                value = attr.default()
             else:
-                value = default
+                value = None
             if value is not None:
                 setattr(self, name, value)
 
@@ -585,7 +588,7 @@ class MapAttribute(Attribute, AttributeContainer):
     For example, below we define "MyModel" which contains a MapAttribute "my_map":
 
     class MyModel(Model):
-       my_map = MapAttribute(attr_name="dynamo_name", default={})
+       my_map = MapAttribute(attr_name="dynamo_name", default=dict)
 
     When instantiated in this manner (as a class attribute of an AttributeContainer class), the MapAttribute
     class acts as an instance of the Attribute class. The instance stores data about the attribute (in this
@@ -885,7 +888,8 @@ class ListAttribute(Attribute):
     attr_type = LIST
     element_type = None
 
-    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, of=None):
+    def __init__(self, hash_key=False, range_key=False, null=None, default=Attribute._no_default, attr_name=None,
+                 of=None):
         super(ListAttribute, self).__init__(hash_key=hash_key,
                                             range_key=range_key,
                                             null=null,

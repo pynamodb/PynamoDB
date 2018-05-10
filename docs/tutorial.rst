@@ -71,9 +71,9 @@ Here is an example, using the same table structure as shown in `Amazon's DynamoD
 
         forum_name = UnicodeAttribute(hash_key=True)
         subject = UnicodeAttribute(range_key=True)
-        views = NumberAttribute(default=0)
-        replies = NumberAttribute(default=0)
-        answered = NumberAttribute(default=0)
+        views = NumberAttribute(default=lambda: 0)
+        replies = NumberAttribute(default=lambda: 0)
+        answered = NumberAttribute(default=lambda: 0)
         tags = UnicodeSetAttribute()
         last_post_datetime = UTCDateTimeAttribute()
 
@@ -144,7 +144,7 @@ Here is an example of an attribute with a default value:
     class Thread(Model):
         class Meta:
             table_name = 'Thread'
-        forum_name = UnicodeAttribute(hash_key=True, default='My Default Value')
+        forum_name = UnicodeAttribute(hash_key=True, default=lambda: 'My Default Value')
 
 Here is an example of an attribute with a default *callable* value:
 
@@ -159,7 +159,7 @@ Here is an example of an attribute with a default *callable* value:
     class Thread(Model):
         class Meta:
             table_name = 'Thread'
-        forum_name = UnicodeAttribute(hash_key=True, default=my_default_value)
+        forum_name = UnicodeAttribute(hash_key=True, default=lambda: my_default_value)
 
 Here is an example of an attribute that can be empty:
 

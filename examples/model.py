@@ -25,9 +25,9 @@ class Thread(Model):
         host = "http://localhost:8000"
     forum_name = UnicodeAttribute(hash_key=True)
     subject = UnicodeAttribute(range_key=True)
-    views = NumberAttribute(default=0)
-    replies = NumberAttribute(default=0)
-    answered = NumberAttribute(default=0)
+    views = NumberAttribute(default=lambda: 0)
+    replies = NumberAttribute(default=lambda: 0)
+    answered = NumberAttribute(default=lambda: 0)
     tags = UnicodeSetAttribute()
     last_post_datetime = UTCDateTimeAttribute(null=True)
 
@@ -96,9 +96,9 @@ class AliasedModel(Model):
         host = "http://localhost:8000"
     forum_name = UnicodeAttribute(hash_key=True, attr_name='fn')
     subject = UnicodeAttribute(range_key=True, attr_name='s')
-    views = NumberAttribute(default=0, attr_name='v')
-    replies = NumberAttribute(default=0, attr_name='rp')
-    answered = NumberAttribute(default=0, attr_name='an')
+    views = NumberAttribute(default=lambda: 0, attr_name='v')
+    replies = NumberAttribute(default=lambda: 0, attr_name='rp')
+    answered = NumberAttribute(default=lambda: 0, attr_name='an')
     tags = UnicodeSetAttribute(attr_name='t')
     last_post_datetime = UTCDateTimeAttribute(attr_name='lp')
 

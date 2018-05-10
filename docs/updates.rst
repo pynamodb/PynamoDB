@@ -20,9 +20,9 @@ Suppose that you have defined a `Thread` Model for the examples below.
             table_name = 'Thread'
 
         forum_name = UnicodeAttribute(hash_key=True)
-        subjects = UnicodeSetAttribute(default={})
-        views = NumberAttribute(default=0)
-        notes = ListAttribute(default=[])
+        subjects = UnicodeSetAttribute(default=dict)
+        views = NumberAttribute(default=lambda: 0)
+        notes = ListAttribute(default=list)
 
 
 .. _updates:

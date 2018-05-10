@@ -26,7 +26,7 @@ Here is an example showing how to enable logging for PynamoDB:
 
         forum_name = UnicodeAttribute(hash_key=True)
         subject = UnicodeAttribute(range_key=True)
-        views = NumberAttribute(default=0)
+        views = NumberAttribute(default=lambda: 0)
 
     # Scan
     for item in Thread.scan():

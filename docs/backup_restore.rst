@@ -22,7 +22,7 @@ To back up a table, you can simply use the provided `dump` method and write the 
 
         forum_name = UnicodeAttribute(hash_key=True)
         subject = UnicodeAttribute(range_key=True)
-        views = NumberAttribute(default=0)
+        views = NumberAttribute(default=lambda: 0)
 
     Thread.dump("thread_backup.json")
 
@@ -55,7 +55,7 @@ To restore items from a backup file, simply use the provided `load` method.
 
         forum_name = UnicodeAttribute(hash_key=True)
         subject = UnicodeAttribute(range_key=True)
-        views = NumberAttribute(default=0)
+        views = NumberAttribute(default=lambda: 0)
 
     Thread.load("thread_backup.json")
 
