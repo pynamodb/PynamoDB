@@ -1180,10 +1180,9 @@ class Connection(object):
                             latest_scan_consumed_capacity = 0
                         else:
                             raise ScanError(
-                                'Rate limited scan not possible because the server did not send back '
-                                'consumed capacity information. '
-                                'To allow rate-limited scans without consumed capacity information, '
-                                'such as when using DynamoDB Local, '
+                                'Rate limited scan not possible because the server did not report '
+                                'consumed capacity. To continue scanning without rate limiting '
+                                '(such as when using DynamoDB Local, which does not report consumed capacity), '
                                 'set allow_rate_limited_scan_without_consumed_capacity to True in settings.'
                             )
 
