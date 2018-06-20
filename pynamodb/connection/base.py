@@ -1179,10 +1179,13 @@ class Connection(object):
                         if allow_rate_limited_scan_without_consumed_capacity:
                             latest_scan_consumed_capacity = 0
                         else:
-                            raise ScanError('Rate limited scan not possible because the server did not send back '
-                                            'consumed capacity information. If you wish scans to complete anyway '
-                                            'without functioning rate limiting, set '
-                                            'allow_rate_limited_scan_without_consumed_capacity to True in settings.')
+                            raise ScanError(
+                                'Rate limited scan not possible because the server did not send back '
+                                'consumed capacity information. '
+                                'To allow rate-limited scans without consumed capacity information, '
+                                'such as when using DynamoDB Local, '
+                                'set allow_rate_limited_scan_without_consumed_capacity to True in settings.'
+                            )
 
                     last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
                     consecutive_provision_throughput_exceeded_ex = 0
