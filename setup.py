@@ -18,7 +18,7 @@ install_requires = [
 ]
 
 setup(
-    name='pynamodb',
+    name='pynamodb-ttl',
     version=__import__('pynamodb').__version__,
     packages=find_packages(),
     url='http://jlafon.io/pynamodb.html',
