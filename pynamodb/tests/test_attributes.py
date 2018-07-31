@@ -17,7 +17,7 @@ from pynamodb.constants import UTC, DATETIME_FORMAT
 from pynamodb.models import Model
 
 from pynamodb.attributes import (
-    BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
+    BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute, IntegerAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
     MapAttribute, MapAttributeMeta, ListAttribute, Attribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
@@ -38,6 +38,7 @@ class AttributeTestModel(Model):
     number_set_attr = NumberSetAttribute()
     unicode_attr = UnicodeAttribute()
     unicode_set_attr = UnicodeSetAttribute()
+    int_attr = IntegerAttribute()
     datetime_attr = UTCDateTimeAttribute()
     bool_attr = BooleanAttribute()
     json_attr = JSONAttribute()
@@ -88,6 +89,13 @@ class TestAttributeDescriptor:
         """
         self.instance.number_set_attr = set([1, 2])
         assert self.instance.number_set_attr == set([1, 2])
+
+    def test_integer_attr(self):
+        """
+        Number attribute descriptor
+        """
+        self.instance.int_attr = 42
+        assert self.instance.int_attr == 42
 
     def test_unicode_attr(self):
         """
@@ -490,6 +498,38 @@ class TestBooleanAttribute:
         assert attr.deserialize('0') is True
         assert attr.deserialize(True) is True
         assert attr.deserialize(False) is False
+
+
+class TestIntegerAttribute:
+    """
+    Tests integer attributes
+    """
+    def test_integer_attribute(self):
+        """
+        BooleanAttribute.default
+        """
+        attr = IntegerAttribute()
+        assert attr is not None
+
+        assert attr.attr_type == NUMBER
+        attr = IntegerAttribute(default=42)
+        assert attr.default is 42
+
+    def test_integer_serialize(self):
+        """
+        IntegerAttribute.serialize
+        """
+        attr = IntegerAttribute()
+        assert attr.serialize(42) == '42'
+        assert attr.serialize(42.42) == '42'
+
+    def test_integer_deserialize(self):
+        """
+        IntegerAttribute.deserialize
+        """
+        attr = IntegerAttribute()
+        assert attr.deserialize('42') is 42
+        assert attr.deserialize('42.42') is 42
 
 
 class TestJSONAttribute:

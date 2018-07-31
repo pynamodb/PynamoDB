@@ -525,6 +525,25 @@ class NumberAttribute(Attribute):
         return json.loads(value)
 
 
+class IntegerAttribute(Attribute):
+    """
+    An integer attribute; unlike, NumberAttribute, truncates to an integer
+    """
+    attr_type = NUMBER
+
+    def serialize(self, value):
+        """
+        Encode integers as JSON
+        """
+        return json.dumps(int(value))
+
+    def deserialize(self, value):
+        """
+        Decode numbers from JSON
+        """
+        return int(json.loads(value))
+
+
 class UTCDateTimeAttribute(Attribute):
     """
     An attribute for storing a UTC Datetime
