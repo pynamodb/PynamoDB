@@ -35,7 +35,9 @@ class _Operand(object):
     def _to_operand(self, value):
         if isinstance(value, _Operand):
             return value
-        from pynamodb.attributes import Attribute  # prevent circular import -- Attribute imports Path
+        from pynamodb.attributes import Attribute, MapAttribute  # prevent circular import -- Attribute imports Path
+        if isinstance(value, MapAttribute) and value._is_attribute_container():
+            return self._to_value(value)
         return Path(value) if isinstance(value, Attribute) else self._to_value(value)
 
     def _to_value(self, value):

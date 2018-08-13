@@ -425,6 +425,8 @@ class OverriddenSessionModel(Model):
         request_timeout_seconds = 9999
         max_retry_attempts = 200
         base_backoff_ms = 4120
+        aws_access_key_id = 'access_key_id'
+        aws_secret_access_key = 'secret_access_key'
         session_cls = OverriddenSession
 
     random_user_name = UnicodeAttribute(hash_key=True, attr_name='random_name_1')
@@ -671,6 +673,8 @@ class ModelTestCase(TestCase):
         self.assertEqual(OverriddenSessionModel.Meta.request_timeout_seconds, 9999)
         self.assertEqual(OverriddenSessionModel.Meta.max_retry_attempts, 200)
         self.assertEqual(OverriddenSessionModel.Meta.base_backoff_ms, 4120)
+        self.assertEqual(OverriddenSessionModel.Meta.aws_access_key_id, 'access_key_id')
+        self.assertEqual(OverriddenSessionModel.Meta.aws_secret_access_key, 'secret_access_key')
         self.assertTrue(OverriddenSessionModel.Meta.session_cls is OverriddenSession)
 
         self.assertEqual(OverriddenSessionModel._connection.connection._request_timeout_seconds, 9999)
@@ -2223,6 +2227,32 @@ class ModelTestCase(TestCase):
             self.assertEquals(results_iter.last_evaluated_key, None)
             self.assertEquals(results_iter.total_count, 30)
             self.assertEquals(results_iter.page_iter.total_scanned_count, 60)
+
+    def test_query_with_exclusive_start_key(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+
+            req.side_effect = [
+                {'Count': 10, 'ScannedCount': 10, 'Items': items[10:20], 'LastEvaluatedKey': {'user_id': items[19]['user_id']}},
+            ]
+            results_iter = UserModel.query('foo', limit=10, page_size=10, last_evaluated_key={'user_id': items[9]['user_id']})
+            self.assertEquals(results_iter.last_evaluated_key, {'user_id': items[9]['user_id']})
+
+            results = list(results_iter)
+            self.assertEqual(len(results), 10)
+            self.assertEqual(len(req.mock_calls), 1)
+            self.assertEquals(req.mock_calls[0][1][1]['Limit'], 10)
+            self.assertEquals(results_iter.last_evaluated_key, {'user_id': items[19]['user_id']})
+            self.assertEquals(results_iter.total_count, 10)
+            self.assertEquals(results_iter.page_iter.total_scanned_count, 10)
 
     def test_query(self):
         """

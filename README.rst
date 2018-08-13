@@ -95,20 +95,39 @@ PynamoDB allows you to create the table if needed (it must exist before you can 
 
     UserModel.create_table(read_capacity_units=1, write_capacity_units=1)
 
-Now, search your table for all users with a last name of 'Smith' and whose
-first name begins with 'J':
-
-.. code-block:: python
-
-    for user in UserModel.query("Smith", first_name__begins_with="J"):
-        print(user.first_name)
-
 Create a new user:
 
 .. code-block:: python
 
     user = UserModel("John", "Denver")
+    user.email = "djohn@company.org"
     user.save()
+
+Now, search your table for all users with a last name of 'John' and whose
+first name begins with 'D':
+
+.. code-block:: python
+
+    for user in UserModel.query("John", first_name__begins_with="D"):
+        print(user.first_name)
+
+Examples of ways to query your table with filter conditions:
+
+.. code-block:: python
+
+    for user in UserModel.query("John", filter_condition= (UserModel.email=="djohn@company.org")):
+        print(user.first_name)
+
+.. code-block:: python
+
+    for user in UserModel.query("John", UserModel.email=="djohn@company.org"):
+        print(user.first_name)
+
+.. code-block:: python
+
+    # Deprecated, use UserModel.email=="djohn@company.org" instead
+    for user in UserModel.query("John", email__eq="djohn@company.org"):
+        print(user.first_name)
 
 Retrieve an existing user:
 

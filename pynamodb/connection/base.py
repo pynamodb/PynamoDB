@@ -33,7 +33,7 @@ from pynamodb.constants import (
     PUT_ITEM, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
-    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES,
+    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE, PUT,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
@@ -349,6 +349,7 @@ class Connection(object):
             attempt_number = i + 1
             is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
 
+            response = None
             try:
                 response = self.requests_session.send(
                     prepared_request,
@@ -359,6 +360,8 @@ class Connection(object):
             except (requests.RequestException, ValueError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
+                    if response:
+                        e.args += (str(response.content),)
                     raise
                 else:
                     # No backoff for fast-fail exceptions that likely failed at the frontend
@@ -447,6 +450,9 @@ class Connection(object):
                         for item in six.itervalues(item_mapping):
                             for attr in six.itervalues(item):
                                 _convert_binary(attr)
+        if ATTRIBUTES in data:
+            for attr in six.itervalues(data[ATTRIBUTES]):
+                _convert_binary(attr)
         return data
 
     @property
@@ -1173,10 +1179,12 @@ class Connection(object):
                         if allow_rate_limited_scan_without_consumed_capacity:
                             latest_scan_consumed_capacity = 0
                         else:
-                            raise ScanError('Rate limited scan not possible because the server did not send back'
-                                            'consumed capacity information. If you wish scans to complete anyway'
-                                            'without functioning rate limiting, set '
-                                            'allow_rate_limited_scan_without_consumed_capacity to True in settings.')
+                            raise ScanError(
+                                'Rate limited scan not possible because the server did not report '
+                                'consumed capacity. To continue scanning without rate limiting '
+                                '(such as when using DynamoDB Local, which does not report consumed capacity), '
+                                'set allow_rate_limited_scan_without_consumed_capacity to True in settings.'
+                            )
 
                     last_evaluated_key = data.get(LAST_EVALUATED_KEY, None)
                     consecutive_provision_throughput_exceeded_ex = 0
