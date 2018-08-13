@@ -556,13 +556,13 @@ class UTCDateTimeAttribute(Attribute):
 
 class UUIDAttribute(Attribute):
     """
-    An attribute for storing UUIDs.
+    An attribute for storing a UUID
     """
     attr_type = STRING
 
     def serialize(self, value):
         """
-        Takes an uuid as UUID-object or as string and returns a string.
+        Takes a UUID as UUID-object or as string and returns a string
         """
         if not isinstance(value, uuid.UUID):
             value = uuid.UUID(value)
@@ -570,7 +570,7 @@ class UUIDAttribute(Attribute):
 
     def deserialize(self, value):
         """
-        Takes a UUID string and returns a UUID-object.
+        Takes a UUID string and returns a UUID-object
         """
         return uuid.UUID(value)
 
