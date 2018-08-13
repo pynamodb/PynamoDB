@@ -3,6 +3,7 @@ pynamodb attributes tests
 """
 import json
 import six
+import uuid
 
 from base64 import b64encode
 from datetime import datetime
@@ -18,8 +19,8 @@ from pynamodb.models import Model
 
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
-    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
-    MapAttribute, MapAttributeMeta, ListAttribute, Attribute,
+    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, UUIDAttribute, BooleanAttribute,
+    LegacyBooleanAttribute, MapAttribute, MapAttributeMeta, ListAttribute, Attribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, MAP, LIST, BOOLEAN, _get_value_for_deserialize)
 
@@ -179,6 +180,41 @@ class TestUTCDateTimeAttribute:
         tstamp = datetime.now()
         attr = UTCDateTimeAttribute()
         assert attr.serialize(tstamp) == tstamp.replace(tzinfo=UTC).strftime(DATETIME_FORMAT)
+
+
+class TestUUIDAttribute:
+    """
+    Tests UUID attributes.
+    """
+    def test_uuid_attribute(self):
+        """
+        UUIDAttribute.default
+        """
+        attr = UUIDAttribute()
+        assert attr is not None
+        assert attr.attr_type == STRING
+
+        sample_uuid = uuid.UUID('db38ff5b-1e90-41df-8cfa-e0839727bd93')
+        attr = UUIDAttribute(default=sample_uuid)
+        assert attr.default == sample_uuid
+
+    def test_uuid_serialize(self):
+        """
+        UUIDAttribute.serialize
+        """
+        sample = 'db38ff5b-1e90-41df-8cfa-e0839727bd93'
+        sample_uuid = uuid.UUID(sample)
+        attr = UUIDAttribute()
+        assert attr.serialize(sample) == sample
+        assert attr.serialize(sample_uuid) == sample
+
+    def test_uuid_deserialize(self):
+        """
+        UUIDAttribute.deserialize
+        """
+        sample = 'db38ff5b-1e90-41df-8cfa-e0839727bd93'
+        attr = UUIDAttribute()
+        assert attr.deserialize(sample) == uuid.UUID(sample)
 
 
 class TestBinaryAttribute:

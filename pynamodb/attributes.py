@@ -18,6 +18,7 @@ from pynamodb.constants import (
 from pynamodb.compat import getmembers_issubclass
 from pynamodb.expressions.operand import Path
 import collections
+import uuid
 
 
 class Attribute(object):
@@ -551,6 +552,27 @@ class UTCDateTimeAttribute(Attribute):
             return datetime.strptime(value, DATETIME_FORMAT)
         except ValueError:
             return parse(value)
+
+
+class UUIDAttribute(Attribute):
+    """
+    An attribute for storing UUIDs.
+    """
+    attr_type = STRING
+
+    def serialize(self, value):
+        """
+        Takes an uuid as UUID-object or as string and returns a string.
+        """
+        if not isinstance(value, uuid.UUID):
+            value = uuid.UUID(value)
+        return six.u(str(value))
+
+    def deserialize(self, value):
+        """
+        Takes a UUID string and returns a UUID-object.
+        """
+        return uuid.UUID(value)
 
 
 class NullAttribute(Attribute):
