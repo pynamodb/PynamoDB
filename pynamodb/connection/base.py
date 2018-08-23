@@ -547,7 +547,7 @@ class Connection(object):
                 })
             operation_kwargs[GLOBAL_SECONDARY_INDEXES] = global_secondary_indexes_list
 
-        if key_schema is None:
+        if not key_schema:
             raise ValueError("key_schema is required")
         key_schema_list = []
         for item in key_schema:
