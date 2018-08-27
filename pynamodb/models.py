@@ -32,7 +32,7 @@ from pynamodb.constants import (
     CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
-    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET)
+    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET, ENCRYPT_META_ATTRIBUTE)
 
 
 log = logging.getLogger(__name__)
@@ -842,7 +842,7 @@ class Model(AttributeContainer):
         return cls._get_connection().describe_table()
 
     @classmethod
-    def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None):
+    def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None, encryption_enabled=None):
         """
         Create the table for this model
 
@@ -865,6 +865,8 @@ class Model(AttributeContainer):
                 schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
             if write_capacity_units is not None:
                 schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+            if encryption_enabled is not None:
+                schema[pythonic(ENCRYPT_META_ATTRIBUTE)] = encryption_enabled
             index_data = cls._get_indexes()
             schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
             schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))

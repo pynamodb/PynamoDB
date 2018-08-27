@@ -288,7 +288,8 @@ class TableConnection(object):
                      write_capacity_units=None,
                      global_secondary_indexes=None,
                      local_secondary_indexes=None,
-                     stream_specification=None):
+                     stream_specification=None,
+                     encryption_enabled=False):
         """
         Performs the CreateTable operation and returns the result
         """
@@ -300,5 +301,6 @@ class TableConnection(object):
             write_capacity_units=write_capacity_units,
             global_secondary_indexes=global_secondary_indexes,
             local_secondary_indexes=local_secondary_indexes,
-            stream_specification=stream_specification
+            stream_specification=stream_specification,
+            encryption_enabled=encryption_enabled
         )
