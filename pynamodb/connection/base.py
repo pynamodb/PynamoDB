@@ -352,6 +352,7 @@ class Connection(object):
             response = None
             try:
                 proxies = getattr(self.client._endpoint, "proxies", None)
+                # After the version 1.11.0 of botocore this field is no longer available here
                 if proxies is None:
                     proxies = self.client._endpoint.http_session._proxy_config._proxies
 
