@@ -10,13 +10,15 @@ python:
   - "pypy"
 
 env:
-  - AWS_SECRET_ACCESS_KEY=fake_key AWS_ACCESS_KEY_ID=fake_id
+  - AWS_SECRET_ACCESS_KEY=fake_key AWS_ACCESS_KEY_ID=fake_id UPDATE_BOTOCORE=0
+  - AWS_SECRET_ACCESS_KEY=fake_key AWS_ACCESS_KEY_ID=fake_id UPDATE_BOTOCORE=1
 
 before_install:
   - pip install six==1.9.0
 
 install:
   - pip install -r requirements-dev.txt
+  - if [ "${UPDATE_BOTOCORE}" = "1" ]; then pip install botocore -U; fi
 
 before_script:
   - wget http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest.tar.gz -O /tmp/dynamodb_local_latest.tar.gz
