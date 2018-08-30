@@ -120,7 +120,7 @@ class PageIterator(object):
             return self._last_evaluated_key.keys()
 
         # Use the table meta data to determine the key attributes
-        table_meta = six.get_method_self(self._operation).get_meta_table()
+        table_meta = six.get_method_self(self._operation).get_meta_table()  # type: ignore  # method_self cannot be None
         return table_meta.get_key_names(self._kwargs.get('index_name'))
 
     @property

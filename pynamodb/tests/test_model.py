@@ -2818,8 +2818,8 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            for item in UserModel.scan(user_id__contains='tux', zip_code__null=False, email__null=True):
-                self.assertIsNotNone(item)
+            for user in UserModel.scan(user_id__contains='tux', zip_code__null=False, email__null=True):
+                self.assertIsNotNone(user)
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'FilterExpression': '((attribute_not_exists (#0) AND contains (#1, :0)) AND attribute_exists (#2))',
