@@ -43,6 +43,7 @@ def test_migrate_boolean_attributes_upgrade_path(ddb_url):
     # ... or through the hoop jumping.
     assert 1 == len([_ for _ in BAModel.query('pkey', Path('flag') == True)])
 
+
 @pytest.mark.ddblocal
 def test_migrate_two_or_more_boolean_attributes_upgrade_path(ddb_url):
     class BAModel(Model):
@@ -89,7 +90,6 @@ def test_migrate_two_or_more_boolean_attributes_upgrade_path(ddb_url):
     assert the_item.second_flag == True
 
     LBAModel.delete_table()
-
 
 
 @pytest.mark.ddblocal
