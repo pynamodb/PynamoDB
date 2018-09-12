@@ -261,7 +261,8 @@ class Connection(object):
         """
         Sends a debug message to the logger
         """
-        log.debug("Calling %s with arguments %s", operation, kwargs)
+        # log.debug("Calling %s with arguments %s", operation, kwargs)
+        log.debug("Calling %s", operation)
 
     def _log_debug_response(self, operation, response):
         """
