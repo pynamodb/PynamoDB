@@ -11,7 +11,7 @@ import warnings
 from dateutil.parser import parse
 from dateutil.tz import tzutc
 try:
-    from inspect import getfullargspec
+    from inspect import getfullargspec as getargspec
 except ImportError:
     from inspect import getargspec
 from pynamodb.constants import (
