@@ -6,6 +6,7 @@ from __future__ import division
 import logging
 import math
 import random
+import requests
 import time
 import uuid
 import warnings
@@ -16,8 +17,6 @@ import six
 from botocore.client import ClientError
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
-from botocore.vendored import requests
-from botocore.vendored.requests import Request
 from six.moves import range
 
 from pynamodb.compat import NullHandler
@@ -286,7 +285,7 @@ class Connection(object):
         # part of the request session. In order to include the requests session headers inside
         # the request, we create a new request object, and call prepare_request with the newly
         # created request object
-        raw_request_with_params = Request(
+        raw_request_with_params = requests.Request(
             boto_prepared_request.method,
             boto_prepared_request.url,
             data=boto_prepared_request.body,
