@@ -1,7 +1,9 @@
 from .exceptions import DoesNotExist as DoesNotExist
 from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Text, Union
 
+from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
+from pynamodb.pagination import ResultIterator
 
 log: Any
 
@@ -23,6 +25,7 @@ KeyType = Union[Text, bytes, float, int, Tuple]
 class Model(metaclass=MetaModel):
     DoesNotExist = DoesNotExist
     attribute_values: Dict[Text, Any]
+    _connection: Optional[TableConnection]
     def __init__(self, hash_key: Optional[KeyType] = ..., range_key: Optional[Any] = ..., **attrs) -> None: ...
     @classmethod
     def has_map_or_list_attributes(cls: Type[_T]) -> bool: ...
@@ -42,7 +45,21 @@ class Model(metaclass=MetaModel):
     @classmethod
     def count(cls: Type[_T], hash_key: Optional[KeyType] = ..., consistent_read: bool = ..., index_name: Optional[Text] = ..., limit: Optional[int] = ..., **filters) -> int: ...
     @classmethod
-    def query(cls: Type[_T], hash_key: KeyType, consistent_read: bool = ..., index_name: Optional[Text] = ..., scan_index_forward: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., limit: Optional[int] = ..., last_evaluated_key: Optional[Any] = ..., attributes_to_get: Optional[Iterable[Text]] = ..., page_size: Optional[int] = ..., **filters) -> Iterator[_T]: ...
+    def query(
+        cls: Type[_T],
+        hash_key: KeyType,
+        range_key_condition: Condition = ...,
+        filter_condition: Condition = ...,
+        consistent_read: bool = ...,
+        index_name: Optional[Text] = ...,
+        scan_index_forward: Optional[Any] = ...,
+        conditional_operator: Optional[Text] = ...,
+        limit: Optional[int] = ...,
+        last_evaluated_key: Optional[Any] = ...,
+        attributes_to_get: Optional[Iterable[Text]] = ...,
+        page_size: Optional[int] = ...,
+        **filters
+    ) -> ResultIterator[_T]: ...
     @classmethod
     def rate_limited_scan(
         cls: Type[_T],
@@ -75,7 +92,7 @@ class Model(metaclass=MetaModel):
         last_evaluated_key: Optional[Any] = ...,
         page_size: Optional[int] = ...,
         **filters
-    ) -> Iterator[_T]: ...
+    ) -> ResultIterator[_T]: ...
 
     @classmethod
     def exists(cls: Type[_T]) -> bool: ...
@@ -99,6 +116,8 @@ class Model(metaclass=MetaModel):
     def get_throttle(cls): ...
     @classmethod
     def _get_attributes(cls) -> Dict[str, Any]: ...
+    @classmethod
+    def _get_connection(cls) -> TableConnection: ...
 
 class ModelContextManager(Generic[_T]):
     model: Type[_T]
