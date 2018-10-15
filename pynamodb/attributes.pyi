@@ -16,7 +16,7 @@ _KT = TypeVar('_KT')
 _VT = TypeVar('_VT')
 _MT = TypeVar('_MT', bound='MapAttribute')
 
-_A = TypeVar('_A', bound='Attribute')
+_A = TypeVar('_A')
 
 
 class Attribute(Generic[_T]):
