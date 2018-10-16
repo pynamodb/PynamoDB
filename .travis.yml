@@ -3,11 +3,17 @@ language: python
 python:
   - "3.6"
   - "3.5"
-  - "3.4"
-  - "3.3"
   - "2.7"
   - "2.6"
   - "pypy"
+
+
+# See https://github.com/travis-ci/travis-ci/issues/9815
+matrix:
+  include:
+    - python: "3.7"
+      dist: xenial
+      sudo: true
 
 env:
   - AWS_SECRET_ACCESS_KEY=fake_key AWS_ACCESS_KEY_ID=fake_id
@@ -26,7 +32,7 @@ before_script:
 
 script:
   - py.test --cov-report term-missing --cov=pynamodb pynamodb/tests/
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.7" ]]; then mypy .; fi
 
 after_success:
   - coveralls
-
