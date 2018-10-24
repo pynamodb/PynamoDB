@@ -366,6 +366,7 @@ class Connection(object):
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                     if response:
+                        response.raise_for_status()
                         e.args += (str(response.content),)
                     raise
                 else:
