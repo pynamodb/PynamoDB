@@ -47,7 +47,7 @@ The default AWS region to connect to.
 session_cls
 -----------
 
-Default: ``botocore.vendored.requests.Session``
+Default: ``requests.Session``
 
 A class which implements the Session_ interface from requests, used for making API requests
 to DynamoDB.
@@ -76,8 +76,8 @@ See an example of specifying a custom ``session_cls`` to configure the connectio
 
 .. code-block:: python
 
-    from botocore.vendored import requests
-    from botocore.vendored.requests import adapters
+    import requests
+    from requests import adapters
 
     class CustomPynamoSession(requests.Session):
         super(CustomPynamoSession, self).__init__()

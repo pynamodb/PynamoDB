@@ -3,11 +3,11 @@ Tests for the base connection class
 """
 import base64
 import json
+import requests
 import six
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import Connection
 from pynamodb.connection.base import MetaTable
-from botocore.vendored import requests
 from pynamodb.exceptions import (VerboseClientError,
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
 from pynamodb.constants import (

@@ -3,7 +3,7 @@ import logging
 import os
 from os import getenv
 
-from botocore.vendored import requests
+import requests
 
 log = logging.getLogger(__name__)
 

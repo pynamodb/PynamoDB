@@ -12,12 +12,12 @@ import warnings
 from base64 import b64decode
 from threading import local
 
+from requests import Request
+import requests
 import six
 from botocore.client import ClientError
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
-from botocore.vendored import requests
-from botocore.vendored.requests import Request
 from six.moves import range
 
 from pynamodb.compat import NullHandler
