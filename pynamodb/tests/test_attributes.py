@@ -13,15 +13,17 @@ from dateutil.tz import tzutc
 from mock import patch, Mock, call
 import pytest
 
-from pynamodb.constants import UTC, DATETIME_FORMAT
-from pynamodb.models import Model
-
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
-    MapAttribute, MapAttributeMeta, ListAttribute, Attribute,
-    JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY, MAP, LIST, BOOLEAN, _get_value_for_deserialize)
+    MapAttribute, MapAttributeMeta, ListAttribute, JSONAttribute, _get_value_for_deserialize,
+)
+from pynamodb.constants import (
+    DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
+    BINARY, BOOLEAN,
+)
+from pynamodb.models import Model
+
 
 UTC = tzutc()
 
