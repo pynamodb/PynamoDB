@@ -16,9 +16,14 @@ import six
 from botocore.client import ClientError
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
-from botocore.vendored import requests
-from botocore.vendored.requests import Request
 from six.moves import range
+
+try:
+    from botocore.vendored import requests
+    from botocore.vendored.requests import Request
+except ImportError:
+    import requests
+    from requests import Request
 
 from pynamodb.compat import NullHandler
 from pynamodb.connection.util import pythonic
