@@ -9,8 +9,12 @@ from datetime import datetime
 
 import six
 from botocore.client import ClientError
-from botocore.vendored import requests
 import pytest
+
+try:
+    from botocore.vendored import requests
+except ImportError:
+    import requests
 
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.tests.deep_eq import deep_eq
