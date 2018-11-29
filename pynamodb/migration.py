@@ -118,6 +118,7 @@ def migrate_boolean_attributes(model_class,
                 condition = condition & Path(attr_name) == (1 if old_value else 0)
 
         if actions:
+            assert condition is not None
             if mock_conditional_update_failure:
                 condition = condition & (Path('__bogus_mock_attribute') == 5)
             try:
