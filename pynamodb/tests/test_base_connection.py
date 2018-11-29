@@ -7,7 +7,6 @@ import six
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import Connection
 from pynamodb.connection.base import MetaTable
-from botocore.vendored import requests
 from pynamodb.exceptions import (VerboseClientError,
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
 from pynamodb.constants import (
@@ -23,6 +22,10 @@ if six.PY3:
 else:
     from mock import patch
     import mock
+try:
+    from botocore.vendored import requests
+except ImportError:
+    import requests
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
