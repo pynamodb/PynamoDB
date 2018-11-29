@@ -15,6 +15,7 @@ from threading import local
 import six
 from botocore.client import ClientError
 from botocore.exceptions import BotoCoreError
+from botocore.session import get_session
 from botocore.vendored.requests import Request, RequestException
 from six.moves import range
 
