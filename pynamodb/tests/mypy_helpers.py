@@ -3,7 +3,9 @@ from tempfile import TemporaryDirectory
 from textwrap import dedent
 from typing import NamedTuple, Iterable
 
-import mypy.api
+import pytest
+
+mypy_api = pytest.importorskip("mypy.api")
 
 
 class _MypyError(NamedTuple):
@@ -19,7 +21,7 @@ def run_mypy(program: str) -> Iterable[_MypyError]:
         with open(f'{tempdirname}/__main__.py', 'w') as f:
             f.write(dedent(program))
         error_pattern = re.compile(rf'^{re.escape(f.name)}:(\d+): error: (.*)$')
-        for line in mypy.api.run([f.name, '-v'])[0].split('\n'):
+        for line in mypy_api.run([f.name, '-v'])[0].split('\n'):
             m = error_pattern.match(line)
             if m:
                 yield _MypyError(line_no=int(m.group(1)), error=m.group(2))

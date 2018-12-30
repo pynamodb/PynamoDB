@@ -1,4 +1,4 @@
-from pynamodb.tests.mypy import run_mypy, parse_expected_mypy_errors
+from .mypy_helpers import run_mypy, parse_expected_mypy_errors
 
 
 def assert_mypy_output(program: str) -> None:
