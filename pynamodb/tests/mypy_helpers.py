@@ -1,6 +1,6 @@
 import re
+import tempfile
 from collections import namedtuple
-from tempfile import TemporaryDirectory
 from textwrap import dedent
 
 import pytest
@@ -12,7 +12,7 @@ _MypyError = namedtuple('_MypyError', 'line_no error')
 
 
 def _run_mypy(program):
-    with TemporaryDirectory() as tempdirname:
+    with tempfile.TemporaryDirectory() as tempdirname:
         with open('{}/__main__.py'.format(tempdirname), 'w') as f:
             f.write(dedent(program))
         error_pattern = re.compile(r'^{}:(\d+): error: (.*)$'.format(re.escape(f.name)))
