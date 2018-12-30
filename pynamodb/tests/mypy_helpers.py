@@ -1,34 +1,40 @@
 import re
+from collections import namedtuple
 from tempfile import TemporaryDirectory
 from textwrap import dedent
-from typing import NamedTuple, Iterable
 
 import pytest
 
 mypy_api = pytest.importorskip("mypy.api")
 
 
-class _MypyError(NamedTuple):
-    line_no: int
-    error: str
-
-    def __repr__(self) -> str:
-        return f'Line {self.line_no}: {self.error}'
+_MypyError = namedtuple('_MypyError', 'line_no error')
 
 
-def run_mypy(program: str) -> Iterable[_MypyError]:
+def _run_mypy(program):
     with TemporaryDirectory() as tempdirname:
-        with open(f'{tempdirname}/__main__.py', 'w') as f:
+        with open('{}/__main__.py'.format(tempdirname), 'w') as f:
             f.write(dedent(program))
-        error_pattern = re.compile(rf'^{re.escape(f.name)}:(\d+): error: (.*)$')
-        for line in mypy_api.run([f.name, '-v'])[0].split('\n'):
+        error_pattern = re.compile(r'^{}:(\d+): error: (.*)$'.format(re.escape(f.name)))
+        stdout, stderr, exit_status = mypy_api.run([f.name])
+        for line in stdout.split('\n'):
             m = error_pattern.match(line)
             if m:
                 yield _MypyError(line_no=int(m.group(1)), error=m.group(2))
 
 
-def parse_expected_mypy_errors(program: str) -> Iterable[_MypyError]:
-    error_pattern = re.compile(rf'# E: (.+?)(?=\s*#|$)')  # matches every error expected on a given line
+def _parse_expected_mypy_errors(program):
+    error_pattern = re.compile(r'# E: (.+?)(?=\s*#|$)')  # matches every error expected on a given line
     for line_no, line in enumerate(program.split('\n'), start=1):
         for error in error_pattern.findall(line):
             yield _MypyError(line_no=line_no, error=error)
+
+
+def _repr_mypy_errors(errors):
+    return '\n'.join('Line {}: {}'.format(error.line_no, error.error) for error in errors)
+
+
+def assert_mypy_output(program):
+    actual = _run_mypy(program)
+    expected = _parse_expected_mypy_errors(program)
+    assert _repr_mypy_errors(actual) == _repr_mypy_errors(expected)

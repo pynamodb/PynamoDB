@@ -1,10 +1,4 @@
-from .mypy_helpers import run_mypy, parse_expected_mypy_errors
-
-
-def assert_mypy_output(program: str) -> None:
-    actual = run_mypy(program)
-    expected = parse_expected_mypy_errors(program)
-    assert '\n'.join(map(repr, actual)) == '\n'.join(map(repr, expected))
+from .mypy_helpers import assert_mypy_output
 
 
 def test_number_attribute():
