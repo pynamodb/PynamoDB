@@ -24,14 +24,14 @@ def _run_mypy(program):  # type: (str) -> Iterable[str]
                 errors_by_line[int(m.group(1))].append(m.group(2))
 
         # Reconstruct the "actual" program with "error" comments
-        pattern_optional_comment = re.compile(r'^(.*?)(\s+# E: .*)?$')
+        error_comment_pattern = re.compile(r'(\s+# E: .*)?$')
         for line_no, line in enumerate(program.split('\n'), start=1):
-            m = pattern_optional_comment.match(line)
+            line = error_comment_pattern.sub('', line)  # strip the error comment
             errors = errors_by_line.get(line_no)
             if errors:
-                yield '{}{}'.format(m.group(1), ''.join('  # E: {}'.format(error) for error in errors))
+                yield '{}{}'.format(line, ''.join('  # E: {}'.format(error) for error in errors))
             else:
-                yield m.group(1)
+                yield line
 
 
 def assert_mypy_output(program):  # type: (str) -> None
