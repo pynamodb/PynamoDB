@@ -2,7 +2,7 @@ import re
 import tempfile
 from collections import defaultdict
 from textwrap import dedent
-from typing import Dict, List, Iterable
+from typing import Dict, List, Iterable  # noqa
 
 import pytest
 
@@ -17,7 +17,7 @@ def _run_mypy(program):  # type: (str) -> Iterable[str]
         stdout, stderr, exit_status = mypy_api.run([f.name])
 
         # Group errors by line
-        errors_by_line: Dict[int, List[str]] = defaultdict(list)
+        errors_by_line = defaultdict(list)  # type: Dict[int, List[str]]
         for line in stdout.split('\n'):
             m = error_pattern.match(line)
             if m:
