@@ -1,4 +1,8 @@
-from .mypy_helpers import assert_mypy_output
+import pytest
+
+pytest.importorskip('mypy')
+pytest.register_assert_rewrite('pynamodb.tests.mypy_helpers')
+from .mypy_helpers import assert_mypy_output  # noqa
 
 
 def test_number_attribute():
