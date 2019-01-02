@@ -12,9 +12,9 @@ import mypy.api
 
 def _run_mypy(program: str) -> Iterable[str]:
     with TemporaryDirectory() as tempdirname:
-        with open('{}/__main__.py'.format(tempdirname), 'w') as f:
+        with open(f'{tempdirname}/__main__.py', 'w') as f:
             f.write(program)
-        error_pattern = re.compile(r'^{}:(\d+): error: (.*)$'.format(re.escape(f.name)))
+        error_pattern = re.compile(fr'^{re.escape(f.name)}:(\d+): error: (.*)$')
         stdout, stderr, exit_status = mypy.api.run([
             f.name,
             '--show-traceback',
@@ -37,7 +37,7 @@ def _run_mypy(program: str) -> Iterable[str]:
             line = error_comment_pattern.sub('', line)
             errors = errors_by_line.get(line_no)
             if errors:
-                yield '{}{}'.format(line, ''.join('  # E: {}'.format(error) for error in errors))
+                yield line + ''.join(f'  # E: {error}' for error in errors)
             else:
                 yield line
 
