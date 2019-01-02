@@ -1,6 +1,10 @@
+"""
+Note: The expected error strings may change in a future version of mypy.
+      Please update as needed.
+"""
 import pytest
 
-pytest.importorskip('mypy')
+pytest.importorskip('mypy')  # we only install mypy in python>=3.6 tests
 pytest.register_assert_rewrite('pynamodb.tests.mypy_helpers')
 from .mypy_helpers import assert_mypy_output  # noqa
 
