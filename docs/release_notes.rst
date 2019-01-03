@@ -1,6 +1,18 @@
 Release Notes
 =============
 
+v3.3.2
+------
+
+:date: 2019-01-03
+
+This is a backwards compatible, minor release.
+
+Changes in this release:
+
+ * Built-in support for mypy type stubs, superseding those in python/typeshed. (#537)
+
+
 v3.3.1
 ------
 
