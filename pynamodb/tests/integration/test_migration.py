@@ -22,7 +22,7 @@ def test_migrate_boolean_attributes_upgrade_path(ddb_url):
         id = UnicodeAttribute(hash_key=True)
         flag = LegacyBooleanAttribute(null=True)
 
-    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
     # Create one "offending" object written as an integer using LBA.
     LBAModel('pkey', flag=True).save()
@@ -62,7 +62,7 @@ def test_migrate_two_or_more_boolean_attributes_upgrade_path(ddb_url):
         flag = LegacyBooleanAttribute(null=True)
         second_flag = LegacyBooleanAttribute(null=True)
 
-    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
     # Create one "offending" object written as an integer using LBA.
     LBAModel('pkey', flag=True, second_flag=True).save()
@@ -102,7 +102,7 @@ def test_migrate_boolean_attributes_none_okay(ddb_url):
         id = UnicodeAttribute(hash_key=True)
         flag = LegacyBooleanAttribute(null=True)
 
-    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
     LBAModel('pkey', flag=None).save()
     assert (0, 0) == migrate_boolean_attributes(LBAModel, ['flag'], allow_rate_limited_scan_without_consumed_capacity=True)
 
@@ -117,7 +117,7 @@ def test_migrate_boolean_attributes_conditional_update_failure(ddb_url):
         id = UnicodeAttribute(hash_key=True)
         flag = LegacyBooleanAttribute(null=True)
 
-    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
     LBAModel('pkey', flag=1).save()
     assert (1, 1) == migrate_boolean_attributes(LBAModel, ['flag'],
                                                 allow_rate_limited_scan_without_consumed_capacity=True,
@@ -133,7 +133,7 @@ def test_migrate_boolean_attributes_missing_attribute(ddb_url):
         id = UnicodeAttribute(hash_key=True)
         flag = LegacyBooleanAttribute(null=True)
 
-    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
     LBAModel('pkey', flag=True).save()
     with pytest.raises(ValueError) as e:
         migrate_boolean_attributes(LBAModel, ['flag', 'bogus'], allow_rate_limited_scan_without_consumed_capacity=True)
@@ -150,7 +150,7 @@ def test_migrate_boolean_attributes_wrong_attribute_type(ddb_url):
         flag = LegacyBooleanAttribute(null=True)
         other = UnicodeAttribute(null=True)
 
-    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
     LBAModel('pkey', flag=True, other='test').save()
     with pytest.raises(ValueError) as e:
         migrate_boolean_attributes(LBAModel, ['flag', 'other'], allow_rate_limited_scan_without_consumed_capacity=True)
@@ -167,7 +167,7 @@ def test_migrate_boolean_attributes_multiple_attributes(ddb_url):
         flag = LegacyBooleanAttribute(null=True)
         flag2 = LegacyBooleanAttribute(null=True)
 
-    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
     # specifically use None and True here rather than two Trues
     LBAModel('pkey', flag=None, flag2=True).save()
     assert (1, 0) == migrate_boolean_attributes(LBAModel, ['flag', 'flag2'], allow_rate_limited_scan_without_consumed_capacity=True)
@@ -182,7 +182,7 @@ def test_migrate_boolean_attributes_skip_native_booleans(ddb_url):
         id = UnicodeAttribute(hash_key=True)
         flag = BooleanAttribute(null=True)
 
-    BAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    BAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
     BAModel('pkey', flag=True).save()
     assert (0, 0) == migrate_boolean_attributes(BAModel, ['flag'], allow_rate_limited_scan_without_consumed_capacity=True)
 
@@ -206,7 +206,7 @@ def test_legacy_boolean_attribute_deserialization_in_update(ddb_url, flag_value)
         flag = LegacyBooleanAttribute(null=True)
         value = UnicodeAttribute(null=True)
 
-    BAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    BAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
     # Create objects with a BooleanAttribute flag
     BAModel('pkey', flag=flag_value, value = 'value').save()
@@ -240,7 +240,7 @@ def test_legacy_boolean_attribute_deserialization_in_update_item(ddb_url, flag_v
         flag = LegacyBooleanAttribute(null=True)
         value = UnicodeAttribute(null=True)
 
-    BAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    BAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
     # Create objects with a BooleanAttribute flag
     BAModel('pkey', flag=flag_value, value = 'value').save()
@@ -255,7 +255,7 @@ def test_legacy_boolean_attribute_deserialization_in_update_item(ddb_url, flag_v
     assert flag_value == LBAModel.get('pkey').flag
 
 
-@pytest.mark.parametrize("flag_value",[True, False, None])
+@pytest.mark.parametrize("flag_value", [True, False, None])
 @pytest.mark.ddblocal
 def test_boolean_attribute_deserialization_in_update(ddb_url, flag_value):
     class BAModel(Model):
@@ -274,7 +274,7 @@ def test_boolean_attribute_deserialization_in_update(ddb_url, flag_value):
         flag = LegacyBooleanAttribute(null=True)
         value = UnicodeAttribute(null=True)
 
-    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
     # Create an object with a LegacyBooleanAttribute flag
     LBAModel('pkey', flag=flag_value, value = 'value').save()
@@ -308,7 +308,7 @@ def test_boolean_attribute_deserialization_in_update_item(ddb_url, flag_value):
         flag = LegacyBooleanAttribute(null=True)
         value = UnicodeAttribute(null=True)
 
-    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    LBAModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
     # Create an object with a LegacyBooleanAttribute flag
     LBAModel('pkey', flag=flag_value, value = 'value').save()

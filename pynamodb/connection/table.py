@@ -14,10 +14,12 @@ class TableConnection(object):
                  table_name,
                  region=None,
                  host=None,
-                 session_cls=None,
-                 request_timeout_seconds=None,
+                 connect_timeout_seconds=None,
+                 read_timeout_seconds=None,
                  max_retry_attempts=None,
                  base_backoff_ms=None,
+                 max_pool_connections=None,
+                 extra_headers=None,
                  aws_access_key_id=None,
                  aws_secret_access_key=None):
         self._hash_keyname = None
@@ -25,10 +27,12 @@ class TableConnection(object):
         self.table_name = table_name
         self.connection = Connection(region=region,
                                      host=host,
-                                     session_cls=session_cls,
-                                     request_timeout_seconds=request_timeout_seconds,
+                                     connect_timeout_seconds=connect_timeout_seconds,
+                                     read_timeout_seconds=read_timeout_seconds,
                                      max_retry_attempts=max_retry_attempts,
-                                     base_backoff_ms=base_backoff_ms)
+                                     base_backoff_ms=base_backoff_ms,
+                                     max_pool_connections=max_pool_connections,
+                                     extra_headers=extra_headers)
 
         if aws_access_key_id and aws_secret_access_key:
             self.connection.session.set_credentials(aws_access_key_id,
