@@ -157,6 +157,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
     def __get__(self, instance: Any, owner: Any) -> List[_T]: ...
 
 class _NullableAttributeWrapper(Generic[_A, _T]):
+    """Used internally by pynamodb-mypy for nullable attributes"""
     @overload
     def __get__(self, instance: None, owner: Any) -> _A: ...
     @overload
