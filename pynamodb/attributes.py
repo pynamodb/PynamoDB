@@ -436,6 +436,9 @@ class JSONAttribute(Attribute):
         """
         Deserializes JSON
         """
+        if value is None:
+            return None
+
         return json.loads(value, strict=False)
 
 
