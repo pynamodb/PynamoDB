@@ -36,10 +36,13 @@ setup(
         'Programming Language :: Python',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.6',
         'License :: OSI Approved :: MIT License',
     ],
     extras_require={
-        'signals': ['blinker>=1.3,<2.0'] 
+        'signals': ['blinker>=1.3,<2.0'],
+    },
+    package_data={
+        'pynamodb': ['py.typed'],
     },
 )

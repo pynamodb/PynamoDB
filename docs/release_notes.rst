@@ -1,6 +1,38 @@
 Release Notes
 =============
 
+v3.3.2
+------
+
+:date: 2019-01-03
+
+This is a backwards compatible, minor release.
+
+Changes in this release:
+
+ * Built-in support for mypy type stubs, superseding those in python/typeshed. (#537)
+
+
+v3.3.1
+------
+
+:date: 2018-08-30
+
+This is a backwards compatible, minor bug fix release.
+
+Fixes in this release:
+
+* Clearer error message on missing consumed capacity during rate-limited scan. (#506)
+* Python 3 compatibility in PageIterator. (#535)
+* Proxy configuration changes in botocore>=1.11.0. (#531)
+
+Contributors to this release:
+
+* @ikonst
+* @zetaben
+* @ningirsu
+
+
 v3.3.0
 ------
 

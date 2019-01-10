@@ -47,6 +47,9 @@ pip-log.txt
 cover/
 .tox
 
+# mypy
+.mypy_cache/
+
 # Translations
 *.mo
 

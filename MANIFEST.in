@@ -1,0 +1,6 @@
+include AUTHORS.rst
+include LICENSE
+include mypy.ini
+include requirements-*.txt
+include requirements.txt
+include tox.ini
