@@ -74,9 +74,14 @@ def test_list_attribute():
 
     class MyModel(Model):
         my_list = ListAttribute(of=MyMap)
+        my_untyped_list = ListAttribute()  # E: Need type annotation for 'my_untyped_list'
 
     reveal_type(MyModel.my_list)  # E: Revealed type is 'pynamodb.attributes.ListAttribute[__main__.MyMap]'
     reveal_type(MyModel().my_list)  # E: Revealed type is 'builtins.list[__main__.MyMap*]'
     reveal_type(MyModel.my_list[0])  # E: Revealed type is 'Any'  # E: Value of type "ListAttribute[MyMap]" is not indexable
     reveal_type(MyModel().my_list[0].my_sub_attr)  # E: Revealed type is 'builtins.str'
+
+    # Untyped lists are not well supported yet
+    reveal_type(MyModel.my_untyped_list[0])  # E: Revealed type is 'Any'  # E: Cannot determine type of 'my_untyped_list'
+    reveal_type(MyModel().my_untyped_list[0].my_sub_attr)  # E: Revealed type is 'Any'
     """)
