@@ -3,6 +3,17 @@ import sys
 
 from setuptools import setup, find_packages
 
+
+def find_stubs(package):
+    stubs = []
+    for root, dirs, files in os.walk(package):
+        for f in files:
+            path = os.path.join(root, f).replace(package + os.sep, '', 1)
+            if path.endswith('.pyi') or path.endswith('py.typed'):
+                stubs.append(path)
+    return {package: stubs}
+
+
 if sys.argv[-1] == 'publish':
     os.system('python setup.py sdist upload')
     os.system('python setup.py bdist_wheel upload')
@@ -42,7 +53,5 @@ setup(
     extras_require={
         'signals': ['blinker>=1.3,<2.0'],
     },
-    package_data={
-        'pynamodb': ['py.typed'],
-    },
+    package_data=find_stubs('pynamodb'),
 )
