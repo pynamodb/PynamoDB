@@ -361,12 +361,12 @@ class Connection(object):
                     timeout=self._request_timeout_seconds,
                     proxies=proxies,
                 )
+                response.raise_for_status()
                 data = response.json()
             except (requests.RequestException, ValueError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                     if response:
-                        response.raise_for_status()
                         e.args += (str(response.content),)
                     raise
                 else:
