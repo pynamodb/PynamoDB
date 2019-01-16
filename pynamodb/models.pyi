@@ -43,7 +43,17 @@ class Model(metaclass=MetaModel):
     @classmethod
     def from_raw_data(cls: Type[_T], data) -> _T: ...
     @classmethod
-    def count(cls: Type[_T], hash_key: Optional[KeyType] = ..., consistent_read: bool = ..., index_name: Optional[Text] = ..., limit: Optional[int] = ..., **filters) -> int: ...
+    def count(
+        cls: Type[_T],
+        hash_key: Optional[KeyType] = ...,
+        range_key_condition: Optional[Condition] = ...,
+        filter_condition: Optional[Condition] = ...,
+        consistent_read: bool = ...,
+        index_name: Optional[Text] = ...,
+        limit: Optional[int] = ...,
+        rate_limit: Optional[float] = ...,
+        **filters
+    ) -> int: ...
     @classmethod
     def query(
         cls: Type[_T],
