@@ -363,7 +363,7 @@ class Connection(object):
                 )
                 response.raise_for_status()
                 data = response.json()
-            except (requests.RequestException, ValueError) as e:
+            except (requests.RequestException, requests.HTTPError, ValueError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                     if response:
