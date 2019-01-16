@@ -9,6 +9,18 @@ pytest.register_assert_rewrite('pynamodb.tests.mypy_helpers')
 from .mypy_helpers import assert_mypy_output  # noqa
 
 
+def test_model():
+    assert_mypy_output("""
+    from pynamodb.models import Model
+    from pynamodb.expressions.operand import Path
+
+    class MyModel(Model):
+        pass
+
+    reveal_type(MyModel.count('hash', Path('a').between(1, 3)))  # E: Revealed type is 'builtins.int'
+    """)
+
+
 def test_number_attribute():
     assert_mypy_output("""
     from pynamodb.attributes import NumberAttribute
