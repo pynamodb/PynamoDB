@@ -21,6 +21,30 @@ def test_model():
     """)
 
 
+def test_model_query():
+    assert_mypy_output("""
+    from pynamodb.attributes import NumberAttribute
+    from pynamodb.models import Model
+
+    class MyModel(Model):
+        my_attr = NumberAttribute()
+
+    # test hash key types
+    MyModel.query(123)
+    MyModel.query('123')
+    MyModel.query(12.3)
+    MyModel.query(b'123')
+    MyModel.query((1, 2, 3))
+    MyModel.query({'1': '2'})  # E: Argument 1 to "query" of "Model" has incompatible type "Dict[str, str]"; expected "Union[str, bytes, float, Tuple[Any, ...]]"
+
+    # test conditions
+    MyModel.query(123, range_key_condition=(MyModel.my_attr == 5), filter_condition=(MyModel.my_attr == 5))
+
+    # test conditions are optional
+    MyModel.query(123, range_key_condition=None, filter_condition=None)
+    """)  # noqa: E501
+
+
 def test_number_attribute():
     assert_mypy_output("""
     from pynamodb.attributes import NumberAttribute
