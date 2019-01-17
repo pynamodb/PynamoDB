@@ -9,6 +9,18 @@ pytest.register_assert_rewrite('pynamodb.tests.mypy_helpers')
 from .mypy_helpers import assert_mypy_output  # noqa
 
 
+def test_model():
+    assert_mypy_output("""
+    from pynamodb.models import Model
+    from pynamodb.expressions.operand import Path
+
+    class MyModel(Model):
+        pass
+
+    reveal_type(MyModel.count('hash', Path('a').between(1, 3)))  # E: Revealed type is 'builtins.int'
+    """)
+
+
 def test_model_query():
     assert_mypy_output("""
     from pynamodb.attributes import NumberAttribute
@@ -98,9 +110,14 @@ def test_list_attribute():
 
     class MyModel(Model):
         my_list = ListAttribute(of=MyMap)
+        my_untyped_list = ListAttribute()  # E: Need type annotation for 'my_untyped_list'
 
     reveal_type(MyModel.my_list)  # E: Revealed type is 'pynamodb.attributes.ListAttribute[__main__.MyMap]'
     reveal_type(MyModel().my_list)  # E: Revealed type is 'builtins.list[__main__.MyMap*]'
     reveal_type(MyModel.my_list[0])  # E: Revealed type is 'Any'  # E: Value of type "ListAttribute[MyMap]" is not indexable
     reveal_type(MyModel().my_list[0].my_sub_attr)  # E: Revealed type is 'builtins.str'
+
+    # Untyped lists are not well supported yet
+    reveal_type(MyModel.my_untyped_list[0])  # E: Revealed type is 'Any'  # E: Cannot determine type of 'my_untyped_list'
+    reveal_type(MyModel().my_untyped_list[0].my_sub_attr)  # E: Revealed type is 'Any'
     """)

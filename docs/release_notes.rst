@@ -1,6 +1,23 @@
 Release Notes
 =============
 
+v3.3.3
+------
+
+:date: 2019-01-15
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+ * Legacy boolean attribute migration fix. (#538)
+ * Correctly package type stubs. (#585)
+
+Contributors to this release:
+
+ * @vo-va
+
+
 v3.3.2
 ------
 
