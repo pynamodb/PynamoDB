@@ -20,7 +20,8 @@ from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
-    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT, NUMBER_SHORT, SCANNED_COUNT
+    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT, NUMBER_SHORT, SCANNED_COUNT,
+    NUMBER_SET_SHORT
 )
 from pynamodb.models import Model, ResultSet
 from pynamodb.indexes import (
@@ -3304,6 +3305,49 @@ class ModelTestCase(TestCase):
                 'Limit': 2
             }
             self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+            item['numbers'] = {NUMBER_SET_SHORT: ['1', '2']}
+            item['email'] = {STRING_SHORT: 'id-1'}
+            req.return_value = {'Count': 1, 'ScannedCount': 1, 'Items': [item]}
+
+            queried_item = IndexedModel.email_index.get('foo', range_key=[1, 2])
+
+            params = {
+                'KeyConditionExpression': '(#0 = :0 AND #1 = :1)',
+                'ExpressionAttributeNames': {
+                    '#0': 'email',
+                    '#1': 'numbers'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
+                    },
+                    ':1': {
+                        'NS': ['1', '2']
+                    }
+                },
+                'IndexName': 'custom_idx_name',
+                'TableName': 'IndexedModel',
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Limit': 1
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+            expected_item = {
+                'attributes': {
+                    'email': {'S': 'id-1'},
+                    'numbers': {'NS': ['1', '2']}
+                },
+                'HASH': 'foo'
+            }
+            self.assertEqual(queried_item._serialize(), expected_item)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {'Count': 0, 'ScannedCount': 0, 'Items': []}
+            with self.assertRaises(DoesNotExist):
+                IndexedModel.email_index.get('foo', range_key=[1, 2])
 
         with patch(PATCH_METHOD) as req:
             items = []

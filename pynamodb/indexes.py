@@ -9,6 +9,7 @@ from pynamodb.attributes import Attribute
 from pynamodb.types import HASH, RANGE
 from pynamodb.compat import getmembers_issubclass
 from pynamodb.connection.util import pythonic
+from pynamodb.exceptions import DoesNotExist
 from six import with_metaclass
 
 
@@ -115,6 +116,38 @@ class Index(with_metaclass(IndexMeta)):
             index_name=self.Meta.index_name,
             **filters
         )
+
+    @classmethod
+    def get(cls,
+            hash_key,
+            range_key=None,
+            consistent_read=False,
+            attributes_to_get=None):
+        """
+        Returns a single object using the provided keys
+
+        :param hash_key: The hash key of the desired item
+        :param range_key: The range key of the desired item, only used when appropriate.
+        """
+        range_key_condition = None
+        if range_key is not None:
+            range_attr = next(
+                (attr_cls for attr_cls in cls._get_attributes().values() if attr_cls.is_range_key),
+                None)
+            if range_attr is not None:
+                range_key_condition = (range_attr == range_key)
+
+        items = cls.query(hash_key,
+                          range_key_condition=range_key_condition,
+                          consistent_read=consistent_read,
+                          limit=1,
+                          attributes_to_get=attributes_to_get)
+
+        item = next(items, None)
+        if item is None:
+            raise DoesNotExist()
+
+        return item
 
     @classmethod
     def _hash_key_attribute(cls):
