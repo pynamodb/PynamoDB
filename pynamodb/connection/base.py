@@ -490,6 +490,9 @@ class Connection(object):
         # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
         if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host)
+            log.debug('BEFORE: botocore client proxies= {0!r}'.format(self._client._endpoint.proxies))
+            self._client._endpoint.proxies = self.requests_session.proxies
+        log.debug('AFTER: botocore client proxies= {0!r}'.format(self._client._endpoint.proxies))
         return self._client
 
     def get_meta_table(self, table_name, refresh=False):
