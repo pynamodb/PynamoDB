@@ -33,7 +33,7 @@ from pynamodb.constants import (
     PUT_ITEM, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
-    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
+    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, FREE_OPERATIONS, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE, PUT,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
@@ -301,9 +301,8 @@ class Connection(object):
 
         Raises TableDoesNotExist if the specified table does not exist
         """
-        if operation_name not in [DESCRIBE_TABLE, LIST_TABLES, UPDATE_TABLE, DELETE_TABLE, CREATE_TABLE]:
-            if RETURN_CONSUMED_CAPACITY not in operation_kwargs:
-                operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
+        if operation_name not in FREE_OPERATIONS and RETURN_CONSUMED_CAPACITY not in operation_kwargs:
+            operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         self._log_debug(operation_name, operation_kwargs)
 
         table_name = operation_kwargs.get(TABLE_NAME)
