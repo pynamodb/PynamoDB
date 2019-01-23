@@ -34,6 +34,7 @@ from pynamodb.constants import (
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
+    TABLE_ARN, TAG_RESOURCE, UNTAG_RESOURCE, LIST_TAGS_OF_RESOURCE, RESOURCE_ARN, TAGS, TAG_KEYS, NEXT_TOKEN,
     CONSUMED_CAPACITY, CAPACITY_UNITS, QUERY_FILTER, QUERY_FILTER_VALUES, CONDITIONAL_OPERATOR,
     CONDITIONAL_OPERATORS, NULL, NOT_NULL, SHORT_ATTR_TYPES, DELETE, PUT,
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
@@ -110,6 +111,10 @@ class MetaTable(object):
             if index_range_keyname is not None and index_range_keyname not in key_names:
                 key_names.append(index_range_keyname)
         return key_names
+
+    @property
+    def table_arn(self):
+        return self.data.get(TABLE_ARN)
 
     def get_index_hash_keyname(self, index_name):
         """
@@ -361,7 +366,8 @@ class Connection(object):
                     timeout=self._request_timeout_seconds,
                     proxies=proxies,
                 )
-                data = response.json()
+                # Some API calls return nothing, like TagResource or UntagResource.
+                data = response.json() if operation_model.output_shape or len(response.content) else {}
             except (requests.RequestException, ValueError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
@@ -389,11 +395,13 @@ class Connection(object):
                     'request_id': response.headers.get('x-amzn-RequestId')
                 }
 
-                if 'RequestItems' in operation_kwargs:
+                if REQUEST_ITEMS in operation_kwargs:
                     # Batch operations can hit multiple tables, report them comma separated
-                    verbose_properties['table_name'] = ','.join(operation_kwargs['RequestItems'])
+                    verbose_properties['table_name'] = ','.join(operation_kwargs[REQUEST_ITEMS])
+                elif RESOURCE_ARN in operation_kwargs:
+                    _, _, verbose_properties['table_name'] = operation_kwargs[RESOURCE_ARN].rpartition('/')
                 else:
-                    verbose_properties['table_name'] = operation_kwargs.get('TableName')
+                    verbose_properties['table_name'] = operation_kwargs.get(TABLE_NAME)
 
                 try:
                     raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
@@ -662,6 +670,45 @@ class Connection(object):
         except ValueError:
             pass
         raise TableDoesNotExist(table_name)
+
+    def add_tags(self, table_name, table_arn, tags):
+        """
+        Performs the TagResource operation
+        """
+        tags_array = []
+        for key, value in tags.iteritems():
+            tags_array.append({KEY: key, VALUE: six.u(value)})
+        operation_kwargs = {RESOURCE_ARN: table_arn, TAGS: tags_array}
+        req_uuid = uuid.uuid4()
+
+        self.send_pre_boto_callback(TAG_RESOURCE, req_uuid, table_name)
+        self._make_api_call(TAG_RESOURCE, operation_kwargs)
+        self.send_post_boto_callback(TAG_RESOURCE, req_uuid, table_name)
+
+    def remove_tags(self, table_name, table_arn, tags):
+        """
+        Performs the UntagResource operation
+        """
+        operation_kwargs = {RESOURCE_ARN: table_arn, TAG_KEYS: tags}
+        req_uuid = uuid.uuid4()
+
+        self.send_pre_boto_callback(TAG_RESOURCE, req_uuid, table_name)
+        self._make_api_call(UNTAG_RESOURCE, operation_kwargs)
+        self.send_post_boto_callback(TAG_RESOURCE, req_uuid, table_name)
+
+    def list_tags(self, table_name, table_arn, next_token):
+        """
+        Performs the ListTagsOfResource operation
+        """
+        operation_kwargs = {RESOURCE_ARN: table_arn}
+        if next_token:
+            operation_kwargs[NEXT_TOKEN] = next_token
+        req_uuid = uuid.uuid4()
+
+        self.send_pre_boto_callback(TAG_RESOURCE, req_uuid, table_name)
+        data = self._make_api_call(LIST_TAGS_OF_RESOURCE, operation_kwargs)
+        self.send_post_boto_callback(TAG_RESOURCE, req_uuid, table_name)
+        return data
 
     def get_conditional_operator(self, operator):
         """

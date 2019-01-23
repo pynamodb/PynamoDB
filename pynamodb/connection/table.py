@@ -302,3 +302,27 @@ class TableConnection(object):
             local_secondary_indexes=local_secondary_indexes,
             stream_specification=stream_specification
         )
+
+    def add_tags(self, table_arn, tags):
+        """
+        Performs the TagResource operation
+        """
+        self.connection.add_tags(self.table_name,
+                                 table_arn=table_arn,
+                                 tags=tags)
+
+    def remove_tags(self, table_arn, tags):
+        """
+        Performs the UntagResource operation
+        """
+        self.connection.remove_tags(self.table_name,
+                                    table_arn=table_arn,
+                                    tags=tags)
+
+    def list_tags(self, table_arn, next_token=None):
+        """
+        Performs the ListTagsOfResource operation
+        """
+        return self.connection.list_tags(self.table_name,
+                                         table_arn=table_arn,
+                                         next_token=next_token)
