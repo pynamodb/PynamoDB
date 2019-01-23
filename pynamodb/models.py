@@ -225,6 +225,13 @@ class Model(AttributeContainer):
     _index_classes = None
     DoesNotExist = DoesNotExist
 
+    # Allow users to create models that will not store undefined attributes.
+    # see https://docs.python.org/3/reference/datamodel.html#notes-on-using-slots
+    # "The action of a __slots__ declaration is limited to the class where it is defined.
+    # As a result, subclasses will have a __dict__ unless they also define __slots__
+    # (which must only contain names of any additional slots)."
+    __slots__ = ()
+
     def __init__(self, hash_key=None, range_key=None, **attributes):
         """
         :param hash_key: Required. The hash key for this object.

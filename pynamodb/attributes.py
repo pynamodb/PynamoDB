@@ -212,6 +212,8 @@ class AttributeContainerMeta(type):
 @add_metaclass(AttributeContainerMeta)
 class AttributeContainer(object):
 
+    __slots__ = ('__weakref__', 'attribute_values')
+
     def __init__(self, **attributes):
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
         # to store the values that are bound to this instance. Attributes store values in the dictionary
@@ -654,7 +656,11 @@ class MapAttribute(Attribute, AttributeContainer):
         # Determine if this instance is being used as an AttributeContainer or an Attribute.
         # AttributeContainer instances have an internal `attribute_values` dictionary that is removed
         # by the `_make_attribute` call during initialization of the containing class.
-        return 'attribute_values' in self.__dict__
+        try:
+            object.__getattribute__(self, 'attribute_values')
+        except AttributeError:
+            return False
+        return True
 
     def _make_attribute(self):
         # WARNING! This function is only intended to be called from the AttributeContainerMeta metaclass.
