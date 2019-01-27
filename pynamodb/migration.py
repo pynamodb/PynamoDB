@@ -115,7 +115,7 @@ def migrate_boolean_attributes(model_class,
             if condition is None:
                 condition = Path(attr_name) == (1 if old_value else 0)
             else:
-                condition = condition & Path(attr_name) == (1 if old_value else 0)
+                condition = condition & (Path(attr_name) == (1 if old_value else 0))
 
         if actions:
             assert condition is not None

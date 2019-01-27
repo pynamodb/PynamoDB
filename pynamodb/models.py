@@ -546,6 +546,7 @@ class Model(AttributeContainer):
         :param filter_condition: Condition used to restrict the query results
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
+        :param rate_limit: If set then consumed capacity will be limited to this amount per second
         :param filters: A dictionary of filters to be used in the query. Requires a hash_key to be passed.
         """
         if hash_key is None:
