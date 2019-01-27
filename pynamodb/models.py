@@ -849,6 +849,7 @@ class Model(AttributeContainer):
         :param wait: If set, then this call will block until the table is ready for use
         :param read_capacity_units: Sets the read capacity units for this table
         :param write_capacity_units: Sets the write capacity units for this table
+        :param encryption_enabled: Enables DynamoDB encryption at rest
         """
         if not cls.exists():
             schema = cls._get_schema()
@@ -861,6 +862,8 @@ class Model(AttributeContainer):
                     pythonic(STREAM_ENABLED): True,
                     pythonic(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
                 }
+            if hasattr(cls.Meta, pythonic(ENCRYPT_META_ATTRIBUTE)):
+                schema[pythonic(ENCRYPT_META_ATTRIBUTE)] = cls.Meta.encryption_enabled
             if read_capacity_units is not None:
                 schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
             if write_capacity_units is not None:
