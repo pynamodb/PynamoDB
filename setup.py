@@ -25,7 +25,7 @@ if sys.argv[-1] == 'publish':
 install_requires = [
     'six',
     'botocore>=1.2.0',
-    'amazon-dax-client>=1.0.5;python_version>="2.7" and python_version>="3.5"',
+    'amazon-dax-client>=1.0.6;python_version>="2.7" and python_version>="3.5"',
     'python-dateutil>=2.1,<3.0.0',
 ]
 
