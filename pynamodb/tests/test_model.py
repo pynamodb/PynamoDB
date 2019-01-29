@@ -20,7 +20,7 @@ from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
-    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT, NUMBER_SHORT, SCANNED_COUNT
+    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT, NUMBER_SHORT, SCANNED_COUNT,
 )
 from pynamodb.models import Model, ResultSet
 from pynamodb.indexes import (
@@ -33,6 +33,7 @@ from pynamodb.attributes import (
     BooleanAttribute, ListAttribute)
 from pynamodb.tests.data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
+    DESCRIBE_TABLE_DATA_PAY_PER_REQUEST,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
@@ -255,6 +256,19 @@ class RegionSpecificModel(Model):
     class Meta:
         region = 'us-west-1'
         table_name = 'RegionSpecificModel'
+
+    user_name = UnicodeAttribute(hash_key=True)
+    user_id = UnicodeAttribute(range_key=True)
+
+
+class BillingModeOnDemandModel(Model):
+    """
+    A testing model
+    """
+
+    class Meta:
+        billing_mode = 'PAY_PER_REQUEST'
+        table_name = 'BillingModeOnDemandModel'
 
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
@@ -535,6 +549,25 @@ class ModelTestCase(TestCase):
         self.assertEqual(UserModel.Meta.read_capacity_units, 25)
         self.assertEqual(UserModel.Meta.write_capacity_units, 25)
 
+        # Test for wrong billing_mode
+        setattr(UserModel.Meta, 'billing_mode', 'WRONG')
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            self.assertRaises(ValueError)
+        delattr(UserModel.Meta, 'billing_mode')
+
+        # A table with billing_mode set as on_demand
+        self.assertEqual(BillingModeOnDemandModel.Meta.billing_mode, 'PAY_PER_REQUEST')
+        with patch(PATCH_METHOD) as req:
+            req.return_value = DESCRIBE_TABLE_DATA_PAY_PER_REQUEST
+            BillingModeOnDemandModel.create_table(read_capacity_units=2, write_capacity_units=2)
+            self.assertEqual(BillingModeOnDemandModel._connection.get_meta_table().data
+                             .get('BillingModeSummary', {}).get('BillingMode', None), 'PAY_PER_REQUEST')
+            self.assertEqual(BillingModeOnDemandModel._connection.get_meta_table().data
+                             .get('ProvisionedThroughput', {}).get('ReadCapacityUnits', None), 0)
+            self.assertEqual(BillingModeOnDemandModel._connection.get_meta_table().data
+                             .get('ProvisionedThroughput', {}).get('WriteCapacityUnits', None), 0)
+
         UserModel._connection = None
 
         def fake_wait(*obj, **kwargs):
@@ -580,9 +613,12 @@ class ModelTestCase(TestCase):
                 'ProvisionedThroughput': {
                     'ReadCapacityUnits': 25, 'WriteCapacityUnits': 25
                 },
-                'TableName': 'UserModel'
+                'TableName': 'UserModel',
+                'BillingMode': 'PROVISIONED'
             }
             actual = req.call_args_list[1][0][1]
+            print(sorted(actual.keys()))
+            print(sorted(params.keys()))
             self.assertEquals(sorted(actual.keys()), sorted(params.keys()))
             self.assertEquals(actual['TableName'], params['TableName'])
             self.assertEquals(actual['ProvisionedThroughput'], params['ProvisionedThroughput'])

@@ -345,6 +345,89 @@ DESCRIBE_TABLE_DATA = {
     }
 }
 
+DESCRIBE_TABLE_DATA_PAY_PER_REQUEST = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "ForumName",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "LastPostDateTime",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "Subject",
+                "AttributeType": "S"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 0,
+        "KeySchema": [
+            {
+                "AttributeName": "ForumName",
+                "KeyType": "HASH"
+            },
+            {
+                "AttributeName": "Subject",
+                "KeyType": "RANGE"
+            }
+        ],
+        "GlobalSecondaryIndexes": [
+            {
+                "IndexName": "LastPostIndex",
+                "IndexSizeBytes": 0,
+                "ItemCount": 0,
+                "KeySchema": [
+                    {
+                        "AttributeName": "ForumName",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "LastPostDateTime",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "KEYS_ONLY"
+                }
+            }
+        ],
+        "LocalSecondaryIndexes": [
+            {
+                "IndexName": "LastPostIndex",
+                "IndexSizeBytes": 0,
+                "ItemCount": 0,
+                "KeySchema": [
+                    {
+                        "AttributeName": "ForumName",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "LastPostDateTime",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "KEYS_ONLY"
+                }
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 0,
+            "WriteCapacityUnits": 0
+        },
+        "TableName": "Thread",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE",
+        "BillingModeSummary": {
+            "BillingMode": "PAY_PER_REQUEST",
+            "LastUpdateToPayPerRequestDateTime": 1548353644.074
+        }
+    }
+}
+
 GET_MODEL_ITEM_DATA = {
     'Item': {
         'user_name': {
@@ -876,7 +959,7 @@ OFFICE_EMPLOYEE_MODEL_TABLE_DATA = {
                 "AttributeName": "office_employee_id",
                 "KeyType": "HASH"
             }
-        ],
+        ],        
         "ProvisionedThroughput": {
             "NumberOfDecreasesToday": 0,
             "ReadCapacityUnits": 5,

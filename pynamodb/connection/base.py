@@ -39,7 +39,8 @@ from pynamodb.constants import (
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, UPDATE_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
-    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND)
+    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND,
+    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, PROVISIONED_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -520,15 +521,17 @@ class Connection(object):
                      write_capacity_units=None,
                      global_secondary_indexes=None,
                      local_secondary_indexes=None,
-                     stream_specification=None):
+                     stream_specification=None,
+                     billing_mode=DEFAULT_BILLING_MODE):
         """
         Performs the CreateTable operation
         """
         operation_kwargs = {
             TABLE_NAME: table_name,
+            BILLING_MODE: billing_mode,
             PROVISIONED_THROUGHPUT: {
                 READ_CAPACITY_UNITS: read_capacity_units,
-                WRITE_CAPACITY_UNITS: write_capacity_units
+                WRITE_CAPACITY_UNITS: write_capacity_units,
             }
         }
         attrs_list = []
@@ -540,6 +543,12 @@ class Connection(object):
                 ATTR_TYPE: attr.get(pythonic(ATTR_TYPE))
             })
         operation_kwargs[ATTR_DEFINITIONS] = attrs_list
+
+        if billing_mode not in AVAILABLE_BILLING_MODES:
+            raise ValueError("incorrect value for billing_mode, available modes: {0}".format(AVAILABLE_BILLING_MODES))
+        operation_kwargs[BILLING_MODE] = billing_mode
+        if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
+            del operation_kwargs[PROVISIONED_THROUGHPUT]
 
         if global_secondary_indexes:
             global_secondary_indexes_list = []
