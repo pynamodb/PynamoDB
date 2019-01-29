@@ -32,7 +32,7 @@ from pynamodb.attributes import (
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
     BooleanAttribute, ListAttribute)
 from pynamodb.tests.data import (
-    MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
+    MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA, DESCRIBE_TABLE_DATA,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
@@ -255,6 +255,19 @@ class RegionSpecificModel(Model):
     class Meta:
         region = 'us-west-1'
         table_name = 'RegionSpecificModel'
+
+    user_name = UnicodeAttribute(hash_key=True)
+    user_id = UnicodeAttribute(range_key=True)
+
+
+class EncryptionEnabledModel(Model):
+    """
+    A testing model
+    """
+
+    class Meta:
+        encryption_enabled = True
+        table_name = 'EncryptionEnabledModel'
 
     user_name = UnicodeAttribute(hash_key=True)
     user_id = UnicodeAttribute(range_key=True)
@@ -534,6 +547,15 @@ class ModelTestCase(TestCase):
         # A table with a specified capacity
         self.assertEqual(UserModel.Meta.read_capacity_units, 25)
         self.assertEqual(UserModel.Meta.write_capacity_units, 25)
+
+        # A table with encryption_enabled at rest
+        self.assertEqual(EncryptionEnabledModel.Meta.encryption_enabled, True)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = DESCRIBE_TABLE_DATA
+            EncryptionEnabledModel.create_table(read_capacity_units=2, write_capacity_units=2)
+            req.return_value = DESCRIBE_TABLE_DATA
+            self.assertEqual(EncryptionEnabledModel._connection.get_meta_table().data
+                             .get('SSEDescription', {}).get('Status', None), 'ENABLED')
 
         UserModel._connection = None
 
