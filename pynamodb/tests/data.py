@@ -341,11 +341,7 @@ DESCRIBE_TABLE_DATA = {
         },
         "TableName": "Thread",
         "TableSizeBytes": 0,
-        "TableStatus": "ACTIVE",
-        "BillingModeSummary": {
-            "BillingMode": "PAY_PER_REQUEST",
-            "LastUpdateToPayPerRequestDateTime": 1548353644.074
-        },
+        "TableStatus": "ACTIVE",        
         "SSEDescription": {
             "Status": "ENABLED"
         }
