@@ -843,14 +843,15 @@ class Model(AttributeContainer):
         return cls._get_connection().describe_table()
 
     @classmethod
-    def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None, encryption_enabled=None):
+    def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None, kms_encryption_enabled=None):
         """
         Create the table for this model
 
         :param wait: If set, then this call will block until the table is ready for use
         :param read_capacity_units: Sets the read capacity units for this table
         :param write_capacity_units: Sets the write capacity units for this table
-        :param encryption_enabled: Enables DynamoDB encryption at rest
+        :param kms_encryption_enabled: Enables DynamoDB server sided encryption at rest using 
+                AWS Key Management Service instead of default (AWS owned CMK)
         """
         if not cls.exists():
             schema = cls._get_schema()
@@ -864,13 +865,13 @@ class Model(AttributeContainer):
                     pythonic(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
                 }
             if hasattr(cls.Meta, pythonic(ENCRYPT_META_ATTRIBUTE)):
-                schema[pythonic(ENCRYPT_META_ATTRIBUTE)] = cls.Meta.encryption_enabled
+                schema[pythonic(ENCRYPT_META_ATTRIBUTE)] = cls.Meta.kms_encryption_enabled
             if read_capacity_units is not None:
                 schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
             if write_capacity_units is not None:
                 schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
-            if encryption_enabled is not None:
-                schema[pythonic(ENCRYPT_META_ATTRIBUTE)] = encryption_enabled
+            if kms_encryption_enabled is not None:
+                schema[pythonic(ENCRYPT_META_ATTRIBUTE)] = kms_encryption_enabled
             index_data = cls._get_indexes()
             schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
             schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))

@@ -254,7 +254,7 @@ class ConnectionTestCase(TestCase):
             )
             self.assertEqual(req.call_args[0][1], params)
 
-        kwargs['encryption_enabled'] = True
+        kwargs['kms_encryption_enabled'] = True
         params['SSESpecification'] = {
                 'Enabled': True
         }

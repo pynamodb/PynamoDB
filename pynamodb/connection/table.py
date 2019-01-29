@@ -289,7 +289,7 @@ class TableConnection(object):
                      global_secondary_indexes=None,
                      local_secondary_indexes=None,
                      stream_specification=None,
-                     encryption_enabled=False):
+                     kms_encryption_enabled=False):
         """
         Performs the CreateTable operation and returns the result
         """
@@ -302,5 +302,5 @@ class TableConnection(object):
             global_secondary_indexes=global_secondary_indexes,
             local_secondary_indexes=local_secondary_indexes,
             stream_specification=stream_specification,
-            encryption_enabled=encryption_enabled
+            kms_encryption_enabled=kms_encryption_enabled
         )

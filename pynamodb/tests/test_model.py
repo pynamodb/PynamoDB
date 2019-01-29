@@ -266,7 +266,7 @@ class EncryptionEnabledModel(Model):
     """
 
     class Meta:
-        encryption_enabled = True
+        kms_encryption_enabled = True
         table_name = 'EncryptionEnabledModel'
 
     user_name = UnicodeAttribute(hash_key=True)
@@ -548,12 +548,11 @@ class ModelTestCase(TestCase):
         self.assertEqual(UserModel.Meta.read_capacity_units, 25)
         self.assertEqual(UserModel.Meta.write_capacity_units, 25)
 
-        # A table with encryption_enabled at rest
-        self.assertEqual(EncryptionEnabledModel.Meta.encryption_enabled, True)
+        # A table with kms_encryption_enabled at rest, instead of default AWS owned CMK
+        self.assertEqual(EncryptionEnabledModel.Meta.kms_encryption_enabled, True)
         with patch(PATCH_METHOD) as req:
             req.return_value = DESCRIBE_TABLE_DATA
             EncryptionEnabledModel.create_table(read_capacity_units=2, write_capacity_units=2)
-            req.return_value = DESCRIBE_TABLE_DATA
             self.assertEqual(EncryptionEnabledModel._connection.get_meta_table().data
                              .get('SSEDescription', {}).get('Status', None), 'ENABLED')
 

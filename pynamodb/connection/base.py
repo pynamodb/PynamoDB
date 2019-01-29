@@ -521,7 +521,7 @@ class Connection(object):
                      global_secondary_indexes=None,
                      local_secondary_indexes=None,
                      stream_specification=None,
-                     encryption_enabled=False):
+                     kms_encryption_enabled=False):
         """
         Performs the CreateTable operation
         """
@@ -579,9 +579,9 @@ class Connection(object):
                 STREAM_VIEW_TYPE: stream_specification[pythonic(STREAM_VIEW_TYPE)]
             }
 
-        if encryption_enabled:
+        if kms_encryption_enabled:
             operation_kwargs[ENCRYPT_SPECIFICATION] = {
-                ENCRYPT_ENABLED: encryption_enabled
+                ENCRYPT_ENABLED: kms_encryption_enabled
             }
 
         try:
