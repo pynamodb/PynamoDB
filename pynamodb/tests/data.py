@@ -959,7 +959,7 @@ OFFICE_EMPLOYEE_MODEL_TABLE_DATA = {
                 "AttributeName": "office_employee_id",
                 "KeyType": "HASH"
             }
-        ],        
+        ],
         "ProvisionedThroughput": {
             "NumberOfDecreasesToday": 0,
             "ReadCapacityUnits": 5,
