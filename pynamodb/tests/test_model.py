@@ -584,7 +584,6 @@ class ModelTestCase(TestCase):
                 'BillingMode': 'PROVISIONED'
             }
             actual = req.call_args_list[1][0][1]
-            print('actual: ', actual)
             self.assertEquals(sorted(actual.keys()), sorted(params.keys()))
             self.assertEquals(actual['TableName'], params['TableName'])
             self.assertEquals(actual['ProvisionedThroughput'], params['ProvisionedThroughput'])
