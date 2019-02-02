@@ -32,7 +32,7 @@ from pynamodb.constants import (
     CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
-    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET)
+    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET, PAY_PER_REQUEST_BILLING_MODE, BILLING_MODE)
 
 
 log = logging.getLogger(__name__)
@@ -861,10 +861,20 @@ class Model(AttributeContainer):
                     pythonic(STREAM_ENABLED): True,
                     pythonic(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
                 }
+            if hasattr(cls.Meta, pythonic(BILLING_MODE)):
+                schema[pythonic(BILLING_MODE)] = getattr(
+                    cls.Meta, pythonic(BILLING_MODE), PAY_PER_REQUEST_BILLING_MODE
+                )
+
             if read_capacity_units is not None:
                 schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
             if write_capacity_units is not None:
                 schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+
+            if schema.get(pythonic(BILLING_MODE)) == PAY_PER_REQUEST_BILLING_MODE:
+                schema.pop(pythonic(READ_CAPACITY_UNITS), '')
+                schema.pop(pythonic(WRITE_CAPACITY_UNITS), '')
+
             index_data = cls._get_indexes()
             schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
             schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))

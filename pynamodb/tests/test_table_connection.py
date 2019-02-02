@@ -4,7 +4,7 @@ Test suite for the table class
 import six
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import TableConnection
-from pynamodb.constants import DEFAULT_REGION
+from pynamodb.constants import DEFAULT_REGION, PROVISIONED_BILLING_MODE
 from pynamodb.expressions.operand import Path
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
 from pynamodb.tests.response import HttpOK
@@ -77,6 +77,7 @@ class ConnectionTestCase(TestCase):
         ]
         params = {
             'TableName': 'ci-table',
+            'BillingMode': PROVISIONED_BILLING_MODE,
             'ProvisionedThroughput': {
                 'WriteCapacityUnits': 1,
                 'ReadCapacityUnits': 1

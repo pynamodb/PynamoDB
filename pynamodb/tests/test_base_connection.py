@@ -11,7 +11,8 @@ from botocore.vendored import requests
 from pynamodb.exceptions import (VerboseClientError,
     TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
 from pynamodb.constants import (
-    DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING, TABLE_KEY)
+    DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT,
+    DEFAULT_ENCODING, TABLE_KEY, PROVISIONED_BILLING_MODE)
 from pynamodb.expressions.operand import Path
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from pynamodb.tests.deep_eq import deep_eq
@@ -128,6 +129,7 @@ class ConnectionTestCase(TestCase):
         ]
         params = {
             'TableName': 'ci-table',
+            'BillingMode': PROVISIONED_BILLING_MODE,
             'ProvisionedThroughput': {
                 'WriteCapacityUnits': 1,
                 'ReadCapacityUnits': 1

@@ -39,7 +39,8 @@ from pynamodb.constants import (
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, UPDATE_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
-    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND)
+    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND,
+    PROVISIONED_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -520,7 +521,8 @@ class Connection(object):
                      write_capacity_units=None,
                      global_secondary_indexes=None,
                      local_secondary_indexes=None,
-                     stream_specification=None):
+                     stream_specification=None,
+                     billing_mode=PROVISIONED_BILLING_MODE):
         """
         Performs the CreateTable operation
         """
@@ -529,8 +531,12 @@ class Connection(object):
             PROVISIONED_THROUGHPUT: {
                 READ_CAPACITY_UNITS: read_capacity_units,
                 WRITE_CAPACITY_UNITS: write_capacity_units
-            }
+            },
+            BILLING_MODE: billing_mode
         }
+        if operation_kwargs.get(BILLING_MODE) == PAY_PER_REQUEST_BILLING_MODE:
+            operation_kwargs.pop(PROVISIONED_THROUGHPUT, {})
+
         attrs_list = []
         if attribute_definitions is None:
             raise ValueError("attribute_definitions argument is required")

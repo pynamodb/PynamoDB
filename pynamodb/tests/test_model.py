@@ -4467,3 +4467,149 @@ class ModelInitTestCase(TestCase):
         self.assertEquals(actual.left.left.value, left_instance.left.value)
         self.assertEquals(actual.right.right.left.value, right_instance.right.left.value)
         self.assertEquals(actual.right.right.value, right_instance.right.value)
+
+    def test_billing_mode(self):
+
+        class MyCustomUserModel(Model):
+            """
+            A testing model
+            """
+
+            class Meta:
+                table_name = 'MyCustomUserModel'
+                billing_mode = 'PAY_PER_REQUEST'
+                region = 'us-east-1'
+
+            custom_user_name = UnicodeAttribute(hash_key=True,
+                                                attr_name='user_name')
+            user_id = UnicodeAttribute(range_key=True)
+            picture = BinaryAttribute(null=True)
+            zip_code = NumberAttribute(null=True)
+            email = UnicodeAttribute(default='needs_email')
+            callable_field = NumberAttribute(default=lambda: 42)
+
+        self.maxDiff = None
+        scope_args = {'count': 0}
+
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {'TableName': MyCustomUserModel.Meta.table_name}:
+                if scope_args['count'] == 0:
+                    return {}
+                else:
+                    return MODEL_TABLE_DATA
+            else:
+                return {}
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db):
+            with patch(
+                    "pynamodb.connection.TableConnection.describe_table") as req:
+                req.return_value = None
+                with self.assertRaises(TableError):
+                    MyCustomUserModel.create_table(
+                        read_capacity_units=2, write_capacity_units=2,
+                        wait=True
+                    )
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            MyCustomUserModel.create_table(
+                read_capacity_units=2, write_capacity_units=2
+            )
+
+        # Test for default region
+        self.assertEqual(MyCustomUserModel.Meta.region, 'us-east-1')
+        self.assertTrue(MyCustomUserModel.Meta.session_cls is requests.Session)
+
+        self.assertEqual(
+            MyCustomUserModel._connection.connection._request_timeout_seconds,
+            60)
+        self.assertEqual(
+            MyCustomUserModel._connection.connection._max_retry_attempts_exception,
+            3)
+        self.assertEqual(
+            MyCustomUserModel._connection.connection._base_backoff_ms, 25)
+
+        self.assertTrue(type(
+            MyCustomUserModel._connection.connection.requests_session) is requests.Session)
+
+        with patch(PATCH_METHOD) as req:
+            # The default region is us-east-1
+            req.return_value = MODEL_TABLE_DATA
+            self.assertEqual(MyCustomUserModel._connection.connection.region,
+                             'us-east-1')
+
+        class MyCustomHostSpecificModel(Model):
+            """
+            A testing model
+            """
+
+            class Meta:
+                host = 'http://localhost'
+                table_name = 'RegionSpecificModel'
+                billing_mode = 'PAY_PER_REQUEST'
+
+            user_name = UnicodeAttribute(hash_key=True)
+            user_id = UnicodeAttribute(range_key=True)
+
+        # A table with a specified host
+        self.assertEqual(MyCustomHostSpecificModel.Meta.host,
+                         'http://localhost')
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            MyCustomHostSpecificModel.create_table()
+            self.assertEqual(
+                MyCustomHostSpecificModel._connection.connection.host,
+                'http://localhost')
+
+        MyCustomUserModel._connection = None
+
+        def fake_wait(*obj, **kwargs):
+            if scope_args['count'] == 0:
+                scope_args['count'] += 1
+                raise ClientError({'Error': {
+                    'Code': 'ResourceNotFoundException',
+                    'Message': 'Not Found'}},
+                    "DescribeTable")
+            elif scope_args['count'] == 1 or scope_args['count'] == 2:
+                data = copy.deepcopy(MODEL_TABLE_DATA)
+                data['Table']['TableStatus'] = 'Creating'
+                scope_args['count'] += 1
+                return data
+            else:
+                return MODEL_TABLE_DATA
+
+        mock_wait = MagicMock()
+        mock_wait.side_effect = fake_wait
+
+        scope_args = {'count': 0}
+        with patch(PATCH_METHOD, new=mock_wait) as req:
+            MyCustomUserModel.create_table(wait=True)
+            params = {
+                'BillingMode': 'PAY_PER_REQUEST'
+            }
+            actual = req.call_args_list[1][0][1]
+            self.assertFalse("ProvisionedThroughput" in actual)
+            self.assertEquals(actual['BillingMode'], params['BillingMode'])
+
+        def bad_server(*args):
+            if scope_args['count'] == 0:
+                scope_args['count'] += 1
+                return {}
+            elif scope_args['count'] == 1 or scope_args['count'] == 2:
+                return {}
+
+        bad_mock_server = MagicMock()
+        bad_mock_server.side_effect = bad_server
+
+        scope_args = {'count': 0}
+        with patch(PATCH_METHOD, new=bad_mock_server) as req:
+            self.assertRaises(
+                TableError,
+                MyCustomUserModel.create_table,
+                read_capacity_units=2,
+                write_capacity_units=2,
+                wait=True
+            )
