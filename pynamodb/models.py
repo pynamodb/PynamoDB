@@ -79,7 +79,7 @@ class BatchWrite(ModelContextManager):
             else:
                 self.commit()
             if self.delay != 0:
-                time.sleep(secs=self.delay)
+                time.sleep(self.delay)
         self.pending_operations.append({"action": PUT, "item": put_item})
 
     def delete(self, del_item):
@@ -101,7 +101,7 @@ class BatchWrite(ModelContextManager):
             else:
                 self.commit()
                 if self.delay != 0:
-                    time.sleep(secs=self.delay)
+                    time.sleep(self.delay)
         self.pending_operations.append({"action": DELETE, "item": del_item})
 
     def __exit__(self, exc_type, exc_val, exc_tb):
