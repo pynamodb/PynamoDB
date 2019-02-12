@@ -45,9 +45,10 @@ class ModelContextManager(object):
 
     """
 
-    def __init__(self, model, auto_commit=True):
+    def __init__(self, model, auto_commit=True, delay=0):
         self.model = model
         self.auto_commit = auto_commit
+        self.delay = delay
         self.max_operations = BATCH_WRITE_PAGE_LIMIT
         self.pending_operations = []
 
@@ -77,6 +78,8 @@ class BatchWrite(ModelContextManager):
                 raise ValueError("DynamoDB allows a maximum of 25 batch operations")
             else:
                 self.commit()
+            if self.delay != 0:
+                time.sleep(secs=self.delay)
         self.pending_operations.append({"action": PUT, "item": put_item})
 
     def delete(self, del_item):
@@ -97,6 +100,8 @@ class BatchWrite(ModelContextManager):
                 raise ValueError("DynamoDB allows a maximum of 25 batch operations")
             else:
                 self.commit()
+                if self.delay != 0:
+                    time.sleep(secs=self.delay)
         self.pending_operations.append({"action": DELETE, "item": del_item})
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -307,7 +312,7 @@ class Model(AttributeContainer):
                 keys_to_get = []
 
     @classmethod
-    def batch_write(cls, auto_commit=True):
+    def batch_write(cls, auto_commit=True, delay=0):
         """
         Returns a BatchWrite context manager for a batch operation.
 
@@ -316,8 +321,9 @@ class Model(AttributeContainer):
                             in the DynamoDB API (see BatchWrite). Regardless of the value
                             passed here, changes automatically commit on context exit
                             (whether successful or not).
+        :param delay: Sleep time in seconds after a commit to avoid ProvisionedThroughputExceededException
         """
-        return BatchWrite(cls, auto_commit=auto_commit)
+        return BatchWrite(cls, auto_commit=auto_commit, delay=delay)
 
     def __repr__(self):
         if self.Meta.table_name:
