@@ -25,10 +25,10 @@ from pynamodb.connection.util import pythonic
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
-    COMPARISON_OPERATOR, EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, SCAN_FILTER_VALUES, ATTR_DEFINITIONS,
+    COMPARISON_OPERATOR, EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, ATTR_DEFINITIONS,
     BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, KEY_CONDITION_EXPRESSION,
     BATCH_GET_ITEM, DELETE_REQUEST, SELECT_VALUES, RETURN_VALUES, REQUEST_ITEMS, ATTR_UPDATES,
-    PROJECTION_EXPRESSION, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
+    PROJECTION_EXPRESSION, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, TABLE_NAME,
     INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
     PUT_ITEM, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
@@ -274,7 +274,7 @@ class Connection(object):
         Sends an error message to the logger
         """
         log.error("%s failed with status: %s, message: %s",
-                  operation, response.status_code,response.content)
+                  operation, response.status_code, response.content)
 
     def _create_prepared_request(self, request_dict, operation_model):
         """
@@ -317,19 +317,19 @@ class Connection(object):
             capacity = data.get(CONSUMED_CAPACITY)
             if isinstance(capacity, dict) and CAPACITY_UNITS in capacity:
                 capacity = capacity.get(CAPACITY_UNITS)
-            log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
+            log.debug("%s %s consumed %s units", data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
 
     def send_post_boto_callback(self, operation_name, req_uuid, table_name):
         try:
             post_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
-        except Exception as e:
+        except Exception:
             log.exception("post_boto callback threw an exception.")
 
     def send_pre_boto_callback(self, operation_name, req_uuid, table_name):
         try:
             pre_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
-        except Exception as e:
+        except Exception:
             log.exception("pre_boto callback threw an exception.")
 
     def _make_api_call(self, operation_name, operation_kwargs):
@@ -1232,8 +1232,8 @@ class Connection(object):
                 # Minimum value is 1 second.
                 elapsed_time_s = math.ceil(elapsed_time_ms / 1000)
                 # Sleep proportional to the ratio of --consumed capacity-- to --capacity to consume--
-                time_to_sleep = max(1, round((total_consumed_read_capacity/ elapsed_time_s) \
-                                       / read_capacity_to_consume_per_second))
+                time_to_sleep = max(1, round((total_consumed_read_capacity / elapsed_time_s) /
+                                             read_capacity_to_consume_per_second))
 
                 # At any moment if the timeout_seconds hits, then return
                 if timeout_seconds and (elapsed_time_s + time_to_sleep) > timeout_seconds:

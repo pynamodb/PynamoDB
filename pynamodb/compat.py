@@ -16,7 +16,7 @@ class AssertRaises(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_tb):
+    def __exit__(self, exc_type, exc_value, unused_exc_tb):
         if exc_type is None:
             raise Exception(
                 "{0} not raised".format(self.expected))

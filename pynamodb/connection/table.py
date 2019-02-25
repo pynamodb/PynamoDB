@@ -151,24 +151,23 @@ class TableConnection(object):
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get)
 
-    def rate_limited_scan(
-             self,
-             filter_condition=None,
-             attributes_to_get=None,
-             page_size=None,
-             limit=None,
-             conditional_operator=None,
-             scan_filter=None,
-             segment=None,
-             total_segments=None,
-             exclusive_start_key=None,
-             timeout_seconds=None,
-             read_capacity_to_consume_per_second=None,
-             allow_rate_limited_scan_without_consumed_capacity=None,
-             max_sleep_between_retry=None,
-             max_consecutive_exceptions=None,
-             consistent_read=None,
-             index_name=None):
+    def rate_limited_scan(self,
+                          filter_condition=None,
+                          attributes_to_get=None,
+                          page_size=None,
+                          limit=None,
+                          conditional_operator=None,
+                          scan_filter=None,
+                          segment=None,
+                          total_segments=None,
+                          exclusive_start_key=None,
+                          timeout_seconds=None,
+                          read_capacity_to_consume_per_second=None,
+                          allow_rate_limited_scan_without_consumed_capacity=None,
+                          max_sleep_between_retry=None,
+                          max_consecutive_exceptions=None,
+                          consistent_read=None,
+                          index_name=None):
         """
         Performs the scan operation with rate limited
         """

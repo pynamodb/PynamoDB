@@ -100,4 +100,3 @@ class VerboseClientError(botocore.exceptions.ClientError):
         ).format(request_id=verbose_properties.get('request_id'), table_name=verbose_properties.get('table_name'))
 
         super(VerboseClientError, self).__init__(error_response, operation_name)
-
