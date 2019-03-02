@@ -499,14 +499,8 @@ class ModelTestCase(TestCase):
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
 
         # Test for default region
-        self.assertEqual(UserModel.Meta.region, 'us-east-1')
-        self.assertEqual(UserModel.Meta.request_timeout_seconds, 60)
-        self.assertEqual(UserModel.Meta.max_retry_attempts, 3)
-        self.assertEqual(UserModel.Meta.base_backoff_ms, 25)
-        self.assertTrue(UserModel.Meta.session_cls is requests.Session)
-
         self.assertEqual(UserModel._connection.connection._request_timeout_seconds, 60)
-        self.assertEqual(UserModel._connection.connection._max_retry_attempts_exception, 3)
+        self.assertEqual(UserModel._connection.connection._max_retry_attempts, 3)
         self.assertEqual(UserModel._connection.connection._base_backoff_ms, 25)
 
         self.assertTrue(type(UserModel._connection.connection.requests_session) is requests.Session)
@@ -678,7 +672,7 @@ class ModelTestCase(TestCase):
         self.assertTrue(OverriddenSessionModel.Meta.session_cls is OverriddenSession)
 
         self.assertEqual(OverriddenSessionModel._connection.connection._request_timeout_seconds, 9999)
-        self.assertEqual(OverriddenSessionModel._connection.connection._max_retry_attempts_exception, 200)
+        self.assertEqual(OverriddenSessionModel._connection.connection._max_retry_attempts, 200)
         self.assertEqual(OverriddenSessionModel._connection.connection._base_backoff_ms, 4120)
         self.assertTrue(type(OverriddenSessionModel._connection.connection.requests_session) is OverriddenSession)
 

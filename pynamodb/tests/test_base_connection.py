@@ -2473,7 +2473,7 @@ class ConnectionTestCase(TestCase):
         mock_client._endpoint.create_request.return_value = prepared_request
 
         c = Connection()
-        c._max_retry_attempts_exception = 3
+        c._max_retry_attempts = 3
         c._create_prepared_request({'x': 'y'}, {'a': 'b'})
 
         self.assertEqual(len(requests_session_mock.mock_calls), 1)
@@ -2516,7 +2516,7 @@ class ConnectionTestCase(TestCase):
             deserializable_response
         ]
         c = Connection()
-        c._max_retry_attempts_exception = 3
+        c._max_retry_attempts = 3
         c._create_prepared_request = mock.Mock()
         c._create_prepared_request.return_value = prepared_request
 
@@ -2538,7 +2538,7 @@ class ConnectionTestCase(TestCase):
             requests.Timeout('problems!'),
         ]
         c = Connection()
-        c._max_retry_attempts_exception = 3
+        c._max_retry_attempts = 3
         c._create_prepared_request = mock.Mock()
         c._create_prepared_request.return_value = prepared_request
 
