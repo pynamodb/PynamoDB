@@ -986,7 +986,7 @@ class Connection(object):
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to put item: {0}".format(e), e)
+            raise PutError("Failed to put item: {0}".format(e), e) from e
 
     def batch_write_item(self,
                          table_name,
