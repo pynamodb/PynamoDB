@@ -312,7 +312,7 @@ class AttributeContainer(object):
             else:
                 serialized = cls._serialize_value(attr, value, null_check)
             if NULL not in serialized:
-                attrs[name] = serialized
+                attrs[attr.attr_name] = serialized
         return attrs
 
     def __eq__(self, other):

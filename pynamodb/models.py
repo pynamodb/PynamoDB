@@ -1322,7 +1322,7 @@ class Model(AttributeContainer):
         attrs = {attributes: {}}
 
         for name, attr in self.get_attributes().items():
-            serialized = serialized_container.get(name)
+            serialized = serialized_container.get(attr.attr_name)
             if serialized:
                 if attr_map:
                     attrs[attributes][attr.attr_name] = serialized
