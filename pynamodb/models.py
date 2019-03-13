@@ -1318,17 +1318,12 @@ class Model(AttributeContainer):
         :param null_check: If True, then attributes are checked for null
         """
         attributes = pythonic(ATTRIBUTES)
+        # use the new recursive type check and serialization
+        serialized_container = self._serialize_container(self, null_check)
         attrs = {attributes: {}}
+
         for name, attr in self.get_attributes().items():
-            value = getattr(self, name)
-            if isinstance(value, MapAttribute):
-                if not value.validate():
-                    raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
-
-            serialized = self._serialize_value(attr, value, null_check)
-            if NULL in serialized:
-                continue
-
+            serialized = serialized_container[name]
             if attr_map:
                 attrs[attributes][attr.attr_name] = serialized
             else:
@@ -1340,27 +1335,6 @@ class Model(AttributeContainer):
                     attrs[attributes][attr.attr_name] = serialized
 
         return attrs
-
-    @classmethod
-    def _serialize_value(cls, attr, value, null_check=True):
-        """
-        Serializes a value for use with DynamoDB
-
-        :param attr: an instance of `Attribute` for serialization
-        :param value: a value to be serialized
-        :param null_check: If True, then attributes are checked for null
-        """
-        if value is None:
-            serialized = None
-        else:
-            serialized = attr.serialize(value)
-
-        if serialized is None:
-            if not attr.null and null_check:
-                raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
-            return {NULL: True}
-
-        return {ATTR_TYPE_MAP[attr.attr_type]: serialized}
 
     @classmethod
     def _serialize_keys(cls, hash_key, range_key=None):

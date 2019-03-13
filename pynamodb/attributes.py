@@ -272,6 +272,44 @@ class AttributeContainer(object):
                 raise ValueError("Attribute {0} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
 
+    @staticmethod
+    def _serialize_value(attr, value, null_check=True):
+        """
+        Serializes a value for use with DynamoDB
+        :param attr: an instance of `Attribute` for serialization
+        :param value: a value to be serialized
+        :param null_check: If True, then attributes are checked for null
+        """
+        if value is None:
+            serialized = None
+        else:
+            serialized = attr.serialize(value)
+
+        if serialized is None:
+            if not attr.null and null_check:
+                raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
+            return {NULL: True}
+
+        return {ATTR_TYPE_MAP[attr.attr_type]: serialized}
+
+    @classmethod
+    def _serialize_container(cls, attr_container, null_check=True):
+        """
+        Retrive attribute container recursively and do null check at the same time.
+        Handling for the raw MapAttribute will be done in MapAttribute
+        """
+        attrs = {}
+        for name, attr in attr_container.get_attributes().items():
+            value = getattr(attr_container, name)
+            if isinstance(value, MapAttribute) and type(value) != MapAttribute:
+                serialized = cls._serialize_container(value, null_check)
+            else:
+                serialized = cls._serialize_value(attr, value, null_check)
+            if NULL in serialized:
+                continue
+            attrs[name] = serialized
+        return attrs
+
     def __eq__(self, other):
         # This is required for python 2 support so that MapAttribute can call this method.
         return self is other
@@ -755,42 +793,34 @@ class MapAttribute(Attribute, AttributeContainer):
         else:
             super(MapAttribute, self)._set_attributes(**attrs)
 
-    def is_correctly_typed(self, key, attr):
-        can_be_null = attr.null
-        value = getattr(self, key)
-        if can_be_null and value is None:
-            return True
-        if getattr(self, key) is None:
-            raise ValueError("Attribute '{0}' cannot be None".format(key))
-        return True  # TODO: check that the actual type of `value` meets requirements of `attr`
-
-    def validate(self):
-        return all(self.is_correctly_typed(k, v) for k, v in six.iteritems(self.get_attributes()))
-
     def serialize(self, values):
-        rval = {}
-        for k in values:
-            v = values[k]
-            if self._should_skip(v):
-                continue
-            attr_class = self._get_serialize_class(k, v)
-            if attr_class is None:
-                continue
-            if attr_class.attr_type:
-                attr_key = ATTR_TYPE_MAP[attr_class.attr_type]
-            else:
-                attr_key = _get_key_for_serialize(v)
+        # if not raw MapAttribute, use the new recursive type check and serialization
+        if not self.is_raw():
+            rval = self._serialize_container(values, null_check=True)
+        else:
+            rval = {}
+            for k in values:
+                v = values[k]
+                if self._should_skip(v):
+                    continue
+                attr_class = self._get_serialize_class(k, v)
+                if attr_class is None:
+                    continue
+                if attr_class.attr_type:
+                    attr_key = ATTR_TYPE_MAP[attr_class.attr_type]
+                else:
+                    attr_key = _get_key_for_serialize(v)
 
-            # If this is a subclassed MapAttribute, there may be an alternate attr name
-            attr = self.get_attributes().get(k)
-            attr_name = attr.attr_name if attr else k
+                # If this is a subclassed MapAttribute, there may be an alternate attr name
+                attr = self.get_attributes().get(k)
+                attr_name = attr.attr_name if attr else k
 
-            serialized = attr_class.serialize(v)
-            if self._should_skip(serialized):
-                # Check after we serialize in case the serialized value is null
-                continue
+                serialized = attr_class.serialize(v)
+                if self._should_skip(serialized):
+                    # Check after we serialize in case the serialized value is null
+                    continue
 
-            rval[attr_name] = {attr_key: serialized}
+                rval[attr_name] = {attr_key: serialized}
 
         return rval
 
