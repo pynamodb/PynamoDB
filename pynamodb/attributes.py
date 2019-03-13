@@ -293,16 +293,19 @@ class AttributeContainer(object):
         return {ATTR_TYPE_MAP[attr.attr_type]: serialized}
 
     @classmethod
-    def _serialize_container(cls, attr_container, null_check=True):
+    def _serialize_container(cls, attr_container, values, null_check=True):
         """
         Retrieve attribute container recursively and do null check at the same time.
         Handling for the raw MapAttribute will be done in MapAttribute
         """
         attrs = {}
         for name, attr in attr_container.get_attributes().items():
-            value = getattr(attr_container, name)
+            if not isinstance(values, dict) or not issubclass(attr_container, MapAttribute):
+                value = getattr(values, name)
+            else:
+                value = values[name]
             if isinstance(value, MapAttribute) and type(value) is not MapAttribute:
-                serialized = {MAP_SHORT: cls._serialize_container(value, null_check)}
+                serialized = {MAP_SHORT: cls._serialize_container(type(value), value, null_check)}
             else:
                 serialized = cls._serialize_value(attr, value, null_check)
             if NULL not in serialized:
@@ -793,8 +796,8 @@ class MapAttribute(Attribute, AttributeContainer):
             super(MapAttribute, self)._set_attributes(**attrs)
 
     def serialize(self, values):
-        if isinstance(values, MapAttribute) and not values.is_raw():
-            return self._serialize_container(values, null_check=True)
+        if not self.is_raw():
+            return self._serialize_container(type(self), values, null_check=True)
 
         rval = {}
         for k in values:

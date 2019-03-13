@@ -1318,7 +1318,7 @@ class Model(AttributeContainer):
         :param null_check: If True, then attributes are checked for null
         """
         attributes = pythonic(ATTRIBUTES)
-        serialized_container = self._serialize_container(self, null_check)
+        serialized_container = self._serialize_container(type(self), self, null_check)
         attrs = {attributes: {}}
 
         for name, attr in self.get_attributes().items():
