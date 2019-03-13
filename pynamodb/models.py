@@ -1318,7 +1318,6 @@ class Model(AttributeContainer):
         :param null_check: If True, then attributes are checked for null
         """
         attributes = pythonic(ATTRIBUTES)
-        # use the new recursive type check and serialization
         serialized_container = self._serialize_container(self, null_check)
         attrs = {attributes: {}}
 

@@ -295,19 +295,18 @@ class AttributeContainer(object):
     @classmethod
     def _serialize_container(cls, attr_container, null_check=True):
         """
-        Retrive attribute container recursively and do null check at the same time.
+        Retrieve attribute container recursively and do null check at the same time.
         Handling for the raw MapAttribute will be done in MapAttribute
         """
         attrs = {}
         for name, attr in attr_container.get_attributes().items():
             value = getattr(attr_container, name)
-            if isinstance(value, MapAttribute) and type(value) != MapAttribute:
+            if isinstance(value, MapAttribute) and type(value) is not MapAttribute:
                 serialized = {MAP_SHORT: cls._serialize_container(value, null_check)}
             else:
                 serialized = cls._serialize_value(attr, value, null_check)
-            if NULL in serialized:
-                continue
-            attrs[name] = serialized
+            if NULL not in serialized:
+                attrs[name] = serialized
         return attrs
 
     def __eq__(self, other):
@@ -794,34 +793,32 @@ class MapAttribute(Attribute, AttributeContainer):
             super(MapAttribute, self)._set_attributes(**attrs)
 
     def serialize(self, values):
-        # if not raw MapAttribute, use the new recursive type check and serialization
         if not self.is_raw():
-            rval = self._serialize_container(values, null_check=True)
-        else:
-            rval = {}
-            for k in values:
-                v = values[k]
-                if self._should_skip(v):
-                    continue
-                attr_class = self._get_serialize_class(k, v)
-                if attr_class is None:
-                    continue
-                if attr_class.attr_type:
-                    attr_key = ATTR_TYPE_MAP[attr_class.attr_type]
-                else:
-                    attr_key = _get_key_for_serialize(v)
+            return self._serialize_container(values, null_check=True)
 
-                # If this is a subclassed MapAttribute, there may be an alternate attr name
-                attr = self.get_attributes().get(k)
-                attr_name = attr.attr_name if attr else k
+        rval = {}
+        for k in values:
+            v = values[k]
+            if self._should_skip(v):
+                continue
+            attr_class = self._get_serialize_class(k, v)
+            if attr_class is None:
+                continue
+            if attr_class.attr_type:
+                attr_key = ATTR_TYPE_MAP[attr_class.attr_type]
+            else:
+                attr_key = _get_key_for_serialize(v)
 
-                serialized = attr_class.serialize(v)
-                if self._should_skip(serialized):
-                    # Check after we serialize in case the serialized value is null
-                    continue
+            # If this is a subclassed MapAttribute, there may be an alternate attr name
+            attr = self.get_attributes().get(k)
+            attr_name = attr.attr_name if attr else k
 
-                rval[attr_name] = {attr_key: serialized}
+            serialized = attr_class.serialize(v)
+            if self._should_skip(serialized):
+                # Check after we serialize in case the serialized value is null
+                continue
 
+            rval[attr_name] = {attr_key: serialized}
         return rval
 
     def deserialize(self, values):
