@@ -1322,16 +1322,17 @@ class Model(AttributeContainer):
         attrs = {attributes: {}}
 
         for name, attr in self.get_attributes().items():
-            serialized = serialized_container[name]
-            if attr_map:
-                attrs[attributes][attr.attr_name] = serialized
-            else:
-                if attr.is_hash_key:
-                    attrs[HASH] = serialized[ATTR_TYPE_MAP[attr.attr_type]]
-                elif attr.is_range_key:
-                    attrs[RANGE] = serialized[ATTR_TYPE_MAP[attr.attr_type]]
-                else:
+            serialized = serialized_container.get(name)
+            if serialized:
+                if attr_map:
                     attrs[attributes][attr.attr_name] = serialized
+                else:
+                    if attr.is_hash_key:
+                        attrs[HASH] = serialized[ATTR_TYPE_MAP[attr.attr_type]]
+                    elif attr.is_range_key:
+                        attrs[RANGE] = serialized[ATTR_TYPE_MAP[attr.attr_type]]
+                    else:
+                        attrs[attributes][attr.attr_name] = serialized
 
         return attrs
 
