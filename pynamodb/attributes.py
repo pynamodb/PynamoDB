@@ -306,11 +306,17 @@ class AttributeContainer(object):
             if not isinstance(values, dict) or not issubclass(attr_container, MapAttribute):
                 value = getattr(values, name)
             else:
-                value = values[name]
+                value = values.get(name)
             if isinstance(value, MapAttribute) and type(value) is not MapAttribute:
                 serialized = {MAP_SHORT: cls._serialize_container(type(attr), value, null_check)}
             else:
-                serialized = cls._serialize_value(attr, value, null_check)
+                if not value and attr.default is not None:
+                    if attr.default:
+                        serialized = cls._serialize_value(attr, attr.default, null_check)
+                    else:
+                        serialized = cls._serialize_value(attr, None, False)
+                else:
+                    serialized = cls._serialize_value(attr, value, null_check)
             if NULL not in serialized:
                 attrs[attr.attr_name] = serialized
         return attrs
