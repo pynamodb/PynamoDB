@@ -308,7 +308,7 @@ class AttributeContainer(object):
             else:
                 value = values[name]
             if isinstance(value, MapAttribute) and type(value) is not MapAttribute:
-                serialized = {MAP_SHORT: cls._serialize_container(type(value), value, null_check)}
+                serialized = {MAP_SHORT: cls._serialize_container(type(attr), value, null_check)}
             else:
                 serialized = cls._serialize_value(attr, value, null_check)
             if NULL not in serialized:
