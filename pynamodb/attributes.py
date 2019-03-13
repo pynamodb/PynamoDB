@@ -297,6 +297,9 @@ class AttributeContainer(object):
         """
         Retrieve attribute container recursively and do null check at the same time.
         Handling for the raw MapAttribute will be done in MapAttribute
+        :param attr_container: subclass of AttributeContainer for serialization
+        :param values: value of the container to be serialized such as value of a model or MapAttribute, 
+        :param null_check: If True, then attributes are checked for null
         """
         attrs = {}
         for name, attr in attr_container.get_attributes().items():
