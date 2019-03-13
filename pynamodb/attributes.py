@@ -302,7 +302,7 @@ class AttributeContainer(object):
         for name, attr in attr_container.get_attributes().items():
             value = getattr(attr_container, name)
             if isinstance(value, MapAttribute) and type(value) != MapAttribute:
-                serialized = cls._serialize_container(value, null_check)
+                serialized = {MAP_SHORT: cls._serialize_container(value, null_check)}
             else:
                 serialized = cls._serialize_value(attr, value, null_check)
             if NULL in serialized:
