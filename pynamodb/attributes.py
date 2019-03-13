@@ -312,11 +312,11 @@ class AttributeContainer(object):
             else:
                 if not value and attr.default is not None:
                     if attr.default:
-                        serialized = cls._serialize_value(attr, attr.default, null_check)
+                        value = attr.default() if callable(attr.default) else attr.default
                     else:
-                        serialized = cls._serialize_value(attr, None, False)
-                else:
-                    serialized = cls._serialize_value(attr, value, null_check)
+                        value = None
+                        null_check = False
+                serialized = cls._serialize_value(attr, value, null_check)
             if NULL not in serialized:
                 attrs[attr.attr_name] = serialized
         return attrs
