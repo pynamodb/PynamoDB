@@ -793,7 +793,7 @@ class MapAttribute(Attribute, AttributeContainer):
             super(MapAttribute, self)._set_attributes(**attrs)
 
     def serialize(self, values):
-        if not self.is_raw():
+        if isinstance(values, MapAttribute) and not values.is_raw():
             return self._serialize_container(values, null_check=True)
 
         rval = {}
