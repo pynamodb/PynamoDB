@@ -42,6 +42,13 @@ def test_model_query():
 
     # test conditions are optional
     MyModel.query(123, range_key_condition=None, filter_condition=None)
+
+    # test update expressions
+    MyModel.my_attr.set(MyModel.my_attr + 123)
+    MyModel.my_attr.set(123 + MyModel.my_attr)
+    MyModel.my_attr.set(MyModel.my_attr - 123)
+    MyModel.my_attr.set(123 - MyModel.my_attr)
+    MyModel.my_attr.set(MyModel.my_attr | 123)
     """)  # noqa: E501
 
 
