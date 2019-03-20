@@ -54,6 +54,10 @@ class _Decrement(_Operand):
     def __init__(self, lhs: Union[Path, Attribute]) -> None: ...
 
 
+class _IfNotExists(_Operand):
+    def __init__(self, lhs: Union[Path, Attribute]) -> None: ...
+
+
 class Value(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     def __init__(self, value: Optional[Union[Path, Dict]], attribute=Optional[Attribute]) -> None: ...
 
