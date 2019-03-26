@@ -223,7 +223,7 @@ class Connection(object):
     """
 
     def __init__(self, region=None, host=None, session_cls=None,
-                 request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None):
+                 request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None, verify_ssl=True):
         self._tables = {}
         self.host = host
         self._local = local()
@@ -253,6 +253,8 @@ class Connection(object):
             self._base_backoff_ms = base_backoff_ms
         else:
             self._base_backoff_ms = get_settings_value('base_backoff_ms')
+        
+        self._verify_ssl = verify_ssl
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
@@ -477,6 +479,9 @@ class Connection(object):
         """
         if self._requests_session is None:
             self._requests_session = self.session_cls()
+            
+            if not self._verify_ssl:
+                self._requests_session.verify = False
         return self._requests_session
 
     @property
