@@ -18,6 +18,7 @@ tox==2.1.1
 blinker==1.4
 flake8==2.4.1
 requests==2.7.0
+pyyaml<5  # for Python 2.6 support -- remove once we cease Python 2.6 support
 # Pinned because latest version requires Python 2.7+ (https://github.com/sphinx-doc/sphinx/issues/2919).
 sphinx==1.5.6
 sphinx-rtd-theme==0.1.8
