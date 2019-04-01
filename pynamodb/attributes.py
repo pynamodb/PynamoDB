@@ -311,7 +311,7 @@ class AttributeContainer(object):
                 serialized = {MAP_SHORT: cls._serialize_container(type(attr), value, null_check)}
             else:
                 _null_check = null_check
-                if not value and attr.default is not None:
+                if value is None and attr.default is not None:
                     if attr.default:
                         value = attr.default() if callable(attr.default) else attr.default
                     else:
