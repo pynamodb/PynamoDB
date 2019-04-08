@@ -65,6 +65,24 @@ capacity information in responses. If ``False``, scans will fail
 should the server not return consumed capacity information in an
 effort to prevent unintentional capacity usage..
 
+dax_write_endpoints
+------------------
+
+Default: ``[]``
+
+Connect to DAX endpoints when write operations.
+
+PutItem, DeleteItem, UpdateItem, BatchWriteItem These operations are supported.
+
+dax_read_endpoints
+------------------
+
+Default: ``[]``
+
+Connect to DAX endpoints when read operations.
+
+GetItem, Scan, BatchGetItem, Query These operations are supported.
+
 Overriding settings
 ~~~~~~~~~~~~~~~~~~~
 
