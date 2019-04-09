@@ -151,6 +151,9 @@ class TestUTCDateTimeAttribute:
         attr = UTCDateTimeAttribute()
         assert attr.deserialize(tstamp.strftime(DATETIME_FORMAT)) == tstamp
 
+    def test_utc_date_time_desrialize_none(self):
+        assert UTCDateTimeAttribute().deserialize(None) == None
+
     def test_dateutil_parser_fallback(self):
         """
         UTCDateTimeAttribute.deserialize

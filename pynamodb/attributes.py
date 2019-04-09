@@ -544,6 +544,8 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a UTC datetime string and returns a datetime object
         """
+        if value is None:
+            return None
         # First attempt to parse the datetime with the datetime format used
         # by default when storing UTCDateTimeAttributes.  This is signifantly
         # faster than always going through dateutil.
