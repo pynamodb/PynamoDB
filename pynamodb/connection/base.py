@@ -3,9 +3,11 @@ Lowest level connection
 """
 from __future__ import division
 
+import json
 import logging
 import math
 import random
+import sys
 import time
 import uuid
 import warnings
@@ -13,7 +15,10 @@ from base64 import b64decode
 from threading import local
 
 import six
+import botocore.client
+import botocore.exceptions
 from botocore.client import ClientError
+from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 from botocore.vendored import requests
@@ -222,27 +227,28 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None, session_cls=None,
-                 request_timeout_seconds=None, max_retry_attempts=None, base_backoff_ms=None):
+    def __init__(self, region=None, host=None,
+                 read_timeout_seconds=None, connect_timeout_seconds=None,
+                 max_retry_attempts=None, base_backoff_ms=None,
+                 max_pool_connections=None, extra_headers=None):
         self._tables = {}
         self.host = host
         self._local = local()
-        self._requests_session = None
         self._client = None
         if region:
             self.region = region
         else:
             self.region = get_settings_value('region')
 
-        if session_cls:
-            self.session_cls = session_cls
+        if connect_timeout_seconds is not None:
+            self._connect_timeout_seconds = connect_timeout_seconds
         else:
-            self.session_cls = get_settings_value('session_cls')
+            self._connect_timeout_seconds = get_settings_value('connect_timeout_seconds')
 
-        if request_timeout_seconds is not None:
-            self._request_timeout_seconds = request_timeout_seconds
+        if read_timeout_seconds is not None:
+            self._read_timeout_seconds = read_timeout_seconds
         else:
-            self._request_timeout_seconds = get_settings_value('request_timeout_seconds')
+            self._read_timeout_seconds = get_settings_value('read_timeout_seconds')
 
         if max_retry_attempts is not None:
             self._max_retry_attempts_exception = max_retry_attempts
@@ -253,6 +259,16 @@ class Connection(object):
             self._base_backoff_ms = base_backoff_ms
         else:
             self._base_backoff_ms = get_settings_value('base_backoff_ms')
+
+        if max_pool_connections is not None:
+            self._max_pool_connections = max_pool_connections
+        else:
+            self._max_pool_connections = get_settings_value('max_pool_connections')
+
+        if extra_headers is not None:
+            self._extra_headers = extra_headers
+        else:
+            self._extra_headers = get_settings_value('extra_headers')
 
     def __repr__(self):
         return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
@@ -276,24 +292,11 @@ class Connection(object):
         log.error("%s failed with status: %s, message: %s",
                   operation, response.status_code,response.content)
 
-    def _create_prepared_request(self, request_dict, operation_model):
-        """
-        Create a prepared request object from request_dict, and operation_model
-        """
-        boto_prepared_request = self.client._endpoint.create_request(request_dict, operation_model)
-
-        # The call requests_session.send(final_prepared_request) ignores the headers which are
-        # part of the request session. In order to include the requests session headers inside
-        # the request, we create a new request object, and call prepare_request with the newly
-        # created request object
-        raw_request_with_params = Request(
-            boto_prepared_request.method,
-            boto_prepared_request.url,
-            data=boto_prepared_request.body,
-            headers=boto_prepared_request.headers
-        )
-
-        return self.requests_session.prepare_request(raw_request_with_params)
+    def _create_prepared_request(self, params, operation_model):
+        prepared_request = self.client._endpoint.create_request(params, operation_model)
+        if self._extra_headers is not None:
+            prepared_request.headers.update(self._extra_headers)
+        return prepared_request
 
     def dispatch(self, operation_name, operation_kwargs):
         """
@@ -341,32 +344,47 @@ class Connection(object):
         operation_model = self.client._service_model.operation_model(operation_name)
         request_dict = self.client._convert_to_request_dict(
             operation_kwargs,
-            operation_model
+            operation_model,
         )
-        prepared_request = self._create_prepared_request(request_dict, operation_model)
 
         for i in range(0, self._max_retry_attempts_exception + 1):
             attempt_number = i + 1
             is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
 
-            response = None
+            http_response = None
+            prepared_request = None
             try:
-                proxies = getattr(self.client._endpoint, "proxies", None)
-                # After the version 1.11.0 of botocore this field is no longer available here
-                if proxies is None:
-                    proxies = self.client._endpoint.http_session._proxy_config._proxies
+                if prepared_request is not None:
+                    # If there is a stream associated with the request, we need
+                    # to reset it before attempting to send the request again.
+                    # This will ensure that we resend the entire contents of the
+                    # body.
+                    prepared_request.reset_stream()
 
-                response = self.requests_session.send(
-                    prepared_request,
-                    timeout=self._request_timeout_seconds,
-                    proxies=proxies,
-                )
-                data = response.json()
-            except (requests.RequestException, ValueError) as e:
+                # Create a new request for each retry (including a new signature).
+                prepared_request = self._create_prepared_request(request_dict, operation_model)
+
+                # Implement the before-send event from botocore
+                event_name = 'before-send.dynamodb.{}'.format(operation_model.name)
+                event_responses = self.client._endpoint._event_emitter.emit(event_name, request=prepared_request)
+                event_response = first_non_none_response(event_responses)
+
+                if event_response is None:
+                    http_response = self.client._endpoint.http_session.send(prepared_request)
+                else:
+                    http_response = event_response
+                    is_last_attempt_for_exceptions = True  # don't retry if we have an event response
+
+                # json.loads accepts bytes in >= 3.6.0
+                if sys.version_info < (3, 6, 0):
+                    data = json.loads(http_response.text)
+                else:
+                    data = json.loads(http_response.content)
+            except (ValueError, botocore.exceptions.HTTPClientError, botocore.exceptions.ConnectionError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
-                    if response:
-                        e.args += (str(response.content),)
+                    if http_response:
+                        e.args += (http_response.text,)
                     raise
                 else:
                     # No backoff for fast-fail exceptions that likely failed at the frontend
@@ -379,14 +397,16 @@ class Connection(object):
                     )
                     continue
 
-            if response.status_code >= 300:
+            status_code = http_response.status_code
+            headers = http_response.headers
+            if status_code >= 300:
                 # Extract error code from __type
                 code = data.get('__type', '')
                 if '#' in code:
                     code = code.rsplit('#', 1)[1]
                 botocore_expected_format = {'Error': {'Message': data.get('message', ''), 'Code': code}}
                 verbose_properties = {
-                    'request_id': response.headers.get('x-amzn-RequestId')
+                    'request_id': headers.get('x-amzn-RequestId')
                 }
 
                 if 'RequestItems' in operation_kwargs:
@@ -401,7 +421,7 @@ class Connection(object):
                     if is_last_attempt_for_exceptions:
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise
-                    elif response.status_code < 500 and code != 'ProvisionedThroughputExceededException':
+                    elif status_code < 500 and code != 'ProvisionedThroughputExceededException':
                         # We don't retry on a ConditionalCheckFailedException or other 4xx (except for
                         # throughput related errors) because we assume they will fail in perpetuity.
                         # Retrying when there is already contention could cause other problems
@@ -471,15 +491,6 @@ class Connection(object):
         return self._local.session
 
     @property
-    def requests_session(self):
-        """
-        Return a requests session to execute prepared requests using the same pool
-        """
-        if self._requests_session is None:
-            self._requests_session = self.session_cls()
-        return self._requests_session
-
-    @property
     def client(self):
         """
         Returns a botocore dynamodb client
@@ -489,7 +500,11 @@ class Connection(object):
         # if the client does not have credentials, we create a new client
         # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
         if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
-            self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host)
+            config = botocore.client.Config(
+                connect_timeout=self._connect_timeout_seconds,
+                read_timeout=self._read_timeout_seconds,
+                max_pool_connections=self._max_pool_connections)
+            self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
         return self._client
 
     def get_meta_table(self, table_name, refresh=False):
