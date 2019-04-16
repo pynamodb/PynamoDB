@@ -12,9 +12,12 @@ This is major release and contains breaking changes. Please read the notes below
 
 Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP requests, we'll be doing the same (via ``botocore``). This means the following:
 
-* The ``session_cls`` option is no longer supported. S
+* The ``session_cls`` option is no longer supported.
+
 * The ``request_timeout_seconds`` parameter is no longer supported. ``connect_timeout_seconds`` and ``read_timeout_seconds`` are now available instead.
-    * Note that the timeout for connection and read are now ``15`` and ``30`` seconds respectively. This represents a change from the previous ``60`` second combined ``requests`` timeout.
+
+  + Note that the timeout for connection and read are now ``15`` and ``30`` seconds respectively. This represents a change from the previous ``60`` second combined ``requests`` timeout.
+  
 * *Wrapped* exceptions (i.e ``exc.cause``) that were from ``requests.exceptions`` will now be comparable ones from ``botocore.exceptions`` instead.
 
 Other changes in this release:
