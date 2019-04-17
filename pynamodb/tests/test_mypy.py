@@ -42,6 +42,26 @@ def test_model_query():
 
     # test conditions are optional
     MyModel.query(123, range_key_condition=None, filter_condition=None)
+    """)
+
+
+def test_model_update():
+    assert_mypy_output("""
+    from pynamodb.attributes import NumberAttribute
+    from pynamodb.models import Model
+
+    class MyModel(Model):
+        my_attr = NumberAttribute()
+
+    my_model = MyModel()
+    my_model.update(actions=[
+        # test update expressions
+        MyModel.my_attr.set(MyModel.my_attr + 123),
+        MyModel.my_attr.set(123 + MyModel.my_attr),
+        MyModel.my_attr.set(MyModel.my_attr - 123),
+        MyModel.my_attr.set(123 - MyModel.my_attr),
+        MyModel.my_attr.set(MyModel.my_attr | 123),
+    ])
     """)  # noqa: E501
 
 
