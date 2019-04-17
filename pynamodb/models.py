@@ -176,14 +176,20 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, REGION, get_settings_value('region'))
                     if not hasattr(attr_obj, HOST):
                         setattr(attr_obj, HOST, get_settings_value('host'))
-                    if not hasattr(attr_obj, 'session_cls'):
-                        setattr(attr_obj, 'session_cls', get_settings_value('session_cls'))
-                    if not hasattr(attr_obj, 'request_timeout_seconds'):
-                        setattr(attr_obj, 'request_timeout_seconds', get_settings_value('request_timeout_seconds'))
+                    if hasattr(attr_obj, 'session_cls') or hasattr(attr_obj, 'request_timeout_seconds'):
+                        warnings.warn("The `session_cls` and `request_timeout_second` options are no longer supported")
+                    if not hasattr(attr_obj, 'connect_timeout_seconds'):
+                        setattr(attr_obj, 'connect_timeout_seconds', get_settings_value('connect_timeout_seconds'))
+                    if not hasattr(attr_obj, 'read_timeout_seconds'):
+                        setattr(attr_obj, 'read_timeout_seconds', get_settings_value('read_timeout_seconds'))
                     if not hasattr(attr_obj, 'base_backoff_ms'):
                         setattr(attr_obj, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
                     if not hasattr(attr_obj, 'max_retry_attempts'):
                         setattr(attr_obj, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
+                    if not hasattr(attr_obj, 'max_pool_connections'):
+                        setattr(attr_obj, 'max_pool_connections', get_settings_value('max_pool_connections'))
+                    if not hasattr(attr_obj, 'extra_headers'):
+                        setattr(attr_obj, 'extra_headers', get_settings_value('extra_headers'))
                     if not hasattr(attr_obj, 'aws_access_key_id'):
                         setattr(attr_obj, 'aws_access_key_id', None)
                     if not hasattr(attr_obj, 'aws_secret_access_key'):
@@ -1288,10 +1294,12 @@ class Model(AttributeContainer):
             cls._connection = TableConnection(cls.Meta.table_name,
                                               region=cls.Meta.region,
                                               host=cls.Meta.host,
-                                              session_cls=cls.Meta.session_cls,
-                                              request_timeout_seconds=cls.Meta.request_timeout_seconds,
+                                              connect_timeout_seconds=cls.Meta.connect_timeout_seconds,
+                                              read_timeout_seconds=cls.Meta.read_timeout_seconds,
                                               max_retry_attempts=cls.Meta.max_retry_attempts,
                                               base_backoff_ms=cls.Meta.base_backoff_ms,
+                                              max_pool_connections=cls.Meta.max_pool_connections,
+                                              extra_headers=cls.Meta.extra_headers,
                                               aws_access_key_id=cls.Meta.aws_access_key_id,
                                               aws_secret_access_key=cls.Meta.aws_secret_access_key)
         return cls._connection
