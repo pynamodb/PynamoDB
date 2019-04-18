@@ -544,13 +544,16 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a UTC datetime string and returns a datetime object
         """
-        # First attempt to parse the datetime with the datetime format used
-        # by default when storing UTCDateTimeAttributes.  This is signifantly
-        # faster than always going through dateutil.
         try:
-            return datetime.strptime(value, DATETIME_FORMAT)
+            return _fast_parse_utc_datestring(value)
         except ValueError:
-            return parse(value)
+            try:
+                # Attempt to parse the datetime with the datetime format used
+                # by default when storing UTCDateTimeAttributes.  This is signifantly
+                # faster than always going through dateutil.
+                return datetime.strptime(value, DATETIME_FORMAT)
+            except ValueError:
+                return parse(value)
 
 
 class NullAttribute(Attribute):
@@ -879,6 +882,26 @@ def _get_key_for_serialize(value):
     if value_type not in SERIALIZE_KEY_MAP:
         raise ValueError('Unknown value: {}'.format(value_type))
     return SERIALIZE_KEY_MAP[value_type]
+
+
+def _fast_parse_utc_datestring(datestring):
+    # Method to quickly parse strings formatted with '%Y-%m-%dT%H:%M:%S.%f+0000'.
+    # This is ~5.8x faster than using strptime and 38x faster than dateutil.parser.parse.
+    _int = int  # Hack to prevent global lookups of int, speeds up the function ~10%
+    try:
+        if (datestring[4] != '-' or datestring[7] != '-' or datestring[10] != 'T' or
+                datestring[13] != ':' or datestring[16] != ':' or datestring[19] != '.' or
+                datestring[-5:] != '+0000'):
+            raise ValueError("time data '{}' does not match format "
+                            "'%Y-%m-%dT%H:%M:%S.%f+0000'".format(datestring))
+        return datetime(
+            _int(datestring[0:4]), _int(datestring[5:7]), _int(datestring[8:10]),
+            _int(datestring[11:13]), _int(datestring[14:16]), _int(datestring[17:19]),
+            _int(round(float(datestring[19:-5]) * 1e6)), tzutc()
+        )
+    except (TypeError, ValueError):
+        raise ValueError("time data '{}' does not match format "
+                         "'%Y-%m-%d %H:%M:%S.%f+0000'".format(datestring))
 
 
 class ListAttribute(Attribute):
