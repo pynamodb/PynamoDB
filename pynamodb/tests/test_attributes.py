@@ -192,31 +192,27 @@ class TestUTCDateTimeAttribute:
         expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=tzutc())
         assert _fast_parse_utc_datestring('2047-01-06T08:21:00.0+0000') == expected_value
 
-    def test__fast_parse_utc_datestring_invalid_input(self):
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-01-06T08:21:00.+0000')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-01-06T08:21:00.0')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-01-06 08:21:00.0+0000')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('abcd-01-06T08:21:00.0+0000')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-ab-06T08:21:00.0+0000')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-01-abT08:21:00.0+0000')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-01-06Tab:21:00.0+0000')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-01-06T08:ab:00.0+0000')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-01-06T08:21:ab.0+0000')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-01-06T08:21:00.a+0000')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-01-06T08:21:00.0.1+0000')
-        with pytest.raises(ValueError):
-            _fast_parse_utc_datestring('2047-01-06T08:21:00.0+00000')
+    @pytest.mark.parametrize(
+        "invalid_string",
+        [
+            '2.47-01-06T08:21:00.0+0000',
+            '2047-01-06T08:21:00.+0000',
+            '2047-01-06T08:21:00.0',
+            '2047-01-06 08:21:00.0+0000',
+            'abcd-01-06T08:21:00.0+0000',
+            '2047-ab-06T08:21:00.0+0000',
+            '2047-01-abT08:21:00.0+0000',
+            '2047-01-06Tab:21:00.0+0000',
+            '2047-01-06T08:ab:00.0+0000',
+            '2047-01-06T08:ab:00.0+0000',
+            '2047-01-06T08:21:00.a+0000',
+            '2047-01-06T08:21:00.0.1+0000',
+            '2047-01-06T08:21:00.0+00000'
+        ]
+    )
+    def test__fast_parse_utc_datestring_invalid_input(self, invalid_string):
+        with pytest.raises(ValueError, match="does not match format"):
+            _fast_parse_utc_datestring(invalid_string)
 
 
 

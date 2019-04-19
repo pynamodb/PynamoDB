@@ -892,7 +892,7 @@ def _fast_parse_utc_datestring(datestring):
         if (datestring[4] != '-' or datestring[7] != '-' or datestring[10] != 'T' or
                 datestring[13] != ':' or datestring[16] != ':' or datestring[19] != '.' or
                 datestring[-5:] != '+0000'):
-            raise ValueError("time data '{}' does not match format "
+            raise ValueError("Datetime string '{}' does not match format "
                             "'%Y-%m-%dT%H:%M:%S.%f+0000'".format(datestring))
         return datetime(
             _int(datestring[0:4]), _int(datestring[5:7]), _int(datestring[8:10]),
@@ -900,8 +900,8 @@ def _fast_parse_utc_datestring(datestring):
             _int(round(float(datestring[19:-5]) * 1e6)), tzutc()
         )
     except (TypeError, ValueError):
-        raise ValueError("time data '{}' does not match format "
-                         "'%Y-%m-%d %H:%M:%S.%f+0000'".format(datestring))
+        raise ValueError("Datetime string '{}' does not match format "
+                         "'%Y-%m-%dT%H:%M:%S.%f+0000'".format(datestring))
 
 
 class ListAttribute(Attribute):
