@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-v4.0.0a1
+v4.0.0b1
 --------
 
 :date: 2019-04-10
@@ -14,10 +14,10 @@ Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP 
 
 * The ``session_cls`` option is no longer supported.
 
-* The ``request_timeout_seconds`` parameter is no longer supported. ``connect_timeout_seconds`` and ``read_timeout_seconds`` are now available instead.
+* The ``request_timeout_seconds`` parameter is no longer supported. ``connect_timeout_seconds`` and ``read_timeout_seconds`` are available instead.
 
-  + Note that the timeout for connection and read are now ``15`` and ``30`` seconds respectively. This represents a change from the previous ``60`` second combined ``requests`` timeout.
-  
+  + Note that the timeouts for connection and read are now ``15`` and ``30`` seconds respectively. This represents a change from the previous ``60`` second combined ``requests`` timeout.
+
 * *Wrapped* exceptions (i.e ``exc.cause``) that were from ``requests.exceptions`` will now be comparable ones from ``botocore.exceptions`` instead.
 
 Other changes in this release:
@@ -25,6 +25,7 @@ Other changes in this release:
 * Python 2.6 is no longer supported. 4.x.x will likely be the last major release to support Python 2.7, given the upcoming EOL.
 * Added the ``max_pool_connection`` and ``extra_headers`` settings to replace common use cases for ``session_cls``
 * Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook. Other botocore hooks remain unimplemented.
+* Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
 
 
 v3.3.3
