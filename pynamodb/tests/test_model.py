@@ -3871,6 +3871,26 @@ class ModelTestCase(TestCase):
             with self.assertRaises(ValueError):
                 item.save()
 
+    def test_model_with_invalid_list_attr_does_not_validate(self):
+        loc = Location(
+            lat=37.77461,
+            lng=-122.3957216,
+            name='Lyft HQ'
+        )
+        emp = OfficeEmployeeMap(
+            office_employee_id=126,
+            office_location=loc
+        )
+        office = Office(
+            office_id=3,
+            address=loc,
+            employees=[emp]
+        )
+        with patch(PATCH_METHOD) as req:
+            req.return_value = OFFICE_MODEL_TABLE_DATA
+            with self.assertRaises(ValueError):
+                office.save()
+
     def test_model_works_like_model(self):
         office_employee = self._get_office_employee()
         self.assertTrue(office_employee.person)

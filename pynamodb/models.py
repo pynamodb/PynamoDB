@@ -1304,6 +1304,26 @@ class Model(AttributeContainer):
                                               aws_secret_access_key=cls.Meta.aws_secret_access_key)
         return cls._connection
 
+    def _validate_value(self, attr, value, null_check=True):
+        """
+        Validates if attribute value conforms to the defined structure
+
+        :param attr: an instance of `Attribute` for serialization
+        :param value: a value to be checked
+        :param null_check: If True, then attributes are checked for null
+        """
+        if isinstance(value, MapAttribute):
+            if not value.validate():
+                raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
+        elif isinstance(value, list):
+            for element in value:
+                self._validate_value(element, element, null_check)
+        elif isinstance(value, Attribute):
+            if null_check and not attr.null and value is None:
+                raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
+
+        return True
+
     def _deserialize(self, attrs):
         """
         Sets attributes sent back from DynamoDB on this object
@@ -1329,10 +1349,8 @@ class Model(AttributeContainer):
         attrs = {attributes: {}}
         for name, attr in self.get_attributes().items():
             value = getattr(self, name)
-            if isinstance(value, MapAttribute):
-                if not value.validate():
-                    raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
 
+            self._validate_value(attr, value, null_check)
             serialized = self._serialize_value(attr, value, null_check)
             if NULL in serialized:
                 continue
