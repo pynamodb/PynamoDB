@@ -49,6 +49,7 @@ class TestModel(Model):
     content = BinaryAttribute(null=True)
     scores = NumberSetAttribute()
 
+
 if not TestModel.exists():
     print("Creating table")
     TestModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)

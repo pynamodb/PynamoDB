@@ -21,19 +21,19 @@ from pynamodb.pagination import ResultIterator
 from pynamodb.settings import get_settings_value
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
-    KEY_TYPE, ITEM, ITEMS, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS, CAMEL_COUNT,
+    KEY_TYPE, ITEM, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES, QUERY_FILTER_OPERATOR_MAP,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ATTR_UPDATES, ALL_NEW,
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES, COMPARISON_OPERATOR, ATTR_VALUE_LIST,
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT, UNPROCESSED_KEYS,
-    PUT_REQUEST, DELETE_REQUEST, LAST_EVALUATED_KEY, QUERY_OPERATOR_MAP, NOT_NULL,
-    SCAN_OPERATOR_MAP, CONSUMED_CAPACITY, BATCH_WRITE_PAGE_LIMIT, TABLE_NAME,
-    CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
+    PUT_REQUEST, DELETE_REQUEST, QUERY_OPERATOR_MAP, NOT_NULL,
+    SCAN_OPERATOR_MAP, BATCH_WRITE_PAGE_LIMIT, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
-    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET,
-    PAY_PER_REQUEST_BILLING_MODE, BILLING_MODE)
+    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET, UPDATE, NONE,
+    PAY_PER_REQUEST_BILLING_MODE, BILLING_MODE
+)
 
 
 log = logging.getLogger(__name__)
@@ -335,7 +335,21 @@ class Model(AttributeContainer):
                 msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
-    def delete(self, condition=None, conditional_operator=None, **expected_values):
+    @classmethod
+    def condition_check(cls, hash_key, range_key=None, in_transaction=None, condition=None, conditional_operator=None):
+        if in_transaction is None:
+            raise ValueError('TransactWrite object required')
+        cls._conditional_operator_check(conditional_operator)
+        hash_key, range_key = cls._serialize_keys(hash_key, range_key)
+        operation_kwargs = cls._get_connection().get_operation_kwargs_for_condition_check(
+            hash_key=hash_key,
+            range_key=range_key,
+            condition=condition,
+        )
+        in_transaction.add_condition_check_item(operation_kwargs)
+        return
+
+    def delete(self, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
         """
         Deletes this object from dynamodb
         """
@@ -345,7 +359,19 @@ class Model(AttributeContainer):
             kwargs.update(expected=self._build_expected_values(expected_values, DELETE_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)
+
+        if in_transaction is not None:
+            operation_kwargs = self._get_connection().get_operation_kwargs_for_delete_item(*args, **kwargs)
+            in_transaction.add_delete_item(operation_kwargs)
+            return True
         return self._get_connection().delete_item(*args, **kwargs)
+
+    def update_item_with_raw_data(self, data):
+        for name, value in data.items():
+            attr_name = self._dynamo_to_python_attr(name)
+            attr = self.get_attributes().get(attr_name)
+            if attr:
+                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
 
     def update_item(self, attribute, value=None, action=None, condition=None, conditional_operator=None, **expected_values):
         """
@@ -387,19 +413,15 @@ class Model(AttributeContainer):
         kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)
+
         data = self._get_connection().update_item(
             *args,
             **kwargs
         )
-
-        for name, value in data.get(ATTRIBUTES).items():
-            attr_name = self._dynamo_to_python_attr(name)
-            attr = self.get_attributes().get(attr_name)
-            if attr:
-                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
+        self.update_item_with_raw_data(data.get(ATTRIBUTES))
         return data
 
-    def update(self, attributes=None, actions=None, condition=None, conditional_operator=None, **expected_values):
+    def update(self, attributes=None, actions=None, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -417,7 +439,7 @@ class Model(AttributeContainer):
         self._conditional_operator_check(conditional_operator)
         args, save_kwargs = self._get_save_args(null_check=False)
         kwargs = {
-            pythonic(RETURN_VALUES):  ALL_NEW,
+            pythonic(RETURN_VALUES): ALL_NEW,
             'conditional_operator': conditional_operator,
         }
 
@@ -443,15 +465,18 @@ class Model(AttributeContainer):
 
         kwargs.update(condition=condition)
         kwargs.update(actions=actions)
+
+        if in_transaction is not None:
+            kwargs[pythonic(RETURN_VALUES)] = NONE
+            operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
+            in_transaction.add_update_item(operation_kwargs)
+            return
+
         data = self._get_connection().update_item(*args, **kwargs)
-        for name, value in data[ATTRIBUTES].items():
-            attr_name = self._dynamo_to_python_attr(name)
-            attr = self.get_attributes().get(attr_name)
-            if attr:
-                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
+        self.update_item_with_raw_data(data.get(ATTRIBUTES))
         return data
 
-    def save(self, condition=None, conditional_operator=None, **expected_values):
+    def save(self, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
         """
         Save this object to dynamodb
         """
@@ -461,6 +486,11 @@ class Model(AttributeContainer):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)
+
+        if in_transaction is not None:
+            operation_kwargs = self._get_connection().get_operation_kwargs_for_put_item(*args, **kwargs)
+            in_transaction.add_save_item(operation_kwargs)
+            return
         return self._get_connection().put_item(*args, **kwargs)
 
     def refresh(self, consistent_read=False):
@@ -482,14 +512,29 @@ class Model(AttributeContainer):
             hash_key,
             range_key=None,
             consistent_read=False,
-            attributes_to_get=None):
+            attributes_to_get=None,
+            in_transaction=None
+            ):
         """
         Returns a single object using the provided keys
 
         :param hash_key: The hash key of the desired item
         :param range_key: The range key of the desired item, only used when appropriate.
+        :param consistent_read
+        :param attributes_to_get
+        :param in_transaction: the TransactGet object used to make this request
         """
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
+
+        if in_transaction is not None:
+            operation_kwargs = cls._get_connection().get_operation_kwargs_for_get_item(
+                hash_key=hash_key,
+                range_key=range_key,
+                consistent_read=consistent_read,
+                attributes_to_get=attributes_to_get
+            )
+            return in_transaction.add_get_item(cls, hash_key, range_key, operation_kwargs)
+
         data = cls._get_connection().get_item(
             hash_key,
             range_key=range_key,

@@ -3,6 +3,8 @@ Pynamodb constants
 """
 
 # Operations
+TRANSACT_WRITE_ITEMS = 'TransactWriteItems'
+TRANSACT_GET_ITEMS = 'TransactGetItems'
 BATCH_WRITE_ITEM = 'BatchWriteItem'
 DESCRIBE_TABLE = 'DescribeTable'
 BATCH_GET_ITEM = 'BatchGetItem'
@@ -18,10 +20,12 @@ QUERY = 'Query'
 SCAN = 'Scan'
 
 # Request Parameters
+RETURN_VALUES_ON_CONDITION_FAILURE = 'ReturnValuesOnConditionCheckFailure'
 GLOBAL_SECONDARY_INDEX_UPDATES = 'GlobalSecondaryIndexUpdates'
 RETURN_ITEM_COLL_METRICS = 'ReturnItemCollectionMetrics'
 EXCLUSIVE_START_TABLE_NAME = 'ExclusiveStartTableName'
 RETURN_CONSUMED_CAPACITY = 'ReturnConsumedCapacity'
+CLIENT_REQUEST_TOKEN = 'ClientRequestToken'
 COMPARISON_OPERATOR = 'ComparisonOperator'
 SCAN_INDEX_FORWARD = 'ScanIndexForward'
 ATTR_DEFINITIONS = 'AttributeDefinitions'
@@ -30,7 +34,9 @@ TABLE_DESCRIPTION = 'TableDescription'
 UNPROCESSED_KEYS = 'UnprocessedKeys'
 UNPROCESSED_ITEMS = 'UnprocessedItems'
 CONSISTENT_READ = 'ConsistentRead'
+CONDITION_CHECK = 'ConditionCheck'
 DELETE_REQUEST = 'DeleteRequest'
+TRANSACT_ITEMS = 'TransactItems'
 RETURN_VALUES = 'ReturnValues'
 REQUEST_ITEMS = 'RequestItems'
 ATTRS_TO_GET = 'AttributesToGet'
@@ -61,6 +67,7 @@ ITEM = 'Item'
 KEYS = 'Keys'
 UTC = 'UTC'
 KEY = 'Key'
+GET = 'Get'
 
 # Response Parameters
 SCANNED_COUNT = 'ScannedCount'
@@ -245,6 +252,7 @@ FILTER_EXPRESSION_OPERATOR_MAP = {
     BETWEEN: 'between'
 }
 
+TRANSACT_ITEMS_LIMIT = 10
 
 # These are constants used in the expected condition for PutItem
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html#DDB-PutItem-request-Expected

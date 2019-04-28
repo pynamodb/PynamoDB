@@ -13,6 +13,7 @@ from botocore.vendored import requests
 import pytest
 
 from pynamodb.compat import CompatTestCase as TestCase
+from pynamodb.connection.transactions import TransactWrite, TransactGet
 from pynamodb.tests.deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import DoesNotExist, TableError
@@ -907,6 +908,37 @@ class ModelTestCase(TestCase):
             args = req.call_args[0][1]
             deep_eq(args, params, _assert=True)
 
+        mock_transaction = MagicMock(spec=TransactWrite)
+        response = item.delete(
+            (UserModel.user_id == 'bar') & UserModel.email.contains('@'),
+            in_transaction=mock_transaction
+        )
+        assert response is True
+        mock_transaction.add_delete_item.assert_called_with({
+            'Key': {
+                'user_id': {
+                    'S': 'bar'
+                },
+                'user_name': {
+                    'S': 'foo'
+                }
+            },
+            'ConditionExpression': '(#0 = :0 AND contains (#1, :1))',
+            'ExpressionAttributeNames': {
+                '#0': 'user_id',
+                '#1': 'email'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {
+                    'S': 'bar'
+                },
+                ':1': {
+                    'S': '@'
+                }
+            },
+            'TableName': 'UserModel'
+        })
+
     def test_delete_doesnt_do_validation_on_null_attributes(self):
         """
         Model.delete
@@ -920,6 +952,29 @@ class ModelTestCase(TestCase):
             with CarModel.batch_write() as batch:
                 car = CarModel('foo')
                 batch.delete(car)
+
+    def test_condition_check(self):
+        def fake_dynamodb(*args):
+            return MODEL_TABLE_DATA
+
+        with patch(PATCH_METHOD, new=MagicMock(side_effect=fake_dynamodb)):
+            UserModel('foo')
+
+        mock_transaction = MagicMock(spec=TransactWrite)
+        UserModel.condition_check(
+            'foo', 'bar',
+            in_transaction=mock_transaction,
+            condition=(UserModel.user_id.does_not_exist())
+        )
+        mock_transaction.add_condition_check_item.assert_called_with({
+            'ConditionExpression': 'attribute_not_exists (#0)',
+            'ExpressionAttributeNames': {'#0': 'user_id'},
+            'TableName': 'UserModel',
+            'Key': {
+                'user_name': {'S': 'foo'},
+                'user_id': {'S': 'bar'}
+            }
+        })
 
     def test_update(self):
         """
@@ -1099,6 +1154,32 @@ class ModelTestCase(TestCase):
 
             assert item.views is None
             self.assertEqual(set(['alias1', 'alias3']), item.custom_aliases)
+
+        mock_transaction = MagicMock()
+        response = item.update(
+            {'custom_aliases': {'value': set(['alias2']), 'action': 'delete'}},
+            in_transaction=mock_transaction
+        )
+
+        assert response is None
+        mock_transaction.add_update_item.assert_called_with({
+            'TableName': 'SimpleModel',
+            'Key': {
+                'user_name': {
+                    'S': 'foo'
+                }
+            },
+            'ReturnValues': 'NONE',
+            'UpdateExpression': 'DELETE #0 :0',
+            'ExpressionAttributeNames': {
+                '#0': 'aliases'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {
+                    'SS': ['alias2']
+                }
+            },
+        })
 
     def test_update_item(self):
         """
@@ -1920,6 +2001,28 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
             deep_eq(args, params, _assert=True)
+
+        mock_transaction = MagicMock()
+        response = item.save(in_transaction=mock_transaction)
+
+        assert response is None
+        mock_transaction.add_save_item.assert_called_with({
+            'TableName': 'UserModel',
+            'Item': {
+                'callable_field': {
+                    'N': '42'
+                },
+                'email': {
+                    'S': u'needs_email'
+                },
+                'user_id': {
+                    'S': u'bar'
+                },
+                'user_name': {
+                    'S': u'foo'
+                },
+            },
+        })
 
     def test_filter_count(self):
         """
@@ -2945,6 +3048,25 @@ class ModelTestCase(TestCase):
             self.assertEqual(item.overidden_attr, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['foo_attr']['S'])
             self.assertEqual(item.overidden_user_name, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_name']['S'])
             self.assertEqual(item.overidden_user_id, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_id']['S'])
+
+        mock_transaction = MagicMock(spec=TransactGet)
+        mock_transaction.add_get_item.return_value = UserModel()
+
+        params = {
+            'ConsistentRead': False,
+            'TableName': 'UserModel',
+            'Key': {
+                'user_name': {
+                    'S': 'foo'
+                },
+                'user_id': {
+                    'S': 'bar'
+                },
+            },
+        }
+        response = UserModel.get('foo', 'bar', in_transaction=mock_transaction)
+        mock_transaction.add_get_item.assert_called_with(UserModel, 'foo', 'bar', params)
+        assert isinstance(response, UserModel)
 
     def test_batch_get(self):
         """

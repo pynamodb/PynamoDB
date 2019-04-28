@@ -1,6 +1,8 @@
+from pynamodb.connection.transactions import TransactGet, TransactWrite
 from .attributes import Attribute
 from .exceptions import DoesNotExist as DoesNotExist
-from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Text, Union
+from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Text, Union, \
+    NoReturn
 
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
@@ -34,13 +36,15 @@ class Model(metaclass=MetaModel):
     def batch_get(cls: Type[_T], items: Iterable[Union[KeyType, Iterable[KeyType]]], consistent_read: Optional[bool] = ..., attributes_to_get: Optional[Sequence[Text]] = ...) -> Iterator[_T]: ...
     @classmethod
     def batch_write(cls: Type[_T], auto_commit: bool = ...) -> BatchWrite[_T]: ...
+    @classmethod
+    def condition_check(cls, hash_key: KeyType, range_key: Optional[KeyType], in_transaction: Optional[TransactWrite] = ..., condition: Optional[Any] = ...): ...
     def delete(self, condition: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., **expected_values) -> Any: ...
     def update(self, attributes: Optional[Dict[Text, Dict[Text, Any]]] = ..., actions: Optional[List[Any]] = ..., condition: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., **expected_values) -> Any: ...
-    def update_item(self, attribute: Text, value: Optional[Any] = ..., action: Optional[Text] = ..., conditional_operator: Optional[Text] = ..., **expected_values): ...
-    def save(self, condition: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., **expected_values) -> Dict[str, Any]: ...
+    def update_item(self, attribute: Text, value: Optional[Any] = ..., action: Optional[Text] = ..., conditional_operator: Optional[Text] = ..., in_transaction: Optional[TransactWrite] = ..., **expected_values): ...
+    def save(self, condition: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., in_transaction: Optional[TransactWrite] = ..., **expected_values) -> Dict[str, Any]: ...
     def refresh(self, consistent_read: bool = ...): ...
     @classmethod
-    def get(cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ..., consistent_read: bool = ...) -> _T: ...
+    def get(cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ..., consistent_read: bool = ..., in_transaction: Optional[TransactGet] = ...) -> _T: ...
     @classmethod
     def from_raw_data(cls: Type[_T], data) -> _T: ...
     @classmethod
@@ -66,7 +70,7 @@ class Model(metaclass=MetaModel):
         scan_index_forward: Optional[Any] = ...,
         conditional_operator: Optional[Text] = ...,
         limit: Optional[int] = ...,
-        last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
+        last_evaluated_key: Optional[Any] = ...,
         attributes_to_get: Optional[Iterable[Text]] = ...,
         page_size: Optional[int] = ...,
         **filters
@@ -80,7 +84,7 @@ class Model(metaclass=MetaModel):
         total_segments: Optional[int] = ...,
         limit: Optional[int] = ...,
         conditional_operator: Optional[Text] = ...,
-        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
+        last_evaluated_key: Optional[Any] = ...,
         page_size: Optional[int] = ...,
         timeout_seconds: Optional[int] = ...,
         read_capacity_to_consume_per_second: int = ...,
@@ -91,7 +95,6 @@ class Model(metaclass=MetaModel):
         index_name: Optional[str] = ...,
         **filters: Any
     ) -> Iterator[_T]: ...
-
     @classmethod
     def scan(
         cls: Type[_T],
@@ -100,7 +103,7 @@ class Model(metaclass=MetaModel):
         total_segments: Optional[int] = ...,
         limit: Optional[int] = ...,
         conditional_operator: Optional[Text] = ...,
-        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
+        last_evaluated_key: Optional[Any] = ...,
         page_size: Optional[int] = ...,
         **filters
     ) -> ResultIterator[_T]: ...

@@ -1355,6 +1355,20 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
+    def test_transact_write_items(self):
+        conn = Connection()
+        with patch(PATCH_METHOD) as req:
+            conn.transact_write_items({})
+            assert req.call_args[0][0] == 'TransactWriteItems'
+            assert req.call_args[0][1] == {'ReturnConsumedCapacity': 'TOTAL'}
+
+    def test_transact_get_items(self):
+        conn = Connection()
+        with patch(PATCH_METHOD) as req:
+            conn.transact_get_items({})
+            assert req.call_args[0][0] == 'TransactGetItems'
+            assert req.call_args[0][1] == {'ReturnConsumedCapacity': 'TOTAL'}
+
     def test_batch_write_item(self):
         """
         Connection.batch_write_item

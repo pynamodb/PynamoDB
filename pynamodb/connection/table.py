@@ -44,6 +44,12 @@ class TableConnection(object):
         """
         return self.connection.get_meta_table(self.table_name, refresh=refresh)
 
+    def get_operation_kwargs_for_condition_check(self, *args, **kwargs):
+        return self.connection.get_operation_kwargs_for_condition_check(self.table_name, *args, **kwargs)
+
+    def get_operation_kwargs_for_delete_item(self, *args, **kwargs):
+        return self.connection.get_operation_kwargs_for_delete_item(self.table_name, *args, **kwargs)
+
     def delete_item(self, hash_key,
                     range_key=None,
                     condition=None,
@@ -65,6 +71,9 @@ class TableConnection(object):
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics)
+
+    def get_operation_kwargs_for_update_item(self, *args, **kwargs):
+        return self.connection.get_operation_kwargs_for_update_item(self.table_name, *args, **kwargs)
 
     def update_item(self,
                     hash_key,
@@ -93,6 +102,9 @@ class TableConnection(object):
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
             return_values=return_values)
+
+    def get_operation_kwargs_for_put_item(self, *args, **kwargs):
+        return self.connection.get_operation_kwargs_for_put_item(self.table_name, *args, **kwargs)
 
     def put_item(self, hash_key,
                  range_key=None,
@@ -143,6 +155,9 @@ class TableConnection(object):
             consistent_read=consistent_read,
             return_consumed_capacity=return_consumed_capacity,
             attributes_to_get=attributes_to_get)
+
+    def get_operation_kwargs_for_get_item(self, *args, **kwargs):
+        return self.connection.get_operation_kwargs_for_get_item(self.table_name, *args, **kwargs)
 
     def get_item(self, hash_key, range_key=None, consistent_read=False, attributes_to_get=None):
         """
