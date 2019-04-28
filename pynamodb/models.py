@@ -32,7 +32,7 @@ from pynamodb.constants import (
     CAPACITY_UNITS, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
-    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET)
+    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET, UPDATE)
 
 
 log = logging.getLogger(__name__)
@@ -334,17 +334,41 @@ class Model(AttributeContainer):
                 msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
-    def delete(self, condition=None, conditional_operator=None, **expected_values):
-        """
-        Deletes this object from dynamodb
-        """
+    @staticmethod
+    def _validate_transact_item_kwargs(return_consumed_capacity=None,
+                                       return_item_collection_metrics=None,
+                                       *args,
+                                       **kwargs):
+        if return_consumed_capacity is not None:
+            raise ValueError('Invalid kwarg for transact item: return_consumed_capacity')
+        if return_item_collection_metrics is not None:
+            raise ValueError('Invalid kwarg for transact item: return_item_collection_metrics')
+
+    def _get_delete_kwargs(self, condition=None, conditional_operator=None, **expected_values):
         self._conditional_operator_check(conditional_operator)
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, DELETE_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)
+        return args, kwargs
+
+    def delete(self, condition=None, conditional_operator=None, **expected_values):
+        """
+        Deletes this object from dynamodb
+        """
+        args, kwargs = self._get_delete_kwargs(condition=condition,
+                                               conditional_operator=conditional_operator,
+                                               **expected_values)
         return self._get_connection().delete_item(*args, **kwargs)
+
+    def transact_delete_item(self, condition=None, conditional_operator=None, **expected_values):
+        args, kwargs = self._get_update_operation_kwargs(condition=condition,
+                                                         conditional_operator=conditional_operator,
+                                                         **expected_values)
+        self._validate_transact_item_kwargs(*args, **kwargs)
+        operation_kwargs = self._get_connection().get_update_item_operation_kwargs(*args, **kwargs)
+        return {DELETE: operation_kwargs}
 
     def update_item(self, attribute, value=None, action=None, condition=None, conditional_operator=None, **expected_values):
         """
@@ -398,16 +422,12 @@ class Model(AttributeContainer):
                 setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
         return data
 
-    def update(self, attributes=None, actions=None, condition=None, conditional_operator=None, **expected_values):
-        """
-        Updates an item using the UpdateItem operation.
-
-        :param attributes: A dictionary of attributes to update in the following format
-                            {
-                                attr_name: {'value': 10, 'action': 'ADD'},
-                                next_attr: {'value': True, 'action': 'PUT'},
-                            }
-        """
+    def _get_update_kwargs(self,
+                           attributes=None,
+                           actions=None,
+                           condition=None,
+                           conditional_operator=None,
+                           **expected_values):
         if attributes is not None and not isinstance(attributes, dict):
             raise TypeError("the value of `attributes` is expected to be a dictionary")
         if actions is not None and not isinstance(actions, list):
@@ -442,6 +462,23 @@ class Model(AttributeContainer):
 
         kwargs.update(condition=condition)
         kwargs.update(actions=actions)
+        return args, kwargs
+
+    def update(self, attributes=None, actions=None, condition=None, conditional_operator=None, **expected_values):
+        """
+        Updates an item using the UpdateItem operation.
+
+        :param attributes: A dictionary of attributes to update in the following format
+                            {
+                                attr_name: {'value': 10, 'action': 'ADD'},
+                                next_attr: {'value': True, 'action': 'PUT'},
+                            }
+        """
+        args, kwargs = self._get_update_kwargs(attributes=attributes,
+                                               actions=actions,
+                                               condition=condition,
+                                               conditional_operator=conditional_operator,
+                                               **expected_values)
         data = self._get_connection().update_item(*args, **kwargs)
         for name, value in data[ATTRIBUTES].items():
             attr_name = self._dynamo_to_python_attr(name)
@@ -450,17 +487,50 @@ class Model(AttributeContainer):
                 setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
         return data
 
-    def save(self, condition=None, conditional_operator=None, **expected_values):
-        """
-        Save this object to dynamodb
-        """
+    def transact_update_item(self,
+                             attributes=None,
+                             actions=None,
+                             condition=None,
+                             conditional_operator=None,
+                             **expected_values):
+        args, kwargs = self._get_update_operation_kwargs(attributes=attributes,
+                                                         actions=actions,
+                                                         condition=condition,
+                                                         conditional_operator=conditional_operator,
+                                                         **expected_values)
+        self._validate_transact_item_kwargs(*args, **kwargs)
+        operation_kwargs = self._get_connection().get_update_item_operation_kwargs(*args, **kwargs)
+        return {UPDATE: operation_kwargs}
+
+    def _get_save_kwargs(self, condition=None, conditional_operator=None, **expected_values):
         self._conditional_operator_check(conditional_operator)
         args, kwargs = self._get_save_args()
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)
+        return args, kwargs
+
+    def save(self, condition=None, conditional_operator=None, **expected_values):
+        """
+        Save this object to dynamodb
+        """
+        args, kwargs = self._get_save_kwargs(
+            condition=condition,
+            conditional_operator=conditional_operator,
+            **expected_values
+        )
         return self._get_connection().put_item(*args, **kwargs)
+
+    def transact_save_item(self, condition=None, conditional_operator=None, **expected_values):
+        args, kwargs = self._get_save_operation_kwargs(
+            condition=condition,
+            conditional_operator=conditional_operator,
+            **expected_values
+        )
+        self._validate_transact_item_kwargs(*args, **kwargs)
+        operation_kwargs = self._get_connection().get_put_item_operation_kwargs(*args, **kwargs)
+        return {PUT: operation_kwargs}
 
     def refresh(self, consistent_read=False):
         """

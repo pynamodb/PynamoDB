@@ -3,6 +3,7 @@ Pynamodb constants
 """
 
 # Operations
+TRANSACT_WRITE_ITEMS = 'TransactWriteItems'
 BATCH_WRITE_ITEM = 'BatchWriteItem'
 DESCRIBE_TABLE = 'DescribeTable'
 BATCH_GET_ITEM = 'BatchGetItem'
@@ -31,6 +32,7 @@ UNPROCESSED_KEYS = 'UnprocessedKeys'
 UNPROCESSED_ITEMS = 'UnprocessedItems'
 CONSISTENT_READ = 'ConsistentRead'
 DELETE_REQUEST = 'DeleteRequest'
+TRANSACT_ITEMS = 'TransactItems'
 RETURN_VALUES = 'ReturnValues'
 REQUEST_ITEMS = 'RequestItems'
 ATTRS_TO_GET = 'AttributesToGet'
@@ -238,6 +240,7 @@ FILTER_EXPRESSION_OPERATOR_MAP = {
     BETWEEN: 'between'
 }
 
+TRANSACT_ITEMS_LIMIT = 10
 
 # These are constants used in the expected condition for PutItem
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html#DDB-PutItem-request-Expected
