@@ -1004,6 +1004,23 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise UpdateError("Failed to update item: {0}".format(e), e)
 
+    def get_condition_check_operation_kwargs(self, table_name, condition, hash_key, range_key=None, return_values=None):
+        operation_kwargs = {}
+        name_placeholders = {}
+        expression_attribute_values = {}
+        if condition is not None:
+            condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
+            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
+        if name_placeholders:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
+        if expression_attribute_values:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
+        if return_values:
+            operation_kwargs.update(self.get_return_values_map(return_values))
+        operation_kwargs[TABLE_NAME] = table_name
+        operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
+        return operation_kwargs
+
     def get_put_item_operation_kwargs(self,
                                       table_name,
                                       hash_key,
@@ -1015,9 +1032,6 @@ class Connection(object):
                                       return_values=None,
                                       return_consumed_capacity=None,
                                       return_item_collection_metrics=None):
-        """
-        Performs the PutItem operation and returns the result
-        """
         self._check_condition('condition', condition, expected, conditional_operator)
 
         operation_kwargs = {TABLE_NAME: table_name}
@@ -1060,6 +1074,9 @@ class Connection(object):
                  return_values=None,
                  return_consumed_capacity=None,
                  return_item_collection_metrics=None):
+        """
+        Performs the PutItem operation and returns the result
+        """
         operation_kwargs = self.get_put_item_operation_kwargs(
             table_name=table_name,
             hash_key=hash_key,
@@ -1076,28 +1093,6 @@ class Connection(object):
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to put item: {0}".format(e), e)
-
-    def transact_write_items(self,
-                             transact_items=None,
-                             return_consumed_capacity=None,
-                             return_item_collection_metrics=None):
-        if transact_items is None:
-            raise ValueError("Must specify items for transaction")
-        if not isinstance(transact_items, list):
-            raise ValueError("transact_items must be list")
-        if len(transact_items) > TRANSACT_ITEMS_LIMIT:
-            raise ValueError("More than {0} transactions not supported".format(TRANSACT_ITEMS_LIMIT))
-        operation_kwargs = {
-            TRANSACT_ITEMS: transact_items
-        }
-        if return_consumed_capacity:
-            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
-        if return_item_collection_metrics:
-            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
-        try:
-            return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
-        except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to transact write items: {0}".format(e), e)
 
     def batch_write_item(self,
                          table_name,
@@ -1176,15 +1171,12 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise GetError("Failed to batch get items: {0}".format(e), e)
 
-    def get_item(self,
-                 table_name,
-                 hash_key,
-                 range_key=None,
-                 consistent_read=False,
-                 attributes_to_get=None):
-        """
-        Performs the GetItem operation and returns the result
-        """
+    def get_get_item_operation_kwargs(self,
+                                      table_name,
+                                      hash_key,
+                                      range_key=None,
+                                      consistent_read=False,
+                                      attributes_to_get=None):
         operation_kwargs = {}
         name_placeholders = {}
         if attributes_to_get is not None:
@@ -1195,6 +1187,20 @@ class Connection(object):
         operation_kwargs[CONSISTENT_READ] = consistent_read
         operation_kwargs[TABLE_NAME] = table_name
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
+        return operation_kwargs
+
+    def get_item(self,
+                 table_name,
+                 hash_key,
+                 range_key=None,
+                 consistent_read=False,
+                 attributes_to_get=None):
+        """
+        Performs the GetItem operation and returns the result
+        """
+        operation_kwargs = self.get_get_item_operation_kwargs(
+            table_name, hash_key, range_key, consistent_read, attributes_to_get
+        )
         try:
             return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
