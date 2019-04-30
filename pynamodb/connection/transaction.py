@@ -117,20 +117,6 @@ class TransactWrite(Transaction):
             self._operation_kwargs[RETURN_ITEM_COLL_METRICS] = return_item_collection_metrics
         super().__init__(**kwargs)
 
-    @staticmethod
-    def _serialize_actions(actions, placeholder_names=None, expression_attribute_values=None):
-        placeholder_names = placeholder_names or {}
-        expression_attribute_values = expression_attribute_values or {}
-        serialized_actions = Update(*actions).serialize(placeholder_names, expression_attribute_values)
-        return placeholder_names, expression_attribute_values, serialized_actions
-
-    @staticmethod
-    def _serialize_condition(condition, placeholder_names=None, expression_attribute_values=None):
-        placeholder_names = placeholder_names or {}
-        expression_attribute_values = expression_attribute_values or {}
-        serialized_condition = condition.serialize(placeholder_names, expression_attribute_values)
-        return placeholder_names, expression_attribute_values, serialized_condition
-
     def add_save_item(self, operation_kwargs):
         put_item = self.format_item(PUT, PUT_REQUEST_PARAMETERS, operation_kwargs)
         self.add_item(put_item)

@@ -1432,12 +1432,3 @@ class Model(AttributeContainer):
         if range_key is not None:
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key
-
-    @classmethod
-    def _get_transaction_key(cls, hash_key, range_key=None):
-        key = {
-            cls._get_meta_data().hash_keyname: hash_key
-        }
-        if range_key is not None:
-            key[cls._get_meta_data().range_keyname] = range_key
-        return key
