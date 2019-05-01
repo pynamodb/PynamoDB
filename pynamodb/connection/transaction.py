@@ -1,12 +1,15 @@
 from pynamodb.connection.base import BOTOCORE_EXCEPTIONS, Connection
 from pynamodb.constants import (
-    TABLE_NAME, PROJECTION_EXPRESSION, GET, PUT, UPDATE, DELETE, RETURN_CONSUMED_CAPACITY,
+    TABLE_NAME, PROJECTION_EXPRESSION, RETURN_CONSUMED_CAPACITY, UPDATE, GET, PUT, DELETE,
     TRANSACT_GET_ITEMS, TRANSACT_WRITE_ITEMS, TRANSACT_ITEMS, CLIENT_REQUEST_TOKEN, CONDITION_CHECK,
     RETURN_ITEM_COLL_METRICS, CONDITION_EXPRESSION, EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
     UPDATE_EXPRESSION, RETURN_VALUES_ON_CONDITION_FAILURE, ITEM, KEY,
-    RETURN_VALUES)
+    RETURN_VALUES
+)
 from pynamodb.exceptions import GetError
-from pynamodb.expressions.update import Update
+
+PUT = PUT.lower().capitalize()
+DELETE = DELETE.lower().capitalize()
 
 TRANSACT_ITEM_LIMIT = 10
 
@@ -60,10 +63,12 @@ class Transaction:
 
     _item_limit = TRANSACT_ITEM_LIMIT
     _method = None
-    _operation_kwargs = {}
-    _transact_items = []
+    _operation_kwargs = None
+    _transact_items = None
 
     def __init__(self, return_consumed_capacity=None, **connection_kwargs):
+        self._operation_kwargs = {}
+        self._transact_items = []
         if return_consumed_capacity is not None:
             self._operation_kwargs[RETURN_CONSUMED_CAPACITY] = return_consumed_capacity
         self._connection = Connection(**connection_kwargs)
@@ -77,11 +82,11 @@ class Transaction:
 
     @staticmethod
     def format_item(method, valid_parameters, operation_kwargs):
+        if RETURN_VALUES in operation_kwargs.keys():
+            operation_kwargs[RETURN_VALUES_ON_CONDITION_FAILURE] = operation_kwargs.pop(RETURN_VALUES)
         request_params = {
-            key: value for key, value in operation_kwargs if key in valid_parameters
+            key: value for key, value in operation_kwargs.items() if key in valid_parameters
         }
-        if RETURN_VALUES in operation_kwargs.keys() and RETURN_VALUES_ON_CONDITION_FAILURE in valid_parameters:
-            request_params[RETURN_VALUES_ON_CONDITION_FAILURE] = operation_kwargs.pop(RETURN_VALUES)
         return {method: request_params}
 
     def add_item(self, item):
@@ -117,6 +122,14 @@ class TransactWrite(Transaction):
             self._operation_kwargs[RETURN_ITEM_COLL_METRICS] = return_item_collection_metrics
         super().__init__(**kwargs)
 
+    def add_condition_check_item(self, operation_kwargs):
+        condition_item = self.format_item(CONDITION_CHECK, CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
+        self.add_item(condition_item)
+
+    def add_delete_item(self, operation_kwargs):
+        delete_item = self.format_item(DELETE, DELETE_REQUEST_PARAMETERS, operation_kwargs)
+        self.add_item(delete_item)
+
     def add_save_item(self, operation_kwargs):
         put_item = self.format_item(PUT, PUT_REQUEST_PARAMETERS, operation_kwargs)
         self.add_item(put_item)
@@ -124,11 +137,3 @@ class TransactWrite(Transaction):
     def add_update_item(self, operation_kwargs):
         update_item = self.format_item(UPDATE, UPDATE_REQUEST_PARAMETERS, operation_kwargs)
         self.add_item(update_item)
-
-    def add_delete_item(self, operation_kwargs):
-        delete_item = self.format_item(DELETE, DELETE_REQUEST_PARAMETERS, operation_kwargs)
-        self.add_item(delete_item)
-
-    def add_condition_check_item(self, operation_kwargs):
-        condition_item = self.format_item(CONDITION_CHECK, CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
-        self.add_item(condition_item)

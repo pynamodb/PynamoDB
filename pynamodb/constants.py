@@ -68,7 +68,6 @@ KEYS = 'Keys'
 UTC = 'UTC'
 KEY = 'Key'
 GET = 'Get'
-PUT = 'Put'
 
 # Response Parameters
 SCANNED_COUNT = 'ScannedCount'
