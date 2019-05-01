@@ -876,26 +876,8 @@ class Connection(object):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
         return operation_kwargs
 
-    def delete_item(self,
-                    table_name,
-                    hash_key,
-                    range_key=None,
-                    condition=None,
-                    expected=None,
-                    conditional_operator=None,
-                    return_values=None,
-                    return_consumed_capacity=None,
-                    return_item_collection_metrics=None):
-        operation_kwargs = self.get_delete_item_operation_kwargs(
-            table_name=table_name,
-            hash_key=hash_key,
-            range_key=range_key,
-            condition=condition,
-            expected=expected,
-            conditional_operator=conditional_operator,
-            return_values=return_values,
-            return_consumed_capacity=return_consumed_capacity,
-            return_item_collection_metrics=return_item_collection_metrics)
+    def delete_item(self, *args, **kwargs):
+        operation_kwargs = self.get_delete_item_operation_kwargs(*args, **kwargs)
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
