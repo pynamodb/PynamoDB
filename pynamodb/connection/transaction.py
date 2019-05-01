@@ -69,9 +69,9 @@ class Transaction:
         self._operation_kwargs = {
             TRANSACT_ITEMS: [],
         }
-        if return_consumed_capacity is not None:
-            self._operation_kwargs[RETURN_CONSUMED_CAPACITY] = return_consumed_capacity
         self._connection = Connection(**connection_kwargs)
+        if return_consumed_capacity is not None:
+            self._operation_kwargs.update(self._connection.get_consumed_capacity_map(return_consumed_capacity))
 
     def __len__(self):
         return len(self.transact_items)
@@ -99,19 +99,18 @@ class TransactGet(Transaction):
 
     _models = None
 
-    def add_get_item(self, operation_kwargs):
+    def add_get_item(self, model_cls, operation_kwargs):
         get_item = self.format_item(GET, GET_REQUEST_PARAMETERS, operation_kwargs)
         self.add_item(get_item)
+        self._add_item_class(model_cls)
 
-    def add_item_class(self, model_cls):
+    def _add_item_class(self, model_cls):
         if self._models is None:
             self._models = []
         self._models.append(model_cls)
 
-    def commit(self):
-        response = self._connection.transact_get_items(self._operation_kwargs)
-
-        items = response[RESPONSES]
+    def commit(self):  # why isnt this hitting
+        items = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]
         # the items are returned in the same order as the original transact_items request list
         for model, item in zip(self._models, items):
             yield model.from_raw_data(item[ITEM])
@@ -120,11 +119,11 @@ class TransactGet(Transaction):
 class TransactWrite(Transaction):
 
     def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
+        super().__init__(**kwargs)
         if client_request_token is not None:
             self._operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
         if return_item_collection_metrics is not None:
-            self._operation_kwargs[RETURN_ITEM_COLL_METRICS] = return_item_collection_metrics
-        super().__init__(**kwargs)
+            self._operation_kwargs.update(self._connection.get_item_collection_map(return_item_collection_metrics))
 
     def add_condition_check_item(self, operation_kwargs):
         condition_item = self.format_item(CONDITION_CHECK, CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)

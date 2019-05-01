@@ -1,4 +1,5 @@
 import pytest
+from pynamodb.models import Model
 
 from pynamodb.connection import transaction
 from pynamodb.connection.transaction import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite
@@ -10,7 +11,7 @@ class TestTransaction:
         self.transaction = Transaction()
 
     def test_initialize(self, mocker):
-        mock_connection = mocker.patch.object(transaction, 'Connection')
+        mock_connection = mocker.spy(transaction, 'Connection')
 
         t = Transaction()
         mock_connection.assert_called_with()
@@ -56,25 +57,38 @@ class TestTransaction:
 
 class TestTransactGet:
 
-    def test_commit(self, mocker):
-        mock_transaction = mocker.patch.object(transaction.Connection, 'transact_get_items')
+    def test_add_item_class(self, mocker):
         t = TransactGet()
-        t.add_get_item({})
+        assert t._models is None
 
-        t.commit()
-        mock_transaction.assert_called_once_with({
-            'TransactItems': [
-                {'Get': {}}
-            ]
+        t._add_item_class(mocker.MagicMock(spec=Model))
+        assert t._models is not None
+        assert len(t._models) == 1
+
+    def test_commit(self, mocker):
+        mock_transaction = mocker.patch.object(transaction.Connection, 'transact_get_items', return_value={
+            'Responses': [{'Item': {}}]
         })
+
+        t = TransactGet()
+        t.add_get_item(mocker.MagicMock(spec=Model), {})
+        next(t.commit())
+
+        mock_transaction.assert_called_once_with({'TransactItems': [{'Get': {}}]})
 
 
 class TestTransactWrite:
 
+    def test_initialize(self):
+        t = TransactWrite(client_request_token='foo', return_item_collection_metrics='NONE')
+        assert t._operation_kwargs == {
+            'ClientRequestToken': 'foo',
+            'ReturnItemCollectionMetrics': 'NONE',
+            'TransactItems': [],
+        }
+
     def test_commit(self, mocker):
-        mock_transaction = mocker.patch.object(transaction.Connection, 'transact_write_items', return_value={
-            'Responses': [{'Item': {}}]
-        })
+        mock_transaction = mocker.patch.object(transaction.Connection, 'transact_write_items')
         t = TransactWrite()
 
         t.add_condition_check_item({})
@@ -84,10 +98,5 @@ class TestTransactWrite:
 
         t.commit()
         mock_transaction.assert_called_once_with({
-            'TransactItems': [
-                {'ConditionCheck': {}},
-                {'Delete': {}},
-                {'Put': {}},
-                {'Update': {}}
-            ]
+            'TransactItems': [{'ConditionCheck': {}}, {'Delete': {}}, {'Put': {}}, {'Update': {}}]
         })
