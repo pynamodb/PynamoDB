@@ -901,18 +901,18 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise DeleteError("Failed to delete item: {0}".format(e), e)
 
-    def get_update_item_operation_kwargs(self,
-                                         table_name,
-                                         hash_key,
-                                         range_key=None,
-                                         actions=None,
-                                         attribute_updates=None,
-                                         condition=None,
-                                         expected=None,
-                                         return_consumed_capacity=None,
-                                         conditional_operator=None,
-                                         return_item_collection_metrics=None,
-                                         return_values=None):
+    def get_operation_kwargs_for_update_item(self,
+                                             table_name,
+                                             hash_key,
+                                             range_key=None,
+                                             actions=None,
+                                             attribute_updates=None,
+                                             condition=None,
+                                             expected=None,
+                                             return_consumed_capacity=None,
+                                             conditional_operator=None,
+                                             return_item_collection_metrics=None,
+                                             return_values=None):
         self._check_actions(actions, attribute_updates)
         self._check_condition('condition', condition, expected, conditional_operator)
 
@@ -970,41 +970,17 @@ class Connection(object):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
         return operation_kwargs
 
-    def update_item(self,
-                    table_name,
-                    hash_key,
-                    range_key=None,
-                    actions=None,
-                    attribute_updates=None,
-                    condition=None,
-                    expected=None,
-                    return_consumed_capacity=None,
-                    conditional_operator=None,
-                    return_item_collection_metrics=None,
-                    return_values=None):
+    def update_item(self, *args, **kwargs):
         """
         Performs the UpdateItem operation
         """
-
-        operation_kwargs = self.get_update_item_operation_kwargs(
-            table_name=table_name,
-            hash_key=hash_key,
-            range_key=range_key,
-            actions=actions,
-            attribute_updates=attribute_updates,
-            condition=condition,
-            expected=expected,
-            return_consumed_capacity=return_consumed_capacity,
-            conditional_operator=conditional_operator,
-            return_item_collection_metrics=return_item_collection_metrics,
-            return_values=return_values)
-
+        operation_kwargs = self.get_operation_kwargs_for_update_item(*args, **kwargs)
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise UpdateError("Failed to update item: {0}".format(e), e)
 
-    def get_condition_check_operation_kwargs(self, table_name, condition, hash_key, range_key=None, return_values=None):
+    def get_operation_kwargs_for_condition_check(self, table_name, condition, hash_key, range_key=None, return_values=None):
         operation_kwargs = {}
         name_placeholders = {}
         expression_attribute_values = {}
@@ -1021,17 +997,17 @@ class Connection(object):
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
         return operation_kwargs
 
-    def get_put_item_operation_kwargs(self,
-                                      table_name,
-                                      hash_key,
-                                      range_key=None,
-                                      attributes=None,
-                                      condition=None,
-                                      expected=None,
-                                      conditional_operator=None,
-                                      return_values=None,
-                                      return_consumed_capacity=None,
-                                      return_item_collection_metrics=None):
+    def get_operation_kwargs_for_put_item(self,
+                                          table_name,
+                                          hash_key,
+                                          range_key=None,
+                                          attributes=None,
+                                          condition=None,
+                                          expected=None,
+                                          conditional_operator=None,
+                                          return_values=None,
+                                          return_consumed_capacity=None,
+                                          return_item_collection_metrics=None):
         self._check_condition('condition', condition, expected, conditional_operator)
 
         operation_kwargs = {TABLE_NAME: table_name}
@@ -1063,32 +1039,11 @@ class Connection(object):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
         return operation_kwargs
 
-    def put_item(self,
-                 table_name,
-                 hash_key,
-                 range_key=None,
-                 attributes=None,
-                 condition=None,
-                 expected=None,
-                 conditional_operator=None,
-                 return_values=None,
-                 return_consumed_capacity=None,
-                 return_item_collection_metrics=None):
+    def put_item(self, *args, **kwargs):
         """
         Performs the PutItem operation and returns the result
         """
-        operation_kwargs = self.get_put_item_operation_kwargs(
-            table_name=table_name,
-            hash_key=hash_key,
-            range_key=range_key,
-            attributes=attributes,
-            condition=condition,
-            expected=expected,
-            conditional_operator=conditional_operator,
-            return_values=return_values,
-            return_consumed_capacity=return_consumed_capacity,
-            return_item_collection_metrics=return_item_collection_metrics
-        )
+        operation_kwargs = self.get_operation_kwargs_for_put_item(*args, **kwargs)
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -1171,12 +1126,12 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise GetError("Failed to batch get items: {0}".format(e), e)
 
-    def get_get_item_operation_kwargs(self,
-                                      table_name,
-                                      hash_key,
-                                      range_key=None,
-                                      consistent_read=False,
-                                      attributes_to_get=None):
+    def get_operation_kwargs_for_get_item(self,
+                                          table_name,
+                                          hash_key,
+                                          range_key=None,
+                                          consistent_read=False,
+                                          attributes_to_get=None):
         operation_kwargs = {}
         name_placeholders = {}
         if attributes_to_get is not None:
@@ -1189,18 +1144,11 @@ class Connection(object):
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
         return operation_kwargs
 
-    def get_item(self,
-                 table_name,
-                 hash_key,
-                 range_key=None,
-                 consistent_read=False,
-                 attributes_to_get=None):
+    def get_item(self, *args, **kwargs):
         """
         Performs the GetItem operation and returns the result
         """
-        operation_kwargs = self.get_get_item_operation_kwargs(
-            table_name, hash_key, range_key, consistent_read, attributes_to_get
-        )
+        operation_kwargs = self.get_operation_kwargs_for_get_item(*args, **kwargs)
         try:
             return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:

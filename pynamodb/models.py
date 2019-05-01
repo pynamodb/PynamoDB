@@ -336,7 +336,7 @@ class Model(AttributeContainer):
             return six.u(msg)
 
     def condition_check(self, hash_key, range_key=None, condition=None, in_transaction=None, return_values=None):
-        operation_kwargs = self._get_connection().get_condition_check_operation_kwargs(
+        operation_kwargs = self._get_connection().get_operation_kwargs_for_condition_check(
             hash_key=hash_key,
             range_key=range_key,
             condition=condition,
@@ -357,7 +357,7 @@ class Model(AttributeContainer):
         kwargs.update(return_values=return_values)
 
         if in_transaction is not None:
-            operation_kwargs = self._get_connection().get_delete_item_operation_kwargs(*args, **kwargs)
+            operation_kwargs = self._get_connection().get_operation_kwargs_for_delete_item(*args, **kwargs)
             in_transaction.add_delete_item(operation_kwargs)
             return
         return self._get_connection().delete_item(*args, **kwargs)
@@ -404,7 +404,7 @@ class Model(AttributeContainer):
         kwargs.update(condition=condition)
 
         if in_transaction is not None:
-            operation_kwargs = self._get_connection().get_update_item_operation_kwargs(*args, **kwargs)
+            operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
             in_transaction.add_update_item(operation_kwargs)
             return
 
@@ -466,7 +466,7 @@ class Model(AttributeContainer):
         kwargs.update(actions=actions)
 
         if in_transaction is not None:
-            operation_kwargs = self._get_connection().get_update_item_operation_kwargs(*args, **kwargs)
+            operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
             in_transaction.add_update_item(operation_kwargs)
             return
 
@@ -491,7 +491,7 @@ class Model(AttributeContainer):
         kwargs.update(return_values=return_values)
 
         if in_transaction is not None:
-            operation_kwargs = self._get_connection().get_put_item_operation_kwargs(*args, **kwargs)
+            operation_kwargs = self._get_connection().get_operation_kwargs_for_put_item(*args, **kwargs)
             in_transaction.add_save_item(operation_kwargs)
             return
         return self._get_connection().put_item(*args, **kwargs)
@@ -530,7 +530,7 @@ class Model(AttributeContainer):
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
 
         if in_transaction is not None:
-            operation_kwargs = cls._get_connection().get_get_item_operation_kwargs(
+            operation_kwargs = cls._get_connection().get_operation_kwargs_for_get_item(
                 hash_key=hash_key,
                 range_key=range_key,
                 consistent_read=consistent_read,
