@@ -58,7 +58,7 @@ UPDATE_REQUEST_PARAMETERS = {
 }
 
 
-class Transaction:
+class Transaction(object):
 
     _connection = None
     _item_limit = TRANSACT_ITEM_LIMIT
