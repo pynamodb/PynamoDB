@@ -535,6 +535,7 @@ class Model(AttributeContainer):
                 attributes_to_get=attributes_to_get
             )
             in_transaction.add_get_item(operation_kwargs)
+            in_transaction.add_item_class(cls)
             return
 
         data = cls._get_connection().get_item(

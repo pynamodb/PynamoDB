@@ -4,9 +4,9 @@ from pynamodb.constants import (
     TRANSACT_GET_ITEMS, TRANSACT_WRITE_ITEMS, TRANSACT_ITEMS, CLIENT_REQUEST_TOKEN, CONDITION_CHECK,
     RETURN_ITEM_COLL_METRICS, CONDITION_EXPRESSION, EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
     UPDATE_EXPRESSION, RETURN_VALUES_ON_CONDITION_FAILURE, ITEM, KEY,
-    RETURN_VALUES
+    RETURN_VALUES, RESPONSES
 )
-from pynamodb.exceptions import GetError
+from pynamodb.exceptions import GetError, UpdateError
 
 PUT = PUT.lower().capitalize()
 DELETE = DELETE.lower().capitalize()
@@ -61,6 +61,7 @@ UPDATE_REQUEST_PARAMETERS = {
 
 class Transaction:
 
+    _connection = None
     _item_limit = TRANSACT_ITEM_LIMIT
     _method = None
     _operation_kwargs = None
@@ -94,21 +95,29 @@ class Transaction:
             raise ValueError("Transaction can't support more than {0} items".format(self._item_limit))
         self._transact_items.append(item)
 
-    def commit(self):
-        self._operation_kwargs[TRANSACT_ITEMS] = self.transact_items
-        try:
-            return self._connection.dispatch(self._method, self._operation_kwargs)
-        except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to batch get items: {0}".format(e), e)
-
 
 class TransactGet(Transaction):
 
     _method = TRANSACT_GET_ITEMS
+    _models = None
 
     def add_get_item(self, operation_kwargs):
         get_item = self.format_item(GET, GET_REQUEST_PARAMETERS, operation_kwargs)
         self.add_item(get_item)
+
+    def add_item_class(self, model_cls):
+        if self._models is None:
+            self._models = []
+        self._models.append(model_cls)
+
+    def commit(self):
+        self._operation_kwargs[TRANSACT_ITEMS] = self.transact_items
+        response = self._connection.dispatch(self._method, self._operation_kwargs)
+
+        items = response[RESPONSES]
+        # the items are returned in the same order as the original transact_items request list
+        for model, item in zip(self._models, items):
+            yield model.from_raw_data(item[ITEM])
 
 
 class TransactWrite(Transaction):
@@ -137,3 +146,7 @@ class TransactWrite(Transaction):
     def add_update_item(self, operation_kwargs):
         update_item = self.format_item(UPDATE, UPDATE_REQUEST_PARAMETERS, operation_kwargs)
         self.add_item(update_item)
+
+    def commit(self):
+        self._operation_kwargs[TRANSACT_ITEMS] = self.transact_items
+        return self._connection.dispatch(self._method, self._operation_kwargs)

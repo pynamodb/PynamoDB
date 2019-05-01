@@ -955,8 +955,7 @@ class Connection(object):
             else:
                 action = path.add(value)
             update_expression.add_action(action)
-        operation_kwargs[UPDATE_EXPRESSION] = update_expression.serialize(name_placeholders,
-                                                                          expression_attribute_values)
+        operation_kwargs[UPDATE_EXPRESSION] = update_expression.serialize(name_placeholders, expression_attribute_values)
 
         # We read the conditional operator even without expected passed in to maintain existing behavior.
         conditional_operator = self.get_conditional_operator(conditional_operator or AND)

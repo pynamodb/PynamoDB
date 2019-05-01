@@ -3,7 +3,7 @@ from botocore.exceptions import BotoCoreError
 
 from pynamodb.connection import transaction
 from pynamodb.connection.transaction import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite
-from pynamodb.exceptions import GetError
+from pynamodb.exceptions import GetError, UpdateError
 
 
 class TestTransaction:
@@ -55,27 +55,16 @@ class TestTransaction:
         with pytest.raises(ValueError):
             self.transaction.add_item({})
 
-    def test_commit(self, mocker):
-        mock_connection = mocker.patch.object(self.transaction, '_connection')
-        self.transaction.add_item({})
-        self.transaction.commit()
-        mock_connection.dispatch.assert_called_once_with(None, {
-            'TransactItems': [{}]
-        })
-
-        mock_connection.dispatch.side_effect = BotoCoreError
-        with pytest.raises(GetError):
-            self.transaction.commit()
-
 
 class TestTransactGet:
 
     def test_commit(self, mocker):
+        mock_dispatch = mocker.patch.object(transaction.Connection, 'dispatch')
         t = TransactGet()
         t.add_get_item({})
-        mock_connection = mocker.patch.object(t, '_connection')
+
         t.commit()
-        mock_connection.dispatch.assert_called_once_with(
+        mock_dispatch.assert_called_once_with(
             'TransactGetItems', {
                 'TransactItems': [
                     {'Get': {}}
@@ -87,8 +76,10 @@ class TestTransactGet:
 class TestTransactWrite:
 
     def test_commit(self, mocker):
+        mock_dispatch = mocker.patch.object(transaction.Connection, 'dispatch', return_value={
+            'Responses': [{'Item': {}}]
+        })
         t = TransactWrite()
-        mock_connection = mocker.patch.object(t, '_connection')
 
         t.add_condition_check_item({})
         t.add_delete_item({})
@@ -96,7 +87,7 @@ class TestTransactWrite:
         t.add_update_item({})
 
         t.commit()
-        mock_connection.dispatch.assert_called_once_with(
+        mock_dispatch.assert_called_once_with(
             'TransactWriteItems', {
                 'TransactItems': [
                     {'ConditionCheck': {}},
@@ -106,6 +97,3 @@ class TestTransactWrite:
                 ]
             }
         )
-
-
-
