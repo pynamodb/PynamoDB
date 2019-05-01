@@ -21,8 +21,6 @@ from botocore.client import ClientError
 from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
-from botocore.vendored import requests
-from botocore.vendored.requests import Request
 from six.moves import range
 
 from pynamodb.compat import NullHandler
@@ -30,10 +28,10 @@ from pynamodb.connection.util import pythonic
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
-    COMPARISON_OPERATOR, EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, SCAN_FILTER_VALUES, ATTR_DEFINITIONS,
+    COMPARISON_OPERATOR, EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, ATTR_DEFINITIONS,
     BATCH_WRITE_ITEM, CONSISTENT_READ, ATTR_VALUE_LIST, DESCRIBE_TABLE, KEY_CONDITION_EXPRESSION,
     BATCH_GET_ITEM, DELETE_REQUEST, SELECT_VALUES, RETURN_VALUES, REQUEST_ITEMS, ATTR_UPDATES,
-    PROJECTION_EXPRESSION, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, SCAN_FILTER, TABLE_NAME,
+    PROJECTION_EXPRESSION, SERVICE_NAME, DELETE_ITEM, PUT_REQUEST, UPDATE_ITEM, TABLE_NAME,
     INDEX_NAME, KEY_SCHEMA, ATTR_NAME, ATTR_TYPE, TABLE_KEY, EXPECTED, KEY_TYPE, GET_ITEM, UPDATE,
     PUT_ITEM, SELECT, ACTION, EXISTS, VALUE, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, EQ, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
@@ -44,8 +42,8 @@ from pynamodb.constants import (
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, UPDATE_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
-    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND, TRANSACT_ITEMS,
-    TRANSACT_WRITE_ITEMS, TRANSACT_ITEMS_LIMIT)
+    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND,
+    TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -845,9 +843,6 @@ class Connection(object):
                                          return_values=None,
                                          return_consumed_capacity=None,
                                          return_item_collection_metrics=None):
-        """
-        Performs the DeleteItem operation and returns the result
-        """
         self._check_condition('condition', condition, expected, conditional_operator)
 
         operation_kwargs = {TABLE_NAME: table_name}
@@ -877,6 +872,9 @@ class Connection(object):
         return operation_kwargs
 
     def delete_item(self, *args, **kwargs):
+        """
+        Performs the DeleteItem operation and returns the result
+        """
         operation_kwargs = self.get_delete_item_operation_kwargs(*args, **kwargs)
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
@@ -1029,6 +1027,24 @@ class Connection(object):
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to put item: {0}".format(e), e)
+
+    def transact_write_items(self, operation_kwargs):
+        """
+        Performs the TransactWrite operation and returns the result
+        """
+        try:
+            return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
+        except BOTOCORE_EXCEPTIONS as e:
+            raise PutError("Failed to write transaction items: {0}".format(e), e)
+
+    def transact_get_items(self, operation_kwargs):
+        """
+        Performs the TransactGet operation and returns the result
+        """
+        try:
+            return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
+        except BOTOCORE_EXCEPTIONS as e:
+            raise GetError("Failed to get transaction items: {0}".format(e), e)
 
     def batch_write_item(self,
                          table_name,

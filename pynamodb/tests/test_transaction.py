@@ -1,9 +1,7 @@
 import pytest
-from botocore.exceptions import BotoCoreError
 
 from pynamodb.connection import transaction
 from pynamodb.connection.transaction import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite
-from pynamodb.exceptions import GetError, UpdateError
 
 
 class TestTransaction:
@@ -16,21 +14,21 @@ class TestTransaction:
 
         t = Transaction()
         mock_connection.assert_called_with()
-        assert t._operation_kwargs == {}
+        assert t._operation_kwargs == {'TransactItems': []}
 
         t = Transaction(return_consumed_capacity='TOTAL')
         mock_connection.assert_called_with()
-        assert t._operation_kwargs == {'ReturnConsumedCapacity': 'TOTAL'}
+        assert t._operation_kwargs == {'ReturnConsumedCapacity': 'TOTAL', 'TransactItems': []}
 
         t = Transaction(region='us-east-1')
         mock_connection.assert_called_with(region='us-east-1')
-        assert t._operation_kwargs == {}
+        assert t._operation_kwargs == {'TransactItems': []}
 
     def test__len__(self):
-        self.transaction._transact_items = []
+        self.transaction._operation_kwargs['TransactItems'] = []
         assert len(self.transaction) == 0
 
-        self.transaction._transact_items = [{}, {}, {}]
+        self.transaction._operation_kwargs['TransactItems'] = [{}, {}, {}]
         assert len(self.transaction) == 3
 
     def test_format_item(self):
@@ -59,24 +57,22 @@ class TestTransaction:
 class TestTransactGet:
 
     def test_commit(self, mocker):
-        mock_dispatch = mocker.patch.object(transaction.Connection, 'dispatch')
+        mock_transaction = mocker.patch.object(transaction.Connection, 'transact_get_items')
         t = TransactGet()
         t.add_get_item({})
 
         t.commit()
-        mock_dispatch.assert_called_once_with(
-            'TransactGetItems', {
-                'TransactItems': [
-                    {'Get': {}}
-                ]
-            }
-        )
+        mock_transaction.assert_called_once_with({
+            'TransactItems': [
+                {'Get': {}}
+            ]
+        })
 
 
 class TestTransactWrite:
 
     def test_commit(self, mocker):
-        mock_dispatch = mocker.patch.object(transaction.Connection, 'dispatch', return_value={
+        mock_transaction = mocker.patch.object(transaction.Connection, 'transact_write_items', return_value={
             'Responses': [{'Item': {}}]
         })
         t = TransactWrite()
@@ -87,13 +83,11 @@ class TestTransactWrite:
         t.add_update_item({})
 
         t.commit()
-        mock_dispatch.assert_called_once_with(
-            'TransactWriteItems', {
-                'TransactItems': [
-                    {'ConditionCheck': {}},
-                    {'Delete': {}},
-                    {'Put': {}},
-                    {'Update': {}}
-                ]
-            }
-        )
+        mock_transaction.assert_called_once_with({
+            'TransactItems': [
+                {'ConditionCheck': {}},
+                {'Delete': {}},
+                {'Put': {}},
+                {'Update': {}}
+            ]
+        })

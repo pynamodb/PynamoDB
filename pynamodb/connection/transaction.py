@@ -1,4 +1,4 @@
-from pynamodb.connection.base import BOTOCORE_EXCEPTIONS, Connection
+from pynamodb.connection.base import Connection
 from pynamodb.constants import (
     TABLE_NAME, PROJECTION_EXPRESSION, RETURN_CONSUMED_CAPACITY, UPDATE, GET, PUT, DELETE,
     TRANSACT_GET_ITEMS, TRANSACT_WRITE_ITEMS, TRANSACT_ITEMS, CLIENT_REQUEST_TOKEN, CONDITION_CHECK,
@@ -6,7 +6,6 @@ from pynamodb.constants import (
     UPDATE_EXPRESSION, RETURN_VALUES_ON_CONDITION_FAILURE, ITEM, KEY,
     RETURN_VALUES, RESPONSES
 )
-from pynamodb.exceptions import GetError, UpdateError
 
 PUT = PUT.lower().capitalize()
 DELETE = DELETE.lower().capitalize()
@@ -65,21 +64,21 @@ class Transaction:
     _item_limit = TRANSACT_ITEM_LIMIT
     _method = None
     _operation_kwargs = None
-    _transact_items = None
 
     def __init__(self, return_consumed_capacity=None, **connection_kwargs):
-        self._operation_kwargs = {}
-        self._transact_items = []
+        self._operation_kwargs = {
+            TRANSACT_ITEMS: [],
+        }
         if return_consumed_capacity is not None:
             self._operation_kwargs[RETURN_CONSUMED_CAPACITY] = return_consumed_capacity
         self._connection = Connection(**connection_kwargs)
 
     def __len__(self):
-        return len(self._transact_items)
+        return len(self.transact_items)
 
     @property
     def transact_items(self):
-        return self._transact_items
+        return self._operation_kwargs[TRANSACT_ITEMS]
 
     @staticmethod
     def format_item(method, valid_parameters, operation_kwargs):
@@ -93,12 +92,11 @@ class Transaction:
     def add_item(self, item):
         if len(self) >= self._item_limit:
             raise ValueError("Transaction can't support more than {0} items".format(self._item_limit))
-        self._transact_items.append(item)
+        self.transact_items.append(item)
 
 
 class TransactGet(Transaction):
 
-    _method = TRANSACT_GET_ITEMS
     _models = None
 
     def add_get_item(self, operation_kwargs):
@@ -111,8 +109,7 @@ class TransactGet(Transaction):
         self._models.append(model_cls)
 
     def commit(self):
-        self._operation_kwargs[TRANSACT_ITEMS] = self.transact_items
-        response = self._connection.dispatch(self._method, self._operation_kwargs)
+        response = self._connection.transact_get_items(self._operation_kwargs)
 
         items = response[RESPONSES]
         # the items are returned in the same order as the original transact_items request list
@@ -121,8 +118,6 @@ class TransactGet(Transaction):
 
 
 class TransactWrite(Transaction):
-
-    _method = TRANSACT_WRITE_ITEMS
 
     def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
         if client_request_token is not None:
@@ -148,5 +143,4 @@ class TransactWrite(Transaction):
         self.add_item(update_item)
 
     def commit(self):
-        self._operation_kwargs[TRANSACT_ITEMS] = self.transact_items
-        return self._connection.dispatch(self._method, self._operation_kwargs)
+        return self._connection.transact_write_items(self._operation_kwargs)
