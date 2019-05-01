@@ -873,6 +873,37 @@ class ModelTestCase(TestCase):
             args = req.call_args[0][1]
             deep_eq(args, params, _assert=True)
 
+        mock_transaction = MagicMock()
+        response = item.delete(
+            (UserModel.user_id == 'bar') & UserModel.email.contains('@'),
+            in_transaction=mock_transaction
+        )
+        assert response is None
+        mock_transaction.add_delete_item.assert_called_with({
+            'Key': {
+                'user_id': {
+                    'S': 'bar'
+                },
+                'user_name': {
+                    'S': 'foo'
+                }
+            },
+            'ConditionExpression': '(#0 = :0 AND contains (#1, :1))',
+            'ExpressionAttributeNames': {
+                '#0': 'user_id',
+                '#1': 'email'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {
+                    'S': 'bar'
+                },
+                ':1': {
+                    'S': '@'
+                }
+            },
+            'TableName': 'UserModel'
+        })
+
     def test_delete_doesnt_do_validation_on_null_attributes(self):
         """
         Model.delete
@@ -1065,6 +1096,32 @@ class ModelTestCase(TestCase):
 
             assert item.views is None
             self.assertEqual(set(['alias1', 'alias3']), item.custom_aliases)
+
+        mock_transaction = MagicMock()
+        response = item.update(
+            {'custom_aliases': {'value': set(['alias2']), 'action': 'delete'}},
+            in_transaction=mock_transaction
+        )
+
+        assert response is None
+        mock_transaction.add_update_item.assert_called_with({
+            'TableName': 'SimpleModel',
+            'Key': {
+                'user_name': {
+                    'S': 'foo'
+                }
+            },
+            'ReturnValues': 'ALL_NEW',
+            'UpdateExpression': 'DELETE #0 :0',
+            'ExpressionAttributeNames': {
+                '#0': 'aliases'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {
+                    'SS': ['alias2']
+                }
+            },
+        })
 
     def test_update_item(self):
         """
@@ -1596,6 +1653,29 @@ class ModelTestCase(TestCase):
             deep_eq(args, params, _assert=True)
             self.assertEqual(set(["alias1", "alias3"]), item.custom_aliases)
 
+        mock_transaction = MagicMock()
+        response = item.update_item('is_active', True, action='put', in_transaction=mock_transaction)
+        params = {
+            'TableName': 'SimpleModel',
+            'Key': {
+                'user_name': {
+                    'S': 'foo'
+                }
+            },
+            'ReturnValues': 'ALL_NEW',
+            'UpdateExpression': 'SET #0 = :0',
+            'ExpressionAttributeNames': {
+                '#0': 'is_active'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {
+                    'BOOL': True
+                }
+            }
+        }
+        mock_transaction.add_update_item.assert_called_with(params)
+        assert response is None
+
     def test_save(self):
         """
         Model.save
@@ -1886,6 +1966,28 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
             deep_eq(args, params, _assert=True)
+
+        mock_transaction = MagicMock()
+        response = item.save(in_transaction=mock_transaction)
+
+        assert response is None
+        mock_transaction.add_save_item.assert_called_with({
+            'TableName': 'UserModel',
+            'Item': {
+                'callable_field': {
+                    'N': '42'
+                },
+                'email': {
+                    'S': u'needs_email'
+                },
+                'user_id': {
+                    'S': u'bar'
+                },
+                'user_name': {
+                    'S': u'foo'
+                },
+            },
+        })
 
     def test_filter_count(self):
         """
@@ -2912,7 +3014,6 @@ class ModelTestCase(TestCase):
             self.assertEqual(item.overidden_user_name, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_name']['S'])
             self.assertEqual(item.overidden_user_id, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_id']['S'])
 
-    def test_get__with_transaction(self):
         mock_transaction = MagicMock()
         params = {
             'ConsistentRead': False,

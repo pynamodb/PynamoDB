@@ -833,16 +833,16 @@ class Connection(object):
             raise TableError("No such table {0}".format(table_name))
         return tbl.get_exclusive_start_key_map(exclusive_start_key)
 
-    def get_delete_item_operation_kwargs(self,
-                                         table_name,
-                                         hash_key,
-                                         range_key=None,
-                                         condition=None,
-                                         expected=None,
-                                         conditional_operator=None,
-                                         return_values=None,
-                                         return_consumed_capacity=None,
-                                         return_item_collection_metrics=None):
+    def get_operation_kwargs_for_delete_item(self,
+                                             table_name,
+                                             hash_key,
+                                             range_key=None,
+                                             condition=None,
+                                             expected=None,
+                                             conditional_operator=None,
+                                             return_values=None,
+                                             return_consumed_capacity=None,
+                                             return_item_collection_metrics=None):
         self._check_condition('condition', condition, expected, conditional_operator)
 
         operation_kwargs = {TABLE_NAME: table_name}
@@ -875,7 +875,7 @@ class Connection(object):
         """
         Performs the DeleteItem operation and returns the result
         """
-        operation_kwargs = self.get_delete_item_operation_kwargs(*args, **kwargs)
+        operation_kwargs = self.get_operation_kwargs_for_delete_item(*args, **kwargs)
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
