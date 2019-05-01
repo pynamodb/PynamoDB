@@ -144,6 +144,9 @@ class TableConnection(object):
             return_consumed_capacity=return_consumed_capacity,
             attributes_to_get=attributes_to_get)
 
+    def get_operation_kwargs_for_get_item(self, *args, **kwargs):
+        return self.connection.get_operation_kwargs_for_get_item(self.table_name, *args, **kwargs)
+
     def get_item(self, hash_key, range_key=None, consistent_read=False, attributes_to_get=None):
         """
         Performs the GetItem operation and returns the result

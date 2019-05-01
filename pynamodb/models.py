@@ -534,8 +534,7 @@ class Model(AttributeContainer):
                 consistent_read=consistent_read,
                 attributes_to_get=attributes_to_get
             )
-            in_transaction.add_get_item(operation_kwargs)
-            in_transaction.add_item_class(cls)
+            in_transaction.add_get_item(cls, operation_kwargs)
             return
 
         data = cls._get_connection().get_item(

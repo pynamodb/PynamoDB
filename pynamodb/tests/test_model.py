@@ -2912,6 +2912,24 @@ class ModelTestCase(TestCase):
             self.assertEqual(item.overidden_user_name, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_name']['S'])
             self.assertEqual(item.overidden_user_id, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_id']['S'])
 
+    def test_get__with_transaction(self):
+        mock_transaction = MagicMock()
+        params = {
+            'ConsistentRead': False,
+            'TableName': 'UserModel',
+            'Key': {
+                'user_name': {
+                    'S': 'foo'
+                },
+                'user_id': {
+                    'S': 'bar'
+                },
+            },
+        }
+        response = UserModel.get('foo', 'bar', in_transaction=mock_transaction)
+        mock_transaction.add_get_item.assert_called_with(UserModel, params)
+        assert response is None
+
     def test_batch_get(self):
         """
         Model.batch_get

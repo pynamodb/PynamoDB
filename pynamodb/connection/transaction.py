@@ -119,7 +119,7 @@ class TransactGet(Transaction):
 class TransactWrite(Transaction):
 
     def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
-        super().__init__(**kwargs)
+        super(TransactWrite, self).__init__(**kwargs)
         if client_request_token is not None:
             self._operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
         if return_item_collection_metrics is not None:
