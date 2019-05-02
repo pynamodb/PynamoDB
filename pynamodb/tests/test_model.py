@@ -3042,10 +3042,13 @@ class ModelTestCase(TestCase):
         def mock_commit(_self):
             _self._results = MagicMock()
 
+        def mock_from_results(_self, *args, **kwargs):
+            return TransactGet.from_results(_self, *args, **kwargs)
+
         mock_transaction = MagicMock(spec=TransactGet)
         mock_transaction._results = None
         mock_transaction.commit = mock_commit
-        mock_transaction.from_results = TransactGet.from_results
+        mock_transaction.from_results = mock_from_results
 
         params = {
             'ConsistentRead': False,

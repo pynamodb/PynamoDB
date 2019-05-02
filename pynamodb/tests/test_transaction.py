@@ -19,15 +19,15 @@ class TestTransaction:
         mock_connection = mocker.spy(transaction, '_get_connection')
 
         t = Transaction()
-        mock_connection.assert_called_with()
+        mock_connection.assert_called_with(host=None, region=None)
         assert t._operation_kwargs == {'TransactItems': []}
 
         t = Transaction(return_consumed_capacity='TOTAL')
-        mock_connection.assert_called_with()
+        mock_connection.assert_called_with(host=None, region=None)
         assert t._operation_kwargs == {'ReturnConsumedCapacity': 'TOTAL', 'TransactItems': []}
 
         t = Transaction(region='us-east-1')
-        mock_connection.assert_called_with(region='us-east-1')
+        mock_connection.assert_called_with(host=None, region='us-east-1')
         assert t._operation_kwargs == {'TransactItems': []}
 
     def test__len__(self):
