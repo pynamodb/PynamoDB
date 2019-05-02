@@ -1031,7 +1031,7 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to put item: {0}".format(e), e)
 
-    def transact_write_items(self, operation_kwargs):  # TODO: test
+    def transact_write_items(self, operation_kwargs):
         """
         Performs the TransactWrite operation and returns the result
         """
@@ -1040,7 +1040,7 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to write transaction items: {0}".format(e), e)
 
-    def transact_get_items(self, operation_kwargs):  # TODO: test
+    def transact_get_items(self, operation_kwargs):
         """
         Performs the TransactGet operation and returns the result
         """

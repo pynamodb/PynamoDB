@@ -334,17 +334,16 @@ class Model(AttributeContainer):
             return six.u(msg)
 
     @classmethod
-    def condition_check(cls, in_transaction, hash_key, range_key=None, condition=None, return_values=None):
+    def condition_check(cls, in_transaction, hash_key, range_key=None, condition=None):
         operation_kwargs = cls._get_connection().get_operation_kwargs_for_condition_check(
             hash_key=hash_key,
             range_key=range_key,
             condition=condition,
-            return_values=return_values,
         )
         in_transaction.add_condition_check_item(operation_kwargs)
         return
 
-    def delete(self, condition=None, conditional_operator=None, in_transaction=None, return_values=None, **expected_values):
+    def delete(self, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
         """
         Deletes this object from dynamodb
         """
@@ -354,15 +353,14 @@ class Model(AttributeContainer):
             kwargs.update(expected=self._build_expected_values(expected_values, DELETE_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)
-        kwargs.update(return_values=return_values)
 
         if in_transaction is not None:
             operation_kwargs = self._get_connection().get_operation_kwargs_for_delete_item(*args, **kwargs)
             in_transaction.add_delete_item(operation_kwargs)
-            return
+            return True
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update_item(self, attribute, value=None, action=None, condition=None, conditional_operator=None, in_transaction=None, return_values=None, **expected_values):
+    def update_item(self, attribute, value=None, action=None, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -399,14 +397,14 @@ class Model(AttributeContainer):
             kwargs[pythonic(ATTR_UPDATES)][attribute_cls.attr_name][VALUE] = {
                 ATTR_TYPE_MAP[attribute_cls.attr_type]: attribute_cls.serialize(value)
             }
-        kwargs[pythonic(RETURN_VALUES)] = return_values or ALL_NEW
+        kwargs[pythonic(RETURN_VALUES)] = ALL_NEW
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)
 
         if in_transaction is not None:
             operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
             in_transaction.add_update_item(operation_kwargs)
-            return
+            return {}
 
         data = self._get_connection().update_item(
             *args,
@@ -420,7 +418,7 @@ class Model(AttributeContainer):
                 setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
         return data
 
-    def update(self, attributes=None, actions=None, condition=None, conditional_operator=None, in_transaction=None, return_values=None, **expected_values):
+    def update(self, attributes=None, actions=None, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -438,7 +436,7 @@ class Model(AttributeContainer):
         self._conditional_operator_check(conditional_operator)
         args, save_kwargs = self._get_save_args(null_check=False)
         kwargs = {
-            pythonic(RETURN_VALUES): return_values or ALL_NEW,
+            pythonic(RETURN_VALUES): ALL_NEW,
             'conditional_operator': conditional_operator,
         }
 
@@ -465,20 +463,19 @@ class Model(AttributeContainer):
         kwargs.update(condition=condition)
         kwargs.update(actions=actions)
 
-        if in_transaction is not None:
-            operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
-            in_transaction.add_update_item(operation_kwargs)
-            return
+        if in_transaction is None:
+            data = self._get_connection().update_item(*args, **kwargs)
+            for name, value in data[ATTRIBUTES].items():
+                attr_name = self._dynamo_to_python_attr(name)
+                attr = self.get_attributes().get(attr_name)
+                if attr:
+                    setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
+            return data
 
-        data = self._get_connection().update_item(*args, **kwargs)
-        for name, value in data[ATTRIBUTES].items():
-            attr_name = self._dynamo_to_python_attr(name)
-            attr = self.get_attributes().get(attr_name)
-            if attr:
-                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
-        return data
+        operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
+        in_transaction.add_update_item(operation_kwargs)
 
-    def save(self, condition=None, conditional_operator=None, in_transaction=None, return_values=None, **expected_values):
+    def save(self, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
         """
         Save this object to dynamodb
         """
@@ -488,7 +485,6 @@ class Model(AttributeContainer):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)
-        kwargs.update(return_values=return_values)
 
         if in_transaction is not None:
             operation_kwargs = self._get_connection().get_operation_kwargs_for_put_item(*args, **kwargs)

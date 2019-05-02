@@ -1,10 +1,8 @@
 from pynamodb.connection.base import Connection
 from pynamodb.constants import (
-    TABLE_NAME, PROJECTION_EXPRESSION, RETURN_CONSUMED_CAPACITY, UPDATE, GET, PUT, DELETE,
-    TRANSACT_GET_ITEMS, TRANSACT_WRITE_ITEMS, TRANSACT_ITEMS, CLIENT_REQUEST_TOKEN, CONDITION_CHECK,
-    RETURN_ITEM_COLL_METRICS, CONDITION_EXPRESSION, EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
-    UPDATE_EXPRESSION, RETURN_VALUES_ON_CONDITION_FAILURE, ITEM, KEY,
-    RETURN_VALUES, RESPONSES
+    TABLE_NAME, PROJECTION_EXPRESSION, UPDATE, GET, PUT, DELETE, TRANSACT_ITEMS, CLIENT_REQUEST_TOKEN, CONDITION_CHECK,
+    CONDITION_EXPRESSION, EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, UPDATE_EXPRESSION,
+    RETURN_VALUES_ON_CONDITION_FAILURE, ITEM, KEY, RETURN_VALUES, RESPONSES
 )
 
 PUT = PUT.lower().capitalize()
@@ -58,18 +56,27 @@ UPDATE_REQUEST_PARAMETERS = {
 }
 
 
+_CONNECTION = None
+
+
+def _get_connection(host=None, region=None, *args, **kwargs):
+    global _CONNECTION
+    if _CONNECTION is None:
+        _CONNECTION = Connection(host=host, region=region, *args, **kwargs)
+    return _CONNECTION
+
+
 class Transaction(object):
 
     _connection = None
     _item_limit = TRANSACT_ITEM_LIMIT
-    _method = None
     _operation_kwargs = None
 
     def __init__(self, return_consumed_capacity=None, **connection_kwargs):
         self._operation_kwargs = {
             TRANSACT_ITEMS: [],
         }
-        self._connection = Connection(**connection_kwargs)
+        self._connection = _get_connection(**connection_kwargs)
         if return_consumed_capacity is not None:
             self._operation_kwargs.update(self._connection.get_consumed_capacity_map(return_consumed_capacity))
 
@@ -98,6 +105,7 @@ class Transaction(object):
 class TransactGet(Transaction):
 
     _models = None
+    _results = None
 
     def add_get_item(self, model_cls, operation_kwargs):
         get_item = self.format_item(GET, GET_REQUEST_PARAMETERS, operation_kwargs)
@@ -109,7 +117,7 @@ class TransactGet(Transaction):
             self._models = []
         self._models.append(model_cls)
 
-    def commit(self):  # why isnt this hitting
+    def commit(self):
         items = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]
         # the items are returned in the same order as the original transact_items request list
         for model, item in zip(self._models, items):
