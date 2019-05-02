@@ -533,7 +533,7 @@ class Model(AttributeContainer):
                 attributes_to_get=attributes_to_get
             )
             in_transaction.add_get_item(cls, hash_key, range_key, operation_kwargs)
-            yield in_transaction.get_from_results(cls, hash_key, range_key)
+            return in_transaction.from_results(cls, hash_key, range_key)
 
         data = cls._get_connection().get_item(
             hash_key,

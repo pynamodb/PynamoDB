@@ -13,6 +13,7 @@ from botocore.vendored import requests
 import pytest
 
 from pynamodb.compat import CompatTestCase as TestCase
+from pynamodb.connection.transaction import TransactWrite, TransactGet
 from pynamodb.tests.deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import DoesNotExist, TableError
@@ -873,12 +874,12 @@ class ModelTestCase(TestCase):
             args = req.call_args[0][1]
             deep_eq(args, params, _assert=True)
 
-        mock_transaction = MagicMock()
+        mock_transaction = MagicMock(spec=TransactWrite)
         response = item.delete(
             (UserModel.user_id == 'bar') & UserModel.email.contains('@'),
             in_transaction=mock_transaction
         )
-        assert response is None
+        assert response is True
         mock_transaction.add_delete_item.assert_called_with({
             'Key': {
                 'user_id': {
@@ -925,18 +926,16 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=MagicMock(side_effect=fake_dynamodb)):
             UserModel('foo')
 
-        mock_transaction = MagicMock()
+        mock_transaction = MagicMock(spec=TransactWrite)
         UserModel.condition_check(
             in_transaction=mock_transaction,
             hash_key='foo',
             range_key='bar',
-            condition=(UserModel.user_id.does_not_exist()),
-            return_values='NONE'
+            condition=(UserModel.user_id.does_not_exist())
         )
         mock_transaction.add_condition_check_item.assert_called_with({
             'ConditionExpression': 'attribute_not_exists (#0)',
             'ExpressionAttributeNames': {'#0': 'user_id'},
-            'ReturnValues': 'NONE',
             'TableName': 'UserModel',
             'Key': {
                 'user_name': {'S': 'foo'},
@@ -1700,7 +1699,7 @@ class ModelTestCase(TestCase):
             }
         }
         mock_transaction.add_update_item.assert_called_with(params)
-        assert response is None
+        assert response == {}
 
     def test_save(self):
         """
@@ -3040,7 +3039,14 @@ class ModelTestCase(TestCase):
             self.assertEqual(item.overidden_user_name, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_name']['S'])
             self.assertEqual(item.overidden_user_id, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_id']['S'])
 
-        mock_transaction = MagicMock()
+        def mock_commit(_self):
+            _self._results = MagicMock()
+
+        mock_transaction = MagicMock(spec=TransactGet)
+        mock_transaction._results = None
+        mock_transaction.commit = mock_commit
+        mock_transaction.from_results = TransactGet.from_results
+
         params = {
             'ConsistentRead': False,
             'TableName': 'UserModel',
@@ -3054,8 +3060,8 @@ class ModelTestCase(TestCase):
             },
         }
         response = UserModel.get('foo', 'bar', in_transaction=mock_transaction)
-        mock_transaction.add_get_item.assert_called_with(UserModel, params)
-        assert response is None
+        mock_transaction.add_get_item.assert_called_with(UserModel, 'foo', 'bar', params)
+        assert response is not None
 
     def test_batch_get(self):
         """

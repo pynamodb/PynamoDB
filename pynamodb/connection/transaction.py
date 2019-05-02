@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 from pynamodb.exceptions import GetError
 
 from pynamodb.connection.base import Connection
@@ -121,11 +123,12 @@ class TransactGet(Transaction):
             raise ValueError("Can't perform operation on the same table multiple times in one transaction")
         self._model_indexes[model_cls][hash_key][range_key] = len(self.transact_items) - 1
 
-    def from_results(self, model_cls, hash_key, range_key):
+    @contextmanager
+    def from_results(self, model_cls, hash_key, range_key=None):
         if self._results is None:
             raise GetError('Attempting to access item before committing the transaction')
         index = self._model_indexes[model_cls][hash_key][range_key]
-        return model_cls.from_raw_data(self._results[index])
+        yield model_cls.from_raw_data(self._results[index])
 
     def commit(self):
         self._results = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]
