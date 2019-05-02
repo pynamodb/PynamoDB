@@ -44,6 +44,9 @@ class TableConnection(object):
         """
         return self.connection.get_meta_table(self.table_name, refresh=refresh)
 
+    def get_operation_kwargs_for_condition_check(self, *args, **kwargs):
+        return self.connection.get_operation_kwargs_for_condition_check(self.table_name, *args, **kwargs)
+
     def get_operation_kwargs_for_delete_item(self, *args, **kwargs):
         return self.connection.get_operation_kwargs_for_delete_item(self.table_name, *args, **kwargs)
 

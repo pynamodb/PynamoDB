@@ -918,6 +918,32 @@ class ModelTestCase(TestCase):
                 car = CarModel('foo')
                 batch.delete(car)
 
+    def test_condition_check(self):
+        def fake_dynamodb(*args):
+            return MODEL_TABLE_DATA
+
+        with patch(PATCH_METHOD, new=MagicMock(side_effect=fake_dynamodb)):
+            UserModel('foo')
+
+        mock_transaction = MagicMock()
+        UserModel.condition_check(
+            in_transaction=mock_transaction,
+            hash_key='foo',
+            range_key='bar',
+            condition=(UserModel.user_id.does_not_exist()),
+            return_values='NONE'
+        )
+        mock_transaction.add_condition_check_item.assert_called_with({
+            'ConditionExpression': 'attribute_not_exists (#0)',
+            'ExpressionAttributeNames': {'#0': 'user_id'},
+            'ReturnValues': 'NONE',
+            'TableName': 'UserModel',
+            'Key': {
+                'user_name': {'S': 'foo'},
+                'user_id': {'S': 'bar'}
+            }
+        })
+
     def test_update(self):
         """
         Model.update

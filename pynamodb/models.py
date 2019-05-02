@@ -333,14 +333,16 @@ class Model(AttributeContainer):
                 msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
-    def condition_check(self, hash_key, range_key=None, condition=None, in_transaction=None, return_values=None):
-        operation_kwargs = self._get_connection().get_operation_kwargs_for_condition_check(
+    @classmethod
+    def condition_check(cls, in_transaction, hash_key, range_key=None, condition=None, return_values=None):
+        operation_kwargs = cls._get_connection().get_operation_kwargs_for_condition_check(
             hash_key=hash_key,
             range_key=range_key,
             condition=condition,
             return_values=return_values,
         )
         in_transaction.add_condition_check_item(operation_kwargs)
+        return
 
     def delete(self, condition=None, conditional_operator=None, in_transaction=None, return_values=None, **expected_values):
         """

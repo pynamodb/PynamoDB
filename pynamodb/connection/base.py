@@ -968,8 +968,6 @@ class Connection(object):
             operation_kwargs[CONDITION_EXPRESSION] = condition_expression
         if name_placeholders:
             operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
-        if expression_attribute_values:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
         if return_values:
             operation_kwargs.update(self.get_return_values_map(return_values))
         operation_kwargs[TABLE_NAME] = table_name
@@ -1028,7 +1026,7 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to put item: {0}".format(e), e)
 
-    def transact_write_items(self, operation_kwargs):
+    def transact_write_items(self, operation_kwargs):  # TODO: test
         """
         Performs the TransactWrite operation and returns the result
         """
@@ -1037,7 +1035,7 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to write transaction items: {0}".format(e), e)
 
-    def transact_get_items(self, operation_kwargs):
+    def transact_get_items(self, operation_kwargs):  # TODO: test
         """
         Performs the TransactGet operation and returns the result
         """
