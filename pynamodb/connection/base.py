@@ -455,10 +455,15 @@ class Connection(object):
                 for attr in six.itervalues(item):
                     _convert_binary(attr)
         if RESPONSES in data:
-            for item_list in six.itervalues(data[RESPONSES]):
-                for item in item_list:
+            if isinstance(data[RESPONSES], list):
+                for item in data[RESPONSES]:
                     for attr in six.itervalues(item):
                         _convert_binary(attr)
+            else:
+                for item_list in six.itervalues(data[RESPONSES]):
+                    for item in item_list:
+                        for attr in six.itervalues(item):
+                            _convert_binary(attr)
         if LAST_EVALUATED_KEY in data:
             for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
                 _convert_binary(attr)
