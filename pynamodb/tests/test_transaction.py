@@ -1,7 +1,13 @@
 import pytest
+import six
 
 from pynamodb.connection import transaction
 from pynamodb.connection.transaction import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite
+
+if six.PY3:
+    from unittest.mock import MagicMock
+else:
+    from mock import MagicMock
 
 
 class TestTransaction:
@@ -10,7 +16,7 @@ class TestTransaction:
         self.transaction = Transaction()
 
     def test_initialize(self, mocker):
-        mock_connection = mocker.spy(transaction, 'Connection')
+        mock_connection = mocker.spy(transaction, '_get_connection')
 
         t = Transaction()
         mock_connection.assert_called_with()
@@ -56,22 +62,23 @@ class TestTransaction:
 
 class TestTransactGet:
 
-    def test_add_item_class(self, mocker):
+    def setup(self):
+        self.mock_model_cls = MagicMock(__name__='MockModel')
+
+    def test_add_item_class(self):
         t = TransactGet()
         assert t._model_indexes is None
 
-        mock_model_cls = mocker.MagicMock()
-        t._add_item_class(mock_model_cls, 1, 2)
+        t._add_item_class(self.mock_model_cls, 1, 2)
         assert t._model_indexes is not None
-        assert t._model_indexes[mock_model_cls][1][2] == 0
+        assert t._model_indexes['MockModel|1|2'] == 0
 
-        mock_model_cls = mocker.MagicMock()
-        t._add_item_class(mock_model_cls, 2, 3)
+        t._add_item_class(self.mock_model_cls, 2, 3)
         assert t._model_indexes is not None
-        assert t._model_indexes[mock_model_cls][2][3] == 1
+        assert t._model_indexes['MockModel|2|3'] == 1
 
         with pytest.raises(ValueError):
-            t._add_item_class(mock_model_cls, 1, 2)
+            t._add_item_class(self.mock_model_cls, 1, 2)
 
     def test_commit(self, mocker):
         mock_transaction = mocker.patch.object(transaction.Connection, 'transact_get_items', return_value={
@@ -79,7 +86,7 @@ class TestTransactGet:
         })
 
         t = TransactGet()
-        t.add_get_item(mocker.MagicMock(), 1, 2, {})
+        t.add_get_item(self.mock_model_cls, 1, 2, {})
         t.commit()
 
         mock_transaction.assert_called_once_with({'TransactItems': [{'Get': {}}]})

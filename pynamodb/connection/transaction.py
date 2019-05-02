@@ -116,18 +116,23 @@ class TransactGet(Transaction):
         self.add_item(get_item)
         self._add_item_class(model_cls, hash_key, range_key)
 
-    def _add_item_class(self, model_cls, hash_key, range_key):
+    def _get_key(self, model_cls, hash_key, range_key=None):
+        return "{0}|{1}|{2}".format(model_cls.__name__, hash_key, range_key)
+
+    def _add_item_class(self, model_cls, hash_key, range_key=None):
         if self._model_indexes is None:
             self._model_indexes = {}
-        if self._model_indexes.get(model_cls, {}).get(hash_key, {}).get(range_key) is not None:
+        key = self._get_key(model_cls, hash_key, range_key)
+        if self._model_indexes.get(key) is not None:
             raise ValueError("Can't perform operation on the same table multiple times in one transaction")
-        self._model_indexes[model_cls][hash_key][range_key] = len(self.transact_items) - 1
+        self._model_indexes[key] = len(self._model_indexes.keys())
 
     @contextmanager
     def from_results(self, model_cls, hash_key, range_key=None):
         if self._results is None:
             raise GetError('Attempting to access item before committing the transaction')
-        index = self._model_indexes[model_cls][hash_key][range_key]
+        key = self._get_key(model_cls, hash_key, range_key)
+        index = self._model_indexes[key]
         yield model_cls.from_raw_data(self._results[index])
 
     def commit(self):
