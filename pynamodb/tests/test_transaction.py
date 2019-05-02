@@ -1,5 +1,4 @@
 import pytest
-from pynamodb.models import Model
 
 from pynamodb.connection import transaction
 from pynamodb.connection.transaction import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite
@@ -59,11 +58,20 @@ class TestTransactGet:
 
     def test_add_item_class(self, mocker):
         t = TransactGet()
-        assert t._models is None
+        assert t._model_indexes is None
 
-        t._add_item_class(mocker.MagicMock(spec=Model))
-        assert t._models is not None
-        assert len(t._models) == 1
+        mock_model_cls = mocker.MagicMock()
+        t._add_item_class(mock_model_cls, 1, 2)
+        assert t._model_indexes is not None
+        assert t._model_indexes[mock_model_cls][1][2] == 0
+
+        mock_model_cls = mocker.MagicMock()
+        t._add_item_class(mock_model_cls, 2, 3)
+        assert t._model_indexes is not None
+        assert t._model_indexes[mock_model_cls][2][3] == 1
+
+        with pytest.raises(ValueError):
+            t._add_item_class(mock_model_cls, 1, 2)
 
     def test_commit(self, mocker):
         mock_transaction = mocker.patch.object(transaction.Connection, 'transact_get_items', return_value={
@@ -71,8 +79,8 @@ class TestTransactGet:
         })
 
         t = TransactGet()
-        t.add_get_item(mocker.MagicMock(spec=Model), {})
-        next(t.commit())
+        t.add_get_item(mocker.MagicMock(), 1, 2, {})
+        t.commit()
 
         mock_transaction.assert_called_once_with({'TransactItems': [{'Get': {}}]})
 

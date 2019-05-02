@@ -1,3 +1,5 @@
+from pynamodb.exceptions import GetError
+
 from pynamodb.connection.base import Connection
 from pynamodb.constants import (
     TABLE_NAME, PROJECTION_EXPRESSION, UPDATE, GET, PUT, DELETE, TRANSACT_ITEMS, CLIENT_REQUEST_TOKEN, CONDITION_CHECK,
@@ -104,24 +106,29 @@ class Transaction(object):
 
 class TransactGet(Transaction):
 
-    _models = None
     _results = None
+    _model_indexes = None
 
-    def add_get_item(self, model_cls, operation_kwargs):
+    def add_get_item(self, model_cls, hash_key, range_key, operation_kwargs):
         get_item = self.format_item(GET, GET_REQUEST_PARAMETERS, operation_kwargs)
         self.add_item(get_item)
-        self._add_item_class(model_cls)
+        self._add_item_class(model_cls, hash_key, range_key)
 
-    def _add_item_class(self, model_cls):
-        if self._models is None:
-            self._models = []
-        self._models.append(model_cls)
+    def _add_item_class(self, model_cls, hash_key, range_key):
+        if self._model_indexes is None:
+            self._model_indexes = {}
+        if self._model_indexes.get(model_cls, {}).get(hash_key, {}).get(range_key) is not None:
+            raise ValueError("Can't perform operation on the same table multiple times in one transaction")
+        self._model_indexes[model_cls][hash_key][range_key] = len(self.transact_items) - 1
+
+    def from_results(self, model_cls, hash_key, range_key):
+        if self._results is None:
+            raise GetError('Attempting to access item before committing the transaction')
+        index = self._model_indexes[model_cls][hash_key][range_key]
+        return model_cls.from_raw_data(self._results[index])
 
     def commit(self):
-        items = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]
-        # the items are returned in the same order as the original transact_items request list
-        for model, item in zip(self._models, items):
-            yield model.from_raw_data(item[ITEM])
+        self._results = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]
 
 
 class TransactWrite(Transaction):

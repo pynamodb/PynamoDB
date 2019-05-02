@@ -51,6 +51,6 @@ BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_tra
 transact_write.commit()
 
 transact_get = TransactGet(host=cfg.DYNAMODB_HOST, region='us-east-1')
-User.get(1, in_transaction=transact_get)
-BankStatement.get(1, in_transaction=transact_get)
-user, statement = transact_get.commit()
+user = User.get(1, in_transaction=transact_get)
+statement = BankStatement.get(1, in_transaction=transact_get)
+transact_get.commit()
