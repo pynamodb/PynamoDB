@@ -72,11 +72,11 @@ class TestTransactGet:
 
         t._add_item_class(self.mock_model_cls, 1, 2)
         assert t._model_indexes is not None
-        assert t._model_indexes['MockModel|1|2'] == 0
+        assert t._model_indexes['MockModel(1,2)'] == 0
 
         t._add_item_class(self.mock_model_cls, 2, 3)
         assert t._model_indexes is not None
-        assert t._model_indexes['MockModel|2|3'] == 1
+        assert t._model_indexes['MockModel(2,3)'] == 1
 
         with pytest.raises(ValueError):
             t._add_item_class(self.mock_model_cls, 1, 2)
@@ -99,7 +99,7 @@ class TestTransactGet:
 
         self.mock_model_cls.from_raw_data.return_value = MagicMock(hash_key=1, range_key=2)
         t._results = [{'Item': {}}, {'Item': {}}]
-        t._model_indexes = {'MockModel|1|2': 1, 'MockModel|3|4': 0}
+        t._model_indexes = {'MockModel(1,2)': 1, 'MockModel(3,4)': 0}
 
         with pytest.raises(KeyError):
             t.from_results(self.mock_model_cls, 2, 3)

@@ -43,7 +43,7 @@ from pynamodb.constants import (
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, UPDATE_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
     CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND,
-    TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS)
+    TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS, TRANSACT_ITEMS)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -418,6 +418,7 @@ class Connection(object):
                     raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
                 except VerboseClientError as e:
                     if is_last_attempt_for_exceptions:
+                        print(botocore_expected_format)
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise
                     elif status_code < 500 and code != 'ProvisionedThroughputExceededException':
@@ -1038,6 +1039,7 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
+            print(e)
             raise PutError("Failed to write transaction items: {0}".format(e), e)
 
     def transact_get_items(self, operation_kwargs):

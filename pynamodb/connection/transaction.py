@@ -105,7 +105,7 @@ class TransactGet(Transaction):
         self._add_item_class(model_cls, hash_key, range_key)
 
     def _get_key(self, model_cls, hash_key, range_key=None):
-        return "{0}|{1}|{2}".format(model_cls.__name__, hash_key, range_key)
+        return "{0}({1},{2})".format(model_cls.__name__, hash_key, range_key)
 
     def _add_item_class(self, model_cls, hash_key, range_key=None):
         if self._model_indexes is None:
@@ -120,7 +120,10 @@ class TransactGet(Transaction):
             raise GetError('Attempting to access item before committing the transaction')
         key = self._get_key(model_cls, hash_key, range_key)
         index = self._model_indexes[key]
-        return model_cls.from_raw_data(self._results[index][ITEM])
+        item = self._results[index].get(ITEM)
+        if item is None:
+            raise GetError('Failed to get item: {0}'.format(key))
+        return model_cls.from_raw_data(item)
 
     def commit(self):
         self._results = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]
