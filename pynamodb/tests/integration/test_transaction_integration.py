@@ -57,13 +57,17 @@ User(2).save(condition=(User.user_id.does_not_exist()), in_transaction=transact_
 BankStatement(2, balance=100).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transact_write)
 transact_write.commit()
 
+sleep(2)
+
 # get users and statements we just created
-transact_get = TransactGet(host=cfg.DYNAMODB_HOST, region='us-east-1')
+transact_get = TransactGet()
 User.get(1, in_transaction=transact_get)
 BankStatement.get(1, in_transaction=transact_get)
 User.get(2, in_transaction=transact_get)
 BankStatement.get(2, in_transaction=transact_get)
 transact_get.commit()
+
+sleep(2)
 
 # assign them to variables after commit
 user1 = transact_get.from_results(User, 1)
@@ -80,7 +84,7 @@ assert statement2.balance == 100
 
 # let the users send money to one another
 created_at = datetime.now()
-transact_write = TransactWrite(host=cfg.DYNAMODB_HOST, region='us-east-1')
+transact_write = TransactWrite()
 # create a credit line item to user 1's account
 LineItem(user_id=1, amount=50, currency='USD', created_at=created_at).save(
     condition=(LineItem.created_at.does_not_exist()),

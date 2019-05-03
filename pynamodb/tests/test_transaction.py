@@ -98,7 +98,7 @@ class TestTransactGet:
             m = t.from_results(self.mock_model_cls, 2, 3)
 
         self.mock_model_cls.from_raw_data.return_value = MagicMock(hash_key=1, range_key=2)
-        t._results = [{}, {}]
+        t._results = [{'Item': {}}, {'Item': {}}]
         t._model_indexes = {'MockModel|1|2': 1, 'MockModel|3|4': 0}
 
         with pytest.raises(KeyError):
@@ -132,3 +132,15 @@ class TestTransactWrite:
         mock_transaction.assert_called_once_with({
             'TransactItems': [{'ConditionCheck': {}}, {'Delete': {}}, {'Put': {}}, {'Update': {}}]
         })
+
+
+class TestConnection:
+
+    def test_get_connection(self):
+        transaction._CONNECTION = None
+        assert transaction._CONNECTION is None
+        conn = transaction._get_connection(host='foo', region='bar')
+        assert conn.host == 'foo'
+        assert conn.region == 'bar'
+        assert transaction._CONNECTION is not None
+        assert transaction._get_connection() == conn

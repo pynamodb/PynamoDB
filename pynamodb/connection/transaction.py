@@ -58,16 +58,6 @@ UPDATE_REQUEST_PARAMETERS = {
 }
 
 
-_CONNECTION = None
-
-
-def _get_connection(**kwargs):
-    global _CONNECTION
-    if _CONNECTION is None:
-        _CONNECTION = Connection(**kwargs)
-    return _CONNECTION
-
-
 class Transaction(object):
 
     _connection = None
@@ -163,3 +153,13 @@ class TransactWrite(Transaction):
 
     def commit(self):
         return self._connection.transact_write_items(self._operation_kwargs)
+
+
+_CONNECTION = None
+
+
+def _get_connection(**kwargs):
+    global _CONNECTION
+    if _CONNECTION is None:
+        _CONNECTION = Connection(**kwargs)
+    return _CONNECTION
