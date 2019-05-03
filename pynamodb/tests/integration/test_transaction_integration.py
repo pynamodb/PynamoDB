@@ -65,8 +65,6 @@ User.get(2, in_transaction=transact_get)
 BankStatement.get(2, in_transaction=transact_get)
 transact_get.commit()
 
-sleep(2)
-
 # assign them to variables after commit
 user1 = transact_get.from_results(User, 1)
 user2 = transact_get.from_results(User, 2)
@@ -80,11 +78,9 @@ assert user2.user_id == 2
 assert statement2.user_id == 2
 assert statement2.balance == 100
 
-sleep(2)
-
-# let the users send money to one another, reusing connection from earlier
+# let the users send money to one another
 created_at = datetime.now()
-transact_write = TransactWrite()
+transact_write = TransactWrite(host=cfg.DYNAMODB_HOST, region='us-east-1')
 # create a credit line item to user 1's account
 LineItem(user_id=1, amount=50, currency='USD', created_at=created_at).save(
     condition=(LineItem.created_at.does_not_exist()),
