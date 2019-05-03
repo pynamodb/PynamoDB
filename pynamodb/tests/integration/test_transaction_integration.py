@@ -75,7 +75,7 @@ assert statement1.user_id == 1
 assert statement1.balance == 0
 assert user2.user_id == 2
 assert statement2.user_id == 2
-assert statement2.balance == 0
+assert statement2.balance == 100
 
 # let the users send money to one another, reusing connection from earlier
 created_at = datetime.now()
@@ -108,7 +108,7 @@ statement1.refresh()
 statement2.refresh()
 
 assert statement1.balance == 50
-assert statement1.balance == 50
+assert statement2.balance == 50
 
 for model in TEST_MODELS:
     if model.exists():
