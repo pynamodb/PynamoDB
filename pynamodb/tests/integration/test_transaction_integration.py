@@ -64,6 +64,8 @@ User.get(2, in_transaction=transact_get)
 BankStatement.get(2, in_transaction=transact_get)
 transact_get.commit()
 
+print(transact_get._results)
+
 # assign them to variables after commit
 user1 = transact_get.from_results(User, 1)
 user2 = transact_get.from_results(User, 2)
