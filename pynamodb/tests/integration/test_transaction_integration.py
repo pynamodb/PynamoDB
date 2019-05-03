@@ -81,12 +81,12 @@ assert statement2.balance == 100
 created_at = datetime.now()
 transact_write = TransactWrite()
 # create a credit line item to user 1's account
-LineItem(user_id=1, amount=50, created_at=created_at).save(
+LineItem(user_id=1, amount=50, currency='USD', created_at=created_at).save(
     condition=(LineItem.created_at.does_not_exist()),
     in_transaction=transact_write
 )
 # create a debit to user 2's account
-LineItem(user_id=2, amount=-50, created_at=created_at).save(
+LineItem(user_id=2, amount=-50, currency='USD', created_at=created_at).save(
     condition=(LineItem.created_at.does_not_exist()),
     in_transaction=transact_write
 )
