@@ -65,6 +65,7 @@ BankStatement.get(2, in_transaction=transact_get)
 transact_get.commit()
 
 print(transact_get._results)
+print(transact_get._model_indexes)
 
 # assign them to variables after commit
 user1 = transact_get.from_results(User, 1)
