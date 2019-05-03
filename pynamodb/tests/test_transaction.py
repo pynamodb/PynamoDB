@@ -1,5 +1,6 @@
 import pytest
 import six
+from pynamodb.exceptions import GetError
 
 from pynamodb.connection import transaction
 from pynamodb.connection.transaction import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite
@@ -90,6 +91,24 @@ class TestTransactGet:
         t.commit()
 
         mock_transaction.assert_called_once_with({'TransactItems': [{'Get': {}}]})
+'''
+    def test_from_results(self):
+        t = TransactGet()
+        m = t.from_results(self.mock_model_cls, 2, 3)
+        with pytest.raises(GetError):
+            getattr(m, 'butt', 1)
+
+        self.mock_model_cls.from_raw_data.return_value = MagicMock(hash_key=1, range_key=2)
+        t._results = [{}, {}]
+        t._model_indexes = {'MockModel|1|2': 1, 'MockModel|3|4': 0}
+
+        with pytest.raises(KeyError):
+            t.from_results(self.mock_model_cls, 2, 3)
+
+        mock = t.from_results(self.mock_model_cls, 1, 2)
+        assert mock.hash_key == 1
+        assert mock.range_key == 2
+'''
 
 
 class TestTransactWrite:

@@ -130,7 +130,8 @@ class TransactGet(Transaction):
             raise GetError('Attempting to access item before committing the transaction')
         key = self._get_key(model_cls, hash_key, range_key)
         index = self._model_indexes[key]
-        yield model_cls.from_raw_data(self._results[index])
+        yield
+        return model_cls.from_raw_data(self._results[index])
 
     def commit(self):
         self._results = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]

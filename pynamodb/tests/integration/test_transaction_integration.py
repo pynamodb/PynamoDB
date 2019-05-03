@@ -65,11 +65,6 @@ user1 = User.get(1, in_transaction=transact_get)
 statement1 = BankStatement.get(1, in_transaction=transact_get)
 user2 = User.get(2, in_transaction=transact_get)
 statement2 = BankStatement.get(2, in_transaction=transact_get)
-
-# test we can't access user information before commit
-with pytest.raises(GetError):
-    gotten_id = user1.user_id
-
 transact_get.commit()
 
 assert user1.user_id == 1
