@@ -91,12 +91,11 @@ class TestTransactGet:
         t.commit()
 
         mock_transaction.assert_called_once_with({'TransactItems': [{'Get': {}}]})
-'''
+
     def test_from_results(self):
         t = TransactGet()
-        m = t.from_results(self.mock_model_cls, 2, 3)
         with pytest.raises(GetError):
-            getattr(m, 'butt', 1)
+            m = t.from_results(self.mock_model_cls, 2, 3)
 
         self.mock_model_cls.from_raw_data.return_value = MagicMock(hash_key=1, range_key=2)
         t._results = [{}, {}]
@@ -108,7 +107,6 @@ class TestTransactGet:
         mock = t.from_results(self.mock_model_cls, 1, 2)
         assert mock.hash_key == 1
         assert mock.range_key == 2
-'''
 
 
 class TestTransactWrite:

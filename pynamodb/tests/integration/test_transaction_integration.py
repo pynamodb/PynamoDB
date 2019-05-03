@@ -1,8 +1,6 @@
 from datetime import datetime
 
 import config as cfg
-import pytest
-from pynamodb.exceptions import GetError
 
 from pynamodb.attributes import NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute
 from pynamodb.connection.transaction import TransactGet, TransactWrite
@@ -45,7 +43,6 @@ class LineItem(Model):
 
 TEST_MODELS = [User, BankStatement, LineItem]
 
-
 for model in TEST_MODELS:
     if not model.exists():
         print("Creating table for model {0}".format(model.Meta.table_name))
@@ -56,24 +53,62 @@ transact_write = TransactWrite(host=cfg.DYNAMODB_HOST, region='us-east-1')
 User(1).save(condition=(User.user_id.does_not_exist()), in_transaction=transact_write)
 BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transact_write)
 User(2).save(condition=(User.user_id.does_not_exist()), in_transaction=transact_write)
-BankStatement(2).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transact_write)
+BankStatement(2, balance=100).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transact_write)
 transact_write.commit()
 
-# get users and statements we just created and assign them to variables
+# get users and statements we just created
 transact_get = TransactGet(host=cfg.DYNAMODB_HOST, region='us-east-1')
-user1 = User.get(1, in_transaction=transact_get)
-statement1 = BankStatement.get(1, in_transaction=transact_get)
-user2 = User.get(2, in_transaction=transact_get)
-statement2 = BankStatement.get(2, in_transaction=transact_get)
+User.get(1, in_transaction=transact_get)
+BankStatement.get(1, in_transaction=transact_get)
+User.get(2, in_transaction=transact_get)
+BankStatement.get(2, in_transaction=transact_get)
 transact_get.commit()
+
+# assign them to variables after commit
+user1 = transact_get.from_results(User, 1)
+user2 = transact_get.from_results(User, 2)
+statement1 = transact_get.from_results(BankStatement, 1)
+statement2 = transact_get.from_results(BankStatement, 2)
 
 assert user1.user_id == 1
 assert statement1.user_id == 1
 assert statement1.balance == 0
-
 assert user2.user_id == 2
 assert statement2.user_id == 2
 assert statement2.balance == 0
+
+# let the users send money to one another, reusing connection from earlier
+created_at = datetime.now()
+transact_write = TransactWrite()
+# create a credit line item to user 1's account
+LineItem(user_id=1, amount=50, created_at=created_at).save(
+    condition=(LineItem.created_at.does_not_exist()),
+    in_transaction=transact_write
+)
+# create a debit to user 2's account
+LineItem(user_id=2, amount=-50, created_at=created_at).save(
+    condition=(LineItem.created_at.does_not_exist()),
+    in_transaction=transact_write
+)
+# add credit to user 1's account
+statement1.update(
+    actions=[BankStatement.balance.add(50)],
+    in_transaction=transact_write
+)
+# debit from user 2's account if they have enough in the bank
+# add credit to user 1's account
+statement2.update(
+    actions=[BankStatement.balance.add(-50)],
+    condition=(BankStatement.balance >= 50),
+    in_transaction=transact_write
+)
+transact_write.commit()
+
+statement1.refresh()
+statement2.refresh()
+
+assert statement1.balance == 50
+assert statement1.balance == 50
 
 for model in TEST_MODELS:
     if model.exists():

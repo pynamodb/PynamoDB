@@ -525,27 +525,26 @@ class Model(AttributeContainer):
         """
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
 
-        if in_transaction is not None:
-            operation_kwargs = cls._get_connection().get_operation_kwargs_for_get_item(
-                hash_key=hash_key,
+        if in_transaction is None:
+            data = cls._get_connection().get_item(
+                hash_key,
                 range_key=range_key,
                 consistent_read=consistent_read,
                 attributes_to_get=attributes_to_get
             )
-            in_transaction.add_get_item(cls, hash_key, range_key, operation_kwargs)
-            return in_transaction.from_results(cls, hash_key, range_key)
+            if data:
+                item_data = data.get(ITEM)
+                if item_data:
+                    return cls.from_raw_data(item_data)
+            raise cls.DoesNotExist()
 
-        data = cls._get_connection().get_item(
-            hash_key,
+        operation_kwargs = cls._get_connection().get_operation_kwargs_for_get_item(
+            hash_key=hash_key,
             range_key=range_key,
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get
         )
-        if data:
-            item_data = data.get(ITEM)
-            if item_data:
-                return cls.from_raw_data(item_data)
-        raise cls.DoesNotExist()
+        in_transaction.add_get_item(cls, hash_key, range_key, operation_kwargs)
 
     @classmethod
     def from_raw_data(cls, data):

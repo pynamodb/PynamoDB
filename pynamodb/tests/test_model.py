@@ -3056,7 +3056,7 @@ class ModelTestCase(TestCase):
         }
         response = UserModel.get('foo', 'bar', in_transaction=mock_transaction)
         mock_transaction.add_get_item.assert_called_with(UserModel, 'foo', 'bar', params)
-        assert response is not None
+        assert response is None
 
     def test_batch_get(self):
         """
