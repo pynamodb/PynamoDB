@@ -63,8 +63,8 @@ transact_write.commit()
 transact_get = TransactGet(host=cfg.DYNAMODB_HOST, region='us-east-1')
 user1 = User.get(1, in_transaction=transact_get)
 statement1 = BankStatement.get(1, in_transaction=transact_get)
-user2 = User.get(1, in_transaction=transact_get)
-statement2 = BankStatement.get(1, in_transaction=transact_get)
+user2 = User.get(2, in_transaction=transact_get)
+statement2 = BankStatement.get(2, in_transaction=transact_get)
 
 # test we can't access user information before commit
 with pytest.raises(GetError):
@@ -79,8 +79,6 @@ assert statement1.balance == 0
 assert user2.user_id == 2
 assert statement2.user_id == 2
 assert statement2.balance == 0
-
-
 
 for model in TEST_MODELS:
     if model.exists():

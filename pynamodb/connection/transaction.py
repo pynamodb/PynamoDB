@@ -122,7 +122,7 @@ class TransactGet(Transaction):
             self._model_indexes = {}
         key = self._get_key(model_cls, hash_key, range_key)
         if self._model_indexes.get(key) is not None:
-            raise ValueError("Can't perform operation on the same table multiple times in one transaction")
+            raise ValueError("Can't perform operation on the same entry multiple times in one transaction")
         self._model_indexes[key] = len(self._model_indexes.keys())
 
     def from_results(self, model_cls, hash_key, range_key=None):
