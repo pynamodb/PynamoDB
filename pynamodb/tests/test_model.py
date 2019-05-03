@@ -3039,16 +3039,8 @@ class ModelTestCase(TestCase):
             self.assertEqual(item.overidden_user_name, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_name']['S'])
             self.assertEqual(item.overidden_user_id, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_id']['S'])
 
-        def mock_commit(_self):
-            _self._results = MagicMock()
-
-        def mock_from_results(_self, *args, **kwargs):
-            return TransactGet.from_results(_self, *args, **kwargs)
-
         mock_transaction = MagicMock(spec=TransactGet)
-        mock_transaction._results = None
-        mock_transaction.commit = mock_commit
-        mock_transaction.from_results = mock_from_results
+        mock_transaction.from_results.return_value = UserModel()
 
         params = {
             'ConsistentRead': False,
