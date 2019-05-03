@@ -61,10 +61,10 @@ UPDATE_REQUEST_PARAMETERS = {
 _CONNECTION = None
 
 
-def _get_connection(host=None, region=None, *args, **kwargs):
+def _get_connection(**kwargs):
     global _CONNECTION
     if _CONNECTION is None:
-        _CONNECTION = Connection(host=host, region=region, *args, **kwargs)
+        _CONNECTION = Connection(**kwargs)
     return _CONNECTION
 
 
@@ -74,11 +74,11 @@ class Transaction(object):
     _item_limit = TRANSACT_ITEM_LIMIT
     _operation_kwargs = None
 
-    def __init__(self, return_consumed_capacity=None, host=None, region=None, **connection_kwargs):
+    def __init__(self, return_consumed_capacity=None, **connection_kwargs):
         self._operation_kwargs = {
             TRANSACT_ITEMS: [],
         }
-        self._connection = _get_connection(host=host, region=region, **connection_kwargs)
+        self._connection = _get_connection(**connection_kwargs)
         if return_consumed_capacity is not None:
             self._operation_kwargs.update(self._connection.get_consumed_capacity_map(return_consumed_capacity))
 
