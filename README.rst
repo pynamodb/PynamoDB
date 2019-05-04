@@ -238,6 +238,5 @@ Features
 * Provides iterators for working with queries, scans, that are automatically paginated
 * Automatic pagination for bulk operations
 * Complex queries
-* Support for Global and Local Secondary Indexes
 * Batch operations with automatic pagination
 * Iterators for working with Query and Scan operations
