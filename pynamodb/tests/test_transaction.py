@@ -20,15 +20,15 @@ class TestTransaction:
         mock_connection = mocker.spy(transaction, '_get_connection')
 
         t = Transaction()
-        mock_connection.assert_called_with()
+        mock_connection.assert_called_with(override_connection=False)
         assert t._operation_kwargs == {'TransactItems': []}
 
         t = Transaction(return_consumed_capacity='TOTAL')
-        mock_connection.assert_called_with()
+        mock_connection.assert_called_with(override_connection=False)
         assert t._operation_kwargs == {'ReturnConsumedCapacity': 'TOTAL', 'TransactItems': []}
 
         t = Transaction(region='us-east-1')
-        mock_connection.assert_called_with(region='us-east-1')
+        mock_connection.assert_called_with(override_connection=False, region='us-east-1')
         assert t._operation_kwargs == {'TransactItems': []}
 
     def test__len__(self):
@@ -72,11 +72,13 @@ class TestTransactGet:
 
         t._add_item_class(self.mock_model_cls, 1, 2)
         assert t._model_indexes is not None
-        assert t._model_indexes['MockModel(1,2)'] == 0
+        assert t._model_indexes['MockModel(1,2)']['class'] == self.mock_model_cls
+        assert t._model_indexes['MockModel(1,2)']['index'] == 0
 
         t._add_item_class(self.mock_model_cls, 2, 3)
         assert t._model_indexes is not None
-        assert t._model_indexes['MockModel(2,3)'] == 1
+        assert t._model_indexes['MockModel(2,3)']['class'] == self.mock_model_cls
+        assert t._model_indexes['MockModel(2,3)']['index'] == 1
 
         with pytest.raises(ValueError):
             t._add_item_class(self.mock_model_cls, 1, 2)
@@ -95,11 +97,11 @@ class TestTransactGet:
     def test_from_results(self):
         t = TransactGet()
         with pytest.raises(GetError):
-            m = t.from_results(self.mock_model_cls, 2, 3)
+            t.from_results(self.mock_model_cls, 2, 3)
 
         self.mock_model_cls.from_raw_data.return_value = MagicMock(hash_key=1, range_key=2)
         t._results = [{'Item': {}}, {'Item': {}}]
-        t._model_indexes = {'MockModel(1,2)': 1, 'MockModel(3,4)': 0}
+        t._model_indexes = {'MockModel(1,2)': {'index': 1}, 'MockModel(3,4)': {'index': 0}}
 
         with pytest.raises(KeyError):
             t.from_results(self.mock_model_cls, 2, 3)

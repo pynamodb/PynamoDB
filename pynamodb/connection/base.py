@@ -418,7 +418,6 @@ class Connection(object):
                     raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
                 except VerboseClientError as e:
                     if is_last_attempt_for_exceptions:
-                        print(botocore_expected_format)
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise
                     elif status_code < 500 and code != 'ProvisionedThroughputExceededException':
@@ -1039,7 +1038,6 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            print(e)
             raise PutError("Failed to write transaction items: {0}".format(e), e)
 
     def transact_get_items(self, operation_kwargs):

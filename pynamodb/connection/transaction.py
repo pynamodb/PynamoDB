@@ -1,4 +1,4 @@
-from pynamodb.exceptions import GetError
+from pynamodb.exceptions import GetError, DoesNotExist
 
 from pynamodb.connection.base import Connection
 from pynamodb.constants import (
@@ -64,11 +64,11 @@ class Transaction(object):
     _item_limit = TRANSACT_ITEM_LIMIT
     _operation_kwargs = None
 
-    def __init__(self, return_consumed_capacity=None, **connection_kwargs):
+    def __init__(self, return_consumed_capacity=None, override_connection=False, **connection_kwargs):
         self._operation_kwargs = {
             TRANSACT_ITEMS: [],
         }
-        self._connection = _get_connection(**connection_kwargs)
+        self._connection = _get_connection(override_connection=override_connection, **connection_kwargs)
         if return_consumed_capacity is not None:
             self._operation_kwargs.update(self._connection.get_consumed_capacity_map(return_consumed_capacity))
 
@@ -113,17 +113,29 @@ class TransactGet(Transaction):
         key = self._get_key(model_cls, hash_key, range_key)
         if self._model_indexes.get(key) is not None:
             raise ValueError("Can't perform operation on the same entry multiple times in one transaction")
-        self._model_indexes[key] = len(self._model_indexes.keys())
+        self._model_indexes[key] = {
+            'index': len(self._model_indexes.keys()),
+            'class': model_cls,
+        }
 
     def from_results(self, model_cls, hash_key, range_key=None):
         if self._results is None:
             raise GetError('Attempting to access item before committing the transaction')
         key = self._get_key(model_cls, hash_key, range_key)
-        index = self._model_indexes[key]
+        index = self._model_indexes[key]['index']
         item = self._results[index].get(ITEM)
         if item is None:
-            raise GetError('Failed to get item: {0}'.format(key))
+            raise DoesNotExist('item does not exist in results: {0}'.format(key))
         return model_cls.from_raw_data(item)
+
+    def get_results_in_order(self):
+        if self._results is None:
+            raise GetError('Attempting to access item before committing the transaction')
+        ordered_classes = sorted(self._model_indexes.items(), key=lambda kv: kv[1]['index'])
+        return (
+            model_info['class'].from_raw_data(data=item[ITEM])
+            for (key, model_info), item in zip(ordered_classes, self._results)
+        )
 
     def commit(self):
         self._results = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]
@@ -134,9 +146,15 @@ class TransactWrite(Transaction):
     def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
         super(TransactWrite, self).__init__(**kwargs)
         if client_request_token is not None:
-            self._operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
+            self.refresh_token(client_request_token)
         if return_item_collection_metrics is not None:
             self._operation_kwargs.update(self._connection.get_item_collection_map(return_item_collection_metrics))
+
+    def refresh_token(self, new_token):
+        old_token = self._operation_kwargs.get(CLIENT_REQUEST_TOKEN)
+        if old_token == new_token:
+            raise ValueError('Must be new token')
+        self._operation_kwargs[CLIENT_REQUEST_TOKEN] = new_token
 
     def add_condition_check_item(self, operation_kwargs):
         condition_item = self.format_item(CONDITION_CHECK, CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
@@ -161,8 +179,8 @@ class TransactWrite(Transaction):
 _CONNECTION = None
 
 
-def _get_connection(**kwargs):
+def _get_connection(override_connection=False, **kwargs):
     global _CONNECTION
-    if _CONNECTION is None:
+    if override_connection or _CONNECTION is None:
         _CONNECTION = Connection(**kwargs)
     return _CONNECTION
