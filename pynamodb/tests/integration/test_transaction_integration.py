@@ -78,16 +78,14 @@ def get_error_code(error):
     return error.cause.response['Error'].get('Code')
 
 
-for m in TEST_MODELS:
-    if not m.exists():
-        m.create_table(
-            read_capacity_units=10,
-            write_capacity_units=10,
-            wait=True
-        )
-
-# ensure enough time for all tables to create before starting tests
-sleep(2)
+def ensure_tables():
+    for m in TEST_MODELS:
+        if not m.exists():
+            m.create_table(
+                read_capacity_units=10,
+                write_capacity_units=10,
+                wait=True
+            )
 
 
 @pytest.mark.ddblocal
@@ -96,6 +94,7 @@ def test_transact_write__error__idempotent_parameter_mismatch(ddb_url):
     The reason this fails, even when we don't explicitly pass a client token in, is because
     botocore generates one for us
     """
+    ensure_tables()
     transaction = TransactWrite(host=DDB_URL, override_connection=True)
     User(1).save(in_transaction=transaction)
     User(2).save(in_transaction=transaction)
@@ -112,6 +111,7 @@ def test_transact_write__error__idempotent_parameter_mismatch(ddb_url):
 
 @pytest.mark.ddblocal
 def test_transact_write__error__transaction_cancelled():
+    ensure_tables()
     # create a users and a bank statements for them
     User(1).save()
     BankStatement(1).save()
@@ -146,6 +146,7 @@ def test_transact_write__error__transaction_cancelled():
 
 @pytest.mark.ddblocal
 def test_transact_get():
+    ensure_tables()
     # making sure these entries exist, and with the expected info
     User(1).save()
     BankStatement(1).save()
@@ -174,6 +175,7 @@ def test_transact_get():
 
 @pytest.mark.ddblocal
 def test_transact_write():
+    ensure_tables()
     # making sure these entries exist, and with the expected info
     BankStatement(1, balance=0).save()
     BankStatement(2, balance=100).save()
@@ -224,6 +226,7 @@ def test_transact_write():
 
 @pytest.mark.ddblocal
 def test_transact_write__one_of_each():
+    ensure_tables()
     transaction = TransactWrite()
     User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
     User(2).delete(in_transaction=transaction)
@@ -253,6 +256,7 @@ def test_transact_write__one_of_each():
 
 @pytest.mark.ddblocal
 def test_transact_write__different_regions():
+    ensure_tables()
     # creating a model in a table outside the region everyone else operates in
     DifferentRegion(entry_index=0).save()
 
