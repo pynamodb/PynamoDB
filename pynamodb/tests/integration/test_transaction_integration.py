@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import config as cfg
@@ -17,8 +18,12 @@ TRANSACTION_CANCELLED = 'TransactionCanceledException'
 TRANSACTION_IN_PROGRESS = 'TransactionInProgressException'
 
 
+DDB_URL = os.getenv('PYNAMODB_INTEGRATION_TEST_DDB_URL', cfg.DYNAMODB_HOST)
+
+
 class User(Model):
     class Meta:
+        host = DDB_URL
         region = 'us-east-1'
         table_name = 'user'
 
@@ -28,6 +33,7 @@ class User(Model):
 class BankStatement(Model):
 
     class Meta:
+        host = DDB_URL
         region = 'us-east-1'
         table_name = 'statement'
 
@@ -39,6 +45,7 @@ class BankStatement(Model):
 class LineItem(Model):
 
     class Meta:
+        host = DDB_URL
         region = 'us-east-1'
         table_name = 'line-item'
 
@@ -51,6 +58,7 @@ class LineItem(Model):
 class DifferentRegion(Model):
 
     class Meta:
+        host = DDB_URL
         region = 'us-east-2'
         table_name = 'different-region'
 
@@ -74,15 +82,11 @@ class TestTransaction:
 
     @classmethod
     def setup_class(cls):
-        import os
-        ddb_url = os.getenv('PYNAMODB_INTEGRATION_TEST_DDB_URL', cfg.DYNAMODB_HOST)
-        print('setup called', ddb_url)
         # must ensure that the connection's host is the same as the models'
         from pynamodb.connection.transactions import _CONNECTION
-        _CONNECTION.host = ddb_url
+        _CONNECTION.host = DDB_URL
 
         for m in TEST_MODELS:
-            m.Meta.host = ddb_url
             if not m.exists():
                 m.create_table(
                     read_capacity_units=10,
