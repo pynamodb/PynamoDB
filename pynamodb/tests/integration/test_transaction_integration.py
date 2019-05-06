@@ -65,27 +65,6 @@ TEST_MODELS = [
 ]
 
 
-def create_tables():
-    import os
-    ddb_url = os.getenv('PYNAMODB_INTEGRATION_TEST_DDB_URL', cfg.DYNAMODB_HOST)
-    # must ensure that the connection's host is the same as the models'
-    from pynamodb.connection.transactions import _CONNECTION
-    _CONNECTION.host = ddb_url
-
-    for m in TEST_MODELS:
-        m.Meta.host = ddb_url
-        if not m.exists():
-            m.create_table(
-                read_capacity_units=10,
-                write_capacity_units=10,
-                wait=True
-            )
-
-
-def delete_tables():
-    [_m.delete_table() for _m in TEST_MODELS if _m.exists()]
-
-
 def get_error_code(error):
     return error.cause.response['Error'].get('Code')
 
@@ -95,18 +74,34 @@ class TestTransaction:
 
     @classmethod
     def setup_class(cls):
-        create_tables()
+        import os
+        ddb_url = os.getenv('PYNAMODB_INTEGRATION_TEST_DDB_URL', cfg.DYNAMODB_HOST)
+        print('setup called', ddb_url)
+        # must ensure that the connection's host is the same as the models'
+        from pynamodb.connection.transactions import _CONNECTION
+        _CONNECTION.host = ddb_url
+
+        for m in TEST_MODELS:
+            m.Meta.host = ddb_url
+            if not m.exists():
+                m.create_table(
+                    read_capacity_units=10,
+                    write_capacity_units=10,
+                    wait=True
+                )
 
     @classmethod
     def teardown_class(cls):
-        delete_tables()
+        [_m.delete_table() for _m in TEST_MODELS if _m.exists()]
 
-    def test_transact_write__error__idempotent_parameter_mismatch(self):
+    def test_transact_write__error__idempotent_parameter_mismatch(self, ddb_url):
         """
         The reason this fails, even when we don't explicitly pass a client token in, is because
         botocore generates one for us
         """
         transaction = TransactWrite()
+        print('transaction host', transaction._connection.host)
+        print('ddb url', ddb_url)
         User(1).save(in_transaction=transaction)
         User(2).save(in_transaction=transaction)
 

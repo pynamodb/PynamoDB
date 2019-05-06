@@ -10,6 +10,8 @@ from pynamodb.constants import (
 PUT = PUT.lower().capitalize()
 DELETE = DELETE.lower().capitalize()
 
+# each transaction can only support 10 actions at a time
+# https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-dynamodb-transactions
 TRANSACT_ITEM_LIMIT = 10
 
 CONDITION_CHECK_REQUEST_PARAMETERS = {
@@ -61,8 +63,6 @@ UPDATE_REQUEST_PARAMETERS = {
 class Transaction(object):
 
     _connection = None
-    # each transaction can only support 10 actions at a time
-    # https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-dynamodb-transactions
     _item_limit = TRANSACT_ITEM_LIMIT
     _operation_kwargs = None
 
