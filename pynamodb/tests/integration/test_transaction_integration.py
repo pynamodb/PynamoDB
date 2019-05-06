@@ -69,7 +69,7 @@ def get_error_code(error):
     return error.cause.response['Error'].get('Code')
 
 
-# @pytest.mark.ddblocal
+@pytest.mark.ddblocal
 class TestTransaction:
 
     @classmethod
@@ -100,6 +100,7 @@ class TestTransaction:
         botocore generates one for us
         """
         transaction = TransactWrite()
+        assert User.exists()
         print('transaction host', transaction._connection.host)
         print('ddb url', ddb_url)
         User(1).save(in_transaction=transaction)
