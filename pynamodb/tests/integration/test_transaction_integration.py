@@ -253,16 +253,14 @@ def test_transact_write__one_of_each():
 
 @pytest.mark.ddblocal
 def test_transact_write__different_regions():
-    assert BankStatement.exists()
-    assert DifferentRegion.exists()
-    assert User.exists()
-
-    assert BankStatement.Meta.host == DifferentRegion.Meta.host == User.Meta.host
+    print(DifferentRegion.Meta.host, DifferentRegion.Meta.region)
+    print(User.Meta.host, User.Meta.region)
 
     # creating a model in a table outside the region everyone else operates in
     DifferentRegion(entry_index=0).save()
 
     transaction = TransactGet()
+    print(transaction._connection.host, transaction._connection.region)
     User.get(1, in_transaction=transaction)
     BankStatement.get(1, in_transaction=transaction)
     DifferentRegion.get(0, in_transaction=transaction)
