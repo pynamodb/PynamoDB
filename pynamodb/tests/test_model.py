@@ -928,9 +928,8 @@ class ModelTestCase(TestCase):
 
         mock_transaction = MagicMock(spec=TransactWrite)
         UserModel.condition_check(
+            'foo', 'bar',
             in_transaction=mock_transaction,
-            hash_key='foo',
-            range_key='bar',
             condition=(UserModel.user_id.does_not_exist())
         )
         mock_transaction.add_condition_check_item.assert_called_with({

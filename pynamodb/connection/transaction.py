@@ -146,15 +146,9 @@ class TransactWrite(Transaction):
     def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
         super(TransactWrite, self).__init__(**kwargs)
         if client_request_token is not None:
-            self.refresh_token(client_request_token)
+            self._operation_kwargs[CLIENT_REQUEST_TOKEN] = str(client_request_token)
         if return_item_collection_metrics is not None:
             self._operation_kwargs.update(self._connection.get_item_collection_map(return_item_collection_metrics))
-
-    def refresh_token(self, new_token):
-        old_token = self._operation_kwargs.get(CLIENT_REQUEST_TOKEN)
-        if old_token == new_token:
-            raise ValueError('Must be new token')
-        self._operation_kwargs[CLIENT_REQUEST_TOKEN] = new_token
 
     def add_condition_check_item(self, operation_kwargs):
         condition_item = self.format_item(CONDITION_CHECK, CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)

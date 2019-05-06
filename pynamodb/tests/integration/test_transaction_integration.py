@@ -3,9 +3,9 @@ from datetime import datetime
 import config as cfg
 import pytest
 
-from pynamodb.exceptions import PutError, GetError
+from pynamodb.exceptions import PutError, DoesNotExist
 
-from pynamodb.attributes import NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute
+from pynamodb.attributes import NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute, BooleanAttribute
 from pynamodb.connection.transaction import TransactGet, TransactWrite
 
 from pynamodb.models import Model
@@ -16,12 +16,10 @@ RESOURCE_NOT_FOUND = 'ResourceNotFoundException'
 TRANSACTION_CANCELLED = 'TransactionCanceledException'
 TRANSACTION_IN_PROGRESS = 'TransactionInProgressException'
 
-
 class User(Model):
     class Meta:
         region = 'us-east-1'
         table_name = 'user'
-        host = cfg.DYNAMODB_HOST
 
     user_id = NumberAttribute(hash_key=True)
 
@@ -31,10 +29,10 @@ class BankStatement(Model):
     class Meta:
         region = 'us-east-1'
         table_name = 'statement'
-        host = cfg.DYNAMODB_HOST
 
     user_id = NumberAttribute(hash_key=True)
     balance = NumberAttribute(default=0)
+    active = BooleanAttribute(default=True)
 
 
 class LineItem(Model):
@@ -42,7 +40,6 @@ class LineItem(Model):
     class Meta:
         region = 'us-east-1'
         table_name = 'line-item'
-        host = cfg.DYNAMODB_HOST
 
     user_id = NumberAttribute(hash_key=True)
     created_at = UTCDateTimeAttribute(range_key=True, default=datetime.now())
@@ -55,7 +52,6 @@ class DifferentRegion(Model):
     class Meta:
         region = 'us-east-2'
         table_name = 'different-region'
-        host = cfg.DYNAMODB_HOST
 
     entry_index = NumberAttribute(hash_key=True)
 
@@ -70,11 +66,14 @@ TEST_MODELS = [
 
 @pytest.fixture(scope='class')
 def setup(request):
+    import os
+    ddb_url = os.getenv("PYNAMODB_INTEGRATION_TEST_DDB_URL", cfg.DYNAMODB_HOST)
     # must ensure that the connection's host is the same as the models'
     from pynamodb.connection.transaction import _CONNECTION
-    _CONNECTION.host = cfg.DYNAMODB_HOST
+    _CONNECTION.host = ddb_url
 
     for m in TEST_MODELS:
+        m.Meta.host = ddb_url
         if not m.exists():
             m.create_table(
                 read_capacity_units=10,
@@ -99,15 +98,15 @@ class TestTransaction:
     def test_transact_write__error__idempotent_parameter_mismatch(self):
         # even when we don't pass a client_request_token, the transaction generates its own
         # to ensure idempotency
-        transact_write = TransactWrite()
-        User(1).save(in_transaction=transact_write)
-        User(2).save(in_transaction=transact_write)
+        transaction = TransactWrite()
+        User(1).save(in_transaction=transaction)
+        User(2).save(in_transaction=transaction)
 
         try:
             # committing the first time, then adding more info and committing again
-            transact_write.commit()
-            User(3).save(in_transaction=transact_write)
-            transact_write.commit()
+            transaction.commit()
+            User(3).save(in_transaction=transaction)
+            transaction.commit()
             assert False, 'Failed to raise error'
         except PutError as e:
             assert get_error_code(e) == IDEMPOTENT_PARAMETER_MISMATCH
@@ -118,11 +117,11 @@ class TestTransaction:
         BankStatement(1).save()
 
         # attempt to do this as a transaction with the condition that they don't already exist
-        transact_write1 = TransactWrite()
-        User(1).save(condition=(User.user_id.does_not_exist()), in_transaction=transact_write1)
-        BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transact_write1)
+        transaction = TransactWrite()
+        User(1).save(condition=(User.user_id.does_not_exist()), in_transaction=transaction)
+        BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transaction)
         try:
-            transact_write1.commit()
+            transaction.commit()
             assert False, 'Failed to raise error'
         except PutError as e:
             assert get_error_code(e) == TRANSACTION_CANCELLED
@@ -152,18 +151,18 @@ class TestTransaction:
         BankStatement(2, balance=100).save()
 
         # get users and statements we just created
-        transact_get = TransactGet()
-        User.get(1, in_transaction=transact_get)
-        BankStatement.get(1, in_transaction=transact_get)
-        User.get(2, in_transaction=transact_get)
-        BankStatement.get(2, in_transaction=transact_get)
-        transact_get.commit()
+        transaction = TransactGet()
+        User.get(1, in_transaction=transaction)
+        BankStatement.get(1, in_transaction=transaction)
+        User.get(2, in_transaction=transaction)
+        BankStatement.get(2, in_transaction=transaction)
+        transaction.commit()
 
         # assign them to variables after commit
-        user1 = transact_get.from_results(User, 1)
-        user2 = transact_get.from_results(User, 2)
-        statement1 = transact_get.from_results(BankStatement, 1)
-        statement2 = transact_get.from_results(BankStatement, 2)
+        user1 = transaction.from_results(User, 1)
+        user2 = transaction.from_results(User, 2)
+        statement1 = transaction.from_results(BankStatement, 1)
+        statement2 = transaction.from_results(BankStatement, 2)
 
         assert user1.user_id == 1
         assert statement1.user_id == 1
@@ -176,44 +175,28 @@ class TestTransaction:
         # making sure these entries exist, and with the expected info
         BankStatement(1, balance=0).save()
         BankStatement(2, balance=100).save()
-        transact_get = TransactGet()
-        BankStatement.get(1, in_transaction=transact_get)
-        BankStatement.get(2, in_transaction=transact_get)
-        transact_get.commit()
 
         # assert values are what we think they should be
-        statement1, statement2 = transact_get.get_results_in_order()
+        statement1 = BankStatement.get(1)
+        statement2 = BankStatement.get(2)
         assert statement1.balance == 0
         assert statement2.balance == 100
 
         # let the users send money to one another
         created_at = datetime.now()
-        transact_write = TransactWrite()
+        transaction = TransactWrite()
         # create a credit line item to user 1's account
         LineItem(user_id=1, amount=50, currency='USD').save(
             condition=(LineItem.user_id.does_not_exist()),
-            in_transaction=transact_write
+            in_transaction=transaction
         )
         # create a debit to user 2's account
         LineItem(user_id=2, amount=-50, currency='USD').save(
             condition=(LineItem.user_id.does_not_exist()),
-            in_transaction=transact_write
+            in_transaction=transaction
         )
-        # add credit to user 1's account
-        statement1.balance += 50
-        statement1.save(in_transaction=transact_write)
-        # debit from user 2's account if they have enough in the bank
-        statement2.balance -= 50
-        statement2.save(condition=(BankStatement.balance >= 50), in_transaction=transact_write)
-        transact_write.commit()
 
-        statement1.refresh()
-        statement2.refresh()
-        assert statement1.balance == 50
-        assert statement2.balance == 50
-
-    def test_transact_write__update_existing(self):
-        # # TODO: investigate why this (update) causes an internal server error
+        # # TODO: investigate why this causes an internal server error
         # statement1.update(
         #     actions=[BankStatement.balance.set(50)],
         #     in_transaction=transact_write
@@ -223,18 +206,52 @@ class TestTransaction:
         #     condition=(BankStatement.balance >= 50),
         #     in_transaction=transact_write
         # )
-        pass
+
+        # add credit to user 1's account
+        statement1.balance += 50
+        statement1.save(in_transaction=transaction)
+        # debit from user 2's account if they have enough in the bank
+        statement2.balance -= 50
+        statement2.save(condition=(BankStatement.balance >= 50), in_transaction=transaction)
+        transaction.commit()
+
+        statement1.refresh()
+        statement2.refresh()
+        assert statement1.balance == 50
+        assert statement2.balance == 50
+
+    def test_transact_write__one_of_each(self):
+        transaction = TransactWrite()
+        User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
+        User(2).delete()
+        BankStatement(2).update(actions=[BankStatement.active.set(False)], condition=(BankStatement.active == True))
+        LineItem(4, amount=100, currency='USD').save(condition=(LineItem.user_id.does_not_exist()))
+        transaction.commit()
+
+        # confirming transaction correct and successful
+        assert User.get(1)
+        try:
+            User.get(2)
+            assert False, 'Failed to delete model'
+        except DoesNotExist:
+            assert True
+        updated_statement = BankStatement.get(2)
+        assert not updated_statement.active
+        new_line_item = next(LineItem.query(4, scan_index_forward=False, limit=1), None)
+        assert new_line_item
+        assert new_line_item.amount == 100
+        assert new_line_item.currency == 'USD'
 
     def test_transact_write__different_regions(self):
         # creating a model in a table outside the region everyone else operates in
         DifferentRegion(entry_index=0).save()
 
-        transact_get = TransactGet()
-        User.get(1, in_transaction=transact_get)
-        BankStatement.get(1, in_transaction=transact_get)
-        DifferentRegion.get(0, in_transaction=transact_get)
-        transact_get.commit()
-        user, statement, diff_region = transact_get.get_results_in_order()
+        transaction = TransactGet()
+        User.get(1, in_transaction=transaction)
+        BankStatement.get(1, in_transaction=transaction)
+        DifferentRegion.get(0, in_transaction=transaction)
+        transaction.commit()
+        user, statement, diff_region = transaction.get_results_in_order()
         assert isinstance(user, User)
         assert isinstance(statement, BankStatement)
         assert isinstance(diff_region, DifferentRegion)

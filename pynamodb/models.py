@@ -334,7 +334,11 @@ class Model(AttributeContainer):
             return six.u(msg)
 
     @classmethod
-    def condition_check(cls, in_transaction, hash_key, range_key=None, condition=None):
+    def condition_check(cls, hash_key, range_key=None, in_transaction=None, condition=None, conditional_operator=None):
+        if in_transaction is None:
+            raise ValueError('TransactWrite object required')
+        cls._conditional_operator_check(conditional_operator)
+        hash_key, range_key = cls._serialize_keys(hash_key, range_key)
         operation_kwargs = cls._get_connection().get_operation_kwargs_for_condition_check(
             hash_key=hash_key,
             range_key=range_key,
