@@ -467,17 +467,18 @@ class Model(AttributeContainer):
         kwargs.update(condition=condition)
         kwargs.update(actions=actions)
 
-        if in_transaction is None:
-            data = self._get_connection().update_item(*args, **kwargs)
-            for name, value in data[ATTRIBUTES].items():
-                attr_name = self._dynamo_to_python_attr(name)
-                attr = self.get_attributes().get(attr_name)
-                if attr:
-                    setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
-            return data
+        if in_transaction is not None:
+            operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
+            in_transaction.add_update_item(operation_kwargs)
+            return
 
-        operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
-        in_transaction.add_update_item(operation_kwargs)
+        data = self._get_connection().update_item(*args, **kwargs)
+        for name, value in data[ATTRIBUTES].items():
+            attr_name = self._dynamo_to_python_attr(name)
+            attr = self.get_attributes().get(attr_name)
+            if attr:
+                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
+        return data
 
     def save(self, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
         """

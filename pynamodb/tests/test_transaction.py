@@ -2,8 +2,8 @@ import pytest
 import six
 from pynamodb.exceptions import GetError
 
-from pynamodb.connection import transaction
-from pynamodb.connection.transaction import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite
+from pynamodb.connection import transactions
+from pynamodb.connection.transactions import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite
 
 if six.PY3:
     from unittest.mock import MagicMock
@@ -17,7 +17,7 @@ class TestTransaction:
         self.transaction = Transaction()
 
     def test_initialize(self, mocker):
-        mock_connection = mocker.spy(transaction, '_get_connection')
+        mock_connection = mocker.spy(transactions, '_get_connection')
 
         t = Transaction()
         mock_connection.assert_called_with(override_connection=False)
@@ -84,7 +84,7 @@ class TestTransactGet:
             t._add_item_class(self.mock_model_cls, 1, 2)
 
     def test_commit(self, mocker):
-        mock_transaction = mocker.patch.object(transaction.Connection, 'transact_get_items', return_value={
+        mock_transaction = mocker.patch.object(transactions.Connection, 'transact_get_items', return_value={
             'Responses': [{'Item': {}}]
         })
 
@@ -122,7 +122,7 @@ class TestTransactWrite:
         }
 
     def test_commit(self, mocker):
-        mock_transaction = mocker.patch.object(transaction.Connection, 'transact_write_items')
+        mock_transaction = mocker.patch.object(transactions.Connection, 'transact_write_items')
         t = TransactWrite()
 
         t.add_condition_check_item({})
@@ -139,10 +139,10 @@ class TestTransactWrite:
 class TestConnection:
 
     def test_get_connection(self):
-        transaction._CONNECTION = None
-        assert transaction._CONNECTION is None
-        conn = transaction._get_connection(host='foo', region='bar')
+        transactions._CONNECTION = None
+        assert transactions._CONNECTION is None
+        conn = transactions._get_connection(host='foo', region='bar')
         assert conn.host == 'foo'
         assert conn.region == 'bar'
-        assert transaction._CONNECTION is not None
-        assert transaction._get_connection() == conn
+        assert transactions._CONNECTION is not None
+        assert transactions._get_connection() == conn

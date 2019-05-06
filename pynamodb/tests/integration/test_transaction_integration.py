@@ -6,7 +6,7 @@ import pytest
 from pynamodb.exceptions import PutError, DoesNotExist
 
 from pynamodb.attributes import NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute, BooleanAttribute
-from pynamodb.connection.transaction import TransactGet, TransactWrite
+from pynamodb.connection.transactions import TransactGet, TransactWrite
 
 from pynamodb.models import Model
 
@@ -15,6 +15,7 @@ PROVISIONED_THROUGHPUT_EXCEEDED = 'ProvisionedThroughputExceededException'
 RESOURCE_NOT_FOUND = 'ResourceNotFoundException'
 TRANSACTION_CANCELLED = 'TransactionCanceledException'
 TRANSACTION_IN_PROGRESS = 'TransactionInProgressException'
+
 
 class User(Model):
     class Meta:
@@ -64,12 +65,11 @@ TEST_MODELS = [
 ]
 
 
-@pytest.fixture(scope='class')
-def setup(request):
+def create_tables():
     import os
-    ddb_url = os.getenv("PYNAMODB_INTEGRATION_TEST_DDB_URL", cfg.DYNAMODB_HOST)
+    ddb_url = os.getenv('PYNAMODB_INTEGRATION_TEST_DDB_URL', cfg.DYNAMODB_HOST)
     # must ensure that the connection's host is the same as the models'
-    from pynamodb.connection.transaction import _CONNECTION
+    from pynamodb.connection.transactions import _CONNECTION
     _CONNECTION.host = ddb_url
 
     for m in TEST_MODELS:
@@ -81,23 +81,31 @@ def setup(request):
                 wait=True
             )
 
-    def fin():
-        [_m.delete_table() for _m in TEST_MODELS if _m.exists()]
 
-    request.addfinalizer(finalizer=fin)
+def delete_tables():
+    [_m.delete_table() for _m in TEST_MODELS if _m.exists()]
 
 
 def get_error_code(error):
     return error.cause.response['Error'].get('Code')
 
 
-@pytest.mark.usefixtures('setup')
 @pytest.mark.ddblocal
 class TestTransaction:
 
+    @classmethod
+    def setup_class(cls):
+        create_tables()
+
+    @classmethod
+    def teardown_class(cls):
+        delete_tables()
+
     def test_transact_write__error__idempotent_parameter_mismatch(self):
-        # even when we don't pass a client_request_token, the transaction generates its own
-        # to ensure idempotency
+        """
+        The reason this fails, even when we don't explicitly pass a client token in, is because
+        botocore generates one for us
+        """
         transaction = TransactWrite()
         User(1).save(in_transaction=transaction)
         User(2).save(in_transaction=transaction)
@@ -164,11 +172,9 @@ class TestTransaction:
         statement1 = transaction.from_results(BankStatement, 1)
         statement2 = transaction.from_results(BankStatement, 2)
 
-        assert user1.user_id == 1
-        assert statement1.user_id == 1
+        assert user1.user_id == statement1.user_id == 1
         assert statement1.balance == 0
-        assert user2.user_id == 2
-        assert statement2.user_id == 2
+        assert user2.user_id == statement2.user_id == 2
         assert statement2.balance == 100
 
     def test_transact_write(self):
@@ -217,14 +223,18 @@ class TestTransaction:
 
         statement1.refresh()
         statement2.refresh()
-        assert statement1.balance == 50
-        assert statement2.balance == 50
+        assert statement1.balance == statement2.balance == 50
 
     def test_transact_write__one_of_each(self):
         transaction = TransactWrite()
         User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
-        User(2).delete()
-        BankStatement(2).update(actions=[BankStatement.active.set(False)], condition=(BankStatement.active == True))
+        User(2).delete(in_transaction=transaction)
+        # BankStatement(2).update(
+        #     actions=[BankStatement.active.set(False)],
+        #     condition=(BankStatement.active == True),
+        #     in_transaction=transaction
+        # )
+        # print(transaction._operation_kwargs)
         LineItem(4, amount=100, currency='USD').save(condition=(LineItem.user_id.does_not_exist()))
         transaction.commit()
 
@@ -235,8 +245,8 @@ class TestTransaction:
             assert False, 'Failed to delete model'
         except DoesNotExist:
             assert True
-        updated_statement = BankStatement.get(2)
-        assert not updated_statement.active
+        # updated_statement = BankStatement.get(2)
+        # assert not updated_statement.active
         new_line_item = next(LineItem.query(4, scan_index_forward=False, limit=1), None)
         assert new_line_item
         assert new_line_item.amount == 100

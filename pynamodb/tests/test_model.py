@@ -13,7 +13,7 @@ from botocore.vendored import requests
 import pytest
 
 from pynamodb.compat import CompatTestCase as TestCase
-from pynamodb.connection.transaction import TransactWrite, TransactGet
+from pynamodb.connection.transactions import TransactWrite, TransactGet
 from pynamodb.tests.deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import DoesNotExist, TableError

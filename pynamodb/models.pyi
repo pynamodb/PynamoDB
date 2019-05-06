@@ -1,4 +1,4 @@
-from pynamodb.connection.transaction import TransactGet, TransactWrite
+from pynamodb.connection.transactions import TransactGet, TransactWrite
 from .attributes import Attribute
 from .exceptions import DoesNotExist as DoesNotExist
 from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Text, Union, \

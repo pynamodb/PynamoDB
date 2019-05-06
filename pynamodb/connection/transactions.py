@@ -61,6 +61,8 @@ UPDATE_REQUEST_PARAMETERS = {
 class Transaction(object):
 
     _connection = None
+    # each transaction can only support 10 actions at a time
+    # https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-dynamodb-transactions
     _item_limit = TRANSACT_ITEM_LIMIT
     _operation_kwargs = None
 
@@ -163,6 +165,7 @@ class TransactWrite(Transaction):
         self.add_item(put_item)
 
     def add_update_item(self, operation_kwargs):
+        print(operation_kwargs)
         update_item = self.format_item(UPDATE, UPDATE_REQUEST_PARAMETERS, operation_kwargs)
         self.add_item(update_item)
 
