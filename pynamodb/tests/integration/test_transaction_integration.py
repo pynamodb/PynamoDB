@@ -77,6 +77,15 @@ def get_error_code(error):
     return error.cause.response['Error'].get('Code')
 
 
+for m in TEST_MODELS:
+    if not m.exists():
+        m.create_table(
+            read_capacity_units=10,
+            write_capacity_units=10,
+            wait=True
+        )
+
+
 @pytest.mark.ddblocal
 class TestTransaction:
 
@@ -85,14 +94,6 @@ class TestTransaction:
         # must ensure that the connection's host is the same as the models'
         from pynamodb.connection.transactions import _CONNECTION
         _CONNECTION.host = DDB_URL
-
-        for m in TEST_MODELS:
-            if not m.exists():
-                m.create_table(
-                    read_capacity_units=10,
-                    write_capacity_units=10,
-                    wait=True
-                )
 
     @classmethod
     def teardown_class(cls):
@@ -103,11 +104,7 @@ class TestTransaction:
         The reason this fails, even when we don't explicitly pass a client token in, is because
         botocore generates one for us
         """
-        transaction = TransactWrite(host=DDB_URL, override_connection=True)
-        assert transaction._connection.host == User.Meta.host == DDB_URL
-        assert User.exists()
-        print('transaction host', transaction._connection.host)
-        print('ddb url', ddb_url)
+        transaction = TransactWrite()
         User(1).save(in_transaction=transaction)
         User(2).save(in_transaction=transaction)
 
