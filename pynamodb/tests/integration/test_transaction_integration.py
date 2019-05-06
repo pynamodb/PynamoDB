@@ -103,7 +103,8 @@ class TestTransaction:
         The reason this fails, even when we don't explicitly pass a client token in, is because
         botocore generates one for us
         """
-        transaction = TransactWrite()
+        transaction = TransactWrite(host=DDB_URL, override_connection=True)
+        assert transaction._connection.host == User.Meta.host == DDB_URL
         assert User.exists()
         print('transaction host', transaction._connection.host)
         print('ddb url', ddb_url)
