@@ -2522,10 +2522,10 @@ class ConnectionTestCase(TestCase):
         send_mock = client_mock._endpoint.http_session.send
         send_mock.return_value = good_response
 
-        client_mock._convert_to_request_dict.return_value = {'headers': {}}
+        client_mock._convert_to_request_dict.return_value = {'method': 'POST', 'url': '', 'headers': {}, 'body': '', 'context': {}}
 
         mock_req = mock.Mock(spec=AWSPreparedRequest, headers={})
-        create_request_mock = client_mock._endpoint.create_request
+        create_request_mock = client_mock._endpoint.prepare_request
         create_request_mock.return_value = mock_req
 
         c = Connection(extra_headers={'foo': 'bar'})

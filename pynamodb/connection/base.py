@@ -17,12 +17,11 @@ from threading import local
 import six
 import botocore.client
 import botocore.exceptions
+from botocore.awsrequest import create_request_object
 from botocore.client import ClientError
 from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
-from botocore.vendored import requests
-from botocore.vendored.requests import Request
 from six.moves import range
 
 from pynamodb.compat import NullHandler
@@ -292,8 +291,17 @@ class Connection(object):
         log.error("%s failed with status: %s, message: %s",
                   operation, response.status_code,response.content)
 
+    def _sign_request(self, request):
+        auth = self.client._request_signer.get_auth_instance(
+            self.client._request_signer.signing_name,
+            self.client._request_signer.region_name,
+            self.client._request_signer.signature_version)
+        auth.add_auth(request)
+
     def _create_prepared_request(self, params, operation_model):
-        prepared_request = self.client._endpoint.create_request(params, operation_model)
+        request = create_request_object(params)
+        self._sign_request(request)
+        prepared_request = self.client._endpoint.prepare_request(request)
         if self._extra_headers is not None:
             prepared_request.headers.update(self._extra_headers)
         return prepared_request
@@ -339,7 +347,7 @@ class Connection(object):
         """
         This private method is here for two reasons:
         1. It's faster to avoid using botocore's response parsing
-        2. It provides a place to monkey patch requests for unit testing
+        2. It provides a place to monkey patch HTTP requests for unit testing
         """
         operation_model = self.client._service_model.operation_model(operation_name)
         request_dict = self.client._convert_to_request_dict(
