@@ -69,7 +69,7 @@ def get_error_code(error):
     return error.cause.response['Error'].get('Code')
 
 
-@pytest.mark.ddblocal
+# @pytest.mark.ddblocal
 class TestTransaction:
 
     @classmethod
