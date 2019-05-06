@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from time import sleep
 
 import config as cfg
 import pytest
@@ -84,6 +85,9 @@ for m in TEST_MODELS:
             write_capacity_units=10,
             wait=True
         )
+
+# ensure enough time for all tables to create before starting tests
+sleep(2)
 
 
 @pytest.mark.ddblocal
