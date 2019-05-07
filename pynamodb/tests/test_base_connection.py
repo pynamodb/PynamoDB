@@ -2515,6 +2515,15 @@ class ConnectionTestCase(TestCase):
         assert c.client._client_config.read_timeout == 10
         assert c.client._client_config.max_pool_connections == 20
 
+    def test_sign_request(self):
+        request = AWSRequest(method='POST', url='http://localhost:8000/', headers={}, data={'foo': 'bar'})
+        c = Connection(region='us-west-1')
+        c._sign_request(request)
+        assert 'X-Amz-Date' in request.headers
+        assert 'Authorization' in request.headers
+        assert 'us-west-1' in request.headers['Authorization']
+        assert request.headers['Authorization'].startswith('AWS4-HMAC-SHA256')
+
     @mock.patch('pynamodb.connection.Connection.client')
     def test_make_api_call___extra_headers(self, client_mock):
         good_response = mock.Mock(spec=AWSResponse, status_code=200, headers={}, text='{}', content=b'{}')
