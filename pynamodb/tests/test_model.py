@@ -4475,18 +4475,6 @@ class ModelInitTestCase(TestCase):
 
         # Test for default region
         self.assertEqual(MyCustomUserModel.Meta.region, 'us-east-1')
-        self.assertEqual(
-            MyCustomUserModel._connection.connection._request_timeout_seconds,
-            60)
-        self.assertEqual(
-            MyCustomUserModel._connection.connection._max_retry_attempts_exception,
-            3)
-        self.assertEqual(
-            MyCustomUserModel._connection.connection._base_backoff_ms, 25)
-
-        self.assertTrue(type(
-            MyCustomUserModel._connection.connection.requests_session) is requests.Session)
-
         with patch(PATCH_METHOD) as req:
             # The default region is us-east-1
             req.return_value = MODEL_TABLE_DATA
