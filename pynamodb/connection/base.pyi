@@ -1,6 +1,10 @@
-from typing import Any, Dict, Iterator, Optional, Sequence, Text
+from typing import Any, Dict, Iterator, MutableMapping, Optional, Sequence, Text
+
+import botocore.session
+from botocore.awsrequest import AWSPreparedRequest
 
 from pynamodb.expressions.condition import Condition
+
 
 BOTOCORE_EXCEPTIONS: Any
 log: Any
@@ -22,12 +26,20 @@ class Connection:
     host: Any
     region: Any
     session_cls: Any
-    def __init__(self, region: Optional[Any] = ..., host: Optional[Any] = ..., session_cls: Optional[Any] = ..., request_timeout_seconds: Optional[Any] = ..., max_retry_attempts: Optional[Any] = ..., base_backoff_ms: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        region: Optional[Any] = ...,
+        host: Optional[Any] = ...,
+        connect_timeout_seconds: Optional[float] = ...,
+        read_timeout_seconds: Optional[float] = ...,
+        max_retry_attempts: Optional[int] = ...,
+        base_backoff_ms: Optional[int] = ...,
+        max_pool_connections: Optional[int] = ...,
+        extra_headers: Optional[MutableMapping[Text, Text]] = ...,
+    ) -> None: ...
     def dispatch(self, operation_name, operation_kwargs): ...
     @property
-    def session(self): ...
-    @property
-    def requests_session(self): ...
+    def session(self) -> botocore.session.Session: ...
     @property
     def client(self): ...
     def get_meta_table(self, table_name: Text, refresh: bool = ...): ...
@@ -128,3 +140,5 @@ class Connection:
     ) -> Dict: ...
 
     def query(self, table_name: Text, hash_key, attributes_to_get: Optional[Any] = ..., consistent_read: bool = ..., exclusive_start_key: Optional[Any] = ..., index_name: Optional[Any] = ..., key_conditions: Optional[Any] = ..., query_filters: Optional[Any] = ..., conditional_operator: Optional[Any] = ..., limit: Optional[Any] = ..., return_consumed_capacity: Optional[Any] = ..., scan_index_forward: Optional[Any] = ..., select: Optional[Any] = ...): ...
+
+    def _create_prepared_request(self, params: Dict, operation_model: Optional[Any] = ...) -> AWSPreparedRequest: ...

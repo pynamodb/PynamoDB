@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, Optional, Sequence, Text
+from typing import Any, Dict, Iterator, MutableMapping, Optional, Sequence, Text
 
 from pynamodb.expressions.condition import Condition
 
@@ -6,7 +6,20 @@ from pynamodb.expressions.condition import Condition
 class TableConnection:
     table_name: Any
     connection: Any
-    def __init__(self, table_name, region: Optional[Any] = ..., host: Optional[Any] = ..., session_cls: Optional[Any] = ..., request_timeout_seconds: Optional[Any] = ..., max_retry_attempts: Optional[Any] = ..., base_backoff_ms: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        table_name,
+        region: Optional[Any] = ...,
+        host: Optional[Any] = ...,
+        connect_timeout_seconds: Optional[float] = ...,
+        read_timeout_seconds: Optional[float] = ...,
+        max_retry_attempts: Optional[int] = ...,
+        base_backoff_ms: Optional[int] = ...,
+        max_pool_connections: Optional[int] = ...,
+        extra_headers: Optional[MutableMapping[Text, Text]] = ...,
+        aws_access_key_id: Optional[str] = ...,
+        aws_secret_access_key: Optional[str] = ...,
+    ) -> None: ...
 
     def delete_item(
         self,

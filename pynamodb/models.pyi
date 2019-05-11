@@ -1,3 +1,4 @@
+from .attributes import Attribute
 from .exceptions import DoesNotExist as DoesNotExist
 from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Text, Union
 
@@ -43,13 +44,23 @@ class Model(metaclass=MetaModel):
     @classmethod
     def from_raw_data(cls: Type[_T], data) -> _T: ...
     @classmethod
-    def count(cls: Type[_T], hash_key: Optional[KeyType] = ..., consistent_read: bool = ..., index_name: Optional[Text] = ..., limit: Optional[int] = ..., **filters) -> int: ...
+    def count(
+        cls: Type[_T],
+        hash_key: Optional[KeyType] = ...,
+        range_key_condition: Optional[Condition] = ...,
+        filter_condition: Optional[Condition] = ...,
+        consistent_read: bool = ...,
+        index_name: Optional[Text] = ...,
+        limit: Optional[int] = ...,
+        rate_limit: Optional[float] = ...,
+        **filters
+    ) -> int: ...
     @classmethod
     def query(
         cls: Type[_T],
         hash_key: KeyType,
-        range_key_condition: Condition = ...,
-        filter_condition: Condition = ...,
+        range_key_condition: Optional[Condition] = ...,
+        filter_condition: Optional[Condition] = ...,
         consistent_read: bool = ...,
         index_name: Optional[Text] = ...,
         scan_index_forward: Optional[Any] = ...,
@@ -115,7 +126,9 @@ class Model(metaclass=MetaModel):
     @classmethod
     def get_throttle(cls): ...
     @classmethod
-    def _get_attributes(cls) -> Dict[str, Any]: ...
+    def get_attributes(cls) -> Dict[str, Attribute]: ...
+    @classmethod
+    def _get_attributes(cls) -> Dict[str, Attribute]: ...
     @classmethod
     def _get_connection(cls) -> TableConnection: ...
 

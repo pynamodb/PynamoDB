@@ -3,6 +3,17 @@ import sys
 
 from setuptools import setup, find_packages
 
+
+def find_stubs(package):
+    stubs = []
+    for root, dirs, files in os.walk(package):
+        for f in files:
+            path = os.path.join(root, f).replace(package + os.sep, '', 1)
+            if path.endswith('.pyi') or path.endswith('py.typed'):
+                stubs.append(path)
+    return {package: stubs}
+
+
 if sys.argv[-1] == 'publish':
     os.system('python setup.py sdist upload')
     os.system('python setup.py bdist_wheel upload')
@@ -13,7 +24,7 @@ if sys.argv[-1] == 'publish':
 
 install_requires = [
     'six',
-    'botocore>=1.2.0',
+    'botocore>=1.11.0',
     'python-dateutil>=2.1,<3.0.0',
 ]
 
@@ -36,13 +47,11 @@ setup(
         'Programming Language :: Python',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.6',
         'License :: OSI Approved :: MIT License',
     ],
     extras_require={
         'signals': ['blinker>=1.3,<2.0'],
     },
-    package_data={
-        'pynamodb': ['py.typed'],
-    },
+    package_data=find_stubs('pynamodb'),
 )
