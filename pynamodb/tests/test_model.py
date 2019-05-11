@@ -4475,8 +4475,6 @@ class ModelInitTestCase(TestCase):
 
         # Test for default region
         self.assertEqual(MyCustomUserModel.Meta.region, 'us-east-1')
-        self.assertTrue(MyCustomUserModel.Meta.session_cls is requests.Session)
-
         self.assertEqual(
             MyCustomUserModel._connection.connection._request_timeout_seconds,
             60)
