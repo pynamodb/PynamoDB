@@ -115,9 +115,10 @@ def migrate_boolean_attributes(model_class,
             if condition is None:
                 condition = Path(attr_name) == (1 if old_value else 0)
             else:
-                condition = condition & Path(attr_name) == (1 if old_value else 0)
+                condition = condition & (Path(attr_name) == (1 if old_value else 0))
 
         if actions:
+            assert condition is not None
             if mock_conditional_update_failure:
                 condition = condition & (Path('__bogus_mock_attribute') == 5)
             try:
@@ -127,7 +128,7 @@ def migrate_boolean_attributes(model_class,
                 if isinstance(e.cause, ClientError):
                     code = e.cause.response['Error'].get('Code')
                     if code == 'ConditionalCheckFailedException':
-                        log.warn('conditional update failed (concurrent writes?) for object: %s (you will need to re-run migration)', item)
+                        log.warning('conditional update failed (concurrent writes?) for object: %s (you will need to re-run migration)', item)
                         num_update_failures += 1
                     elif code == 'ProvisionedThroughputExceededException':
                         log.warn('provisioned write capacity exceeded at object: %s backing off (you will need to re-run migration)', item)

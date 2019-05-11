@@ -2,6 +2,7 @@
 Test suite for the table class
 """
 import six
+
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION

@@ -9,13 +9,20 @@ Settings reference
 
 Here is a complete list of settings which control default PynamoDB behavior.
 
-
-request_timeout_seconds
+connect_timeout_seconds
 -----------------------
 
-Default: ``60``
+Default: ``15``
 
-The default timeout for HTTP requests in seconds.
+The time in seconds till a ``ConnectTimeoutError`` is thrown when attempting to make a connection.
+
+
+read_timeout_seconds
+-----------------------
+
+Default: ``30``
+
+The time in seconds till a ``ReadTimeoutError`` is thrown when attempting to read from a connection.
 
 
 max_retry_attempts
@@ -44,15 +51,24 @@ Default: ``"us-east-1"``
 The default AWS region to connect to.
 
 
-session_cls
------------
+max_pool_connections
+--------------------
 
-Default: ``botocore.vendored.requests.Session``
+Default: ``10``
 
-A class which implements the Session_ interface from requests, used for making API requests
-to DynamoDB.
+The maximum number of connections to keep in a connection pool.
 
-.. _Session: http://docs.python-requests.org/en/master/api/#request-sessions
+
+extra_headers
+--------------------
+
+Default: ``None``
+
+A dictionary of headers that should be added to every request. This is only useful
+when interfacing with DynamoDB through a proxy, where headers are stripped by the
+proxy before forwarding along. Failure to strip these headers before sending to AWS
+will result in an ``InvalidSignatureException`` due to request signing.
+
 
 allow_rate_limited_scan_without_consumed_capacity
 -------------------------------------------------
@@ -71,16 +87,3 @@ Overriding settings
 Default settings may be overridden by providing a Python module which exports the desired new values.
 Set the ``PYNAMODB_CONFIG`` environment variable to an absolute path to this module or write it to
 ``/etc/pynamodb/global_default_settings.py`` to have it automatically discovered.
-
-See an example of specifying a custom ``session_cls`` to configure the connection pool below.
-
-.. code-block:: python
-
-    from botocore.vendored import requests
-    from botocore.vendored.requests import adapters
-
-    class CustomPynamoSession(requests.Session):
-        super(CustomPynamoSession, self).__init__()
-        self.mount('http://', adapters.HTTPAdapter(pool_maxsize=100))
-
-    session_cls = CustomPynamoSession

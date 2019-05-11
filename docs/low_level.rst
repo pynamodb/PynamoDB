@@ -100,7 +100,7 @@ You can also use `update_table` to change the Provisioned Throughput capacity of
 Modifying items
 ^^^^^^^^^^^^^^^
 
-The low level API can perform item operationst too, such as getting an item:
+The low level API can perform item operations too, such as getting an item:
 
 .. code-block:: python
 

@@ -1,6 +1,126 @@
 Release Notes
 =============
 
+v4.0.0b1
+--------
+
+:date: 2019-04-10
+
+NB: This is an alpha release and these notes are subject to change.
+
+This is major release and contains breaking changes. Please read the notes below carefully.
+
+Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP requests, we'll be doing the same (via ``botocore``). This means the following:
+
+* The ``session_cls`` option is no longer supported.
+
+* The ``request_timeout_seconds`` parameter is no longer supported. ``connect_timeout_seconds`` and ``read_timeout_seconds`` are available instead.
+
+  + Note that the timeouts for connection and read are now ``15`` and ``30`` seconds respectively. This represents a change from the previous ``60`` second combined ``requests`` timeout.
+
+* *Wrapped* exceptions (i.e ``exc.cause``) that were from ``requests.exceptions`` will now be comparable ones from ``botocore.exceptions`` instead.
+
+Other changes in this release:
+
+* Python 2.6 is no longer supported. 4.x.x will likely be the last major release to support Python 2.7, given the upcoming EOL.
+* Added the ``max_pool_connection`` and ``extra_headers`` settings to replace common use cases for ``session_cls``
+* Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook. Other botocore hooks remain unimplemented.
+* Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
+
+
+v3.3.3
+------
+
+:date: 2019-01-15
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* Legacy boolean attribute migration fix. (#538)
+* Correctly package type stubs. (#585)
+
+Contributors to this release:
+
+* @vo-va
+
+
+v3.3.2
+------
+
+:date: 2019-01-03
+
+This is a backwards compatible, minor release.
+
+Changes in this release:
+
+* Built-in support for mypy type stubs, superseding those in python/typeshed. (#537)
+
+
+v3.3.1
+------
+
+:date: 2018-08-30
+
+This is a backwards compatible, minor bug fix release.
+
+Fixes in this release:
+
+* Clearer error message on missing consumed capacity during rate-limited scan. (#506)
+* Python 3 compatibility in PageIterator. (#535)
+* Proxy configuration changes in botocore>=1.11.0. (#531)
+
+Contributors to this release:
+
+* @ikonst
+* @zetaben
+* @ningirsu
+
+
+v3.3.0
+------
+
+:date: 2018-05-09
+
+This is a backwards compatible, major bug fix release.
+
+New features in this release:
+
+
+* Support scan operations on secondary indexes. (#141, #392)
+* Support projections in model get function. (#337, #403)
+* Handle values from keys when batch get returns unprocessed keys. (#252, #376)
+* Externalizes AWS Credentials. (#426)
+* Add migration support for LegacyBooleanAttribute. (#404, #405)
+* Rate limited Page Iterator. (#481)
+
+
+Fixes in this release:
+
+* Thread-safe client creation in botocore. (#153, #393)
+* Use attr.get_value(value) when deserialize. (#450) 
+* Skip null attributes post serialization for maps. (#455)
+* Fix deserialization bug in BinaryAttribute and BinarySetAttribute. (#459, #480)
+* Allow MapAttribute instances to be used as the RHS in expressions. (#488)
+* Return the correct last_evaluated_key for limited queries/scans. (#406, #410)
+* Fix exclusive_start_key getting lost in PageIterator. (#421)
+* Add python 3.5 for Travis ci builds. (#437)
+
+Contributors to this release:
+
+* @jpinner-lyft
+* @scode
+* @behos
+* @jmphilli
+* @drewisme
+* @nicysneiros
+* @jcomo
+* @kevgliss
+* @asottile
+* @harleyk
+* @betamoo
+
+
 v3.2.1
 ------
 
