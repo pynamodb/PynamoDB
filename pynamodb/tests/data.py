@@ -341,7 +341,10 @@ DESCRIBE_TABLE_DATA = {
         },
         "TableName": "Thread",
         "TableSizeBytes": 0,
-        "TableStatus": "ACTIVE"
+        "TableStatus": "ACTIVE",        
+        "SSEDescription": {
+            "Status": "ENABLED"
+        }
     }
 }
 
@@ -1380,3 +1383,4 @@ DOG_TABLE_DATA = {
         "TableStatus": "ACTIVE"
     }
 }
+

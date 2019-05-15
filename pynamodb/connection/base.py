@@ -43,7 +43,7 @@ from pynamodb.constants import (
     ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, UPDATE_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
-    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND)
+    CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND, ENCRYPT_SPECIFICATION, ENCRYPT_ENABLED)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -543,7 +543,8 @@ class Connection(object):
                      write_capacity_units=None,
                      global_secondary_indexes=None,
                      local_secondary_indexes=None,
-                     stream_specification=None):
+                     stream_specification=None,
+                     kms_encryption_enabled=False):
         """
         Performs the CreateTable operation
         """
@@ -599,6 +600,11 @@ class Connection(object):
             operation_kwargs[STREAM_SPECIFICATION] = {
                 STREAM_ENABLED: stream_specification[pythonic(STREAM_ENABLED)],
                 STREAM_VIEW_TYPE: stream_specification[pythonic(STREAM_VIEW_TYPE)]
+            }
+
+        if kms_encryption_enabled:
+            operation_kwargs[ENCRYPT_SPECIFICATION] = {
+                ENCRYPT_ENABLED: kms_encryption_enabled
             }
 
         try:

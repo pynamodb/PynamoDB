@@ -260,6 +260,19 @@ class ConnectionTestCase(TestCase):
             )
             self.assertEqual(req.call_args[0][1], params)
 
+        kwargs['kms_encryption_enabled'] = True
+        params['SSESpecification'] = {
+                'Enabled': True
+        }
+        with patch(PATCH_METHOD) as req:
+            req.return_value = None
+            conn.create_table(
+                self.test_table_name,
+                **kwargs
+            )
+            self.assertEqual(req.call_args[0][1], params)
+        
+
     def test_delete_table(self):
         """
         Connection.delete_table
