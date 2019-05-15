@@ -59,12 +59,6 @@ class TableConnection(object):
         """
         return self.connection.get_meta_table(self.table_name, refresh=refresh)
 
-    def get_meta_table(self, refresh=False):
-        """
-        Returns a MetaTable
-        """
-        return self.connection.get_meta_table(self.table_name, refresh=refresh)
-
     def delete_item(self, hash_key,
                     range_key=None,
                     condition=None,
