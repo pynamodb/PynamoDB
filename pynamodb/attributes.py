@@ -13,7 +13,8 @@ from dateutil.tz import tzutc
 from inspect import getargspec
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
+    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES,
+    STRING_SET_SHORT
 )
 from pynamodb.compat import getmembers_issubclass
 from pynamodb.expressions.operand import Path
@@ -952,7 +953,8 @@ DESERIALIZE_CLASS_MAP = {
     STRING_SHORT: UnicodeAttribute(),
     BOOLEAN: BooleanAttribute(),
     MAP_SHORT: MapAttribute(),
-    NULL: NullAttribute()
+    NULL: NullAttribute(),
+    STRING_SET_SHORT: UnicodeSetAttribute()
 }
 
 SERIALIZE_CLASS_MAP = {
