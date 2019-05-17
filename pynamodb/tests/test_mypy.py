@@ -55,9 +55,9 @@ def test_pagination():
 
     result_iterator = MyModel.query(123)
     for model in result_iterator:
-        reveal_type(model)  # E: Revealed type is 'MyModel'
+        reveal_type(model)  # E: Revealed type is '__main__.MyModel*'
     if result_iterator.last_evaluated_key:
-        reveal_type(result_iterator.last_evaluated_key['my_attr'])  # E: Revealed type is 'Dict[str, Any]'
+        reveal_type(result_iterator.last_evaluated_key['my_attr'])  # E: Revealed type is 'builtins.dict*[builtins.str, Any]'
     """)
 
 
