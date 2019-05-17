@@ -120,3 +120,31 @@ range key of the index. Here is an example that queries the index for values of 
 
     for item in TestModel.view_index.query('foo', TestModel.view > 0):
         print("Item queried from index: {0}".format(item.view))
+
+
+Pagination and last evaluated key
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The query returns a ``ResultIterator`` object that transparently paginates through results.
+To stop iterating and allow the caller to continue later on, use the ``last_evaluated_key`` property
+of the iterator:
+
+.. code-block:: python
+
+   def iterate_over_page(last_evaluated_key = None):
+       results = TestModel.view_index.query('foo', TestModel.view > 0,
+                                            limit=10,
+                                            last_evaluated_key=last_evaluated_key)
+       for item in results:
+          ...
+       return results.last_evaluated_key
+   
+The ``last_evaluated_key`` is effectively the key attributes of the last iterated item; the next returned items will be the items following it. For index queries, the returned ``last_evaluated_key`` will contain both the table's hash/range keys and the indexes hash/range keys. This is due to the fact that DynamoDB indexes have no uniqueness constraint, i.e. the same hash/range pair can map to multiple items. For the example above, the ``last_evaluated_key`` will look like:
+
+.. code-block:: python
+
+    {
+        "forum": {"S": "..."},
+        "thread": {"S": "..."},
+        "view": {"N": "..."}
+    }
