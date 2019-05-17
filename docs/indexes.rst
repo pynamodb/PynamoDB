@@ -139,7 +139,7 @@ of the iterator:
           ...
        return results.last_evaluated_key
    
-The ``last_evaluated_key`` is effectively the key attributes of the last iterated item; the next returned items will be the items following it. For index queries, the returned last_evaluated_key will contain both the table's hash/range keys and the indexes hash/range keys. This is due to the fact that DynamoDB indexes have no uniqueness constraint, i.e. the same hash/range pair can map to multiple items. For the example above, the ``last_evaluated_key`` will look like:
+The ``last_evaluated_key`` is effectively the key attributes of the last iterated item; the next returned items will be the items following it. For index queries, the returned ``last_evaluated_key`` will contain both the table's hash/range keys and the indexes hash/range keys. This is due to the fact that DynamoDB indexes have no uniqueness constraint, i.e. the same hash/range pair can map to multiple items. For the example above, the ``last_evaluated_key`` will look like:
 
 .. code-block:: python
 
