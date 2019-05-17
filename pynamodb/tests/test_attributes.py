@@ -50,7 +50,7 @@ class AttributeTestModel(Model):
 class CustomAttrMap(MapAttribute):
     overridden_number_attr = NumberAttribute(attr_name="number_attr")
     overridden_unicode_attr = UnicodeAttribute(attr_name="unicode_attr")
-
+    overridden_unicode_set_attr = UnicodeSetAttribute(attr_name='unicode_set_attr')
 
 class DefaultsMap(MapAttribute):
     map_field = MapAttribute(default={})
