@@ -45,6 +45,22 @@ def test_model_query():
     """)
 
 
+def test_pagination():
+    assert_mypy_output("""
+    from pynamodb.attributes import NumberAttribute
+    from pynamodb.models import Model
+
+    class MyModel(Model):
+        my_attr = NumberAttribute()
+
+    result_iterator = MyModel.query(123)
+    for model in result_iterator:
+        reveal_type(model)  # E: Revealed type is 'MyModel'
+    if result_iterator.last_evaluated_key:
+        reveal_type(result_iterator.last_evaluated_key['my_attr'])  # E: Revealed type is 'Dict[str, Any]'
+    """)
+
+
 def test_model_update():
     assert_mypy_output("""
     from pynamodb.attributes import NumberAttribute
