@@ -125,7 +125,7 @@ range key of the index. Here is an example that queries the index for values of 
 Pagination and last evaluated key
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The query will return a ``ResultIterator`` object that will transparently paginate through results.
+The query returns a ``ResultIterator`` object that transparently paginates through results.
 To stop iterating and allow the caller to continue later on, use the ``last_evaluated_key`` property
 of the iterator:
 
@@ -133,7 +133,8 @@ of the iterator:
 
    def iterate_over_page(last_evaluated_key = None):
        results = TestModel.view_index.query('foo', TestModel.view > 0,
-                                            limit=10, last_evaluated_key=last_evaluated_key)
+                                            limit=10,
+                                            last_evaluated_key=last_evaluated_key)
        for item in results:
           ...
        return results.last_evaluated_key
