@@ -66,7 +66,7 @@ class Model(metaclass=MetaModel):
         scan_index_forward: Optional[Any] = ...,
         conditional_operator: Optional[Text] = ...,
         limit: Optional[int] = ...,
-        last_evaluated_key: Optional[Any] = ...,
+        last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
         attributes_to_get: Optional[Iterable[Text]] = ...,
         page_size: Optional[int] = ...,
         **filters
@@ -80,7 +80,7 @@ class Model(metaclass=MetaModel):
         total_segments: Optional[int] = ...,
         limit: Optional[int] = ...,
         conditional_operator: Optional[Text] = ...,
-        last_evaluated_key: Optional[Any] = ...,
+        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
         page_size: Optional[int] = ...,
         timeout_seconds: Optional[int] = ...,
         read_capacity_to_consume_per_second: int = ...,
@@ -100,7 +100,7 @@ class Model(metaclass=MetaModel):
         total_segments: Optional[int] = ...,
         limit: Optional[int] = ...,
         conditional_operator: Optional[Text] = ...,
-        last_evaluated_key: Optional[Any] = ...,
+        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
         page_size: Optional[int] = ...,
         **filters
     ) -> ResultIterator[_T]: ...
