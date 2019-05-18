@@ -642,9 +642,12 @@ class TestMapAttribute:
     def test_map_overridden_attrs_serialize(self):
         attribute = {
             'overridden_number_attr': 10,
-            'overridden_unicode_attr': "Hello"
+            'overridden_unicode_attr': "Hello",
+            'overridden_unicode_set_attr': [six.u('Hello'), six.u('world')]
         }
-        expected = {'number_attr': {'N': '10'}, 'unicode_attr': {'S': six.u('Hello')}}
+        expected = {'number_attr': {'N': '10'},
+                    'unicode_attr': {'S': six.u('Hello')},
+                    'unicode_set_attr': {'SS': [six.u('Hello'), six.u('world')]}}
         assert CustomAttrMap().serialize(attribute) == expected
 
     def test_additional_attrs_deserialize(self):
