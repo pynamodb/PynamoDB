@@ -128,7 +128,7 @@ def migrate_boolean_attributes(model_class,
                 if isinstance(e.cause, ClientError):
                     code = e.cause.response['Error'].get('Code')
                     if code == 'ConditionalCheckFailedException':
-                        log.warn('conditional update failed (concurrent writes?) for object: %s (you will need to re-run migration)', item)
+                        log.warning('conditional update failed (concurrent writes?) for object: %s (you will need to re-run migration)', item)
                         num_update_failures += 1
                     elif code == 'ProvisionedThroughputExceededException':
                         log.warn('provisioned write capacity exceeded at object: %s backing off (you will need to re-run migration)', item)

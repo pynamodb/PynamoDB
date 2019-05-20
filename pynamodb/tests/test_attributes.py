@@ -17,6 +17,7 @@ from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
     MapAttribute, MapAttributeMeta, ListAttribute, JSONAttribute, _get_value_for_deserialize,
+    _fast_parse_utc_datestring,
 )
 from pynamodb.constants import (
     DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
@@ -172,7 +173,7 @@ class TestUTCDateTimeAttribute:
         attr.deserialize(tstamp_str)
 
         parse_mock.assert_not_called()
-        datetime_mock.strptime.assert_called_once_with(tstamp_str, DATETIME_FORMAT)
+        datetime_mock.strptime.assert_not_called()
 
     def test_utc_date_time_serialize(self):
         """
@@ -181,6 +182,38 @@ class TestUTCDateTimeAttribute:
         tstamp = datetime.now()
         attr = UTCDateTimeAttribute()
         assert attr.serialize(tstamp) == tstamp.replace(tzinfo=UTC).strftime(DATETIME_FORMAT)
+
+    def test__fast_parse_utc_datestring_roundtrips(self):
+        tstamp = datetime.now(UTC)
+        tstamp_str = tstamp.strftime(DATETIME_FORMAT)
+        assert _fast_parse_utc_datestring(tstamp_str) == tstamp
+
+    def test__fast_parse_utc_datestring_no_microseconds(self):
+        expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=tzutc())
+        assert _fast_parse_utc_datestring('2047-01-06T08:21:00.0+0000') == expected_value
+
+    @pytest.mark.parametrize(
+        "invalid_string",
+        [
+            '2.47-01-06T08:21:00.0+0000',
+            '2047-01-06T08:21:00.+0000',
+            '2047-01-06T08:21:00.0',
+            '2047-01-06 08:21:00.0+0000',
+            'abcd-01-06T08:21:00.0+0000',
+            '2047-ab-06T08:21:00.0+0000',
+            '2047-01-abT08:21:00.0+0000',
+            '2047-01-06Tab:21:00.0+0000',
+            '2047-01-06T08:ab:00.0+0000',
+            '2047-01-06T08:ab:00.0+0000',
+            '2047-01-06T08:21:00.a+0000',
+            '2047-01-06T08:21:00.0.1+0000',
+            '2047-01-06T08:21:00.0+00000'
+        ]
+    )
+    def test__fast_parse_utc_datestring_invalid_input(self, invalid_string):
+        with pytest.raises(ValueError, match="does not match format"):
+            _fast_parse_utc_datestring(invalid_string)
+
 
 
 class TestBinaryAttribute:

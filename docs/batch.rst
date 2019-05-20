@@ -38,7 +38,7 @@ Here is an example using a context manager for a bulk write operation:
 .. code-block:: python
 
     with Thread.batch_write() as batch:
-        items = [TestModel('forum-{0}'.format(x), 'thread-{0}'.format(x)) for x in range(1000)]
+        items = [Thread('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(1000)]
         for item in items:
             batch.save(item)
 
@@ -49,7 +49,7 @@ Here is an example using an iterator for retrieving items in bulk:
 
 .. code-block:: python
 
-    item_keys = [('forum-{0}'.format(x), 'thread-{0}'.format(x)) for x in range(1000)]
+    item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(1000)]
     for item in Thread.batch_get(item_keys):
         print(item)
 
