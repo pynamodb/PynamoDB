@@ -666,7 +666,6 @@ class TestMapAttribute:
 
     def test_defaults(self):
         item = DefaultsMap()
-        assert item.validate()
         assert DefaultsMap().serialize(item) == {
             'map_field': {
                 'M': {}

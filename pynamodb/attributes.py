@@ -272,6 +272,56 @@ class AttributeContainer(object):
                 raise ValueError("Attribute {0} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
 
+    @staticmethod
+    def _serialize_value(attr, value, null_check=True):
+        """
+        Serializes a value for use with DynamoDB
+        :param attr: an instance of `Attribute` for serialization
+        :param value: a value to be serialized
+        :param null_check: If True, then attributes are checked for null
+        """
+        if value is None:
+            serialized = None
+        else:
+            serialized = attr.serialize(value)
+
+        if serialized is None:
+            if not attr.null and null_check:
+                raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
+            return {NULL: True}
+
+        return {ATTR_TYPE_MAP[attr.attr_type]: serialized}
+
+    @classmethod
+    def _serialize_container(cls, attr_container, values, null_check=True):
+        """
+        Retrieve attribute container recursively and do null check at the same time.
+        Handling for the raw MapAttribute will be done in MapAttribute
+        :param attr_container: subclass of AttributeContainer for serialization
+        :param values: value of the container to be serialized such as value of a model or MapAttribute, 
+        :param null_check: If True, then attributes are checked for null
+        """
+        attrs = {}
+        for name, attr in attr_container.get_attributes().items():
+            if not isinstance(values, dict) or not issubclass(attr_container, MapAttribute):
+                value = getattr(values, name)
+            else:
+                value = values.get(name)
+            if isinstance(value, MapAttribute) and type(value) is not MapAttribute:
+                serialized = {MAP_SHORT: cls._serialize_container(type(attr), value, null_check)}
+            else:
+                _null_check = null_check
+                if value is None and attr.default is not None:
+                    if attr.default:
+                        value = attr.default() if callable(attr.default) else attr.default
+                    else:
+                        value = None
+                        _null_check = False
+                serialized = cls._serialize_value(attr, value, _null_check)
+            if NULL not in serialized:
+                attrs[attr.attr_name] = serialized
+        return attrs
+
     def __eq__(self, other):
         # This is required for python 2 support so that MapAttribute can call this method.
         return self is other
@@ -758,19 +808,10 @@ class MapAttribute(Attribute, AttributeContainer):
         else:
             super(MapAttribute, self)._set_attributes(**attrs)
 
-    def is_correctly_typed(self, key, attr):
-        can_be_null = attr.null
-        value = getattr(self, key)
-        if can_be_null and value is None:
-            return True
-        if getattr(self, key) is None:
-            raise ValueError("Attribute '{0}' cannot be None".format(key))
-        return True  # TODO: check that the actual type of `value` meets requirements of `attr`
-
-    def validate(self):
-        return all(self.is_correctly_typed(k, v) for k, v in six.iteritems(self.get_attributes()))
-
     def serialize(self, values):
+        if not self.is_raw():
+            return self._serialize_container(type(self), values, null_check=True)
+
         rval = {}
         for k in values:
             v = values[k]
@@ -794,7 +835,6 @@ class MapAttribute(Attribute, AttributeContainer):
                 continue
 
             rval[attr_name] = {attr_key: serialized}
-
         return rval
 
     def deserialize(self, values):
