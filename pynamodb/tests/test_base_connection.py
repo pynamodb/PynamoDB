@@ -123,6 +123,10 @@ class ConnectionTestCase(TestCase):
             }
         ]
         self.assertRaises(ValueError, conn.create_table, self.test_table_name, **kwargs)
+
+        kwargs['key_schema'] = []
+        self.assertRaises(ValueError, conn.create_table, self.test_table_name, **kwargs)
+
         kwargs['key_schema'] = [
             {
                 'attribute_name': 'key1',
