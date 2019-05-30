@@ -66,23 +66,6 @@ class TestTransactGet:
     def setup(self):
         self.mock_model_cls = MagicMock(__name__='MockModel')
 
-    def test_add_item_class(self):
-        t = TransactGet()
-        assert t._model_indexes is None
-
-        t._add_item_class(self.mock_model_cls, 1, 2)
-        assert t._model_indexes is not None
-        assert t._model_indexes['MockModel(1,2)']['class'] == self.mock_model_cls
-        assert t._model_indexes['MockModel(1,2)']['index'] == 0
-
-        t._add_item_class(self.mock_model_cls, 2, 3)
-        assert t._model_indexes is not None
-        assert t._model_indexes['MockModel(2,3)']['class'] == self.mock_model_cls
-        assert t._model_indexes['MockModel(2,3)']['index'] == 1
-
-        with pytest.raises(ValueError):
-            t._add_item_class(self.mock_model_cls, 1, 2)
-
     def test_commit(self, mocker):
         mock_transaction = mocker.patch.object(transactions.Connection, 'transact_get_items', return_value={
             'Responses': [{'Item': {}}]
@@ -93,22 +76,6 @@ class TestTransactGet:
         t.commit()
 
         mock_transaction.assert_called_once_with({'TransactItems': [{'Get': {}}]})
-
-    def test_from_results(self):
-        t = TransactGet()
-        with pytest.raises(GetError):
-            t.from_results(self.mock_model_cls, 2, 3)
-
-        self.mock_model_cls.from_raw_data.return_value = MagicMock(hash_key=1, range_key=2)
-        t._results = [{'Item': {}}, {'Item': {}}]
-        t._model_indexes = {'MockModel(1,2)': {'index': 1}, 'MockModel(3,4)': {'index': 0}}
-
-        with pytest.raises(KeyError):
-            t.from_results(self.mock_model_cls, 2, 3)
-
-        mock = t.from_results(self.mock_model_cls, 1, 2)
-        assert mock.hash_key == 1
-        assert mock.range_key == 2
 
 
 class TestTransactWrite:

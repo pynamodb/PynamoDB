@@ -63,10 +63,15 @@ UPDATE_REQUEST_PARAMETERS = {
 class Transaction(object):
 
     _connection = None
+    _hashed_models = None
     _item_limit = TRANSACT_ITEM_LIMIT
     _operation_kwargs = None
+    _proxy_models = None
+    _results = None
 
     def __init__(self, return_consumed_capacity=None, override_connection=False, **connection_kwargs):
+        self._hashed_models = set()
+        self._proxy_models = []
         self._operation_kwargs = {
             TRANSACT_ITEMS: [],
         }
@@ -76,6 +81,10 @@ class Transaction(object):
 
     def __len__(self):
         return len(self.transact_items)
+
+    @staticmethod
+    def _get_key(model_cls, hash_key, range_key=None):
+        return "{0}({1},{2})".format(model_cls.__name__, hash_key, range_key)
 
     @property
     def transact_items(self):
@@ -98,57 +107,51 @@ class Transaction(object):
 
 class TransactGet(Transaction):
 
-    _results = None
-    _model_indexes = None
-
     def add_get_item(self, model_cls, hash_key, range_key, operation_kwargs):
         get_item = self.format_item(GET, GET_REQUEST_PARAMETERS, operation_kwargs)
         self.add_item(get_item)
-        self._add_item_class(model_cls, hash_key, range_key)
-
-    def _get_key(self, model_cls, hash_key, range_key=None):
-        return "{0}({1},{2})".format(model_cls.__name__, hash_key, range_key)
+        return self._add_item_class(model_cls, hash_key, range_key)
 
     def _add_item_class(self, model_cls, hash_key, range_key=None):
-        if self._model_indexes is None:
-            self._model_indexes = {}
         key = self._get_key(model_cls, hash_key, range_key)
-        if self._model_indexes.get(key) is not None:
+        if key in self._hashed_models:
             raise ValueError("Can't perform operation on the same entry multiple times in one transaction")
-        self._model_indexes[key] = {
-            'index': len(self._model_indexes.keys()),
-            'class': model_cls,
-        }
-
-    def from_results(self, model_cls, hash_key, range_key=None):
-        if self._results is None:
-            raise GetError('Attempting to access item before committing the transaction')
-        key = self._get_key(model_cls, hash_key, range_key)
-        index = self._model_indexes[key]['index']
-        item = self._results[index].get(ITEM)
-        if item is None:
-            raise DoesNotExist('item does not exist in results: {0}'.format(key))
-        return model_cls.from_raw_data(item)
+        proxy_kwargs = {'hash_key': hash_key}
+        if range_key is not None:
+            proxy_kwargs['range_key'] = range_key
+        proxy_model = model_cls(**proxy_kwargs)
+        self._hashed_models.add(key)
+        self._proxy_models.append(proxy_model)
+        return proxy_model
 
     def get_results_in_order(self):
         if self._results is None:
             raise GetError('Attempting to access item before committing the transaction')
-        ordered_classes = sorted(self._model_indexes.items(), key=lambda kv: kv[1]['index'])
-        return (
-            model_info['class'].from_raw_data(data=item[ITEM])
-            for (key, model_info), item in zip(ordered_classes, self._results)
-        )
+        return self._proxy_models
+
+    def _update_proxy_models(self):
+        for model, data in zip(self._proxy_models, self._results):
+            model.update_item_with_raw_data(data[ITEM])
 
     def commit(self):
         self._results = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]
+        self._update_proxy_models()
 
 
 class TransactWrite(Transaction):
 
+    @staticmethod
+    def _validate_client_request_token(token):
+        if not isinstance(token, str):
+            raise ValueError('Client request token must be a string')
+        if len(token) > 36:
+            raise ValueError('Client request token max length is 36 characters')
+
     def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
         super(TransactWrite, self).__init__(**kwargs)
         if client_request_token is not None:
-            self._operation_kwargs[CLIENT_REQUEST_TOKEN] = str(client_request_token)
+            self._validate_client_request_token(client_request_token)
+            self._operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
         if return_item_collection_metrics is not None:
             self._operation_kwargs.update(self._connection.get_item_collection_map(return_item_collection_metrics))
 
@@ -165,12 +168,16 @@ class TransactWrite(Transaction):
         self.add_item(put_item)
 
     def add_update_item(self, operation_kwargs):
-        print(operation_kwargs)
         update_item = self.format_item(UPDATE, UPDATE_REQUEST_PARAMETERS, operation_kwargs)
         self.add_item(update_item)
 
+    def _update_proxy_models(self):
+        for model in self._proxy_models:
+            model.refresh()
+
     def commit(self):
-        return self._connection.transact_write_items(self._operation_kwargs)
+        self._connection.transact_write_items(self._operation_kwargs)
+        self._update_proxy_models()
 
 
 _CONNECTION = None

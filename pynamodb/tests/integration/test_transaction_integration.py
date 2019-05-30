@@ -152,19 +152,13 @@ def test_transact_get():
     User(2).save()
     BankStatement(2, balance=100).save()
 
-    # get users and statements we just created
+    # get users and statements we just created and assign them to variables
     transaction = TransactGet()
-    User.get(1, in_transaction=transaction)
-    BankStatement.get(1, in_transaction=transaction)
-    User.get(2, in_transaction=transaction)
-    BankStatement.get(2, in_transaction=transaction)
+    user1 = User.get(1, in_transaction=transaction)
+    statement1 = BankStatement.get(1, in_transaction=transaction)
+    user2 = User.get(2, in_transaction=transaction)
+    statement2 = BankStatement.get(2, in_transaction=transaction)
     transaction.commit()
-
-    # assign them to variables after commit
-    user1 = transaction.from_results(User, 1)
-    user2 = transaction.from_results(User, 2)
-    statement1 = transaction.from_results(BankStatement, 1)
-    statement2 = transaction.from_results(BankStatement, 2)
 
     assert user1.user_id == statement1.user_id == 1
     assert statement1.balance == 0

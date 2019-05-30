@@ -1135,7 +1135,7 @@ class ModelTestCase(TestCase):
                     'S': 'foo'
                 }
             },
-            'ReturnValues': 'ALL_NEW',
+            'ReturnValues': 'NONE',
             'UpdateExpression': 'DELETE #0 :0',
             'ExpressionAttributeNames': {
                 '#0': 'aliases'
@@ -1676,29 +1676,6 @@ class ModelTestCase(TestCase):
             }
             deep_eq(args, params, _assert=True)
             self.assertEqual(set(["alias1", "alias3"]), item.custom_aliases)
-
-        mock_transaction = MagicMock()
-        response = item.update_item('is_active', True, action='put', in_transaction=mock_transaction)
-        params = {
-            'TableName': 'SimpleModel',
-            'Key': {
-                'user_name': {
-                    'S': 'foo'
-                }
-            },
-            'ReturnValues': 'ALL_NEW',
-            'UpdateExpression': 'SET #0 = :0',
-            'ExpressionAttributeNames': {
-                '#0': 'is_active'
-            },
-            'ExpressionAttributeValues': {
-                ':0': {
-                    'BOOL': True
-                }
-            }
-        }
-        mock_transaction.add_update_item.assert_called_with(params)
-        assert response == {}
 
     def test_save(self):
         """
@@ -3039,7 +3016,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(item.overidden_user_id, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_id']['S'])
 
         mock_transaction = MagicMock(spec=TransactGet)
-        mock_transaction.from_results.return_value = UserModel()
+        mock_transaction.add_get_item.return_value = UserModel()
 
         params = {
             'ConsistentRead': False,
@@ -3055,7 +3032,7 @@ class ModelTestCase(TestCase):
         }
         response = UserModel.get('foo', 'bar', in_transaction=mock_transaction)
         mock_transaction.add_get_item.assert_called_with(UserModel, 'foo', 'bar', params)
-        assert response is None
+        assert isinstance(response, UserModel)
 
     def test_batch_get(self):
         """

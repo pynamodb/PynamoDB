@@ -31,7 +31,7 @@ from pynamodb.constants import (
     SCAN_OPERATOR_MAP, BATCH_WRITE_PAGE_LIMIT, META_CLASS_NAME, REGION, HOST, EXISTS, NULL,
     DELETE_FILTER_OPERATOR_MAP, UPDATE_FILTER_OPERATOR_MAP, PUT_FILTER_OPERATOR_MAP,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE, STREAM_SPECIFICATION,
-    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET)
+    STREAM_ENABLED, EQ, NE, BINARY_SET, STRING_SET, NUMBER_SET, NONE)
 
 
 log = logging.getLogger(__name__)
@@ -364,7 +364,14 @@ class Model(AttributeContainer):
             return True
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update_item(self, attribute, value=None, action=None, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
+    def update_item_with_raw_data(self, data):
+        for name, value in data.items():
+            attr_name = self._dynamo_to_python_attr(name)
+            attr = self.get_attributes().get(attr_name)
+            if attr:
+                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
+
+    def update_item(self, attribute, value=None, action=None, condition=None, conditional_operator=None, **expected_values):
         """
         Updates an item using the UpdateItem operation.
 
@@ -405,21 +412,11 @@ class Model(AttributeContainer):
         kwargs.update(conditional_operator=conditional_operator)
         kwargs.update(condition=condition)
 
-        if in_transaction is not None:
-            operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
-            in_transaction.add_update_item(operation_kwargs)
-            return {}
-
         data = self._get_connection().update_item(
             *args,
             **kwargs
         )
-
-        for name, value in data.get(ATTRIBUTES).items():
-            attr_name = self._dynamo_to_python_attr(name)
-            attr = self.get_attributes().get(attr_name)
-            if attr:
-                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
+        self.update_item_with_raw_data(data.get(ATTRIBUTES))
         return data
 
     def update(self, attributes=None, actions=None, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
@@ -468,16 +465,13 @@ class Model(AttributeContainer):
         kwargs.update(actions=actions)
 
         if in_transaction is not None:
+            kwargs[pythonic(RETURN_VALUES)] = NONE
             operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
             in_transaction.add_update_item(operation_kwargs)
             return
 
         data = self._get_connection().update_item(*args, **kwargs)
-        for name, value in data[ATTRIBUTES].items():
-            attr_name = self._dynamo_to_python_attr(name)
-            attr = self.get_attributes().get(attr_name)
-            if attr:
-                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
+        self.update_item_with_raw_data(data.get(ATTRIBUTES))
         return data
 
     def save(self, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
@@ -530,26 +524,26 @@ class Model(AttributeContainer):
         """
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
 
-        if in_transaction is None:
-            data = cls._get_connection().get_item(
-                hash_key,
+        if in_transaction is not None:
+            operation_kwargs = cls._get_connection().get_operation_kwargs_for_get_item(
+                hash_key=hash_key,
                 range_key=range_key,
                 consistent_read=consistent_read,
                 attributes_to_get=attributes_to_get
             )
-            if data:
-                item_data = data.get(ITEM)
-                if item_data:
-                    return cls.from_raw_data(item_data)
-            raise cls.DoesNotExist()
+            return in_transaction.add_get_item(cls, hash_key, range_key, operation_kwargs)
 
-        operation_kwargs = cls._get_connection().get_operation_kwargs_for_get_item(
-            hash_key=hash_key,
+        data = cls._get_connection().get_item(
+            hash_key,
             range_key=range_key,
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get
         )
-        in_transaction.add_get_item(cls, hash_key, range_key, operation_kwargs)
+        if data:
+            item_data = data.get(ITEM)
+            if item_data:
+                return cls.from_raw_data(item_data)
+        raise cls.DoesNotExist()
 
     @classmethod
     def from_raw_data(cls, data):
