@@ -195,6 +195,10 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_access_key_id', None)
                     if not hasattr(attr_obj, 'aws_secret_access_key'):
                         setattr(attr_obj, 'aws_secret_access_key', None)
+                    if not hasattr(attr_obj, 'ttl_field'):
+                        setattr(attr_obj, 'ttl_field', get_settings_value('ttl_field'))
+                    if not hasattr(attr_obj, 'ttl_seconds'):
+                        setattr(attr_obj, 'ttl_seconds', get_settings_value('ttl_seconds'))
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -456,6 +460,7 @@ class Model(AttributeContainer):
         Save this object to dynamodb
         """
         self._conditional_operator_check(conditional_operator)
+        self._set_ttl_field()
         args, kwargs = self._get_save_args()
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
@@ -877,7 +882,7 @@ class Model(AttributeContainer):
             if write_capacity_units is not None:
                 schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
             if billing_mode is not None:
-                schema[pythonic(BILLING_MODE)] = billing_mode            
+                schema[pythonic(BILLING_MODE)] = billing_mode
             index_data = cls._get_indexes()
             schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
             schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
@@ -1176,6 +1181,17 @@ class Model(AttributeContainer):
                 else:
                     cls._indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
         return cls._indexes
+
+    def _set_ttl_field(self):
+        """
+        Sets the TTL field specified in the Meta if the field is not set.
+        """
+        cls = type(self)
+        if cls.Meta.ttl_field and cls.Meta.ttl_seconds:
+            value = getattr(self, cls.Meta.ttl_field)
+            if value is None:
+                expires_at_s = int(time.time()) + cls.Meta.ttl_seconds
+                setattr(self, cls.Meta.ttl_field, expires_at_s)
 
     def _get_json(self):
         """
