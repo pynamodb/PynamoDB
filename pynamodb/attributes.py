@@ -1,12 +1,14 @@
 """
 PynamoDB attributes
 """
+import calendar
 import six
 from six import add_metaclass
 import json
+import time
 from base64 import b64encode, b64decode
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 import warnings
 from dateutil.parser import parse
 from dateutil.tz import tzutc
@@ -32,9 +34,15 @@ class Attribute(object):
                  range_key=False,
                  null=None,
                  default=None,
+                 default_for_new=None,
                  attr_name=None
                  ):
+        if default and default_for_new:
+            raise ValueError("An attribute cannot have both default and default_for_new values.")
         self.default = default
+        # This default is only set for new objects (ie: it's not set for re-saved objects)
+        self.default_for_new = default_for_new
+
         if null is not None:
             self.null = null
         self.is_hash_key = hash_key
@@ -212,14 +220,14 @@ class AttributeContainerMeta(type):
 @add_metaclass(AttributeContainerMeta)
 class AttributeContainer(object):
 
-    def __init__(self, **attributes):
+    def __init__(self, _previously_saved = False, **attributes):
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
         # to store the values that are bound to this instance. Attributes store values in the dictionary
         # using the `python_attr_name` as the dictionary key. "Raw" (i.e. non-subclassed) MapAttribute
         # instances do not have any Attributes defined and instead use this dictionary to store their
         # collection of name-value pairs.
         self.attribute_values = {}
-        self._set_defaults()
+        self._set_defaults(_previously_saved=_previously_saved)
         self._set_attributes(**attributes)
 
     @classmethod
@@ -250,12 +258,15 @@ class AttributeContainer(object):
         """
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
-    def _set_defaults(self):
+    def _set_defaults(self, _previously_saved = False):
         """
         Sets and fields that provide a default value
         """
         for name, attr in self.get_attributes().items():
-            default = attr.default
+            if _previously_saved:
+                default = attr.default
+            else:  # New objects can have a default_for_new value that prevents us from overwriting re-saved objects
+                default = attr.default if attr.default is not None else attr.default_for_new
             if callable(default):
                 value = default()
             else:
@@ -523,6 +534,43 @@ class NumberAttribute(Attribute):
         Decode numbers from JSON
         """
         return json.loads(value)
+
+
+class TTLAttribute(Attribute):
+    """
+    An attribute that signifies when how long this item can live for.
+    This can take in an int, timedelta, or datetime.  If a timedelta is passed in,
+    we assume the expiration time is datetime.utcnow() + timedelta.
+
+    It is recommended to pass in a timedelta.
+    """
+    attr_type = NUMBER
+
+    def serialize(self, value):
+        """
+        Return the epoch representation (in seconds).
+        """
+        if value is None:
+            return None
+        elif isinstance(value, int):
+            if value < time.time():  # Assume the value is number of seconds the object will live for
+                value = int(value + time.time())
+            return json.dumps(value)
+        elif isinstance(value, timedelta):
+            return json.dumps(int(time.time() + value.total_seconds()))
+        elif isinstance(value, datetime):
+            if value.tzinfo is None:
+                return json.dumps(int((value - datetime(1970,1,1)).total_seconds()))
+            return json.dumps(calendar.timegm(value.utctimetuple()))
+        else:
+            raise ValueError("TTLAttribute value must be an int, timedelta, or datetime.")
+
+    def deserialize(self, value):
+        """
+        Decode the epoch representation into a datetime
+        """
+        epoch = json.loads(value)
+        return datetime.utcfromtimestamp(epoch).replace(tzinfo=tzutc())
 
 
 class UTCDateTimeAttribute(Attribute):

@@ -3,10 +3,12 @@ pynamodb attributes tests
 """
 import json
 import six
+import time
 
 from base64 import b64encode
 from datetime import datetime
 
+from datetime import timedelta
 from dateutil.parser import parse
 from dateutil.tz import tzutc
 
@@ -16,7 +18,7 @@ import pytest
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
-    MapAttribute, MapAttributeMeta, ListAttribute, JSONAttribute, _get_value_for_deserialize,
+    MapAttribute, MapAttributeMeta, ListAttribute, JSONAttribute, TTLAttribute, _get_value_for_deserialize,
 )
 from pynamodb.constants import (
     DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
@@ -492,6 +494,55 @@ class TestBooleanAttribute:
         assert attr.deserialize('0') is True
         assert attr.deserialize(True) is True
         assert attr.deserialize(False) is False
+
+
+class TestTTLAttribute:
+    """
+    Test TTLAttribute.
+    """
+    def test_default_and_default_for_new(self):
+        with pytest.raises(ValueError):
+            attr = TTLAttribute(default=1, default_for_new=2)
+
+    def test_attr_not_none(self):
+        attr = TTLAttribute()
+        assert attr is not None
+
+    @patch('time.time')
+    def test_int_less_than_current_time_ttl(self, mock_time):
+        mock_time.side_effect = [1559692800, 1559692800]  # 2019-06-05 00:00:00 UTC
+        attr = TTLAttribute(default_for_new=60)
+        s = attr.serialize(60)
+        assert s == '1559692860'
+        assert attr.deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+
+    @patch('time.time')
+    def test_int_greater_than_current_time_ttl(self, mock_time):
+        mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
+        attr = TTLAttribute()
+        s = attr.serialize(1559692860)
+        assert s == '1559692860'
+        assert attr.deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+
+    @patch('time.time')
+    def test_timedelta_ttl(self, mock_time):
+        mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
+        attr = TTLAttribute()
+        s = attr.serialize(timedelta(seconds=60))
+        assert s == '1559692860'
+        assert attr.deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+
+    def test_datetime_no_tz_ttl(self):
+        attr = TTLAttribute()
+        s = attr.serialize(datetime(2019, 6, 5, 0, 1))
+        assert s == '1559692860'
+        assert attr.deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+
+    def test_datetime_with_tz_ttl(self):
+        attr = TTLAttribute()
+        s = attr.serialize(datetime(2019, 6, 5, 0, 1, tzinfo=UTC))
+        assert s == '1559692860'
+        assert attr.deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
 
 
 class TestJSONAttribute:

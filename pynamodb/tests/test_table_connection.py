@@ -110,6 +110,24 @@ class ConnectionTestCase(TestCase):
             kwargs = req.call_args[0][1]
             self.assertEqual(kwargs, params)
 
+    def test_update_time_to_live(self):
+        """
+        TableConnection.update_time_to_live
+        """
+        params = {
+            'TableName': 'ci-table',
+            'TimeToLiveSpecification': {
+                'AttributeName': 'ttl_attr',
+                'Enabled': True,
+            }
+        }
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), None
+            conn = TableConnection(self.test_table_name)
+            conn.update_time_to_live('ttl_attr')
+            kwargs = req.call_args[0][1]
+            self.assertEqual(kwargs, params)
+
     def test_delete_table(self):
         """
         TableConnection.delete_table
