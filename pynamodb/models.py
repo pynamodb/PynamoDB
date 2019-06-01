@@ -10,7 +10,8 @@ import warnings
 
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
-from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute
+from pynamodb.attributes import (
+    Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute, NumberAttribute)
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -1189,6 +1190,8 @@ class Model(AttributeContainer):
         Sets the TTL field specified in the Meta if the field is not set.
         """
         cls = type(self)
+        if not isinstance(getattr(cls, cls.Meta.ttl_attribute), NumberAttribute):
+            raise ValueError("ttl_attribute must be a NumberAttribute. Dynamo TTLs are epoch.")
         if cls.Meta.ttl_attribute and cls.Meta.ttl_seconds:
             value = getattr(self, cls.Meta.ttl_attribute)
             if value is None:
