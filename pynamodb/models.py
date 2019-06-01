@@ -195,10 +195,12 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_access_key_id', None)
                     if not hasattr(attr_obj, 'aws_secret_access_key'):
                         setattr(attr_obj, 'aws_secret_access_key', None)
-                    if not hasattr(attr_obj, 'ttl_field'):
-                        setattr(attr_obj, 'ttl_field', get_settings_value('ttl_field'))
+                    if not hasattr(attr_obj, 'ttl_attribute'):
+                        setattr(attr_obj, 'ttl_attribute', None)
                     if not hasattr(attr_obj, 'ttl_seconds'):
-                        setattr(attr_obj, 'ttl_seconds', get_settings_value('ttl_seconds'))
+                        setattr(attr_obj, 'ttl_seconds', None)
+                    if attr_obj.ttl_seconds is not None and not isinstance(attr_obj.ttl_seconds, int):
+                        raise ValueError("DynamoDB expects ttl_seconds to be epoch.")
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -460,7 +462,7 @@ class Model(AttributeContainer):
         Save this object to dynamodb
         """
         self._conditional_operator_check(conditional_operator)
-        self._set_ttl_field()
+        self._set_default_ttl()
         args, kwargs = self._get_save_args()
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
@@ -1182,16 +1184,16 @@ class Model(AttributeContainer):
                     cls._indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
         return cls._indexes
 
-    def _set_ttl_field(self):
+    def _set_default_ttl(self):
         """
         Sets the TTL field specified in the Meta if the field is not set.
         """
         cls = type(self)
-        if cls.Meta.ttl_field and cls.Meta.ttl_seconds:
-            value = getattr(self, cls.Meta.ttl_field)
+        if cls.Meta.ttl_attribute and cls.Meta.ttl_seconds:
+            value = getattr(self, cls.Meta.ttl_attribute)
             if value is None:
                 expires_at_s = int(time.time()) + cls.Meta.ttl_seconds
-                setattr(self, cls.Meta.ttl_field, expires_at_s)
+                setattr(self, cls.Meta.ttl_attribute, expires_at_s)
 
     def _get_json(self):
         """
