@@ -5,6 +5,7 @@ PynamoDB Connection classes
 from pynamodb.connection.base import Connection
 from pynamodb.constants import DEFAULT_BILLING_MODE
 
+
 class TableConnection(object):
     """
     A higher level abstraction over botocore

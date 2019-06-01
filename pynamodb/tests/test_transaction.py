@@ -1,6 +1,5 @@
 import pytest
 import six
-from pynamodb.exceptions import GetError
 
 from pynamodb.connection import transactions
 from pynamodb.connection.transactions import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite

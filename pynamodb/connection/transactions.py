@@ -1,4 +1,4 @@
-from pynamodb.exceptions import GetError, DoesNotExist
+from pynamodb.exceptions import GetError
 
 from pynamodb.connection.base import Connection
 from pynamodb.constants import (

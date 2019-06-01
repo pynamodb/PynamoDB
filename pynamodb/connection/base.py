@@ -44,8 +44,9 @@ from pynamodb.constants import (
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, UPDATE_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
     CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND,
-    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, PROVISIONED_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
-    TRANSACT_WRITE_ITEMS, TRANSACT_ITEMS_LIMIT,TRANSACT_ITEMS, TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS)
+    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
+    TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS
+)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -983,7 +984,12 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise UpdateError("Failed to update item: {0}".format(e), e)
 
-    def get_operation_kwargs_for_condition_check(self, table_name, condition, hash_key, range_key=None, return_values=None):
+    def get_operation_kwargs_for_condition_check(self,
+                                                 table_name,
+                                                 condition,
+                                                 hash_key,
+                                                 range_key=None,
+                                                 return_values=None):
         operation_kwargs = {}
         name_placeholders = {}
         expression_attribute_values = {}

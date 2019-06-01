@@ -1,8 +1,7 @@
 from pynamodb.connection.transactions import TransactGet, TransactWrite
 from .attributes import Attribute
 from .exceptions import DoesNotExist as DoesNotExist
-from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Text, Union, \
-    NoReturn
+from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Text, Union
 
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
@@ -70,7 +69,7 @@ class Model(metaclass=MetaModel):
         scan_index_forward: Optional[Any] = ...,
         conditional_operator: Optional[Text] = ...,
         limit: Optional[int] = ...,
-        last_evaluated_key: Optional[Any] = ...,
+        last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
         attributes_to_get: Optional[Iterable[Text]] = ...,
         page_size: Optional[int] = ...,
         **filters
@@ -84,7 +83,7 @@ class Model(metaclass=MetaModel):
         total_segments: Optional[int] = ...,
         limit: Optional[int] = ...,
         conditional_operator: Optional[Text] = ...,
-        last_evaluated_key: Optional[Any] = ...,
+        last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
         page_size: Optional[int] = ...,
         timeout_seconds: Optional[int] = ...,
         read_capacity_to_consume_per_second: int = ...,
@@ -95,6 +94,7 @@ class Model(metaclass=MetaModel):
         index_name: Optional[str] = ...,
         **filters: Any
     ) -> Iterator[_T]: ...
+
     @classmethod
     def scan(
         cls: Type[_T],
@@ -103,7 +103,7 @@ class Model(metaclass=MetaModel):
         total_segments: Optional[int] = ...,
         limit: Optional[int] = ...,
         conditional_operator: Optional[Text] = ...,
-        last_evaluated_key: Optional[Any] = ...,
+        last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
         page_size: Optional[int] = ...,
         **filters
     ) -> ResultIterator[_T]: ...
