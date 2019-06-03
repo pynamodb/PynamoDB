@@ -913,7 +913,7 @@ class ModelTestCase(TestCase):
             (UserModel.user_id == 'bar') & UserModel.email.contains('@'),
             in_transaction=mock_transaction
         )
-        assert response is None
+        assert response == {}
         mock_transaction.add_delete_item.assert_called_with(
             model=item,
             operation_kwargs={
@@ -1168,7 +1168,7 @@ class ModelTestCase(TestCase):
             in_transaction=mock_transaction
         )
 
-        assert response is None
+        assert response == {}
         mock_transaction.add_update_item.assert_called_with(
             model=item,
             operation_kwargs={
@@ -2014,7 +2014,7 @@ class ModelTestCase(TestCase):
         mock_transaction = MagicMock()
         response = item.save(in_transaction=mock_transaction)
 
-        assert response is None
+        assert response == {}
         mock_transaction.add_save_item.assert_called_with(
             model=item,
             operation_kwargs={

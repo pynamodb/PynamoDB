@@ -376,7 +376,7 @@ class Model(AttributeContainer):
         if in_transaction is not None:
             operation_kwargs = self._get_connection().get_operation_kwargs_for_delete_item(*args, **kwargs)
             in_transaction.add_delete_item(model=self, operation_kwargs=operation_kwargs)
-            return
+            return {}
         return self._get_connection().delete_item(*args, **kwargs)
 
     def update_item_with_raw_data(self, data):
@@ -483,7 +483,7 @@ class Model(AttributeContainer):
             kwargs[pythonic(RETURN_VALUES)] = NONE
             operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
             in_transaction.add_update_item(model=self, operation_kwargs=operation_kwargs)
-            return
+            return {}
 
         data = self._get_connection().update_item(*args, **kwargs)
         self.update_item_with_raw_data(data.get(ATTRIBUTES))
@@ -503,7 +503,7 @@ class Model(AttributeContainer):
         if in_transaction is not None:
             operation_kwargs = self._get_connection().get_operation_kwargs_for_put_item(*args, **kwargs)
             in_transaction.add_save_item(model=self, operation_kwargs=operation_kwargs)
-            return
+            return {}
         return self._get_connection().put_item(*args, **kwargs)
 
     def refresh(self, consistent_read=False):
