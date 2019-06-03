@@ -113,13 +113,11 @@ class TransactWrite(Transaction):
     def add_condition_check_item(self, model_cls, hash_key, range_key, operation_kwargs):
         condition_item = self.format_item(CONDITION_CHECK, TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model_cls(), hash_key, range_key)
-        self._proxy_models.append(None)
         self.add_item(condition_item)
 
     def add_delete_item(self, model, operation_kwargs):
         delete_item = self.format_item(DELETE, TRANSACTION_DELETE_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
-        self._proxy_models.append(None)
         self.add_item(delete_item)
 
     def add_save_item(self, model, operation_kwargs):
@@ -136,8 +134,7 @@ class TransactWrite(Transaction):
 
     def _update_proxy_models(self):
         for model in self._proxy_models:
-            if model is not None:
-                model.refresh()
+            model.refresh()
 
     def commit(self):
         self._connection.transact_write_items(self._operation_kwargs)
