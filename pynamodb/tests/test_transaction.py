@@ -2,7 +2,8 @@ import pytest
 import six
 
 from pynamodb.connection import transactions
-from pynamodb.connection.transactions import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite
+from pynamodb.connection.transactions import Transaction, TransactGet, TransactWrite
+from pynamodb.constants import TRANSACT_ITEMS_LIMIT
 from pynamodb.exceptions import GetError
 
 if six.PY3:
@@ -31,6 +32,11 @@ class TestTransaction:
         mock_connection.assert_called_with(override_connection=False, region='us-east-1')
         assert t._operation_kwargs == {'TransactItems': []}
 
+    def test_commit__not_implemented(self):
+        t = Transaction()
+        with pytest.raises(NotImplementedError):
+            t.commit()
+
     def test_format_item(self):
         method = 'Foo'
         valid_parameters = ['a', 'c', 'e', 'ReturnValuesOnConditionCheckFailure']
@@ -42,13 +48,21 @@ class TestTransaction:
         item = self.transaction.format_item(method, valid_parameters, {'a': 1, 'b': 2, 'c': 3})
         assert item == {'Foo': {'a': 1, 'c': 3}}
 
+    def test_hash_model__duplicate(self, mocker):
+        mock_model = mocker.MagicMock()
+        mock_model.__class__.__name__ = 'Mock'
+        t = Transaction()
+        t._hash_model(mock_model, 1, 2)
+        with pytest.raises(ValueError):
+            t._hash_model(mock_model, 1, 2)
+
     def test_add_item(self):
         self.transaction.add_item({})
         assert len(self.transaction.transact_items) == 1
 
-        for _ in range(TRANSACT_ITEM_LIMIT - 1):
+        for _ in range(TRANSACT_ITEMS_LIMIT - 1):
             self.transaction.add_item({})
-        assert len(self.transaction.transact_items) == TRANSACT_ITEM_LIMIT
+        assert len(self.transaction.transact_items) == TRANSACT_ITEMS_LIMIT
 
         # value error for hitting limit
         with pytest.raises(ValueError):
@@ -64,6 +78,9 @@ class TestTransactGet:
         t = TransactGet()
         with pytest.raises(GetError):
             t.get_results_in_order()
+
+        t._results = []
+        assert t.get_results_in_order() == []
 
     def test_commit(self, mocker):
         mock_transaction = mocker.patch.object(transactions.Connection, 'transact_get_items', return_value={

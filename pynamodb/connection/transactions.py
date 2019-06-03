@@ -2,69 +2,21 @@ from pynamodb.exceptions import GetError
 
 from pynamodb.connection.base import Connection
 from pynamodb.constants import (
-    TABLE_NAME, PROJECTION_EXPRESSION, UPDATE, GET, PUT, DELETE, TRANSACT_ITEMS, CLIENT_REQUEST_TOKEN, CONDITION_CHECK,
-    CONDITION_EXPRESSION, EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, UPDATE_EXPRESSION,
-    RETURN_VALUES_ON_CONDITION_FAILURE, ITEM, KEY, RETURN_VALUES, RESPONSES
+    UPDATE, GET, PUT, DELETE, TRANSACT_ITEMS, CLIENT_REQUEST_TOKEN, CONDITION_CHECK,
+    RETURN_VALUES_ON_CONDITION_FAILURE, ITEM, RETURN_VALUES, RESPONSES, TRANSACT_ITEMS_LIMIT,
+    TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, TRANSACTION_DELETE_REQUEST_PARAMETERS,
+    TRANSACTION_GET_REQUEST_PARAMETERS, TRANSACTION_PUT_REQUEST_PARAMETERS, TRANSACTION_UPDATE_REQUEST_PARAMETERS
 )
 
 PUT = PUT.lower().capitalize()
 DELETE = DELETE.lower().capitalize()
-
-# each transaction can only support 10 actions at a time
-# https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-dynamodb-transactions
-TRANSACT_ITEM_LIMIT = 10
-
-CONDITION_CHECK_REQUEST_PARAMETERS = {
-    CONDITION_EXPRESSION,
-    EXPRESSION_ATTRIBUTE_NAMES,
-    EXPRESSION_ATTRIBUTE_VALUES,
-    KEY,
-    RETURN_VALUES_ON_CONDITION_FAILURE,
-    TABLE_NAME,
-}
-
-DELETE_REQUEST_PARAMETERS = {
-    CONDITION_EXPRESSION,
-    EXPRESSION_ATTRIBUTE_NAMES,
-    EXPRESSION_ATTRIBUTE_VALUES,
-    KEY,
-    RETURN_VALUES_ON_CONDITION_FAILURE,
-    TABLE_NAME,
-}
-
-GET_REQUEST_PARAMETERS = {
-    KEY,
-    TABLE_NAME,
-    EXPRESSION_ATTRIBUTE_NAMES,
-    EXPRESSION_ATTRIBUTE_VALUES,
-    PROJECTION_EXPRESSION,
-}
-
-PUT_REQUEST_PARAMETERS = {
-    CONDITION_EXPRESSION,
-    EXPRESSION_ATTRIBUTE_NAMES,
-    EXPRESSION_ATTRIBUTE_VALUES,
-    ITEM,
-    RETURN_VALUES_ON_CONDITION_FAILURE,
-    TABLE_NAME,
-}
-
-UPDATE_REQUEST_PARAMETERS = {
-    CONDITION_EXPRESSION,
-    EXPRESSION_ATTRIBUTE_NAMES,
-    EXPRESSION_ATTRIBUTE_VALUES,
-    KEY,
-    RETURN_VALUES_ON_CONDITION_FAILURE,
-    TABLE_NAME,
-    UPDATE_EXPRESSION,
-}
 
 
 class Transaction(object):
 
     _connection = None
     _hashed_models = None
-    _item_limit = TRANSACT_ITEM_LIMIT
+    _item_limit = TRANSACT_ITEMS_LIMIT
     _operation_kwargs = None
     _proxy_models = None
     _results = None
@@ -78,6 +30,15 @@ class Transaction(object):
         self._connection = _get_connection(override_connection=override_connection, **connection_kwargs)
         if return_consumed_capacity is not None:
             self._operation_kwargs.update(self._connection.get_consumed_capacity_map(return_consumed_capacity))
+
+    def commit(self):
+        raise NotImplementedError()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.commit()
 
     @staticmethod
     def _get_key(model_cls, hash_key, range_key=None):
@@ -111,7 +72,7 @@ class Transaction(object):
 class TransactGet(Transaction):
 
     def add_get_item(self, model_cls, hash_key, range_key, operation_kwargs):
-        get_item = self.format_item(GET, GET_REQUEST_PARAMETERS, operation_kwargs)
+        get_item = self.format_item(GET, TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
         proxy_model = model_cls()
         self._hash_model(proxy_model, hash_key, range_key)
         self._proxy_models.append(proxy_model)
@@ -150,25 +111,25 @@ class TransactWrite(Transaction):
             self._operation_kwargs.update(self._connection.get_item_collection_map(return_item_collection_metrics))
 
     def add_condition_check_item(self, model_cls, hash_key, range_key, operation_kwargs):
-        condition_item = self.format_item(CONDITION_CHECK, CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
+        condition_item = self.format_item(CONDITION_CHECK, TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model_cls(), hash_key, range_key)
         self._proxy_models.append(None)
         self.add_item(condition_item)
 
     def add_delete_item(self, model, operation_kwargs):
-        delete_item = self.format_item(DELETE, DELETE_REQUEST_PARAMETERS, operation_kwargs)
+        delete_item = self.format_item(DELETE, TRANSACTION_DELETE_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
         self._proxy_models.append(None)
         self.add_item(delete_item)
 
     def add_save_item(self, model, operation_kwargs):
-        put_item = self.format_item(PUT, PUT_REQUEST_PARAMETERS, operation_kwargs)
+        put_item = self.format_item(PUT, TRANSACTION_PUT_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
         self._proxy_models.append(model)
         self.add_item(put_item)
 
     def add_update_item(self, model, operation_kwargs):
-        update_item = self.format_item(UPDATE, UPDATE_REQUEST_PARAMETERS, operation_kwargs)
+        update_item = self.format_item(UPDATE, TRANSACTION_UPDATE_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
         self._proxy_models.append(model)
         self.add_item(update_item)

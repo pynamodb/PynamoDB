@@ -151,12 +151,11 @@ class TestTransactionIntegration:
         BankStatement(2, balance=100).save()
 
         # get users and statements we just created and assign them to variables
-        transaction = TransactGet()
-        user1 = User.get(1, in_transaction=transaction)
-        statement1 = BankStatement.get(1, in_transaction=transaction)
-        user2 = User.get(2, in_transaction=transaction)
-        statement2 = BankStatement.get(2, in_transaction=transaction)
-        transaction.commit()
+        with TransactGet() as transaction:
+            user1 = User.get(1, in_transaction=transaction)
+            statement1 = BankStatement.get(1, in_transaction=transaction)
+            user2 = User.get(2, in_transaction=transaction)
+            statement2 = BankStatement.get(2, in_transaction=transaction)
 
         assert user1.user_id == statement1.user_id == 1
         assert statement1.balance == 0
@@ -175,39 +174,35 @@ class TestTransactionIntegration:
         assert statement1.balance == 0
         assert statement2.balance == 100
 
-        # let the users send money to one another
-        created_at = datetime.now()
-        transaction = TransactWrite()
-        # create a credit line item to user 1's account
-        LineItem(user_id=1, amount=50, currency='USD').save(
-            condition=(LineItem.user_id.does_not_exist()),
-            in_transaction=transaction
-        )
-        # create a debit to user 2's account
-        LineItem(user_id=2, amount=-50, currency='USD').save(
-            condition=(LineItem.user_id.does_not_exist()),
-            in_transaction=transaction
-        )
+        with TransactWrite() as transaction:
+            # let the users send money to one another
+            created_at = datetime.now()
+            # create a credit line item to user 1's account
+            LineItem(user_id=1, amount=50, currency='USD').save(
+                condition=(LineItem.user_id.does_not_exist()),
+                in_transaction=transaction
+            )
+            # create a debit to user 2's account
+            LineItem(user_id=2, amount=-50, currency='USD').save(
+                condition=(LineItem.user_id.does_not_exist()),
+                in_transaction=transaction
+            )
 
-        # add credit to user 1's account
-        statement1.balance += 50
-        statement1.save(in_transaction=transaction)
-        # debit from user 2's account if they have enough in the bank
-        statement2.balance -= 50
-        statement2.save(condition=(BankStatement.balance >= 50), in_transaction=transaction)
-        transaction.commit()
+            # add credit to user 1's account
+            statement1.balance += 50
+            statement1.save(in_transaction=transaction)
+            # debit from user 2's account if they have enough in the bank
+            statement2.balance -= 50
+            statement2.save(condition=(BankStatement.balance >= 50), in_transaction=transaction)
 
-        statement1.refresh()
-        statement2.refresh()
         assert statement1.balance == statement2.balance == 50
 
     @pytest.mark.ddblocal
     def test_transact_write__one_of_each(self):
-        transaction = TransactWrite()
-        User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
-        User(2).delete(in_transaction=transaction)
-        LineItem(4, amount=100, currency='USD').save(condition=(LineItem.user_id.does_not_exist()))
-        transaction.commit()
+        with TransactWrite() as transaction:
+            User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
+            User(2).delete(in_transaction=transaction)
+            LineItem(4, amount=100, currency='USD').save(condition=(LineItem.user_id.does_not_exist()))
 
         # confirming transaction correct and successful
         assert User.get(1)
