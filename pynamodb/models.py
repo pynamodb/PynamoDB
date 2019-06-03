@@ -11,7 +11,7 @@ import warnings
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.attributes import (
-    Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute, NumberAttribute)
+    Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute, TTLAttribute)
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -196,12 +196,6 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_access_key_id', None)
                     if not hasattr(attr_obj, 'aws_secret_access_key'):
                         setattr(attr_obj, 'aws_secret_access_key', None)
-                    if not hasattr(attr_obj, 'ttl_attribute'):
-                        setattr(attr_obj, 'ttl_attribute', None)
-                    if not hasattr(attr_obj, 'ttl_seconds'):
-                        setattr(attr_obj, 'ttl_seconds', None)
-                    if attr_obj.ttl_seconds is not None and not isinstance(attr_obj.ttl_seconds, int):
-                        raise ValueError("DynamoDB expects ttl_seconds to be epoch.")
                 elif issubclass(attr_obj.__class__, (Index, )):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -209,6 +203,10 @@ class MetaModel(AttributeContainerMeta):
                 elif issubclass(attr_obj.__class__, (Attribute, )):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
+
+            ttl_attributes = [name for name, attr_obj in attrs.items() if isinstance(attr_obj, TTLAttribute)]
+            if len(ttl_attributes) > 1:
+                raise ValueError("1 TTLAttribute per model is allowed. {} are TTLAttributes".format(ttl_attributes))
 
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
@@ -239,7 +237,7 @@ class Model(AttributeContainer):
     _index_classes = None
     DoesNotExist = DoesNotExist
 
-    def __init__(self, hash_key=None, range_key=None, **attributes):
+    def __init__(self, hash_key=None, range_key=None, __previously_saved=False, **attributes):
         """
         :param hash_key: Required. The hash key for this object.
         :param range_key: Only required if the table has a range key attribute.
@@ -254,7 +252,7 @@ class Model(AttributeContainer):
                     "This table has no range key, but a range key value was provided: {0}".format(range_key)
                 )
             attributes[self._dynamo_to_python_attr(range_keyname)] = range_key
-        super(Model, self).__init__(**attributes)
+        super(Model, self).__init__(__previously_saved, **attributes)
 
     @classmethod
     def has_map_or_list_attributes(cls):
@@ -463,7 +461,6 @@ class Model(AttributeContainer):
         Save this object to dynamodb
         """
         self._conditional_operator_check(conditional_operator)
-        self._set_default_ttl()
         args, kwargs = self._get_save_args()
         if len(expected_values):
             kwargs.update(expected=self._build_expected_values(expected_values, PUT_FILTER_OPERATOR_MAP))
@@ -530,7 +527,7 @@ class Model(AttributeContainer):
 
         hash_key = hash_key_attr.deserialize(hash_key)
         args = (hash_key,)
-        kwargs = {}
+        kwargs = {'__previously_saved': True}
         if range_keyname:
             range_key_attr = cls.get_attributes().get(cls._dynamo_to_python_attr(range_keyname))
             range_key_type = cls._get_meta_data().get_attribute_type(range_keyname)
@@ -905,11 +902,15 @@ class Model(AttributeContainer):
                 if status:
                     data = status.get(TABLE_STATUS)
                     if data == ACTIVE:
-                        return
+                        break
                     else:
                         time.sleep(2)
                 else:
                     raise TableError("No TableStatus returned for table")
+
+        ttl_attribute = cls._ttl_attribute()
+        if ttl_attribute:
+            cls._get_connection().update_time_to_live(cls.Meta.table_name, ttl_attribute.attr_name)
 
     @classmethod
     def dumps(cls):
@@ -959,7 +960,7 @@ class Model(AttributeContainer):
             attributes[range_keyname] = {
                 range_keytype: range_key
             }
-        item = cls()
+        item = cls(__previously_saved=True)
         item._deserialize(attributes)
         return item
 
@@ -1185,19 +1186,6 @@ class Model(AttributeContainer):
                     cls._indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
         return cls._indexes
 
-    def _set_default_ttl(self):
-        """
-        Sets the TTL field specified in the Meta if the field is not set.
-        """
-        cls = type(self)
-        if not isinstance(getattr(cls, cls.Meta.ttl_attribute), NumberAttribute):
-            raise ValueError("ttl_attribute must be a NumberAttribute. Dynamo TTLs are epoch.")
-        if cls.Meta.ttl_attribute and cls.Meta.ttl_seconds:
-            value = getattr(self, cls.Meta.ttl_attribute)
-            if value is None:
-                expires_at_s = int(time.time()) + cls.Meta.ttl_seconds
-                setattr(self, cls.Meta.ttl_attribute, expires_at_s)
-
     def _get_json(self):
         """
         Returns a Python object suitable for serialization
@@ -1252,6 +1240,17 @@ class Model(AttributeContainer):
         attributes = cls.get_attributes()
         hash_keyname = cls._get_meta_data().hash_keyname
         return attributes[cls._dynamo_to_python_attr(hash_keyname)]
+
+    @classmethod
+    def _ttl_attribute(cls):
+        """
+        Returns the ttl attribute for this table
+        """
+        attributes = cls.get_attributes()
+        for attr_obj in attributes.values():
+            if isinstance(attr_obj, TTLAttribute):
+                return attr_obj
+        return None
 
     def _get_keys(self):
         """
