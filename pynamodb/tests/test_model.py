@@ -913,8 +913,10 @@ class ModelTestCase(TestCase):
             (UserModel.user_id == 'bar') & UserModel.email.contains('@'),
             in_transaction=mock_transaction
         )
-        assert response is True
-        mock_transaction.add_delete_item.assert_called_with({
+        assert response is None
+        mock_transaction.add_delete_item.assert_called_with(
+            model=item,
+            operation_kwargs={
             'Key': {
                 'user_id': {
                     'S': 'bar'
@@ -966,15 +968,20 @@ class ModelTestCase(TestCase):
             in_transaction=mock_transaction,
             condition=(UserModel.user_id.does_not_exist())
         )
-        mock_transaction.add_condition_check_item.assert_called_with({
-            'ConditionExpression': 'attribute_not_exists (#0)',
-            'ExpressionAttributeNames': {'#0': 'user_id'},
-            'TableName': 'UserModel',
-            'Key': {
-                'user_name': {'S': 'foo'},
-                'user_id': {'S': 'bar'}
+        mock_transaction.add_condition_check_item.assert_called_with(
+            hash_key='foo',
+            model_cls=UserModel,
+            range_key='bar',
+            operation_kwargs={
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {'#0': 'user_id'},
+                'TableName': 'UserModel',
+                'Key': {
+                    'user_name': {'S': 'foo'},
+                    'user_id': {'S': 'bar'}
+                }
             }
-        })
+        )
 
     def test_update(self):
         """
@@ -1162,7 +1169,9 @@ class ModelTestCase(TestCase):
         )
 
         assert response is None
-        mock_transaction.add_update_item.assert_called_with({
+        mock_transaction.add_update_item.assert_called_with(
+            model=item,
+            operation_kwargs={
             'TableName': 'SimpleModel',
             'Key': {
                 'user_name': {
@@ -2006,7 +2015,9 @@ class ModelTestCase(TestCase):
         response = item.save(in_transaction=mock_transaction)
 
         assert response is None
-        mock_transaction.add_save_item.assert_called_with({
+        mock_transaction.add_save_item.assert_called_with(
+            model=item,
+            operation_kwargs={
             'TableName': 'UserModel',
             'Item': {
                 'callable_field': {

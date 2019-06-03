@@ -3,13 +3,13 @@ import six
 
 from pynamodb.connection import transactions
 from pynamodb.connection.transactions import Transaction, TRANSACT_ITEM_LIMIT, TransactGet, TransactWrite
+from pynamodb.exceptions import GetError
 
 if six.PY3:
     from unittest.mock import MagicMock
 else:
     from mock import MagicMock
 
-# 118, 128-130, 146, 148, 176
 
 class TestTransaction:
 
@@ -31,13 +31,6 @@ class TestTransaction:
         mock_connection.assert_called_with(override_connection=False, region='us-east-1')
         assert t._operation_kwargs == {'TransactItems': []}
 
-    def test__len__(self):
-        self.transaction._operation_kwargs['TransactItems'] = []
-        assert len(self.transaction) == 0
-
-        self.transaction._operation_kwargs['TransactItems'] = [{}, {}, {}]
-        assert len(self.transaction) == 3
-
     def test_format_item(self):
         method = 'Foo'
         valid_parameters = ['a', 'c', 'e', 'ReturnValuesOnConditionCheckFailure']
@@ -51,12 +44,13 @@ class TestTransaction:
 
     def test_add_item(self):
         self.transaction.add_item({})
-        assert len(self.transaction) == 1
+        assert len(self.transaction.transact_items) == 1
 
         for _ in range(TRANSACT_ITEM_LIMIT - 1):
             self.transaction.add_item({})
-        assert len(self.transaction) == TRANSACT_ITEM_LIMIT
+        assert len(self.transaction.transact_items) == TRANSACT_ITEM_LIMIT
 
+        # value error for hitting limit
         with pytest.raises(ValueError):
             self.transaction.add_item({})
 
@@ -65,6 +59,11 @@ class TestTransactGet:
 
     def setup(self):
         self.mock_model_cls = MagicMock(__name__='MockModel')
+
+    def test_get_results_in_order__get_error(self):
+        t = TransactGet()
+        with pytest.raises(GetError):
+            t.get_results_in_order()
 
     def test_commit(self, mocker):
         mock_transaction = mocker.patch.object(transactions.Connection, 'transact_get_items', return_value={
@@ -88,14 +87,31 @@ class TestTransactWrite:
             'TransactItems': [],
         }
 
+    def test_validate_client_request_token(self):
+        t = TransactWrite()
+        with pytest.raises(ValueError):
+            t._validate_client_request_token(123)
+
+        with pytest.raises(ValueError):
+            too_long = 'i' * 40
+            assert len(too_long) == 40
+            t._validate_client_request_token(too_long)
+
+    def test_update_proxy_models(self, mocker):
+        t = TransactWrite()
+        mock_model = mocker.MagicMock()
+        t._proxy_models = [mock_model for _ in range(5)]
+        t._update_proxy_models()
+        assert mock_model.refresh.call_count == 5
+
     def test_commit(self, mocker):
         mock_transaction = mocker.patch.object(transactions.Connection, 'transact_write_items')
         t = TransactWrite()
 
-        t.add_condition_check_item({})
-        t.add_delete_item({})
-        t.add_save_item({})
-        t.add_update_item({})
+        t.add_condition_check_item(mocker.MagicMock(), 1, 2, {})
+        t.add_delete_item(mocker.MagicMock(), {})
+        t.add_save_item(mocker.MagicMock(), {})
+        t.add_update_item(mocker.MagicMock(), {})
 
         t.commit()
         mock_transaction.assert_called_once_with({

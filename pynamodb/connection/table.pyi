@@ -50,7 +50,6 @@ class TableConnection:
 
     def get_operation_kwargs_for_condition_check(
             self,
-            table_name: Text,
             condition: Optional[Condition],
             hash_key: Any,
             range_key: Optional[Any] = ...,
