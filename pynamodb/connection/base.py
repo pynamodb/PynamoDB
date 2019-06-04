@@ -629,10 +629,9 @@ class Connection(object):
             }
         }
         try:
-            data = self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
+            return self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to update TTL on table: {0}".format(e), e)
-        return data
 
     def delete_table(self, table_name):
         """

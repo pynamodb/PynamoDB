@@ -204,9 +204,9 @@ class MetaModel(AttributeContainerMeta):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
-            ttl_attributes = [name for name, attr_obj in attrs.items() if isinstance(attr_obj, TTLAttribute)]
-            if len(ttl_attributes) > 1:
-                raise ValueError("1 TTLAttribute per model is allowed. {} are TTLAttributes".format(ttl_attributes))
+            ttl_attr_names = [name for name, attr_obj in attrs.items() if isinstance(attr_obj, TTLAttribute)]
+            if len(ttl_attr_names) > 1:
+                raise ValueError("The model has more than one TTL attribute: {}".format(", ".join(ttl_attr_names)))
 
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
