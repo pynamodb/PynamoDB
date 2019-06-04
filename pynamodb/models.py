@@ -910,7 +910,7 @@ class Model(AttributeContainer):
 
         ttl_attribute = cls._ttl_attribute()
         if ttl_attribute:
-            cls._get_connection().update_time_to_live(cls.Meta.table_name, ttl_attribute.attr_name)
+            cls._get_connection().update_time_to_live(ttl_attribute.attr_name)
 
     @classmethod
     def dumps(cls):

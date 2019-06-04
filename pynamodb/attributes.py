@@ -1,6 +1,7 @@
 """
 PynamoDB attributes
 """
+import calendar
 import six
 from six import add_metaclass
 import json
@@ -556,7 +557,7 @@ class TTLAttribute(Attribute):
         elif isinstance(value, timedelta):
             return json.dumps(int(time.time() + value.total_seconds()))
         elif isinstance(value, datetime):
-            return json.dumps(int((value - datetime(1970,1,1, tzinfo=tzutc())).total_seconds()))
+            return json.dumps(calendar.timegm(value.utctimetuple()))
         else:
             raise ValueError("TTLAttribute value must be an int, timedelta, or datetime.")
 
