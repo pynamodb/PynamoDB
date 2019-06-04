@@ -45,8 +45,9 @@ from pynamodb.constants import (
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
     CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND,
     AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
-    TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS,
-    CLIENT_REQUEST_TOKEN, TRANSACT_ITEMS, GET, CONDITION_CHECK)
+    TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS, CLIENT_REQUEST_TOKEN, TRANSACT_ITEMS, TRANSACT_CONDITION_CHECK,
+    TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE
+)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -1069,15 +1070,13 @@ class Connection(object):
         """
         transact_items = []
         transact_items.extend([
-            {CONDITION_CHECK: item} for item in condition_check_items
+            {TRANSACT_CONDITION_CHECK: item} for item in condition_check_items
         ])
-        transact_delete_operator = DELETE.lower().capitalize()
         transact_items.extend([
-            {transact_delete_operator: item} for item in delete_items
+            {TRANSACT_DELETE: item} for item in delete_items
         ])
-        transact_put_operator = PUT.lower().capitalize()
         transact_items.extend([
-            {transact_put_operator: item} for item in put_items
+            {TRANSACT_PUT: item} for item in put_items
         ])
         transact_items.extend([
             {UPDATE: item} for item in update_items
@@ -1102,7 +1101,7 @@ class Connection(object):
         """
         operation_kwargs = {
             TRANSACT_ITEMS: [
-                {GET: item} for item in get_items
+                {TRANSACT_GET: item} for item in get_items
             ],
         }
         if return_consumed_capacity:

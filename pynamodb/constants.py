@@ -34,7 +34,6 @@ TABLE_DESCRIPTION = 'TableDescription'
 UNPROCESSED_KEYS = 'UnprocessedKeys'
 UNPROCESSED_ITEMS = 'UnprocessedItems'
 CONSISTENT_READ = 'ConsistentRead'
-CONDITION_CHECK = 'ConditionCheck'
 DELETE_REQUEST = 'DeleteRequest'
 TRANSACT_ITEMS = 'TransactItems'
 RETURN_VALUES = 'ReturnValues'
@@ -68,6 +67,13 @@ KEYS = 'Keys'
 UTC = 'UTC'
 KEY = 'Key'
 GET = 'Get'
+
+# transaction operators
+TRANSACT_CONDITION_CHECK = 'ConditionCheck'
+TRANSACT_DELETE = 'Delete'
+TRANSACT_GET = 'Get'
+TRANSACT_PUT = 'Put'
+TRANSACT_UPDATE = 'Update'
 
 # Response Parameters
 SCANNED_COUNT = 'ScannedCount'
