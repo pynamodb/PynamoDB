@@ -265,7 +265,7 @@ class AttributeContainer(object):
             if previously_saved:
                 default = attr.default
             else:  # New objects can have a default_for_new value that prevents us from overwriting re-saved objects
-                default = attr.default or attr.default_for_new
+                default = attr.default if attr.default is not None else attr.default_for_new
             if callable(default):
                 value = default()
             else:
