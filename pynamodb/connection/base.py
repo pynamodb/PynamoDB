@@ -45,8 +45,8 @@ from pynamodb.constants import (
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, KEY_CONDITION_OPERATOR_MAP,
     CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND,
     AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
-    TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS
-)
+    TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS,
+    CLIENT_REQUEST_TOKEN, TRANSACT_ITEMS, GET, CONDITION_CHECK)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -1056,19 +1056,56 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to put item: {0}".format(e), e)
 
-    def transact_write_items(self, operation_kwargs):
+    def transact_write_items(self,
+                             condition_check_items,
+                             delete_items,
+                             put_items,
+                             update_items,
+                             client_request_token=None,
+                             return_consumed_capacity=None,
+                             return_item_collection_metrics=None):
         """
         Performs the TransactWrite operation and returns the result
         """
+        operation_kwargs = {
+            TRANSACT_ITEMS: []
+        }
+        operation_kwargs[TRANSACT_ITEMS].extend([
+            {CONDITION_CHECK: item} for item in condition_check_items
+        ])
+        transact_delete_operator = DELETE.lower().capitalize()
+        operation_kwargs[TRANSACT_ITEMS].extend([
+            {transact_delete_operator: item} for item in delete_items
+        ])
+        transact_put_operator = PUT.lower().capitalize()
+        operation_kwargs[TRANSACT_ITEMS].extend([
+            {transact_put_operator: item} for item in put_items
+        ])
+        operation_kwargs[TRANSACT_ITEMS].extend([
+            {UPDATE: item} for item in update_items
+        ])
+        if client_request_token is not None:
+            operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
+        if return_consumed_capacity:
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
+        if return_item_collection_metrics:
+            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to write transaction items: {0}".format(e), e)
 
-    def transact_get_items(self, operation_kwargs):
+    def transact_get_items(self, get_items, return_consumed_capacity=None):
         """
         Performs the TransactGet operation and returns the result
         """
+        operation_kwargs = {
+            TRANSACT_ITEMS: [
+                {GET: item} for item in get_items
+            ],
+        }
+        if return_consumed_capacity:
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         try:
             return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:

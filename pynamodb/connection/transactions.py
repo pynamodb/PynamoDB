@@ -1,14 +1,10 @@
 from pynamodb.exceptions import GetError
 
 from pynamodb.constants import (
-    UPDATE, GET, PUT, DELETE, TRANSACT_ITEMS, CLIENT_REQUEST_TOKEN, CONDITION_CHECK,
     RETURN_VALUES_ON_CONDITION_FAILURE, ITEM, RETURN_VALUES, RESPONSES,
     TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, TRANSACTION_DELETE_REQUEST_PARAMETERS,
     TRANSACTION_GET_REQUEST_PARAMETERS, TRANSACTION_PUT_REQUEST_PARAMETERS, TRANSACTION_UPDATE_REQUEST_PARAMETERS
 )
-
-PUT = PUT.lower().capitalize()
-DELETE = DELETE.lower().capitalize()
 
 
 class Transaction(object):
@@ -22,12 +18,8 @@ class Transaction(object):
     def __init__(self, connection, return_consumed_capacity=None):
         self._hashed_models = set()
         self._proxy_models = []
-        self._operation_kwargs = {
-            TRANSACT_ITEMS: [],
-        }
         self._connection = connection
-        if return_consumed_capacity is not None:
-            self._operation_kwargs.update(self._connection.get_consumed_capacity_map(return_consumed_capacity))
+        self._return_consumed_capacity = return_consumed_capacity
 
     def _commit(self):
         raise NotImplementedError()
@@ -44,31 +36,27 @@ class Transaction(object):
             raise ValueError("Can't perform operation on the same entry multiple times in one transaction")
         self._hashed_models.add(key)
 
-    @property
-    def transact_items(self):
-        return self._operation_kwargs[TRANSACT_ITEMS]
-
     @staticmethod
-    def format_item(method, valid_parameters, operation_kwargs):
+    def format_request_parameters(valid_parameters, operation_kwargs):
         if RETURN_VALUES in operation_kwargs.keys():
             operation_kwargs[RETURN_VALUES_ON_CONDITION_FAILURE] = operation_kwargs.pop(RETURN_VALUES)
-        request_params = {
+        return {
             key: value for key, value in operation_kwargs.items() if key in valid_parameters
         }
-        return {method: request_params}
-
-    def add_item(self, item):
-        self.transact_items.append(item)
 
 
 class TransactGet(Transaction):
 
+    def __init__(self, *args, **kwargs):
+        super(TransactGet, self).__init__(*args, **kwargs)
+        self._get_items = []
+
     def add_get_item(self, model_cls, hash_key, range_key, operation_kwargs):
-        get_item = self.format_item(GET, TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
+        get_item = self.format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
         proxy_model = model_cls()
         self._hash_model(proxy_model, hash_key, range_key)
         self._proxy_models.append(proxy_model)
-        self.transact_items.append(get_item)
+        self._get_items.append(get_item)
         return proxy_model
 
     def get_results_in_order(self):
@@ -81,7 +69,11 @@ class TransactGet(Transaction):
             model._update_item_with_raw_data(data[ITEM])
 
     def _commit(self):
-        self._results = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]
+        response = self._connection.transact_get_items(
+            get_items=self._get_items,
+            return_consumed_capacity=self._return_consumed_capacity
+        )
+        self._results = response[RESPONSES]
         self._update_proxy_models()
 
 
@@ -89,6 +81,8 @@ class TransactWrite(Transaction):
 
     @staticmethod
     def _validate_client_request_token(token):
+        if token is None:
+            return
         if not isinstance(token, str):
             raise ValueError('Client request token must be a string')
         if len(token) > 36:
@@ -96,38 +90,48 @@ class TransactWrite(Transaction):
 
     def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
         super(TransactWrite, self).__init__(**kwargs)
-        if client_request_token is not None:
-            self._validate_client_request_token(client_request_token)
-            self._operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
-        if return_item_collection_metrics is not None:
-            self._operation_kwargs.update(self._connection.get_item_collection_map(return_item_collection_metrics))
+        self._validate_client_request_token(client_request_token)
+        self._client_request_token = client_request_token
+        self._return_item_collection_metrics = return_item_collection_metrics
+        self._condition_check_items = []
+        self._delete_items = []
+        self._put_items = []
+        self._update_items = []
 
     def add_condition_check_item(self, model_cls, hash_key, range_key, operation_kwargs):
-        condition_item = self.format_item(CONDITION_CHECK, TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
+        condition_item = self.format_request_parameters(TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model_cls(), hash_key, range_key)
-        self.transact_items.append(condition_item)
+        self._condition_check_items.append(condition_item)
 
     def add_delete_item(self, model, operation_kwargs):
-        delete_item = self.format_item(DELETE, TRANSACTION_DELETE_REQUEST_PARAMETERS, operation_kwargs)
+        delete_item = self.format_request_parameters(TRANSACTION_DELETE_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
-        self.transact_items.append(delete_item)
+        self._delete_items.append(delete_item)
 
     def add_save_item(self, model, operation_kwargs):
-        put_item = self.format_item(PUT, TRANSACTION_PUT_REQUEST_PARAMETERS, operation_kwargs)
+        put_item = self.format_request_parameters(TRANSACTION_PUT_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
         self._proxy_models.append(model)
-        self.transact_items.append(put_item)
+        self._put_items.append(put_item)
 
     def add_update_item(self, model, operation_kwargs):
-        update_item = self.format_item(UPDATE, TRANSACTION_UPDATE_REQUEST_PARAMETERS, operation_kwargs)
+        update_item = self.format_request_parameters(TRANSACTION_UPDATE_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
         self._proxy_models.append(model)
-        self.transact_items.append(update_item)
+        self._update_items.append(update_item)
 
     def _update_proxy_models(self):
         for model in self._proxy_models:
             model.refresh()
 
     def _commit(self):
-        self._connection.transact_write_items(self._operation_kwargs)
+        self._connection.transact_write_items(
+            condition_check_items=self._condition_check_items,
+            delete_items=self._delete_items,
+            put_items=self._put_items,
+            update_items=self._update_items,
+            client_request_token=self._client_request_token,
+            return_consumed_capacity=self._return_consumed_capacity,
+            return_item_collection_metrics=self._return_item_collection_metrics,
+        )
         self._update_proxy_models()
