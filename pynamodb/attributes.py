@@ -4,6 +4,7 @@ PynamoDB attributes
 import six
 from six import add_metaclass
 import json
+import time
 from base64 import b64encode, b64decode
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -218,14 +219,14 @@ class AttributeContainerMeta(type):
 @add_metaclass(AttributeContainerMeta)
 class AttributeContainer(object):
 
-    def __init__(self, is_new_object = False, **attributes):
+    def __init__(self, previously_saved = False, **attributes):
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
         # to store the values that are bound to this instance. Attributes store values in the dictionary
         # using the `python_attr_name` as the dictionary key. "Raw" (i.e. non-subclassed) MapAttribute
         # instances do not have any Attributes defined and instead use this dictionary to store their
         # collection of name-value pairs.
         self.attribute_values = {}
-        self._set_defaults(is_new_object)
+        self._set_defaults(previously_saved)
         self._set_attributes(**attributes)
 
     @classmethod
@@ -256,16 +257,15 @@ class AttributeContainer(object):
         """
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
-    def _set_defaults(self, is_new_object = False):
+    def _set_defaults(self, previously_saved = False):
         """
         Sets and fields that provide a default value
         """
         for name, attr in self.get_attributes().items():
-            # New objects can have a default_for_new value that prevents us from overwriting re-saved objects
-            if is_new_object:
-                default = attr.default or attr.default_for_new
-            else:
+            if previously_saved:
                 default = attr.default
+            else:  # New objects can have a default_for_new value that prevents us from overwriting re-saved objects
+                default = attr.default or attr.default_for_new
             if callable(default):
                 value = default()
             else:
@@ -550,19 +550,22 @@ class TTLAttribute(Attribute):
         if value is None:
             return None
         elif isinstance(value, int):
-            return value
+            if value < time.time():  # Assume the value is number of seconds the object will live for
+                value = int(value + time.time())
+            return json.dumps(value)
         elif isinstance(value, timedelta):
-            return int(time.time() + value.total_seconds())
+            return json.dumps(int(time.time() + value.total_seconds()))
         elif isinstance(value, datetime):
-            return int((value - datetime(1970,1,1)).total_seconds())
+            return json.dumps(int((value - datetime(1970,1,1, tzinfo=tzutc())).total_seconds()))
         else:
-            raise ValueError("TTLAttribute value must be an int, timedelta. or datetime.")
+            raise ValueError("TTLAttribute value must be an int, timedelta, or datetime.")
 
     def deserialize(self, value):
         """
         Decode the epoch representation into a datetime
         """
-        return datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
+        epoch = json.loads(value)
+        return datetime.utcfromtimestamp(epoch).replace(tzinfo=tzutc())
 
 
 class UTCDateTimeAttribute(Attribute):
