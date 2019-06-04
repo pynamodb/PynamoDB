@@ -252,9 +252,6 @@ FILTER_EXPRESSION_OPERATOR_MAP = {
     BETWEEN: 'between'
 }
 
-# each transaction can only support 10 actions at a time
-# https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-dynamodb-transactions
-TRANSACT_ITEMS_LIMIT = 10
 TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS = {
     CONDITION_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES,

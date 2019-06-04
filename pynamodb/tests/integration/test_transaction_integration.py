@@ -1,13 +1,15 @@
 import os
+import uuid
 from datetime import datetime
 
 import config as cfg
 import pytest
 
+from pynamodb.connection import Connection
 from pynamodb.exceptions import PutError, DoesNotExist
 
 from pynamodb.attributes import NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute, BooleanAttribute
-from pynamodb.connection.transactions import TransactGet, TransactWrite, Transaction
+from pynamodb.connection.transactions import TransactGet, TransactWrite
 
 from pynamodb.models import Model
 
@@ -73,12 +75,13 @@ TEST_MODELS = [
 ]
 
 
+CONNECTION = Connection(host=DDB_URL)
+
+
 class TestTransactionIntegration:
 
     @classmethod
     def setup_class(cls):
-        # ensure that the transaction connection url is what we expect
-        Transaction(host=DDB_URL, override_connection=True)
         for m in TEST_MODELS:
             if not m.exists():
                 m.create_table(
@@ -99,30 +102,36 @@ class TestTransactionIntegration:
 
     @pytest.mark.ddblocal
     def test_transact_write__error__idempotent_parameter_mismatch(self):
+        client_token = str(uuid.uuid4())
 
-        transaction = TransactWrite(host=DDB_URL)
-        User(1).save(in_transaction=transaction)
-        User(2).save(in_transaction=transaction)
+        with TransactWrite(connection=CONNECTION, client_request_token=client_token) as transaction:
+            User(1).save(in_transaction=transaction)
+            User(2).save(in_transaction=transaction)
 
         try:
             # committing the first time, then adding more info and committing again
-            transaction.commit()
-            User(3).save(in_transaction=transaction)
-            transaction.commit()
+            with TransactWrite(connection=CONNECTION, client_request_token=client_token) as transaction:
+                User(3).save(in_transaction=transaction)
             assert False, 'Failed to raise error'
         except PutError as e:
             assert self.get_error_code(e) == IDEMPOTENT_PARAMETER_MISMATCH
 
+        # ensure that the first request succeeded in creating new users
+        assert User.get(1)
+        assert User.get(2)
+
+        with pytest.raises(DoesNotExist):
+            # ensure it did not create the user from second request
+            User.get(3)
+
     @pytest.mark.ddblocal
     def test_transact_write__error__different_regions(self):
-        # creating a model in a table outside the region everyone else operates in
-        transact_write = TransactWrite()
-        DifferentRegion(entry_index=0).save(in_transaction=transact_write)
-        BankStatement(1).save(in_transaction=transact_write)
-        User(1).save(in_transaction=transact_write)
-
         try:
-            transact_write.commit()
+            with TransactWrite(connection=CONNECTION) as transact_write:
+                # creating a model in a table outside the region everyone else operates in
+                DifferentRegion(entry_index=0).save(in_transaction=transact_write)
+                BankStatement(1).save(in_transaction=transact_write)
+                User(1).save(in_transaction=transact_write)
         except PutError as e:
             assert self.get_error_code(e) == RESOURCE_NOT_FOUND
 
@@ -133,11 +142,10 @@ class TestTransactionIntegration:
         BankStatement(1).save()
 
         # attempt to do this as a transaction with the condition that they don't already exist
-        transaction = TransactWrite()
-        User(1).save(condition=(User.user_id.does_not_exist()), in_transaction=transaction)
-        BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transaction)
         try:
-            transaction.commit()
+            with TransactWrite(connection=CONNECTION) as transaction:
+                User(1).save(condition=(User.user_id.does_not_exist()), in_transaction=transaction)
+                BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transaction)
             assert False, 'Failed to raise error'
         except PutError as e:
             assert self.get_error_code(e) == TRANSACTION_CANCELLED
@@ -151,7 +159,7 @@ class TestTransactionIntegration:
         BankStatement(2, balance=100).save()
 
         # get users and statements we just created and assign them to variables
-        with TransactGet() as transaction:
+        with TransactGet(connection=CONNECTION) as transaction:
             user1 = User.get(1, in_transaction=transaction)
             statement1 = BankStatement.get(1, in_transaction=transaction)
             user2 = User.get(2, in_transaction=transaction)
@@ -174,7 +182,7 @@ class TestTransactionIntegration:
         assert statement1.balance == 0
         assert statement2.balance == 100
 
-        with TransactWrite() as transaction:
+        with TransactWrite(connection=CONNECTION) as transaction:
             # let the users send money to one another
             created_at = datetime.now()
             # create a credit line item to user 1's account
@@ -199,7 +207,7 @@ class TestTransactionIntegration:
 
     @pytest.mark.ddblocal
     def test_transact_write__one_of_each(self):
-        with TransactWrite() as transaction:
+        with TransactWrite(connection=CONNECTION) as transaction:
             User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
             User(2).delete(in_transaction=transaction)
             LineItem(4, amount=100, currency='USD').save(condition=(LineItem.user_id.does_not_exist()))
