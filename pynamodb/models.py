@@ -379,7 +379,7 @@ class Model(AttributeContainer):
             return {}
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update_item_with_raw_data(self, data):
+    def _update_item_with_raw_data(self, data):
         for name, value in data.items():
             attr_name = self._dynamo_to_python_attr(name)
             attr = self.get_attributes().get(attr_name)
@@ -431,7 +431,7 @@ class Model(AttributeContainer):
             *args,
             **kwargs
         )
-        self.update_item_with_raw_data(data.get(ATTRIBUTES))
+        self._update_item_with_raw_data(data.get(ATTRIBUTES))
         return data
 
     def update(self, attributes=None, actions=None, condition=None, conditional_operator=None, in_transaction=None, **expected_values):
@@ -486,7 +486,7 @@ class Model(AttributeContainer):
             return {}
 
         data = self._get_connection().update_item(*args, **kwargs)
-        self.update_item_with_raw_data(data.get(ATTRIBUTES))
+        self._update_item_with_raw_data(data.get(ATTRIBUTES))
         return data
 
     def save(self, condition=None, conditional_operator=None, in_transaction=None, **expected_values):

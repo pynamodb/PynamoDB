@@ -78,7 +78,7 @@ class TransactGet(Transaction):
 
     def _update_proxy_models(self):
         for model, data in zip(self._proxy_models, self._results):
-            model.update_item_with_raw_data(data[ITEM])
+            model._update_item_with_raw_data(data[ITEM])
 
     def _commit(self):
         self._results = self._connection.transact_get_items(self._operation_kwargs)[RESPONSES]
@@ -95,14 +95,11 @@ class TransactWrite(Transaction):
             raise ValueError('Client request token max length is 36 characters')
 
     def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
-        print(return_item_collection_metrics)
         super(TransactWrite, self).__init__(**kwargs)
         if client_request_token is not None:
             self._validate_client_request_token(client_request_token)
             self._operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
-        print(return_item_collection_metrics)
         if return_item_collection_metrics is not None:
-            print(self._connection.get_item_collection_map(return_item_collection_metrics))
             self._operation_kwargs.update(self._connection.get_item_collection_map(return_item_collection_metrics))
 
     def add_condition_check_item(self, model_cls, hash_key, range_key, operation_kwargs):
