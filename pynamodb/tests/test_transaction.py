@@ -20,13 +20,13 @@ class TestTransaction:
 
     def test_format_request_parameters(self, mocker):
         transaction = Transaction(connection=mocker.MagicMock())
-        valid_parameters = ['a', 'c', 'e', 'ReturnValuesOnConditionCheckFailure']
+        valid_parameters = {'a', 'c', 'e', 'ReturnValuesOnConditionCheckFailure'}
         operation_kwargs = {'ReturnValues': 'ALL_OLD'}
 
-        item = transaction.format_request_parameters(valid_parameters, operation_kwargs)
+        item = transaction._format_request_parameters(valid_parameters, operation_kwargs)
         assert item == {'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'}
 
-        item = transaction.format_request_parameters(valid_parameters, {'a': 1, 'b': 2, 'c': 3})
+        item = transaction._format_request_parameters(valid_parameters, {'a': 1, 'b': 2, 'c': 3})
         assert item == {'a': 1, 'c': 3}
 
     def test_hash_model__duplicate(self, mocker):

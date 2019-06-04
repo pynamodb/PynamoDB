@@ -1,8 +1,7 @@
 from pynamodb.connection.transactions import TransactGet, TransactWrite
 from .attributes import Attribute
 from .exceptions import DoesNotExist as DoesNotExist
-from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Text, Union, \
-    overload
+from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Text, Union
 
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition

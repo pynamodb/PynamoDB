@@ -1067,23 +1067,24 @@ class Connection(object):
         """
         Performs the TransactWrite operation and returns the result
         """
-        operation_kwargs = {
-            TRANSACT_ITEMS: []
-        }
-        operation_kwargs[TRANSACT_ITEMS].extend([
+        transact_items = []
+        transact_items.extend([
             {CONDITION_CHECK: item} for item in condition_check_items
         ])
         transact_delete_operator = DELETE.lower().capitalize()
-        operation_kwargs[TRANSACT_ITEMS].extend([
+        transact_items.extend([
             {transact_delete_operator: item} for item in delete_items
         ])
         transact_put_operator = PUT.lower().capitalize()
-        operation_kwargs[TRANSACT_ITEMS].extend([
+        transact_items.extend([
             {transact_put_operator: item} for item in put_items
         ])
-        operation_kwargs[TRANSACT_ITEMS].extend([
+        transact_items.extend([
             {UPDATE: item} for item in update_items
         ])
+        operation_kwargs = {
+            TRANSACT_ITEMS: transact_items
+        }
         if client_request_token is not None:
             operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
         if return_consumed_capacity:

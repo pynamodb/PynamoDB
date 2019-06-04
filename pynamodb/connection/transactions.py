@@ -11,14 +11,14 @@ class Transaction(object):
 
     _connection = None
     _hashed_models = None
-    _operation_kwargs = None
     _proxy_models = None
     _results = None
+    _return_consumed_capacity = None
 
     def __init__(self, connection, return_consumed_capacity=None):
+        self._connection = connection
         self._hashed_models = set()
         self._proxy_models = []
-        self._connection = connection
         self._return_consumed_capacity = return_consumed_capacity
 
     def _commit(self):
@@ -37,7 +37,7 @@ class Transaction(object):
         self._hashed_models.add(key)
 
     @staticmethod
-    def format_request_parameters(valid_parameters, operation_kwargs):
+    def _format_request_parameters(valid_parameters, operation_kwargs):
         if RETURN_VALUES in operation_kwargs.keys():
             operation_kwargs[RETURN_VALUES_ON_CONDITION_FAILURE] = operation_kwargs.pop(RETURN_VALUES)
         return {
@@ -46,13 +46,14 @@ class Transaction(object):
 
 
 class TransactGet(Transaction):
+    _get_items = None
 
     def __init__(self, *args, **kwargs):
         super(TransactGet, self).__init__(*args, **kwargs)
         self._get_items = []
 
     def add_get_item(self, model_cls, hash_key, range_key, operation_kwargs):
-        get_item = self.format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
+        get_item = self._format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
         proxy_model = model_cls()
         self._hash_model(proxy_model, hash_key, range_key)
         self._proxy_models.append(proxy_model)
@@ -78,6 +79,12 @@ class TransactGet(Transaction):
 
 
 class TransactWrite(Transaction):
+    _condition_check_items = None
+    _delete_items = None
+    _put_items = None
+    _update_items = None
+    _client_request_token = None
+    _return_item_collection_metrics = None
 
     @staticmethod
     def _validate_client_request_token(token):
@@ -99,23 +106,23 @@ class TransactWrite(Transaction):
         self._update_items = []
 
     def add_condition_check_item(self, model_cls, hash_key, range_key, operation_kwargs):
-        condition_item = self.format_request_parameters(TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
+        condition_item = self._format_request_parameters(TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model_cls(), hash_key, range_key)
         self._condition_check_items.append(condition_item)
 
     def add_delete_item(self, model, operation_kwargs):
-        delete_item = self.format_request_parameters(TRANSACTION_DELETE_REQUEST_PARAMETERS, operation_kwargs)
+        delete_item = self._format_request_parameters(TRANSACTION_DELETE_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
         self._delete_items.append(delete_item)
 
     def add_save_item(self, model, operation_kwargs):
-        put_item = self.format_request_parameters(TRANSACTION_PUT_REQUEST_PARAMETERS, operation_kwargs)
+        put_item = self._format_request_parameters(TRANSACTION_PUT_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
         self._proxy_models.append(model)
         self._put_items.append(put_item)
 
     def add_update_item(self, model, operation_kwargs):
-        update_item = self.format_request_parameters(TRANSACTION_UPDATE_REQUEST_PARAMETERS, operation_kwargs)
+        update_item = self._format_request_parameters(TRANSACTION_UPDATE_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
         self._proxy_models.append(model)
         self._update_items.append(update_item)
