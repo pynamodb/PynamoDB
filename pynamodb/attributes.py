@@ -220,14 +220,14 @@ class AttributeContainerMeta(type):
 @add_metaclass(AttributeContainerMeta)
 class AttributeContainer(object):
 
-    def __init__(self, __previously_saved = False, **attributes):
+    def __init__(self, _previously_saved = False, **attributes):
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
         # to store the values that are bound to this instance. Attributes store values in the dictionary
         # using the `python_attr_name` as the dictionary key. "Raw" (i.e. non-subclassed) MapAttribute
         # instances do not have any Attributes defined and instead use this dictionary to store their
         # collection of name-value pairs.
         self.attribute_values = {}
-        self._set_defaults(__previously_saved)
+        self._set_defaults(_previously_saved)
         self._set_attributes(**attributes)
 
     @classmethod
@@ -258,12 +258,12 @@ class AttributeContainer(object):
         """
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
-    def _set_defaults(self, __previously_saved = False):
+    def _set_defaults(self, _previously_saved = False):
         """
         Sets and fields that provide a default value
         """
         for name, attr in self.get_attributes().items():
-            if __previously_saved:
+            if _previously_saved:
                 default = attr.default
             else:  # New objects can have a default_for_new value that prevents us from overwriting re-saved objects
                 default = attr.default if attr.default is not None else attr.default_for_new

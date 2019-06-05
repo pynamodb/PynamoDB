@@ -4476,5 +4476,5 @@ class ModelInitTestCase(TestCase):
         assert TTLModel._ttl_attribute().attr_name == "my_ttl"
 
     def test_previously_saved(self):
-        m = TTLModel(previously_saved=True)
+        m = TTLModel(_previously_saved=True)
         assert m.my_ttl is None
