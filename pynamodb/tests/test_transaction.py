@@ -75,13 +75,6 @@ class TestTransactWrite:
             assert len(too_long) == 40
             t._validate_client_request_token(too_long)
 
-    def test_update_proxy_models(self, mocker):
-        t = TransactWrite(connection=mocker.MagicMock())
-        mock_model = mocker.MagicMock()
-        t._proxy_models = [mock_model for _ in range(5)]
-        t._update_proxy_models()
-        assert mock_model.refresh.call_count == 5
-
     def test_commit(self, mocker):
         mock_connection = mocker.MagicMock(spec=Connection)
         with TransactWrite(connection=mock_connection) as t:

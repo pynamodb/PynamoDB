@@ -10,7 +10,6 @@ _T = TypeVar('_T', bound=Model)
 class Transaction:
     _connection: Connection
     _hashed_models: Set[Tuple[Any, Any, Any]]
-    _proxy_models = List[Type[_T]]
     _return_consumed_capacity: Optional[Any]
 
     def _commit(self) -> None: ...
@@ -23,6 +22,7 @@ class Transaction:
 
 class TransactGet(Transaction):
     _get_items: List[Dict]
+    _proxy_models = List[Type[_T]]
     _results: List[Dict]
 
     def _commit(self) -> None: ...
@@ -39,7 +39,6 @@ class TransactWrite(Transaction):
     _return_item_collection_metrics: Optional[Any]
 
     def _commit(self) -> None: ...
-    def _update_proxy_models(self) -> None: ...
     @staticmethod
     def _validate_client_request_token(token: Any) -> None: ...
     def add_condition_check_item(self, model_cls: Type[_T], hash_key: Any, range_key: Optional[Any]) -> None: ...

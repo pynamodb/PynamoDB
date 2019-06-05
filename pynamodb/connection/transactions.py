@@ -11,14 +11,12 @@ class Transaction(object):
 
     _connection = None
     _hashed_models = None
-    _proxy_models = None
     _results = None
     _return_consumed_capacity = None
 
     def __init__(self, connection, return_consumed_capacity=None):
         self._connection = connection
         self._hashed_models = set()
-        self._proxy_models = []
         self._return_consumed_capacity = return_consumed_capacity
 
     def _commit(self):
@@ -47,10 +45,12 @@ class Transaction(object):
 
 class TransactGet(Transaction):
     _get_items = None
+    _proxy_models = None
 
     def __init__(self, *args, **kwargs):
         super(TransactGet, self).__init__(*args, **kwargs)
         self._get_items = []
+        self._proxy_models = []
 
     def add_get_item(self, model_cls, hash_key, range_key, operation_kwargs):
         get_item = self._format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
@@ -118,18 +118,12 @@ class TransactWrite(Transaction):
     def add_save_item(self, model, operation_kwargs):
         put_item = self._format_request_parameters(TRANSACTION_PUT_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
-        self._proxy_models.append(model)
         self._put_items.append(put_item)
 
     def add_update_item(self, model, operation_kwargs):
         update_item = self._format_request_parameters(TRANSACTION_UPDATE_REQUEST_PARAMETERS, operation_kwargs)
         self._hash_model(model, model.get_hash_key(), model.get_range_key())
-        self._proxy_models.append(model)
         self._update_items.append(update_item)
-
-    def _update_proxy_models(self):
-        for model in self._proxy_models:
-            model.refresh()
 
     def _commit(self):
         self._connection.transact_write_items(
@@ -141,4 +135,3 @@ class TransactWrite(Transaction):
             return_consumed_capacity=self._return_consumed_capacity,
             return_item_collection_metrics=self._return_item_collection_metrics,
         )
-        self._update_proxy_models()
