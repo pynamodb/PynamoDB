@@ -910,7 +910,12 @@ class Model(AttributeContainer):
 
         ttl_attribute = cls._ttl_attribute()
         if ttl_attribute:
-            cls._get_connection().update_time_to_live(ttl_attribute.attr_name)
+            # Some dynamoDB implementations (eg: dynalite) do not support updating TTLs so
+            # this will fail.  It's fine for this to fail in those cases.
+            try:
+                cls._get_connection().update_time_to_live(ttl_attribute.attr_name)
+            except Exception:
+                log.info("Unable to update the TTL for {}".format(cls.Meta.table_name))
 
     @classmethod
     def dumps(cls):

@@ -541,6 +541,8 @@ class TTLAttribute(Attribute):
     An attribute that signifies when how long this item can live for.
     This can take in an int, timedelta, or datetime.  If a timedelta is passed in,
     we assume the expiration time is datetime.utcnow() + timedelta.
+
+    It is recommended to pass in a timedelta.
     """
     attr_type = NUMBER
 
@@ -557,6 +559,8 @@ class TTLAttribute(Attribute):
         elif isinstance(value, timedelta):
             return json.dumps(int(time.time() + value.total_seconds()))
         elif isinstance(value, datetime):
+            if value.tzinfo is None:
+                return json.dumps(int((value - datetime(1970,1,1)).total_seconds()))
             return json.dumps(calendar.timegm(value.utctimetuple()))
         else:
             raise ValueError("TTLAttribute value must be an int, timedelta, or datetime.")
