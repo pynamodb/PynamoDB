@@ -86,18 +86,8 @@ class TransactWrite(Transaction):
     _client_request_token = None
     _return_item_collection_metrics = None
 
-    @staticmethod
-    def _validate_client_request_token(token):
-        if token is None:
-            return
-        if not isinstance(token, str):
-            raise ValueError('Client request token must be a string')
-        if len(token) > 36:
-            raise ValueError('Client request token max length is 36 characters')
-
     def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
         super(TransactWrite, self).__init__(**kwargs)
-        self._validate_client_request_token(client_request_token)
         self._client_request_token = client_request_token
         self._return_item_collection_metrics = return_item_collection_metrics
         self._condition_check_items = []

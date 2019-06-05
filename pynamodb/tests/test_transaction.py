@@ -65,16 +65,6 @@ class TestTransactGet:
 
 class TestTransactWrite:
 
-    def test_validate_client_request_token(self, mocker):
-        t = TransactWrite(connection=mocker.MagicMock())
-        with pytest.raises(ValueError):
-            t._validate_client_request_token(123)
-
-        with pytest.raises(ValueError):
-            too_long = 'i' * 40
-            assert len(too_long) == 40
-            t._validate_client_request_token(too_long)
-
     def test_commit(self, mocker):
         mock_connection = mocker.MagicMock(spec=Connection)
         with TransactWrite(connection=mock_connection) as t:
