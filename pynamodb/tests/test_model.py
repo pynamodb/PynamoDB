@@ -233,6 +233,7 @@ class UserModel(Model):
     zip_code = NumberAttribute(null=True)
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)
+    ttl = TTLAttribute(null=True)
 
 
 class HostSpecificModel(Model):
@@ -4473,3 +4474,7 @@ class ModelInitTestCase(TestCase):
 
     def test_get_ttl_attribute(self):
         assert TTLModel._ttl_attribute().attr_name == "my_ttl"
+
+    def test_previously_saved(self):
+        m = TTLModel(previously_saved=True)
+        assert m.my_ttl is None
