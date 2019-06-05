@@ -46,8 +46,8 @@ from pynamodb.constants import (
     CONDITION_EXPRESSION, FILTER_EXPRESSION, FILTER_EXPRESSION_OPERATOR_MAP, NOT_CONTAINS, AND,
     AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
     TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS, CLIENT_REQUEST_TOKEN, TRANSACT_ITEMS, TRANSACT_CONDITION_CHECK,
-    TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE
-)
+    TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE,
+    TRANSACT_UPDATE)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -1079,7 +1079,7 @@ class Connection(object):
             {TRANSACT_PUT: item} for item in put_items
         ])
         transact_items.extend([
-            {UPDATE: item} for item in update_items
+            {TRANSACT_UPDATE: item} for item in update_items
         ])
         operation_kwargs = {
             TRANSACT_ITEMS: transact_items

@@ -9,7 +9,6 @@ from datetime import datetime
 
 import six
 from botocore.client import ClientError
-from botocore.vendored import requests
 import pytest
 
 from pynamodb.compat import CompatTestCase as TestCase

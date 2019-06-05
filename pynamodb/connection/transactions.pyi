@@ -1,6 +1,6 @@
 from typing import Set, Tuple, TypeVar, Type, Any, List, Optional, Dict, Union, Text
 
-from pynamodb.models import Model
+from pynamodb.models import Model, _ModelPromise
 
 from pynamodb.connection import Connection
 
@@ -23,7 +23,7 @@ class Transaction:
 
 class TransactGet(Transaction):
     _get_items: List[Dict]
-    _proxy_models = List[Type[_T]]
+    _proxy_models = List[_ModelPromise]
     _results: List[Dict]
 
     def _commit(self) -> None: ...

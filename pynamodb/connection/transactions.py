@@ -5,6 +5,7 @@ from pynamodb.constants import (
     TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, TRANSACTION_DELETE_REQUEST_PARAMETERS,
     TRANSACTION_GET_REQUEST_PARAMETERS, TRANSACTION_PUT_REQUEST_PARAMETERS, TRANSACTION_UPDATE_REQUEST_PARAMETERS
 )
+from pynamodb.models import _ModelPromise
 
 
 class Transaction(object):
@@ -54,7 +55,7 @@ class TransactGet(Transaction):
 
     def add_get_item(self, model_cls, hash_key, range_key, operation_kwargs):
         get_item = self._format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
-        proxy_model = model_cls()
+        proxy_model = _ModelPromise(model_cls)
         self._hash_model(proxy_model, hash_key, range_key)
         self._proxy_models.append(proxy_model)
         self._get_items.append(get_item)
@@ -67,7 +68,7 @@ class TransactGet(Transaction):
 
     def _update_proxy_models(self):
         for model, data in zip(self._proxy_models, self._results):
-            model._update_item_with_raw_data(data[ITEM])
+            model.update_with_raw_data(data[ITEM])
 
     def _commit(self):
         response = self._connection.transact_get_items(

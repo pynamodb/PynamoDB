@@ -1446,3 +1446,18 @@ class Model(AttributeContainer):
         if range_key is not None:
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key
+
+
+class _ModelPromise:
+
+    def __init__(self, model_cls):
+        self._model_cls = model_cls
+        self._model = None
+
+    def update_with_raw_data(self, data):
+        self._model = self._model_cls.from_raw_data(data=data)
+
+    def resolve(self):
+        if self._model is not None:
+            return self._model
+        raise Exception('Cannot resolve until request has been processed')
