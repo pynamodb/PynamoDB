@@ -56,7 +56,7 @@ class TransactGet(Transaction):
     def add_get_item(self, model_cls, hash_key, range_key, operation_kwargs):
         get_item = self._format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
         proxy_model = _ModelPromise(model_cls)
-        self._hash_model(proxy_model, hash_key, range_key)
+        self._hash_model(model_cls, hash_key, range_key)
         self._proxy_models.append(proxy_model)
         self._get_items.append(get_item)
         return proxy_model

@@ -1453,11 +1453,14 @@ class _ModelPromise:
     def __init__(self, model_cls):
         self._model_cls = model_cls
         self._model = None
+        self._resolved = False
 
     def update_with_raw_data(self, data):
-        self._model = self._model_cls.from_raw_data(data=data)
+        if data:
+            self._model = self._model_cls.from_raw_data(data=data)
+        self._resolved = True
 
     def resolve(self):
-        if self._model is not None:
+        if self._resolved:
             return self._model
         raise Exception('Cannot resolve until request has been processed')
