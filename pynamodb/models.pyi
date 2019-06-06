@@ -34,10 +34,9 @@ class Model(metaclass=MetaModel):
     def batch_get(cls: Type[_T], items: Iterable[Union[KeyType, Iterable[KeyType]]], consistent_read: Optional[bool] = ..., attributes_to_get: Optional[Sequence[Text]] = ...) -> Iterator[_T]: ...
     @classmethod
     def batch_write(cls: Type[_T], auto_commit: bool = ...) -> BatchWrite[_T]: ...
-    def delete(self, condition: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., **expected_values) -> Any: ...
-    def update(self, attributes: Optional[Dict[Text, Dict[Text, Any]]] = ..., actions: Optional[List[Any]] = ..., condition: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., **expected_values) -> Any: ...
-    def update_item(self, attribute: Text, value: Optional[Any] = ..., action: Optional[Text] = ..., conditional_operator: Optional[Text] = ..., **expected_values): ...
-    def save(self, condition: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., **expected_values) -> Dict[str, Any]: ...
+    def delete(self, condition: Optional[Any] = ...) -> Any: ...
+    def update(self, actions: Optional[List[Any]] = ..., condition: Optional[Condition] = ...) -> Any: ...
+    def save(self, condition: Optional[Condition] = ...) -> Dict[str, Any]: ...
     def refresh(self, consistent_read: bool = ...): ...
     @classmethod
     def get(cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ..., consistent_read: bool = ...) -> _T: ...
@@ -53,7 +52,6 @@ class Model(metaclass=MetaModel):
         index_name: Optional[Text] = ...,
         limit: Optional[int] = ...,
         rate_limit: Optional[float] = ...,
-        **filters
     ) -> int: ...
     @classmethod
     def query(
@@ -64,34 +62,11 @@ class Model(metaclass=MetaModel):
         consistent_read: bool = ...,
         index_name: Optional[Text] = ...,
         scan_index_forward: Optional[Any] = ...,
-        conditional_operator: Optional[Text] = ...,
         limit: Optional[int] = ...,
         last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
         attributes_to_get: Optional[Iterable[Text]] = ...,
         page_size: Optional[int] = ...,
-        **filters
     ) -> ResultIterator[_T]: ...
-    @classmethod
-    def rate_limited_scan(
-        cls: Type[_T],
-        filter_condition: Optional[Condition] = ...,
-        attributes_to_get: Optional[Sequence[Text]] = ...,
-        segment: Optional[int] = ...,
-        total_segments: Optional[int] = ...,
-        limit: Optional[int] = ...,
-        conditional_operator: Optional[Text] = ...,
-        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
-        page_size: Optional[int] = ...,
-        timeout_seconds: Optional[int] = ...,
-        read_capacity_to_consume_per_second: int = ...,
-        allow_rate_limited_scan_without_consumed_capacity: Optional[bool] = ...,
-        max_sleep_between_retry: int = ...,
-        max_consecutive_exceptions: int = ...,
-        consistent_read: Optional[bool] = ...,
-        index_name: Optional[str] = ...,
-        **filters: Any
-    ) -> Iterator[_T]: ...
-
     @classmethod
     def scan(
         cls: Type[_T],
@@ -99,10 +74,8 @@ class Model(metaclass=MetaModel):
         segment: Optional[int] = ...,
         total_segments: Optional[int] = ...,
         limit: Optional[int] = ...,
-        conditional_operator: Optional[Text] = ...,
         last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
         page_size: Optional[int] = ...,
-        **filters
     ) -> ResultIterator[_T]: ...
 
     @classmethod

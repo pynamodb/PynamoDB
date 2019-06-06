@@ -6,9 +6,11 @@ v4.0.0b1
 
 :date: 2019-04-10
 
-NB: This is an alpha release and these notes are subject to change.
+NB: This is a beta release and these notes are subject to change.
 
 This is major release and contains breaking changes. Please read the notes below carefully.
+
+**Requests Removal**
 
 Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP requests, we'll be doing the same (via ``botocore``). This means the following:
 
@@ -20,12 +22,29 @@ Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP 
 
 * *Wrapped* exceptions (i.e ``exc.cause``) that were from ``requests.exceptions`` will now be comparable ones from ``botocore.exceptions`` instead.
 
+**Deprecation of old APIs**
+
+Support for `Legacy Conditional Parameters <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.html>`_ has been 
+removed. See a complete list of affected `Model` methods below:
+
+* ``update_item``: removed in favor of ``update``.
+
+* ``rate_limited_scan``: removed in favor of ``scan`` and ``ResultIterator``.
+
+  + Relatedly, the ``allow_rate_limited_scan_without_consumed_capacity`` option has been removed.
+
+TODO: more
+
+TODO: include cases to be careful of, e.g ``.update(**kwargs)`` or ``.scan(blah__eq=)``
+
 Other changes in this release:
 
-* Python 2.6 is no longer supported. 4.x.x will likely be the last major release to support Python 2.7, given the upcoming EOL.
+* Python 2.6 is no longer supported. 4.x.x will be the last major release to support Python 2.7 given the upcoming EOL.
 * Added the ``max_pool_connection`` and ``extra_headers`` settings to replace common use cases for ``session_cls``
 * Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook. Other botocore hooks remain unimplemented.
 * Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
+
+
 
 
 v3.3.3
@@ -878,3 +897,4 @@ v0.1.11
 * Better PEP8 Compliance
 * More tests
 * Removed session and endpoint caching to avoid using stale IAM role credentials
+

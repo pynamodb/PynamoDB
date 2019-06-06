@@ -4,8 +4,6 @@ import os
 import warnings
 from os import getenv
 
-from botocore.vendored import requests
-
 log = logging.getLogger(__name__)
 
 default_settings_dict = {

@@ -14,13 +14,6 @@ that your server is listening on.
 
 .. note::
 
-    If you are using DynamoDB Local and also use ``rate_limited_scan`` on your models, you must also
-    set ``allow_rate_limited_scan_without_consumed_capacity`` to ``True`` in :ref:`settings`
-    (dynalite does not require this step because it implements returning of consumed capacity in
-    responses, which is used by ``rate_limited_scan``).
-
-.. note::
-
     Local implementations of DynamoDB such as DynamoDB Local or dynalite may not be fully featured
     (and I don't maintain either of those packages), so you may encounter errors or bugs with a
     local implementation that you would not encounter using DynamoDB.
@@ -82,6 +75,7 @@ Once the server has started, you should see output:
     2014-03-28 12:09:10.943:INFO:oejs.AbstractConnector:Started SelectChannelConnector@0.0.0.0:8000
 
 Now DynamoDB local is running locally, listening on port 8000 by default.
+
 
 
 
