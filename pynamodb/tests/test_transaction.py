@@ -32,8 +32,12 @@ class TestTransaction:
     def test_hash_model__duplicate(self, mocker):
         mock_model = mocker.MagicMock()
         mock_model.__class__.__name__ = 'Mock'
+        mock_model2 = mocker.MagicMock()
+        mock_model2.__class__.__name__ = 'Mock2'
+
         t = Transaction(connection=mocker.MagicMock())
         t._hash_model(mock_model, 1, 2)
+        t._hash_model(mock_model2, 1, 2)
         with pytest.raises(ValueError):
             t._hash_model(mock_model, 1, 2)
 

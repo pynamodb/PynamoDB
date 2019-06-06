@@ -31,6 +31,7 @@ class Transaction(object):
 
     def _hash_model(self, model, hash_key, range_key=None):
         key = (model.__class__, hash_key, range_key)
+        print(key)
         if key in self._hashed_models:
             raise ValueError("Can't perform operation on the same entry multiple times in one transaction")
         self._hashed_models.add(key)
@@ -54,9 +55,9 @@ class TransactGet(Transaction):
         self._proxy_models = []
 
     def add_get_item(self, model_cls, hash_key, range_key, operation_kwargs):
+        self._hash_model(model_cls, hash_key, range_key)
         get_item = self._format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
         proxy_model = _ModelPromise(model_cls)
-        self._hash_model(model_cls, hash_key, range_key)
         self._proxy_models.append(proxy_model)
         self._get_items.append(get_item)
         return proxy_model
