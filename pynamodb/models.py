@@ -252,7 +252,7 @@ class Model(AttributeContainer):
                     "This table has no range key, but a range key value was provided: {0}".format(range_key)
                 )
             attributes[self._dynamo_to_python_attr(range_keyname)] = range_key
-        super(Model, self).__init__(_previously_saved, **attributes)
+        super(Model, self).__init__(_previously_saved=_previously_saved, **attributes)
 
     @classmethod
     def has_map_or_list_attributes(cls):

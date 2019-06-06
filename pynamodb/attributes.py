@@ -227,7 +227,7 @@ class AttributeContainer(object):
         # instances do not have any Attributes defined and instead use this dictionary to store their
         # collection of name-value pairs.
         self.attribute_values = {}
-        self._set_defaults(_previously_saved)
+        self._set_defaults(_previously_saved=_previously_saved)
         self._set_attributes(**attributes)
 
     @classmethod
