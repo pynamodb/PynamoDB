@@ -29,9 +29,8 @@ class Transaction(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._commit()
 
-    def _hash_model(self, model, hash_key, range_key=None):
-        key = (model.__class__, hash_key, range_key)
-        print(key)
+    def _hash_model(self, model_cls, hash_key, range_key=None):
+        key = (model_cls, hash_key, range_key)
         if key in self._hashed_models:
             raise ValueError("Can't perform operation on the same entry multiple times in one transaction")
         self._hashed_models.add(key)
@@ -99,22 +98,22 @@ class TransactWrite(Transaction):
 
     def add_condition_check_item(self, model_cls, hash_key, range_key, operation_kwargs):
         condition_item = self._format_request_parameters(TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
-        self._hash_model(model_cls(), hash_key, range_key)
+        self._hash_model(model_cls, hash_key, range_key)
         self._condition_check_items.append(condition_item)
 
     def add_delete_item(self, model, operation_kwargs):
         delete_item = self._format_request_parameters(TRANSACTION_DELETE_REQUEST_PARAMETERS, operation_kwargs)
-        self._hash_model(model, model.get_hash_key(), model.get_range_key())
+        self._hash_model(model.__class__, model.get_hash_key(), model.get_range_key())
         self._delete_items.append(delete_item)
 
     def add_save_item(self, model, operation_kwargs):
         put_item = self._format_request_parameters(TRANSACTION_PUT_REQUEST_PARAMETERS, operation_kwargs)
-        self._hash_model(model, model.get_hash_key(), model.get_range_key())
+        self._hash_model(model.__class__, model.get_hash_key(), model.get_range_key())
         self._put_items.append(put_item)
 
     def add_update_item(self, model, operation_kwargs):
         update_item = self._format_request_parameters(TRANSACTION_UPDATE_REQUEST_PARAMETERS, operation_kwargs)
-        self._hash_model(model, model.get_hash_key(), model.get_range_key())
+        self._hash_model(model.__class__, model.get_hash_key(), model.get_range_key())
         self._update_items.append(update_item)
 
     def _commit(self):
