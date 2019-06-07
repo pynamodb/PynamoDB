@@ -108,14 +108,14 @@ first name begins with 'D':
 
 .. code-block:: python
 
-    for user in UserModel.query("Denver", filter_condition=(UserModel.first_name.startswith("J")):
+    for user in UserModel.query("Denver", UserModel.first_name.startswith("J"):
         print(user.first_name)
 
 Examples of ways to query your table with filter conditions:
 
 .. code-block:: python
 
-    for user in UserModel.query("Denver", filter_condition=(UserModel.email=="djohn@company.org")):
+    for user in UserModel.query("Denver", UserModel.email=="djohn@company.org"):
         print(user.first_name)
 
 .. code-block:: python

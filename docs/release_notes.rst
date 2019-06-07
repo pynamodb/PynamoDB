@@ -25,17 +25,22 @@ Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP 
 **Deprecation of old APIs**
 
 Support for `Legacy Conditional Parameters <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.html>`_ has been 
-removed. See a complete list of affected `Model` methods below:
+removed. See a complete list of affected ``Model`` methods below:
 
 * ``update_item``: removed in favor of ``update``.
-
 * ``rate_limited_scan``: removed in favor of ``scan`` and ``ResultIterator``.
 
   + Relatedly, the ``allow_rate_limited_scan_without_consumed_capacity`` option has been removed.
+* ``delete``: ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``condition`` instead.
+* ``update``: ``attributes``, ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``actions`` and ``condition`` instead.
+* ``save``: ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``condition`` instead.
+* ``count``: ``**filters`` kwargs removed. Use ``range_key_condition``/``filter_condition`` instead.
+* ``query``: ``conditional_operator`` and ``**filters`` kwargs removed. Use ``range_key_condition``/``filter_condition`` instead.
+* ``scan``: ``conditional_operator`` and ``**filters`` kwargs removed. Use ``filter_condition`` instead.
 
-TODO: more
-
-TODO: include cases to be careful of, e.g ``.update(**kwargs)`` or ``.scan(blah__eq=)``
+When upgrading, pay special attention to use of ``**filters`` and ``**expected_values``, as you'll need to check for arbitrary names that correspond to
+attribute names. Also keep an eye out for kwargs like ``user_id__eq=5`` or ``email__null=True``, which are no longer supported. If you're not already using
+``mypy`` to type check your code, it can help you catch cases like these.
 
 Other changes in this release:
 
@@ -43,8 +48,6 @@ Other changes in this release:
 * Added the ``max_pool_connection`` and ``extra_headers`` settings to replace common use cases for ``session_cls``
 * Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook. Other botocore hooks remain unimplemented.
 * Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
-
-
 
 
 v3.3.3
