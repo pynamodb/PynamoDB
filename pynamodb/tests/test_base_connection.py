@@ -15,12 +15,13 @@ import pytest
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import Connection
 from pynamodb.connection.base import MetaTable
-from pynamodb.exceptions import (VerboseClientError,
-    TableError, DeleteError, UpdateError, PutError, GetError, ScanError, QueryError, TableDoesNotExist)
+from pynamodb.exceptions import (
+    TableError, DeleteError, PutError, ScanError, GetError, UpdateError, TableDoesNotExist)
 from pynamodb.constants import (
     DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING, TABLE_KEY,
     PROVISIONED_BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE)
-from pynamodb.expressions.operand import Path
+from pynamodb.expressions.operand import Path, Value
+from pynamodb.expressions.update import SetAction
 from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from pynamodb.tests.deep_eq import deep_eq
 
@@ -49,6 +50,11 @@ class MetaTableTestCase(TestCase):
     def test_get_key_names_index(self):
         key_names = self.meta_table.get_key_names("LastPostIndex")
         self.assertEqual(key_names, ["ForumName", "Subject", "LastPostDateTime"])
+
+    def test_get_attribute_type(self):
+        assert self.meta_table.get_attribute_type('ForumName') == 'S'
+        with pytest.raises(ValueError):
+            self.meta_table.get_attribute_type('wrongone')
 
 
 class ConnectionTestCase(TestCase):
@@ -722,6 +728,17 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = BotoCoreError
+            self.assertRaises(
+                UpdateError,
+                conn.update_item,
+                self.test_table_name,
+                'foo-key',
+                range_key='foo-range-key',
+                actions=[SetAction(Path('bar'), Value('foobar'))],
+            )
+
     def test_put_item(self):
         """
         Connection.put_item
@@ -1388,6 +1405,13 @@ class ConnectionTestCase(TestCase):
                 }
             }
             self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = BotoCoreError
+            self.assertRaises(
+                ScanError,
+                conn.scan,
+                table_name)
 
     @mock.patch('pynamodb.connection.Connection.client')
     def test_make_api_call_throws_verbose_error_after_backoff(self, client_mock):
