@@ -70,20 +70,10 @@ proxy before forwarding along. Failure to strip these headers before sending to 
 will result in an ``InvalidSignatureException`` due to request signing.
 
 
-allow_rate_limited_scan_without_consumed_capacity
--------------------------------------------------
-
-Default: ``False``
-
-If ``True``, ``rate_limited_scan()`` will proceed silently (without
-rate limiting) if the DynamoDB server does not return consumed
-capacity information in responses. If ``False``, scans will fail
-should the server not return consumed capacity information in an
-effort to prevent unintentional capacity usage..
-
 Overriding settings
 ~~~~~~~~~~~~~~~~~~~
 
 Default settings may be overridden by providing a Python module which exports the desired new values.
 Set the ``PYNAMODB_CONFIG`` environment variable to an absolute path to this module or write it to
 ``/etc/pynamodb/global_default_settings.py`` to have it automatically discovered.
+
