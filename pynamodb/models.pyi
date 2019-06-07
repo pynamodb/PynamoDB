@@ -35,13 +35,16 @@ class Model(metaclass=MetaModel):
     @classmethod
     def batch_write(cls: Type[_T], auto_commit: bool = ...) -> BatchWrite[_T]: ...
     def delete(self, condition: Optional[Any] = ...) -> Any: ...
-    def update(self, actions: Optional[List[Any]] = ..., condition: Optional[Condition] = ...) -> Any: ...
+    def update(self, actions: List[Any], condition: Optional[Condition] = ...) -> Any: ...
     def save(self, condition: Optional[Condition] = ...) -> Dict[str, Any]: ...
     def refresh(self, consistent_read: bool = ...): ...
+
     @classmethod
     def get(cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ..., consistent_read: bool = ...) -> _T: ...
+
     @classmethod
     def from_raw_data(cls: Type[_T], data) -> _T: ...
+
     @classmethod
     def count(
         cls: Type[_T],
@@ -53,6 +56,7 @@ class Model(metaclass=MetaModel):
         limit: Optional[int] = ...,
         rate_limit: Optional[float] = ...,
     ) -> int: ...
+
     @classmethod
     def query(
         cls: Type[_T],
@@ -66,7 +70,9 @@ class Model(metaclass=MetaModel):
         last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
         attributes_to_get: Optional[Iterable[Text]] = ...,
         page_size: Optional[int] = ...,
+        rate_limit: Optional[float] = ...,
     ) -> ResultIterator[_T]: ...
+
     @classmethod
     def scan(
         cls: Type[_T],
@@ -76,6 +82,7 @@ class Model(metaclass=MetaModel):
         limit: Optional[int] = ...,
         last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
         page_size: Optional[int] = ...,
+        rate_limit: Optional[float] = ...,
     ) -> ResultIterator[_T]: ...
 
     @classmethod

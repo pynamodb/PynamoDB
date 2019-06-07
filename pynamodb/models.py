@@ -24,7 +24,7 @@ from pynamodb.constants import (
     KEY_TYPE, ITEM, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ALL_NEW,
-    GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, ACTION, VALUE, KEYS,
+    GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, KEYS,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES,
     TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT,
     UNPROCESSED_KEYS, PUT_REQUEST, DELETE_REQUEST,
@@ -248,13 +248,6 @@ class Model(AttributeContainer):
         super(Model, self).__init__(**attributes)
 
     @classmethod
-    def has_map_or_list_attributes(cls):
-        for attr_value in cls.get_attributes().values():
-            if isinstance(attr_value, MapAttribute) or isinstance(attr_value, ListAttribute):
-                return True
-        return False
-
-    @classmethod
     def batch_get(cls, items, consistent_read=None, attributes_to_get=None):
         """
         BatchGetItem for this model
@@ -333,20 +326,18 @@ class Model(AttributeContainer):
         Deletes this object from dynamodb
         """
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
-
-        # TODO: raise exception if old args passed?
-
         kwargs.update(condition=condition)
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update(self, actions=None, condition=None):
+    def update(self, actions, condition=None):
         """
         Updates an item using the UpdateItem operation.
 
-        :param actions:
+        :param actions: a list of Action updates to apply
+        :param condition: an optional Condition on which to update
         """
-        if actions is not None and not isinstance(actions, list):
-            raise TypeError("the value of `actions` is expected to be a list")
+        if not isinstance(actions, list) or len(actions) == 0:
+            raise TypeError("the value of `actions` is expected to be a non-empty list")
 
         args, save_kwargs = self._get_save_args(null_check=False)
         kwargs = {
@@ -535,6 +526,7 @@ class Model(AttributeContainer):
         :param last_evaluated_key: If set, provides the starting point for query.
         :param attributes_to_get: If set, only returns these elements
         :param page_size: Page size of the query to DynamoDB
+        :param rate_limit: If set then consumed capacity will be limited to this amount per second
         """
         cls._get_indexes()
         if index_name:
@@ -596,6 +588,8 @@ class Model(AttributeContainer):
         :param last_evaluated_key: If set, provides the starting point for scan.
         :param page_size: Page size of the scan to DynamoDB
         :param consistent_read: If True, a consistent read is performed
+        :param index_name: If set, then this index is used
+        :param rate_limit: If set then consumed capacity will be limited to this amount per second
         """
         if page_size is None:
             page_size = limit
