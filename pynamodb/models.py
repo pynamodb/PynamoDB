@@ -847,7 +847,12 @@ class Model(AttributeContainer):
         return cls._get_connection().describe_table()
 
     @classmethod
-    def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None):
+    def create_table(
+        cls,
+        wait=False,
+        read_capacity_units=None,
+        write_capacity_units=None,
+        ignore_update_ttl_errors=False):
         """
         Create the table for this model
 
@@ -895,6 +900,14 @@ class Model(AttributeContainer):
                 else:
                     raise TableError("No TableStatus returned for table")
 
+        cls.update_ttl(ignore_update_ttl_errors)
+
+    @classmethod
+    def update_ttl(cls, ignore_update_ttl_errors):
+        """
+        Attempt to update the TTL on the table.
+        Certain implementations (eg: dynalite) do not support updating TTLs and will fail.
+        """
         ttl_attribute = cls._ttl_attribute()
         if ttl_attribute:
             # Some dynamoDB implementations (eg: dynalite) do not support updating TTLs so
@@ -902,7 +915,10 @@ class Model(AttributeContainer):
             try:
                 cls._get_connection().update_time_to_live(ttl_attribute.attr_name)
             except Exception:
-                log.info("Unable to update the TTL for {}".format(cls.Meta.table_name))
+                if ignore_update_ttl_errors:
+                    log.info("Unable to update the TTL for {}".format(cls.Meta.table_name))
+                else:
+                    raise
 
     @classmethod
     def dumps(cls):

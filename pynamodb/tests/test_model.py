@@ -4486,6 +4486,11 @@ class ModelInitTestCase(TestCase):
             BadTTLModel()
 
     def test_get_ttl_attribute(self):
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = Exception
+            self.assertRaises(Exception, TTLmodel.update_time_to_live, False)
+
+    def test_get_ttl_attribute(self):
         assert TTLModel._ttl_attribute().attr_name == "my_ttl"
 
     def test_previously_saved(self):

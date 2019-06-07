@@ -546,24 +546,34 @@ class TTLAttribute(Attribute):
     """
     attr_type = NUMBER
 
+    def __set__(self, instance, value):
+        """
+        Force a TTLAttribute to have a UTC datetime value
+        """
+        if isinstance(value, timedelta):
+            # Python 2.6 compatibility.. Otherwise we could use value.total_seconds()
+            total_seconds = (value.microseconds + (value.seconds + value.days * 24 * 3600) * 10**6) / 10**6
+            value = int(time.time() + total_seconds)
+        elif isinstance(value, int):
+            if value < time.time():  # Assume the value is number of seconds the object will live for
+                value = int(value + time.time())
+        elif isinstance(value, datetime):
+            value = calendar.timegm(value.utctimetuple())
+        elif value is not None:
+            raise ValueError("TTLAttribute value must be an int, timedelta, or datetime.")
+
+        attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+        if value is not None:
+            value = datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
+        instance.attribute_values[attr_name] = value
+
     def serialize(self, value):
         """
         Return the epoch representation (in seconds).
         """
         if value is None:
             return None
-        elif isinstance(value, int):
-            if value < time.time():  # Assume the value is number of seconds the object will live for
-                value = int(value + time.time())
-            return json.dumps(value)
-        elif isinstance(value, timedelta):
-            return json.dumps(int(time.time() + value.total_seconds()))
-        elif isinstance(value, datetime):
-            if value.tzinfo is None:
-                return json.dumps(int((value - datetime(1970,1,1)).total_seconds()))
-            return json.dumps(calendar.timegm(value.utctimetuple()))
-        else:
-            raise ValueError("TTLAttribute value must be an int, timedelta, or datetime.")
+        return json.dumps(calendar.timegm(value.utctimetuple()))
 
     def deserialize(self, value):
         """

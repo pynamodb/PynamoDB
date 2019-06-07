@@ -46,6 +46,7 @@ class AttributeTestModel(Model):
     bool_attr = BooleanAttribute()
     json_attr = JSONAttribute()
     map_attr = MapAttribute()
+    ttl_attr = TTLAttribute()
 
 
 class CustomAttrMap(MapAttribute):
@@ -511,38 +512,54 @@ class TestTTLAttribute:
     @patch('time.time')
     def test_int_less_than_current_time_ttl(self, mock_time):
         mock_time.side_effect = [1559692800, 1559692800]  # 2019-06-05 00:00:00 UTC
-        attr = TTLAttribute(default_for_new=60)
-        s = attr.serialize(60)
-        assert s == '1559692860'
-        assert attr.deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+        model = AttributeTestModel()
+        model.ttl_attr = 60
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
 
     @patch('time.time')
     def test_int_greater_than_current_time_ttl(self, mock_time):
         mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
-        attr = TTLAttribute()
-        s = attr.serialize(1559692860)
-        assert s == '1559692860'
-        assert attr.deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+        model = AttributeTestModel()
+        model.ttl_attr = 1559692860
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
 
     @patch('time.time')
     def test_timedelta_ttl(self, mock_time):
         mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
-        attr = TTLAttribute()
-        s = attr.serialize(timedelta(seconds=60))
-        assert s == '1559692860'
-        assert attr.deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+        model = AttributeTestModel()
+        model.ttl_attr = timedelta(seconds=60)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
 
     def test_datetime_no_tz_ttl(self):
-        attr = TTLAttribute()
-        s = attr.serialize(datetime(2019, 6, 5, 0, 1))
-        assert s == '1559692860'
-        assert attr.deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+        model = AttributeTestModel()
+        model.ttl_attr = datetime(2019, 6, 5, 0, 1)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
 
     def test_datetime_with_tz_ttl(self):
-        attr = TTLAttribute()
-        s = attr.serialize(datetime(2019, 6, 5, 0, 1, tzinfo=UTC))
+        model = AttributeTestModel()
+        model.ttl_attr = datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+
+    def test_ttl_attribute_wrong_type(self):
+        with pytest.raises(ValueError):
+            model = AttributeTestModel()
+            model.ttl_attr = 'wrong type'
+
+    def test_serialize_none(self):
+        model = AttributeTestModel()
+        model.ttl_attr = None
+        assert model.ttl_attr == None
+        assert TTLAttribute().serialize(model.ttl_attr) == None
+
+    @patch('time.time')
+    def test_serialize_deserialize(self, mock_time):
+        mock_time.side_effect = [1559692800, 1559692800]  # 2019-06-05 00:00:00 UTC
+        model = AttributeTestModel()
+        model.ttl_attr = 60
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+        s = TTLAttribute().serialize(model.ttl_attr)
         assert s == '1559692860'
-        assert attr.deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+        assert TTLAttribute().deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
 
 
 class TestJSONAttribute:
