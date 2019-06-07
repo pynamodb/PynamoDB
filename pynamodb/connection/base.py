@@ -849,7 +849,6 @@ class Connection(object):
             operation_kwargs.update(self.get_return_values_map(return_values))
         if not actions:
             raise ValueError("'actions' cannot be empty")
-        actions = actions or []
 
         update_expression = Update(*actions)
         operation_kwargs[UPDATE_EXPRESSION] = update_expression.serialize(name_placeholders, expression_attribute_values)
@@ -1091,7 +1090,9 @@ class Connection(object):
             hash_keyname = tbl.hash_keyname
             range_keyname = tbl.range_keyname
 
-        key_condition = self._get_condition(table_name, hash_keyname, '__eq__', hash_key)
+        hash_condition_value = {self.get_attribute_type(table_name, hash_keyname, hash_key): self.parse_attribute(hash_key)}
+        key_condition = getattr(Path([hash_keyname]), '__eq__')(hash_condition_value)
+
         if range_key_condition is not None:
             if range_key_condition.is_valid_range_key_condition(range_keyname):
                 key_condition = key_condition & range_key_condition
@@ -1142,13 +1143,6 @@ class Connection(object):
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {0}".format(e), e)
-
-    def _get_condition(self, table_name, attribute_name, operator, *values):
-        values = [
-            {self.get_attribute_type(table_name, attribute_name, value): self.parse_attribute(value)}
-            for value in values
-        ]
-        return getattr(Path([attribute_name]), operator)(*values)
 
     def _check_condition(self, name, condition):
         if condition is not None:
