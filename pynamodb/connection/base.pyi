@@ -108,6 +108,19 @@ class Connection:
         total_segments: Optional[int] = ...,
     ) -> Dict: ...
 
-    def query(self, table_name: Text, hash_key, attributes_to_get: Optional[Any] = ..., consistent_read: bool = ..., exclusive_start_key: Optional[Any] = ..., index_name: Optional[Any] = ..., limit: Optional[Any] = ..., return_consumed_capacity: Optional[Any] = ..., scan_index_forward: Optional[Any] = ..., select: Optional[Any] = ...): ...
+    def query(
+        self,
+        table_name: Text,
+        hash_key,
+        range_key_condition: Optional[Condition] = ...,
+        attributes_to_get: Optional[Any] = ...,
+        consistent_read: bool = ...,
+        exclusive_start_key: Optional[Any] = ...,
+        index_name: Optional[Any] = ...,
+        limit: Optional[Any] = ...,
+        return_consumed_capacity: Optional[Any] = ...,
+        scan_index_forward: Optional[Any] = ...,
+        select: Optional[Any] = ...
+    ): ...
 
     def _create_prepared_request(self, params: Dict, operation_model: Optional[Any] = ...) -> AWSPreparedRequest: ...
