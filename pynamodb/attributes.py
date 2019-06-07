@@ -546,31 +546,40 @@ class TTLAttribute(Attribute):
     """
     attr_type = NUMBER
 
+    def __set__(self, instance, value):
+        """
+        Force TTLAttributes to be ints internally.
+        """
+        if not instance or self._is_map_attribute_class_object(instance):
+            return
+
+        if isinstance(value, timedelta):
+            value = int(time.time() + value.total_seconds())
+        elif isinstance(value, datetime):
+            if value.tzinfo is None:
+                value = int((value - datetime(1970,1,1)).total_seconds())
+            else:
+                value = calendar.timegm(value.utctimetuple())
+        elif isinstance(value, int)
+            if value < time.time():  # Assume the value is number of seconds the object will live for
+                value = int(value + time.time())
+        else:
+            raise ValueError("TTLAttribute value must be an int, timedelta, or datetime.")
+
+        attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+        instance.attribute_values[attr_name] = value
+
     def serialize(self, value):
         """
         Return the epoch representation (in seconds).
         """
-        if value is None:
-            return None
-        elif isinstance(value, int):
-            if value < time.time():  # Assume the value is number of seconds the object will live for
-                value = int(value + time.time())
-            return json.dumps(value)
-        elif isinstance(value, timedelta):
-            return json.dumps(int(time.time() + value.total_seconds()))
-        elif isinstance(value, datetime):
-            if value.tzinfo is None:
-                return json.dumps(int((value - datetime(1970,1,1)).total_seconds()))
-            return json.dumps(calendar.timegm(value.utctimetuple()))
-        else:
-            raise ValueError("TTLAttribute value must be an int, timedelta, or datetime.")
+        return json.dumps(value)
 
     def deserialize(self, value):
         """
         Decode the epoch representation into a datetime
         """
-        epoch = json.loads(value)
-        return datetime.utcfromtimestamp(epoch).replace(tzinfo=tzutc())
+        return json.loads(value)
 
 
 class UTCDateTimeAttribute(Attribute):
