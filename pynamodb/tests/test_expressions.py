@@ -530,7 +530,7 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'NS': ['0', '1']}}
 
     def test_delete_action_set(self):
-        action = NumberSetAttribute(attr_name='foo').delete(set([0, 1]))
+        action = NumberSetAttribute(attr_name='foo').delete({0, 1})
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 :0"

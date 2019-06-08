@@ -83,7 +83,7 @@ class TableDoesNotExist(PynamoDBException):
     Raised when an operation is attempted on a table that doesn't exist
     """
     def __init__(self, table_name):
-        msg = "Table does not exist: `{0}`".format(table_name)
+        msg = "Table does not exist: `{}`".format(table_name)
         super(TableDoesNotExist, self).__init__(msg)
 
 

@@ -242,7 +242,7 @@ class Model(AttributeContainer):
             range_keyname = self._get_meta_data().range_keyname
             if range_keyname is None:
                 raise ValueError(
-                    "This table has no range key, but a range key value was provided: {0}".format(range_key)
+                    "This table has no range key, but a range key value was provided: {}".format(range_key)
                 )
             attributes[self._dynamo_to_python_attr(range_keyname)] = range_key
         super(Model, self).__init__(**attributes)
@@ -316,9 +316,9 @@ class Model(AttributeContainer):
         if self.Meta.table_name:
             serialized = self._serialize(null_check=False)
             if self._get_meta_data().range_keyname:
-                msg = "{0}<{1}, {2}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
+                msg = "{}<{}, {}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
             else:
-                msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
+                msg = "{}<{}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
     def delete(self, condition=None):
@@ -915,7 +915,7 @@ class Model(AttributeContainer):
         if not hasattr(cls, "Meta"):
             raise AttributeError(
                 'As of v1.0 PynamoDB Models require a `Meta` class.\n'
-                'Model: {0}.{1}\n'
+                'Model: {}.{}\n'
                 'See https://pynamodb.readthedocs.io/en/latest/release_notes.html\n'.format(
                     cls.__module__, cls.__name__,
                 ),
@@ -923,7 +923,7 @@ class Model(AttributeContainer):
         elif not hasattr(cls.Meta, "table_name") or cls.Meta.table_name is None:
             raise AttributeError(
                 'As of v1.0 PyanmoDB Models must have a table_name\n'
-                'Model: {0}.{1}\n'
+                'Model: {}.{}\n'
                 'See https://pynamodb.readthedocs.io/en/latest/release_notes.html'.format(
                     cls.__module__, cls.__name__,
                 ),
@@ -969,7 +969,7 @@ class Model(AttributeContainer):
             value = getattr(self, name)
             if isinstance(value, MapAttribute):
                 if not value.validate():
-                    raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
+                    raise ValueError("Attribute '{}' is not correctly typed".format(attr.attr_name))
 
             serialized = self._serialize_value(attr, value, null_check)
             if NULL in serialized:
@@ -1003,7 +1003,7 @@ class Model(AttributeContainer):
 
         if serialized is None:
             if not attr.null and null_check:
-                raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
+                raise ValueError("Attribute '{}' cannot be None".format(attr.attr_name))
             return {NULL: True}
 
         return {ATTR_TYPE_MAP[attr.attr_type]: serialized}

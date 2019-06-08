@@ -75,7 +75,7 @@ class ConnectionTestCase(TestCase):
         conn = Connection(host='http://foohost')
         self.assertIsNotNone(conn.client)
         self.assertIsNotNone(conn)
-        self.assertEqual(repr(conn), "Connection<{0}>".format(conn.host))
+        self.assertEqual(repr(conn), "Connection<{}>".format(conn.host))
 
     def test_subsequent_client_is_not_cached_when_credentials_none(self):
         with patch('pynamodb.connection.Connection.session') as session_mock:
@@ -912,7 +912,7 @@ class ConnectionTestCase(TestCase):
         table_name = 'Thread'
         for i in range(10):
             items.append(
-                {"ForumName": "FooForum", "Subject": "thread-{0}".format(i)}
+                {"ForumName": "FooForum", "Subject": "thread-{}".format(i)}
             )
         self.assertRaises(
             ValueError,
@@ -1046,7 +1046,7 @@ class ConnectionTestCase(TestCase):
         table_name = 'Thread'
         for i in range(10):
             items.append(
-                {"ForumName": "FooForum", "Subject": "thread-{0}".format(i)}
+                {"ForumName": "FooForum", "Subject": "thread-{}".format(i)}
             )
         with patch(PATCH_METHOD) as req:
             req.return_value = DESCRIBE_TABLE_DATA
