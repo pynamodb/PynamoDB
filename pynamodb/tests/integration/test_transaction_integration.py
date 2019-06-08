@@ -2,7 +2,6 @@ import os
 import uuid
 from datetime import datetime
 
-import config as cfg
 import pytest
 
 from pynamodb.connection import Connection
@@ -20,7 +19,7 @@ TRANSACTION_CANCELLED = 'TransactionCanceledException'
 TRANSACTION_IN_PROGRESS = 'TransactionInProgressException'
 
 
-DDB_URL = os.getenv('PYNAMODB_INTEGRATION_TEST_DDB_URL', cfg.DYNAMODB_HOST)
+DDB_URL = os.getenv('PYNAMODB_INTEGRATION_TEST_DDB_URL', 'http://localhost:8000')
 
 
 class User(Model):

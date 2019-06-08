@@ -849,7 +849,8 @@ class ModelTestCase(TestCase):
 
         mock_transaction = MagicMock(spec=TransactWrite)
         UserModel.condition_check(
-            'foo', 'bar',
+            hash_key='foo',
+            range_key='bar',
             in_transaction=mock_transaction,
             condition=(UserModel.user_id.does_not_exist())
         )
@@ -949,7 +950,7 @@ class ModelTestCase(TestCase):
 
         mock_transaction = MagicMock()
         response = item.update(
-            {'custom_aliases': {'value': set(['alias2']), 'action': 'delete'}},
+            actions=[SimpleUserModel.email.set('bleep@bloop.com')],
             in_transaction=mock_transaction
         )
 
@@ -957,23 +958,24 @@ class ModelTestCase(TestCase):
         mock_transaction.add_update_item.assert_called_with(
             model=item,
             operation_kwargs={
-            'TableName': 'SimpleModel',
-            'Key': {
-                'user_name': {
-                    'S': 'foo'
+                'TableName': 'SimpleModel',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'ReturnValues': 'NONE',
+                'UpdateExpression': 'SET #0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'bleep@bloop.com'
+                    }
                 }
-            },
-            'ReturnValues': 'NONE',
-            'UpdateExpression': 'DELETE #0 :0',
-            'ExpressionAttributeNames': {
-                '#0': 'aliases'
-            },
-            'ExpressionAttributeValues': {
-                ':0': {
-                    'SS': ['alias2']
-                }
-            },
-        })
+            }
+        )
 
     def test_save(self):
         """
