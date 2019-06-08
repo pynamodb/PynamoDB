@@ -44,11 +44,7 @@ class Model(metaclass=MetaModel):
     def refresh(self, consistent_read: bool = ...): ...
 
     @classmethod
-    @overload
     def get(cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ..., consistent_read: bool = ..., in_transaction: None = ...) -> _T: ...
-    @classmethod
-    @overload
-    def get(cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ..., consistent_read: bool = ..., in_transaction: TransactGet = ...) -> _ModelPromise: ...
     @classmethod
     def from_raw_data(cls: Type[_T], data) -> _T: ...
 
@@ -136,7 +132,7 @@ class BatchWrite(Generic[_T], ModelContextManager[_T]):
     pending_operations: Any
     def commit(self) -> None: ...
 
-class _ModelPromise:
+class _ModelFuture:
     _model_cls: Type[_T]
     _model: Optional[_T]
     _resolved: bool

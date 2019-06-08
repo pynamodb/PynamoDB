@@ -47,14 +47,6 @@ class TestTransactGet:
     def setup(self):
         self.mock_model_cls = MagicMock(__name__='MockModel')
 
-    def test_get_results_in_order__get_error(self, mocker):
-        t = TransactGet(connection=mocker.MagicMock())
-        with pytest.raises(GetError):
-            t.get_results_in_order()
-
-        t._results = []
-        assert t.get_results_in_order() == []
-
     def test_commit(self, mocker):
         mock_connection = mocker.MagicMock(spec=Connection)
         mock_connection.transact_get_items.return_value = {
@@ -62,7 +54,7 @@ class TestTransactGet:
         }
 
         with TransactGet(connection=mock_connection) as t:
-            t.add_get_item(self.mock_model_cls, 1, 2, {})
+            t.get(self.mock_model_cls, 1, 2)
 
         mock_connection.transact_get_items.assert_called_once_with(get_items=[{}], return_consumed_capacity=None)
 

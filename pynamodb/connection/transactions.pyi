@@ -1,6 +1,6 @@
 from typing import Set, Tuple, TypeVar, Type, Any, List, Optional, Dict, Union, Text
 
-from pynamodb.models import Model, _ModelPromise
+from pynamodb.models import Model, _ModelFuture
 
 from pynamodb.connection import Connection
 
@@ -23,12 +23,12 @@ class Transaction:
 
 class TransactGet(Transaction):
     _get_items: List[Dict]
-    _proxy_models = List[_ModelPromise]
+    _proxy_models = List[_ModelFuture]
     _results: List[Dict]
 
     def _commit(self) -> None: ...
     def _update_proxy_models(self) -> None: ...
-    def add_get_item(self, model_cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ..., operation_kwargs: Dict = ...) -> Type[_T]: ...
+    def get(self, model_cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ...) -> Type[_T]: ...
     def get_results_in_order(self) -> List[Type[_T]]: ...
 
 class TransactWrite(Transaction):
@@ -39,6 +39,7 @@ class TransactWrite(Transaction):
     _client_request_token: Optional[str]
     _return_item_collection_metrics: Optional[Any]
 
+    def __int__(self, connection: Connection, return_consumed_capacity: Optional[Any] = ..., client_request_token: Optional[str] = ..., return_item_collection_metrics: Optional[str] = ...) -> None: ...
     def _commit(self) -> None: ...
     def add_condition_check_item(self, model_cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ..., operation_kwargs: Dict = ...) -> None: ...
     def add_delete_item(self, model: Type[_T], operation_kwargs: Dict) -> None: ...

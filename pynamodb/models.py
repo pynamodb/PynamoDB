@@ -427,12 +427,16 @@ class Model(AttributeContainer):
         self._deserialize(item_data)
 
     @classmethod
+    def get_operation_kwargs_for_get_item(cls, hash_key, range_key=None):
+        hash_key, range_key = cls._serialize_keys(hash_key, range_key)
+        return cls._get_connection().get_operation_kwargs_for_get_item(hash_key, range_key)
+
+    @classmethod
     def get(cls,
             hash_key,
             range_key=None,
             consistent_read=False,
-            attributes_to_get=None,
-            in_transaction=None
+            attributes_to_get=None
             ):
         """
         Returns a single object using the provided keys
@@ -441,18 +445,8 @@ class Model(AttributeContainer):
         :param range_key: The range key of the desired item, only used when appropriate.
         :param consistent_read
         :param attributes_to_get
-        :param in_transaction: the TransactGet object used to make this request
         """
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
-
-        if in_transaction is not None:
-            operation_kwargs = cls._get_connection().get_operation_kwargs_for_get_item(
-                hash_key=hash_key,
-                range_key=range_key,
-                consistent_read=consistent_read,
-                attributes_to_get=attributes_to_get
-            )
-            return in_transaction.add_get_item(cls, hash_key, range_key, operation_kwargs)
 
         data = cls._get_connection().get_item(
             hash_key,
@@ -1084,7 +1078,7 @@ class Model(AttributeContainer):
         return hash_key, range_key
 
 
-class _ModelPromise:
+class _ModelFuture:
 
     def __init__(self, model_cls):
         self._model_cls = model_cls
@@ -1096,7 +1090,9 @@ class _ModelPromise:
             self._model = self._model_cls.from_raw_data(data=data)
         self._resolved = True
 
-    def resolve(self):
-        if self._resolved:
+    def get(self):
+        if not self._resolved:
+            raise Exception('Cannot resolve until request has been processed')
+        if self._model:
             return self._model
-        raise Exception('Cannot resolve until request has been processed')
+        raise self._model_cls.DoesNotExist()

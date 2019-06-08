@@ -5,7 +5,7 @@ from pynamodb.constants import (
     TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, TRANSACTION_DELETE_REQUEST_PARAMETERS,
     TRANSACTION_GET_REQUEST_PARAMETERS, TRANSACTION_PUT_REQUEST_PARAMETERS, TRANSACTION_UPDATE_REQUEST_PARAMETERS
 )
-from pynamodb.models import _ModelPromise
+from pynamodb.models import _ModelFuture
 
 
 class Transaction(object):
@@ -53,18 +53,14 @@ class TransactGet(Transaction):
         self._get_items = []
         self._proxy_models = []
 
-    def add_get_item(self, model_cls, hash_key, range_key, operation_kwargs):
+    def get(self, model_cls, hash_key, range_key=None):
         self._hash_model(model_cls, hash_key, range_key)
+        operation_kwargs = model_cls.get_operation_kwargs_for_get_item(hash_key, range_key=range_key)
         get_item = self._format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
-        proxy_model = _ModelPromise(model_cls)
+        proxy_model = _ModelFuture(model_cls)
         self._proxy_models.append(proxy_model)
         self._get_items.append(get_item)
         return proxy_model
-
-    def get_results_in_order(self):
-        if self._results is None:
-            raise GetError('Attempting to access item before committing the transaction')
-        return self._proxy_models
 
     def _update_proxy_models(self):
         for model, data in zip(self._proxy_models, self._results):

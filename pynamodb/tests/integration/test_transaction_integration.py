@@ -159,15 +159,15 @@ class TestTransactionIntegration:
 
         # get users and statements we just created and assign them to variables
         with TransactGet(connection=CONNECTION) as transaction:
-            _user1_promise = User.get(1, in_transaction=transaction)
-            _statement1_promise = BankStatement.get(1, in_transaction=transaction)
-            _user2_promise = User.get(2, in_transaction=transaction)
-            _statement2_promise = BankStatement.get(2, in_transaction=transaction)
+            _user1_future = transaction.get(User, 1)
+            _statement1_future = transaction.get(BankStatement, 1)
+            _user2_future = transaction.get(User, 2)
+            _statement2_future = transaction.get(BankStatement, 2)
 
-        user1 = _user1_promise.resolve()
-        statement1 = _statement1_promise.resolve()
-        user2 = _user2_promise.resolve()
-        statement2 = _statement2_promise.resolve()
+        user1 = _user1_future.get()
+        statement1 = _statement1_future.get()
+        user2 = _user2_future.get()
+        statement2 = _statement2_future.get()
 
         assert user1.user_id == statement1.user_id == 1
         assert statement1.balance == 0
