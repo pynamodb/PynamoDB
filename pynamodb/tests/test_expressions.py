@@ -1,5 +1,6 @@
+from unittest import TestCase
+
 from pynamodb.attributes import ListAttribute, MapAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
-from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.expressions.condition import size
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.projection import create_projection_expression

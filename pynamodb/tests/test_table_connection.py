@@ -2,8 +2,8 @@
 Test suite for the table class
 """
 import six
+from unittest import TestCase
 
-from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION, PROVISIONED_BILLING_MODE
 from pynamodb.expressions.operand import Path

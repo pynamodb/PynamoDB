@@ -15,7 +15,7 @@ from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
-from pynamodb.compat import NullHandler, getmembers_issubclass
+from pynamodb.compat import getmembers_issubclass
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import get_settings_value
@@ -35,7 +35,7 @@ from pynamodb.constants import (
 
 
 log = logging.getLogger(__name__)
-log.addHandler(NullHandler())
+log.addHandler(logging.NullHandler())
 
 
 class ModelContextManager(object):

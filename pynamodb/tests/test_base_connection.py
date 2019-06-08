@@ -4,6 +4,7 @@ Tests for the base connection class
 import base64
 import json
 import six
+from unittest import TestCase
 
 import botocore.exceptions
 from botocore.awsrequest import AWSPreparedRequest, AWSRequest, AWSResponse
@@ -12,7 +13,6 @@ from botocore.exceptions import BotoCoreError
 
 import pytest
 
-from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import Connection
 from pynamodb.connection.base import MetaTable
 from pynamodb.exceptions import (

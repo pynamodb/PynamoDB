@@ -23,7 +23,6 @@ from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 from six.moves import range
 
-from pynamodb.compat import NullHandler
 from pynamodb.connection.util import pythonic
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
@@ -59,7 +58,7 @@ from pynamodb.types import HASH, RANGE
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
 log = logging.getLogger(__name__)
-log.addHandler(NullHandler())
+log.addHandler(logging.NullHandler())
 
 
 class MetaTable(object):
