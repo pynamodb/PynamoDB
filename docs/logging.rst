@@ -31,7 +31,3 @@ Here is an example showing how to enable logging for PynamoDB:
     # Scan
     for item in Thread.scan():
         print(item)
-
-    # Scan
-    for item in Thread.rate_limited_scan():
-        print(item)

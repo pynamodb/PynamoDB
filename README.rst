@@ -108,25 +108,19 @@ first name begins with 'D':
 
 .. code-block:: python
 
-    for user in UserModel.query("John", first_name__begins_with="D"):
+    for user in UserModel.query("Denver", UserModel.first_name.startswith("J"):
         print(user.first_name)
 
 Examples of ways to query your table with filter conditions:
 
 .. code-block:: python
 
-    for user in UserModel.query("John", filter_condition= (UserModel.email=="djohn@company.org")):
+    for user in UserModel.query("Denver", UserModel.email=="djohn@company.org"):
         print(user.first_name)
 
 .. code-block:: python
 
-    for user in UserModel.query("John", UserModel.email=="djohn@company.org"):
-        print(user.first_name)
-
-.. code-block:: python
-
-    # Deprecated, use UserModel.email=="djohn@company.org" instead
-    for user in UserModel.query("John", email__eq="djohn@company.org"):
+    for user in UserModel.query("Denver", UserModel.email=="djohn@company.org"):
         print(user.first_name)
 
 Retrieve an existing user:
@@ -240,3 +234,4 @@ Features
 * Complex queries
 * Batch operations with automatic pagination
 * Iterators for working with Query and Scan operations
+

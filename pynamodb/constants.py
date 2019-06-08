@@ -29,7 +29,6 @@ CLIENT_REQUEST_TOKEN = 'ClientRequestToken'
 COMPARISON_OPERATOR = 'ComparisonOperator'
 SCAN_INDEX_FORWARD = 'ScanIndexForward'
 ATTR_DEFINITIONS = 'AttributeDefinitions'
-ATTR_VALUE_LIST = 'AttributeValueList'
 TABLE_DESCRIPTION = 'TableDescription'
 UNPROCESSED_KEYS = 'UnprocessedKeys'
 UNPROCESSED_ITEMS = 'UnprocessedItems'
@@ -39,9 +38,7 @@ TRANSACT_ITEMS = 'TransactItems'
 RETURN_VALUES = 'ReturnValues'
 REQUEST_ITEMS = 'RequestItems'
 ATTRS_TO_GET = 'AttributesToGet'
-ATTR_UPDATES = 'AttributeUpdates'
 TABLE_STATUS = 'TableStatus'
-SCAN_FILTER = 'ScanFilter'
 TABLE_NAME = 'TableName'
 KEY_SCHEMA = 'KeySchema'
 ATTR_NAME = 'AttributeName'
@@ -55,9 +52,7 @@ TABLE_KEY = 'Table'
 RESPONSES = 'Responses'
 RANGE_KEY = 'RangeKey'
 KEY_TYPE = 'KeyType'
-ACTION = 'Action'
 UPDATE = 'Update'
-EXISTS = 'Exists'
 SELECT = 'Select'
 ACTIVE = 'ACTIVE'
 LIMIT = 'Limit'
@@ -74,6 +69,8 @@ TRANSACT_DELETE = 'Delete'
 TRANSACT_GET = 'Get'
 TRANSACT_PUT = 'Put'
 TRANSACT_UPDATE = 'Update'
+
+ACTION = 'Action'
 
 # Response Parameters
 SCANNED_COUNT = 'ScannedCount'
@@ -173,90 +170,19 @@ STREAM_KEYS_ONLY = 'KEYS_ONLY'
 # http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
 EXCLUSIVE_START_KEY = 'ExclusiveStartKey'
 LAST_EVALUATED_KEY = 'LastEvaluatedKey'
-QUERY_FILTER = 'QueryFilter'
-BEGINS_WITH = 'BEGINS_WITH'
-BETWEEN = 'BETWEEN'
-EQ = 'EQ'
-NE = 'NE'
-LE = 'LE'
-LT = 'LT'
-GE = 'GE'
-GT = 'GT'
-IN = 'IN'
-KEY_CONDITIONS = 'KeyConditions'
-COMPARISON_OPERATOR_VALUES = [EQ, LE, LT, GE, GT, BEGINS_WITH, BETWEEN]
-QUERY_OPERATOR_MAP = {
-    'eq': EQ,
-    'le': LE,
-    'lt': LT,
-    'ge': GE,
-    'gt': GT,
-    'begins_with': BEGINS_WITH,
-    'between': BETWEEN
-}
-KEY_CONDITION_OPERATOR_MAP = {
-    EQ: '__eq__',
-    LE: '__le__',
-    LT: '__lt__',
-    GE: '__ge__',
-    GT: '__gt__',
-    BEGINS_WITH: 'startswith',
-    BETWEEN: 'between'
-}
 
 # These are the valid select values for the Scan operation
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html#DDB-Scan-request-Select
-NOT_NULL = 'NOT_NULL'
-CONTAINS = 'CONTAINS'
-NOT_CONTAINS = 'NOT_CONTAINS'
 ALL_ATTRIBUTES = 'ALL_ATTRIBUTES'
 ALL_PROJECTED_ATTRIBUTES = 'ALL_PROJECTED_ATTRIBUTES'
 SPECIFIC_ATTRIBUTES = 'SPECIFIC_ATTRIBUTES'
 COUNT = 'COUNT'
 SELECT_VALUES = [ALL_ATTRIBUTES, ALL_PROJECTED_ATTRIBUTES, SPECIFIC_ATTRIBUTES, COUNT]
-SCAN_OPERATOR_MAP = {
-    'eq': EQ,
-    'ne': NE,
-    'le': LE,
-    'lt': LT,
-    'ge': GE,
-    'gt': GT,
-    'not_null': NOT_NULL,
-    'null': NULL,
-    'contains': CONTAINS,
-    'not_contains': NOT_CONTAINS,
-    'begins_with': BEGINS_WITH,
-    'in': IN,
-    'between': BETWEEN
-}
-QUERY_FILTER_OPERATOR_MAP = SCAN_OPERATOR_MAP
-DELETE_FILTER_OPERATOR_MAP = SCAN_OPERATOR_MAP
-UPDATE_FILTER_OPERATOR_MAP = SCAN_OPERATOR_MAP
-PUT_FILTER_OPERATOR_MAP = SCAN_OPERATOR_MAP
-
 
 # These are the valid comparison operators for the Scan operation
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html#DDB-Scan-request-ScanFilter
 SEGMENT = 'Segment'
 TOTAL_SEGMENTS = 'TotalSegments'
-SCAN_FILTER_VALUES = [EQ, NE, LE, LT, GE, GT, NOT_NULL, NULL, CONTAINS, NOT_CONTAINS, BEGINS_WITH, IN, BETWEEN]
-QUERY_FILTER_VALUES = SCAN_FILTER_VALUES
-DELETE_FILTER_VALUES = SCAN_FILTER_VALUES
-FILTER_EXPRESSION_OPERATOR_MAP = {
-    EQ: '__eq__',
-    NE: '__ne__',
-    LE: '__le__',
-    LT: '__lt__',
-    GE: '__ge__',
-    GT: '__gt__',
-    NOT_NULL: 'exists',
-    NULL: 'does_not_exist',
-    CONTAINS: 'contains',
-    NOT_CONTAINS: 'contains',  # special cased
-    BEGINS_WITH: 'startswith',
-    IN: 'is_in',
-    BETWEEN: 'between'
-}
 
 TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS = {
     CONDITION_EXPRESSION,
@@ -304,9 +230,9 @@ TRANSACTION_UPDATE_REQUEST_PARAMETERS = {
 }
 
 # These are constants used in the expected condition for PutItem
-# See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html#DDB-PutItem-request-Expected
+# See:
+# http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html#DDB-PutItem-request-Expected
 VALUE = 'Value'
-EXPECTED = 'Expected'
 
 # These are the valid ReturnConsumedCapacity values used in multiple operations
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_BatchGetItem.html#DDB-BatchGetItem-request-ReturnConsumedCapacity
@@ -335,7 +261,6 @@ RETURN_VALUES_VALUES = [NONE, ALL_OLD, UPDATED_OLD, ALL_NEW, UPDATED_NEW]
 PUT = 'PUT'
 DELETE = 'DELETE'
 ADD = 'ADD'
-ATTR_UPDATE_ACTIONS = [PUT, DELETE, ADD]
 BATCH_GET_PAGE_LIMIT = 100
 BATCH_WRITE_PAGE_LIMIT = 25
 
@@ -343,9 +268,7 @@ META_CLASS_NAME = "Meta"
 REGION = "region"
 HOST = "host"
 
-# The constants are needed for the ConditionalOperator argument used
-# UpdateItem, PutItem and DeleteItem
-CONDITIONAL_OPERATOR = 'ConditionalOperator'
 AND = 'AND'
 OR = 'OR'
-CONDITIONAL_OPERATORS = [AND, OR]
+BETWEEN = 'BETWEEN'
+IN = 'IN'

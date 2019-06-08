@@ -6,9 +6,11 @@ v4.0.0b1
 
 :date: 2019-04-10
 
-NB: This is an alpha release and these notes are subject to change.
+NB: This is a beta release and these notes are subject to change.
 
 This is major release and contains breaking changes. Please read the notes below carefully.
+
+**Requests Removal**
 
 Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP requests, we'll be doing the same (via ``botocore``). This means the following:
 
@@ -20,9 +22,29 @@ Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP 
 
 * *Wrapped* exceptions (i.e ``exc.cause``) that were from ``requests.exceptions`` will now be comparable ones from ``botocore.exceptions`` instead.
 
+**Deprecation of old APIs**
+
+Support for `Legacy Conditional Parameters <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.html>`_ has been 
+removed. See a complete list of affected ``Model`` methods below:
+
+* ``update_item``: removed in favor of ``update``.
+* ``rate_limited_scan``: removed in favor of ``scan`` and ``ResultIterator``.
+
+  + Relatedly, the ``allow_rate_limited_scan_without_consumed_capacity`` option has been removed.
+* ``delete``: ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``condition`` instead.
+* ``update``: ``attributes``, ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``actions`` and ``condition`` instead.
+* ``save``: ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``condition`` instead.
+* ``count``: ``**filters`` kwargs removed. Use ``range_key_condition``/``filter_condition`` instead.
+* ``query``: ``conditional_operator`` and ``**filters`` kwargs removed. Use ``range_key_condition``/``filter_condition`` instead.
+* ``scan``: ``conditional_operator`` and ``**filters`` kwargs removed. Use ``filter_condition`` instead.
+
+When upgrading, pay special attention to use of ``**filters`` and ``**expected_values``, as you'll need to check for arbitrary names that correspond to
+attribute names. Also keep an eye out for kwargs like ``user_id__eq=5`` or ``email__null=True``, which are no longer supported. If you're not already using
+``mypy`` to type check your code, it can help you catch cases like these.
+
 Other changes in this release:
 
-* Python 2.6 is no longer supported. 4.x.x will likely be the last major release to support Python 2.7, given the upcoming EOL.
+* Python 2.6 is no longer supported. 4.x.x will be the last major release to support Python 2.7 given the upcoming EOL.
 * Added the ``max_pool_connection`` and ``extra_headers`` settings to replace common use cases for ``session_cls``
 * Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook. Other botocore hooks remain unimplemented.
 * Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
@@ -878,3 +900,4 @@ v0.1.11
 * Better PEP8 Compliance
 * More tests
 * Removed session and endpoint caching to avoid using stale IAM role credentials
+

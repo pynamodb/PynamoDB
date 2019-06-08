@@ -675,8 +675,6 @@ class ModelTestCase(TestCase):
 
         self.assertRaises(ValueError, UserModel, user_name="bob")
 
-        self.assertRaises(ValueError, CustomAttrNameModel.query, "bob", foo_attr="bar")
-
     def test_refresh(self):
         """
         Model.refresh
@@ -766,33 +764,6 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = None
-            item.delete(user_id='bar')
-            params = {
-                'Key': {
-                    'user_id': {
-                        'S': 'bar'
-                    },
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '#0 = :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_id'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'bar'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            args = req.call_args[0][1]
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = None
             item.delete(UserModel.user_id == 'bar')
             params = {
                 'Key': {
@@ -820,91 +791,6 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = None
-            item.delete(user_id='bar')
-            params = {
-                'Key': {
-                    'user_id': {
-                        'S': 'bar'
-                    },
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '#0 = :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_id'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'bar'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            args = req.call_args[0][1]
-            self.assertEqual(args, params)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = None
-            item.delete((UserModel.user_id == 'bar') & UserModel.email.contains('@'))
-            params = {
-                'Key': {
-                    'user_id': {
-                        'S': 'bar'
-                    },
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '(#0 = :0 AND contains (#1, :1))',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_id',
-                    '#1': 'email'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'bar'
-                    },
-                    ':1': {
-                        'S': '@'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            args = req.call_args[0][1]
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = None
-            item.delete(user_id='bar', email__contains='@', conditional_operator='AND')
-            params = {
-                'Key': {
-                    'user_id': {
-                        'S': 'bar'
-                    },
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '(contains (#0, :0) AND #1 = :1)',
-                'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'user_id'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': '@'
-                    },
-                    ':1': {
-                        'S': 'bar'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            args = req.call_args[0][1]
             deep_eq(args, params, _assert=True)
 
         mock_transaction = MagicMock(spec=TransactWrite)
@@ -994,8 +880,6 @@ class ModelTestCase(TestCase):
             req.return_value = {}
             item.save()
 
-        self.assertRaises(TypeError, item.update, ["not", "a", "dict"])
-
         self.assertRaises(TypeError, item.update, actions={'not': 'a list'})
 
         with patch(PATCH_METHOD) as req:
@@ -1063,104 +947,6 @@ class ModelTestCase(TestCase):
             assert item.views is None
             self.assertEqual(set(['bob']), item.custom_aliases)
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "email": {
-                        "S": "foo@example.com",
-                    },
-                    "is_active": {
-                        "NULL": None,
-                    },
-                    "aliases": {
-                        "SS": set(["bob"]),
-                    }
-                }
-            }
-            item.update({
-                'email': {'value': 'foo@example.com', 'action': 'put'},
-                'views': {'action': 'delete'},
-                'is_active': {'value': None, 'action': 'put'},
-                'signature': {'value': None, 'action': 'put'},
-                'custom_aliases': {'value': set(['bob']), 'action': 'put'},
-            })
-
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3 REMOVE #4',
-                'ExpressionAttributeNames': {
-                    '#0': 'aliases',
-                    '#1': 'email',
-                    '#2': 'is_active',
-                    '#3': 'signature',
-                    '#4': 'views'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'SS': set(['bob'])
-                    },
-                    ':1': {
-                        'S': 'foo@example.com',
-                    },
-                    ':2': {
-                        'NULL': True
-                    },
-                    ':3': {
-                        'NULL': True
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-            assert item.views is None
-            self.assertEqual(set(['bob']), item.custom_aliases)
-
-        # Reproduces https://github.com/pynamodb/PynamoDB/issues/132
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "aliases": {
-                        "SS": set(["alias1", "alias3"])
-                    }
-                }
-            }
-            item.update({
-                'custom_aliases': {'value': set(['alias2']), 'action': 'delete'},
-            })
-
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'UpdateExpression': 'DELETE #0 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'aliases'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'SS': set(['alias2'])
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-            assert item.views is None
-            self.assertEqual(set(['alias1', 'alias3']), item.custom_aliases)
-
         mock_transaction = MagicMock()
         response = item.update(
             {'custom_aliases': {'value': set(['alias2']), 'action': 'delete'}},
@@ -1188,536 +974,6 @@ class ModelTestCase(TestCase):
                 }
             },
         })
-
-    def test_update_item(self):
-        """
-        Model.update_item
-        """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = SIMPLE_MODEL_TABLE_DATA
-            item = SimpleUserModel('foo', email='bar')
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {}
-            item.save()
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            self.assertRaises(ValueError, item.update_item, 'views', 10)
-
-        self.assertRaises(ValueError, item.update_item, 'nonexistent', 5)
-        self.assertRaises(ValueError, item.update_item, 'views', 10, action='add', nonexistent__not_contains='-')
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            item.update_item('views', 10, action='add')
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'UpdateExpression': 'ADD #0 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'views'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'N': '10'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            item.update_item('views', 10, action='add', condition=(
-                (SimpleUserModel.user_name == 'foo') & ~SimpleUserModel.email.contains('@')
-            ))
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '(#0 = :0 AND (NOT contains (#1, :1)))',
-                'UpdateExpression': 'ADD #2 :2',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_name',
-                    '#1': 'email',
-                    '#2': 'views'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'foo'
-                    },
-                    ':1': {
-                        'S': '@'
-                    },
-                    ':2': {
-                        'N': '10'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            item.update_item('views', 10, action='add', user_name='foo', email__not_contains='@')
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '((NOT contains (#1, :1)) AND #2 = :2)',
-                'UpdateExpression': 'ADD #0 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'views',
-                    '#1': 'email',
-                    '#2': 'user_name'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'N': '10'
-                    },
-                    ':1': {
-                        'S': '@'
-                    },
-                    ':2': {
-                        'S': 'foo'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            item.update_item('views', 10, action='add', condition=SimpleUserModel.user_name.does_not_exist())
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': 'attribute_not_exists (#0)',
-                'UpdateExpression': 'ADD #1 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_name',
-                    '#1': 'views'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'N': '10'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            item.update_item('views', 10, action='add', user_name__exists=False)
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': 'attribute_not_exists (#1)',
-                'UpdateExpression': 'ADD #0 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'views',
-                    '#1': 'user_name'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'N': '10'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        # Reproduces https://github.com/pynamodb/PynamoDB/issues/59
-        with patch(PATCH_METHOD) as req:
-            user = UserModel("test_hash", "test_range")
-            req.return_value = {
-                ATTRIBUTES: {}
-            }
-            user.update_item('zip_code', 10, action='add')
-            args = req.call_args[0][1]
-
-            params = {
-                'UpdateExpression': 'ADD #0 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'zip_code'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'N': '10'
-                    }
-                },
-                'TableName': 'UserModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_id': {'S': u'test_range'},
-                    'user_name': {'S': u'test_hash'}
-                },
-                'ReturnConsumedCapacity': 'TOTAL'}
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            # Reproduces https://github.com/pynamodb/PynamoDB/issues/34
-            item.email = None
-            item.update_item('views', 10, action='add')
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'UpdateExpression': 'ADD #0 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'views'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'N': '10'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                }
-            }
-            item.email = None
-            item.update_item('views', action='delete')
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'UpdateExpression': 'REMOVE #0',
-                'ExpressionAttributeNames': {
-                    '#0': 'views'
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            item.update_item('views', 10, action='add', condition=SimpleUserModel.numbers == [1, 2])
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '#0 = :0',
-                'UpdateExpression': 'ADD #1 :1',
-                'ExpressionAttributeNames': {
-                    '#0': 'numbers',
-                    '#1': 'views'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'NS': ['1', '2']
-                    },
-                    ':1': {
-                        'N': '10'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            item.update_item('views', 10, action='add', numbers__eq=[1, 2])
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '#1 = :1',
-                'UpdateExpression': 'ADD #0 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'views',
-                    '#1': 'numbers'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'N': '10'
-                    },
-                    ':1': {
-                        'NS': ['1', '2']
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        # Reproduces https://github.com/pynamodb/PynamoDB/issues/102
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            item.update_item('views', 10, action='add', condition=SimpleUserModel.email.is_in('1@pynamo.db','2@pynamo.db'))
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '#0 IN (:0, :1)',
-                'UpdateExpression': 'ADD #1 :2',
-                'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'views'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': '1@pynamo.db'
-                    },
-                    ':1': {
-                        'S': '2@pynamo.db'
-                    },
-                    ':2': {
-                        'N': '10'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        # Reproduces https://github.com/pynamodb/PynamoDB/issues/102
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "views": {
-                        "N": "10"
-                    }
-                }
-            }
-            item.update_item('views', 10, action='add', email__in=['1@pynamo.db','2@pynamo.db'])
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '#1 IN (:1, :2)',
-                'UpdateExpression': 'ADD #0 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'views',
-                    '#1': 'email'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'N': '10'
-                    },
-                    ':1': {
-                        'S': '1@pynamo.db'
-                    },
-                    ':2': {
-                        'S': '2@pynamo.db'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "aliases": {
-                        "SS": set(["lita"])
-                    }
-                }
-            }
-            item.update_item('custom_aliases', set(['lita']), action='add')
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'UpdateExpression': 'ADD #0 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'aliases'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'SS': set(['lita'])
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-            self.assertEqual(set(["lita"]), item.custom_aliases)
-
-        with patch(PATCH_METHOD) as req:
-            item.update_item('is_active', True, action='put')
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'UpdateExpression': 'SET #0 = :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'is_active'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'BOOL': True
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-
-        # Reproduces https://github.com/pynamodb/PynamoDB/issues/132
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    "aliases": {
-                        "SS": set(["alias1", "alias3"])
-                    }
-                }
-            }
-            item.update_item('custom_aliases', set(['alias2']), action='delete')
-            args = req.call_args[0][1]
-            params = {
-                'TableName': 'SimpleModel',
-                'ReturnValues': 'ALL_NEW',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'UpdateExpression': 'DELETE #0 :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'aliases'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'SS': set(['alias2'])
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL'
-            }
-            deep_eq(args, params, _assert=True)
-            self.assertEqual(set(["alias1", "alias3"]), item.custom_aliases)
 
     def test_save(self):
         """
@@ -1782,64 +1038,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
-            item.save(email__exists=False)
-            args = req.call_args[0][1]
-            params = {
-                'Item': {
-                    'callable_field': {
-                        'N': '42'
-                    },
-                    'email': {
-                        'S': u'needs_email'
-                    },
-                    'user_id': {
-                        'S': u'bar'
-                    },
-                    'user_name': {
-                        'S': u'foo'
-                    },
-                },
-                'ConditionExpression': 'attribute_not_exists (#0)',
-                'ExpressionAttributeNames': {
-                    '#0': 'email'
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {}
             item.save(UserModel.email.does_not_exist() & UserModel.zip_code.exists())
-            args = req.call_args[0][1]
-            params = {
-                'Item': {
-                    'callable_field': {
-                        'N': '42'
-                    },
-                    'email': {
-                        'S': u'needs_email'
-                    },
-                    'user_id': {
-                        'S': u'bar'
-                    },
-                    'user_name': {
-                        'S': u'foo'
-                    },
-                },
-                'ConditionExpression': '(attribute_not_exists (#0) AND attribute_exists (#1))',
-                'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'zip_code'
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {}
-            item.save(email__exists=False, zip_code__null=False)
             args = req.call_args[0][1]
             params = {
                 'Item': {
@@ -1908,78 +1107,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
-            item.save(custom_user_name='bar', zip_code__null=True, email__contains='@', conditional_operator='OR')
-            args = req.call_args[0][1]
-            params = {
-                'Item': {
-                    'callable_field': {
-                        'N': '42'
-                    },
-                    'email': {
-                        'S': u'needs_email'
-                    },
-                    'user_id': {
-                        'S': u'bar'
-                    },
-                    'user_name': {
-                        'S': u'foo'
-                    },
-                },
-                'ConditionExpression': '((contains (#0, :0) OR #1 = :1) OR attribute_not_exists (#2))',
-                'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'user_name',
-                    '#2': 'zip_code'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': '@'
-                    },
-                    ':1': {
-                        'S': 'bar'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {}
             item.save(UserModel.custom_user_name == 'foo')
-            args = req.call_args[0][1]
-            params = {
-                'Item': {
-                    'callable_field': {
-                        'N': '42'
-                    },
-                    'email': {
-                        'S': u'needs_email'
-                    },
-                    'user_id': {
-                        'S': u'bar'
-                    },
-                    'user_name': {
-                        'S': u'foo'
-                    },
-                },
-                'ConditionExpression': '#0 = :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_name'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'foo'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {}
-            item.save(custom_user_name='foo')
             args = req.call_args[0][1]
             params = {
                 'Item': {
@@ -2079,7 +1207,7 @@ class ModelTestCase(TestCase):
 
     def test_count_no_hash_key(self):
         with pytest.raises(ValueError):
-            UserModel.count(zip_code__le='94117')
+            UserModel.count(filter_condition=(UserModel.zip_code <= '94117'))
 
     def test_index_count(self):
         """
@@ -2096,34 +1224,6 @@ class ModelTestCase(TestCase):
             params = {
                 'KeyConditionExpression': '#0 = :0',
                 'FilterExpression': 'begins_with (#1, :1)',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_id',
-                    '#1': 'user_name'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': u'foo'
-                    },
-                    ':1': {
-                        'S': u'bar'
-                    }
-                },
-                'Limit': 2,
-                'IndexName': 'uid_index',
-                'TableName': 'CustomAttrModel',
-                'ReturnConsumedCapacity': 'TOTAL',
-                'Select': 'COUNT'
-            }
-            deep_eq(args, params, _assert=True)
-
-        # Note: this test is incorrect as uid_index does not have a range key
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {'Count': 42, 'ScannedCount': 42}
-            res = CustomAttrNameModel.uid_index.count('foo', limit=2, overidden_user_name__begins_with='bar')
-            self.assertEqual(res, 42)
-            args = req.call_args[0][1]
-            params = {
-                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'user_id',
                     '#1': 'user_name'
@@ -2376,27 +1476,6 @@ class ModelTestCase(TestCase):
                 queried
             )
 
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            queried = []
-            for item in UserModel.query('foo', user_id__between=['id-1', 'id-3']):
-                queried.append(item._serialize().get(RANGE))
-            self.assertListEqual(
-                [item.get('user_id').get(STRING_SHORT) for item in items],
-                queried
-            )
-
-        # you cannot query a range key with multiple conditions
-        self.assertRaises(ValueError, lambda: list(UserModel.query('foo', user_id__gt='id-1', user_id__le='id-2')))
-
-        # you cannot query a non-primary key with multiple conditions
-        self.assertRaises(ValueError, lambda: list(UserModel.query('foo', zip_code__gt='77096', zip_code__le='94117')))
-
         # you cannot use a range key in a query filter
         self.assertRaises(ValueError, lambda: list(UserModel.query(
             'foo', UserModel.user_id > 'id-1', UserModel.user_id <= 'id-2')))
@@ -2421,31 +1500,7 @@ class ModelTestCase(TestCase):
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
-            for item in UserModel.query('foo', user_id__lt='id-1'):
-                queried.append(item._serialize())
-            self.assertTrue(len(queried) == len(items))
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            queried = []
             for item in UserModel.query('foo', UserModel.user_id >= 'id-1'):
-                queried.append(item._serialize())
-            self.assertTrue(len(queried) == len(items))
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            queried = []
-            for item in UserModel.query('foo', user_id__ge='id-1'):
                 queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
@@ -2469,18 +1524,6 @@ class ModelTestCase(TestCase):
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
-            for item in UserModel.query('foo', user_id__le='id-1'):
-                queried.append(item._serialize())
-            self.assertTrue(len(queried) == len(items))
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            queried = []
             for item in UserModel.query('foo', UserModel.user_id == 'id-1'):
                 queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
@@ -2493,31 +1536,7 @@ class ModelTestCase(TestCase):
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
-            for item in UserModel.query('foo', user_id__eq='id-1'):
-                queried.append(item._serialize())
-            self.assertTrue(len(queried) == len(items))
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            queried = []
             for item in UserModel.query('foo', UserModel.user_id.startswith('id')):
-                queried.append(item._serialize())
-            self.assertTrue(len(queried) == len(items))
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            queried = []
-            for item in UserModel.query('foo', user_id__begins_with='id'):
                 queried.append(item._serialize())
             self.assertTrue(len(queried) == len(items))
 
@@ -2564,13 +1583,6 @@ class ModelTestCase(TestCase):
             req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
             CustomAttrNameModel._get_meta_data()
 
-        # Note this test is not valid -- this is request user_name == 'bar' and user_name == 'foo'
-        # The new condition api correctly throws an exception for in this case.
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {CAMEL_COUNT: 1, SCANNED_COUNT: 1, ITEMS: [CUSTOM_ATTR_NAME_ITEM_DATA.get(ITEM)]}
-            for item in CustomAttrNameModel.query('bar', overidden_user_name__eq='foo'):
-                self.assertIsNotNone(item)
-
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
@@ -2583,54 +1595,6 @@ class ModelTestCase(TestCase):
                     'foo',
                     UserModel.user_id.startswith('id'),
                     UserModel.email.contains('@') & UserModel.picture.exists() & UserModel.zip_code.between(2, 3)):
-                queried.append(item._serialize())
-            params = {
-                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
-                'FilterExpression': '((contains (#2, :2) AND attribute_exists (#3)) AND #4 BETWEEN :3 AND :4)',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_name',
-                    '#1': 'user_id',
-                    '#2': 'email',
-                    '#3': 'picture',
-                    '#4': 'zip_code'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': u'foo'
-                    },
-                    ':1': {
-                        'S': u'id'
-                    },
-                    ':2': {
-                        'S': '@'
-                    },
-                    ':3': {
-                        'N': '2'
-                    },
-                    ':4': {
-                        'N': '3'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            self.assertEqual(params, req.call_args[0][1])
-            self.assertTrue(len(queried) == len(items))
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            queried = []
-            for item in UserModel.query(
-                    'foo',
-                    user_id__begins_with='id',
-                    email__contains='@',
-                    picture__null=False,
-                    zip_code__between=[2, 3]):
                 queried.append(item._serialize())
             params = {
                 'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
@@ -2725,145 +1689,6 @@ class ModelTestCase(TestCase):
             self.assertEqual(req.mock_calls[1][1][1]['ConsistentRead'], True)
             self.assertEqual(count, 4)
 
-    def test_rate_limited_scan(self):
-        """
-        Model.rate_limited_scan
-        """
-        with patch('pynamodb.connection.Connection.rate_limited_scan') as req:
-            items = []
-
-            item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-            item['user_id'] = {STRING_SHORT: '11232'}
-            items.append(item)
-
-            req.return_value = items
-            result = UserModel.rate_limited_scan(
-                segment=1,
-                total_segments=12,
-                limit=16,
-                conditional_operator='AND',
-                last_evaluated_key='XXX',
-                page_size=11,
-                timeout_seconds=21,
-                read_capacity_to_consume_per_second=33,
-                allow_rate_limited_scan_without_consumed_capacity=False,
-                max_sleep_between_retry=4,
-                max_consecutive_exceptions=22,
-                attributes_to_get=['X1', 'X2'],
-                consistent_read=True,
-                index_name='index'
-            )
-            self.assertEqual(1, len(list(result)))
-            self.assertEqual('UserModel', req.call_args[0][0])
-            params = {
-                'filter_condition': None,
-                'segment': 1,
-                'total_segments': 12,
-                'limit': 16,
-                'conditional_operator': 'AND',
-                'exclusive_start_key': 'XXX',
-                'page_size': 11,
-                'timeout_seconds': 21,
-                'scan_filter': {},
-                'attributes_to_get': ['X1', 'X2'],
-                'read_capacity_to_consume_per_second': 33,
-                'allow_rate_limited_scan_without_consumed_capacity': False,
-                'max_sleep_between_retry': 4,
-                'max_consecutive_exceptions': 22,
-                'consistent_read': True,
-                'index_name': 'index'
-            }
-            self.assertEqual(params, req.call_args[1])
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Items': items}
-            scanned_items = []
-
-            for item in UserModel.rate_limited_scan(limit=5):
-                scanned_items.append(item._serialize().get(RANGE))
-            self.assertListEqual(
-                [item.get('user_id').get(STRING_SHORT) for item in items[:5]],
-                scanned_items
-            )
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Items': items, 'ConsumedCapacity': {'TableName': 'UserModel', 'CapacityUnits': 10}}
-            scan_result = UserModel.rate_limited_scan(
-                user_id__contains='tux',
-                zip_code__null=False,
-                email__null=True,
-                read_capacity_to_consume_per_second=13
-            )
-
-            for item in scan_result:
-                self.assertIsNotNone(item)
-            params = {
-                'Limit': 13,
-                'ReturnConsumedCapacity': 'TOTAL',
-                'FilterExpression': '((attribute_not_exists (#0) AND contains (#1, :0)) AND attribute_exists (#2))',
-                'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'user_id',
-                    '#2': 'zip_code'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'tux'
-                    }
-                },
-                'TableName': 'UserModel'
-            }
-            self.assertEqual(params, req.call_args[0][1])
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            for item in UserModel.scan(
-                    user_id__contains='tux',
-                    zip_code__null=False,
-                    conditional_operator='OR',
-                    email__null=True,
-                    page_size=12):
-                self.assertIsNotNone(item)
-            params = {
-                'Limit': 12,
-                'ReturnConsumedCapacity': 'TOTAL',
-                'FilterExpression': '((attribute_not_exists (#0) OR contains (#1, :0)) OR attribute_exists (#2))',
-                'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'user_id',
-                    '#2': 'zip_code'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'tux'
-                    },
-                },
-                'TableName': 'UserModel'
-            }
-
-            self.assertEqual(params, req.call_args[0][1])
-
-        # you cannot scan with multiple conditions against the same key
-        self.assertRaises(
-            ValueError,
-            lambda: list(UserModel.scan(user_id__contains='tux', user_id__beginswith='penguin'))
-        )
-
     def test_scan(self):
         """
         Model.scan
@@ -2909,68 +1734,6 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=mock_scan) as req:
             for item in UserModel.scan():
                 self.assertIsNotNone(item)
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            for user in UserModel.scan(user_id__contains='tux', zip_code__null=False, email__null=True):
-                self.assertIsNotNone(user)
-            params = {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'FilterExpression': '((attribute_not_exists (#0) AND contains (#1, :0)) AND attribute_exists (#2))',
-                'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'user_id',
-                    '#2': 'zip_code'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'tux'
-                    }
-                },
-                'TableName': 'UserModel'
-            }
-            self.assertEqual(params, req.call_args[0][1])
-
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            for item in UserModel.scan(
-                    user_id__contains='tux',
-                    zip_code__null=False,
-                    conditional_operator='OR',
-                    email__null=True):
-                self.assertIsNotNone(item)
-            params = {
-                'ReturnConsumedCapacity': 'TOTAL',
-                'FilterExpression': '((attribute_not_exists (#0) OR contains (#1, :0)) OR attribute_exists (#2))',
-                'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'user_id',
-                    '#2': 'zip_code'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'tux'
-                    }
-                },
-                'TableName': 'UserModel'
-            }
-            self.assertEqual(params, req.call_args[0][1])
-
-        # you cannot scan with multiple conditions against the same key
-        self.assertRaises(
-            ValueError,
-            lambda: list(UserModel.scan(user_id__contains='tux', user_id__beginswith='penguin'))
-        )
 
     def test_get(self):
         """
@@ -3337,22 +2100,6 @@ class ModelTestCase(TestCase):
 
         self.assertEqual(IndexedModel.include_index.Meta.index_name, "non_key_idx")
 
-        queried = []
-        with patch(PATCH_METHOD) as req:
-            with self.assertRaises(ValueError):
-                for item in IndexedModel.email_index.query('foo', user_id__between=['id-1', 'id-3']):
-                    queried.append(item._serialize().get(RANGE))
-
-        with patch(PATCH_METHOD) as req:
-            with self.assertRaises(ValueError):
-                for item in IndexedModel.email_index.query('foo', user_name__startswith='foo'):
-                    queried.append(item._serialize().get(RANGE))
-
-        with patch(PATCH_METHOD) as req:
-            with self.assertRaises(ValueError):
-                for item in IndexedModel.email_index.query('foo', name='foo'):
-                    queried.append(item._serialize().get(RANGE))
-
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
@@ -3369,41 +2116,6 @@ class ModelTestCase(TestCase):
             params = {
                 'KeyConditionExpression': '#0 = :0',
                 'FilterExpression': 'begins_with (#1, :1)',
-                'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'user_name'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': u'foo'
-                    },
-                    ':1': {
-                        'S': u'bar'
-                    }
-                },
-                'IndexName': 'custom_idx_name',
-                'TableName': 'IndexedModel',
-                'ReturnConsumedCapacity': 'TOTAL',
-                'Limit': 2
-            }
-            self.assertEqual(req.call_args[0][1], params)
-
-        # Note this test is incorrect as 'user_name' is not the range key for email_index.
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            queried = []
-
-            for item in IndexedModel.email_index.query('foo', limit=2, user_name__begins_with='bar'):
-                queried.append(item._serialize())
-
-            params = {
-                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'email',
                     '#1': 'user_name'
@@ -3465,50 +2177,6 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
-        # Note this test is incorrect as 'user_name' is not the range key for email_index.
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            queried = []
-
-            for item in LocalIndexedModel.email_index.query(
-                    'foo',
-                    limit=1,
-                    user_name__begins_with='bar',
-                    aliases__contains=1):
-                queried.append(item._serialize())
-
-            params = {
-                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
-                'FilterExpression': 'contains (#2, :2)',
-                'ExpressionAttributeNames': {
-                    '#0': 'email',
-                    '#1': 'user_name',
-                    '#2': 'aliases'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': u'foo'
-                    },
-                    ':1': {
-                        'S': u'bar'
-                    },
-                    ':2': {
-                        'S': '1'
-                    }
-                },
-                'IndexName': 'email_index',
-                'TableName': 'LocalIndexedModel',
-                'ReturnConsumedCapacity': 'TOTAL',
-                'Limit': 1
-            }
-            self.assertEqual(req.call_args[0][1], params)
-
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
@@ -3527,40 +2195,6 @@ class ModelTestCase(TestCase):
             params = {
                 'KeyConditionExpression': '#0 = :0',
                 'FilterExpression': 'begins_with (#1, :1)',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_id',
-                    '#1': 'user_name'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': u'foo'
-                    },
-                    ':1': {
-                        'S': u'bar'
-                    }
-                },
-                'IndexName': 'uid_index',
-                'TableName': 'CustomAttrModel',
-                'ReturnConsumedCapacity': 'TOTAL',
-                'Limit': 2
-            }
-            self.assertEqual(req.call_args[0][1], params)
-
-        # Note: this test is incorrect since uid_index has no range key
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            queried = []
-
-            for item in CustomAttrNameModel.uid_index.query('foo', limit=2, overidden_user_name__begins_with='bar'):
-                queried.append(item._serialize())
-
-            params = {
-                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'ExpressionAttributeNames': {
                     '#0': 'user_id',
                     '#1': 'user_name'
@@ -4302,22 +2936,6 @@ class ModelTestCase(TestCase):
             req.return_value = TREE_MODEL_ITEM_DATA
             item = TreeModel.get('123')
             self.assertEqual(item.left.left.left.value, 3)
-
-    @pytest.mark.filterwarnings("ignore")
-    def test_conditional_operator_map_attribute(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {}
-            item = self._get_complex_thing()
-            with self.assertRaises(NotImplementedError):
-                item.save(key=123, conditional_operator='OR')
-            with self.assertRaises(NotImplementedError):
-                item.delete(key=123, conditional_operator='OR')
-            with self.assertRaises(NotImplementedError):
-                item.update_item(123, conditional_operator='OR')
-            with self.assertRaises(NotImplementedError):
-                list(ComplexModel.query(123, limit=20, conditional_operator='OR'))
-            with self.assertRaises(NotImplementedError):
-                list(ComplexModel.scan(conditional_operator='OR'))
 
     def test_result_set_init(self):
         results = []
