@@ -141,7 +141,6 @@ class ConnectionTestCase(TestCase):
         ]
         params = {
             'TableName': 'ci-table',
-            'BillingMode': PROVISIONED_BILLING_MODE,
             'ProvisionedThroughput': {
                 'WriteCapacityUnits': 1,
                 'ReadCapacityUnits': 1
