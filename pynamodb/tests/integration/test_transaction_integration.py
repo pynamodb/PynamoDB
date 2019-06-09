@@ -188,7 +188,6 @@ class TestTransactionIntegration:
 
         with TransactWrite(connection=CONNECTION) as transaction:
             # let the users send money to one another
-            created_at = datetime.now()
             # create a credit line item to user 1's account
             LineItem(user_id=1, amount=50, currency='USD').save(
                 condition=(LineItem.user_id.does_not_exist()),
@@ -201,12 +200,16 @@ class TestTransactionIntegration:
             )
 
             # add credit to user 1's account
-            statement1.balance += 50
-            statement1.save(in_transaction=transaction)
+            statement1.update(actions=[BankStatement.balance.add(50)], in_transaction=transaction)
             # debit from user 2's account if they have enough in the bank
-            statement2.balance -= 50
-            statement2.save(condition=(BankStatement.balance >= 50), in_transaction=transaction)
+            statement2.update(
+                actions=[BankStatement.balance.add(-50)],
+                condition=(BankStatement.balance >= 50),
+                in_transaction=transaction
+            )
 
+        statement1.refresh()
+        statement2.refresh()
         assert statement1.balance == statement2.balance == 50
 
     @pytest.mark.ddblocal
