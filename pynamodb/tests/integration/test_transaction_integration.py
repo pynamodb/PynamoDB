@@ -211,10 +211,19 @@ class TestTransactionIntegration:
 
     @pytest.mark.ddblocal
     def test_transact_write__one_of_each(self):
+        statement = BankStatement(1, balance=100, active=True)
+        statement.save()
         with TransactWrite(connection=CONNECTION) as transaction:
             User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
             User(2).delete(in_transaction=transaction)
             LineItem(4, amount=100, currency='USD').save(condition=(LineItem.user_id.does_not_exist()))
+            statement.update(
+                actions=[
+                    BankStatement.active.set(False),
+                    BankStatement.balance.set(0),
+                ],
+                in_transaction=transaction
+            )
 
         # confirming transaction correct and successful
         assert User.get(1)
@@ -228,3 +237,8 @@ class TestTransactionIntegration:
         assert new_line_item
         assert new_line_item.amount == 100
         assert new_line_item.currency == 'USD'
+
+        statement.refresh()
+        assert not statement.active
+        assert statement.balance == 0
+
