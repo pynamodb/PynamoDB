@@ -2,8 +2,8 @@
 Test suite for the table class
 """
 import six
+from unittest import TestCase
 
-from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION, PROVISIONED_BILLING_MODE
 from pynamodb.expressions.operand import Path
@@ -357,7 +357,7 @@ class ConnectionTestCase(TestCase):
         conn = TableConnection(self.test_table_name)
         for i in range(10):
             items.append(
-                {"ForumName": "FooForum", "Subject": "thread-{0}".format(i)}
+                {"ForumName": "FooForum", "Subject": "thread-{}".format(i)}
             )
         with patch(PATCH_METHOD) as req:
             req.return_value = DESCRIBE_TABLE_DATA
@@ -394,7 +394,7 @@ class ConnectionTestCase(TestCase):
         conn = TableConnection(self.test_table_name)
         for i in range(10):
             items.append(
-                {"ForumName": "FooForum", "Subject": "thread-{0}".format(i)}
+                {"ForumName": "FooForum", "Subject": "thread-{}".format(i)}
             )
         with patch(PATCH_METHOD) as req:
             req.return_value = DESCRIBE_TABLE_DATA

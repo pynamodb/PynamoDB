@@ -7,6 +7,7 @@ import six
 import copy
 import logging
 import warnings
+from inspect import getmembers
 
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
@@ -15,7 +16,6 @@ from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
-from pynamodb.compat import NullHandler, getmembers_issubclass
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import get_settings_value
@@ -35,7 +35,7 @@ from pynamodb.constants import (
 
 
 log = logging.getLogger(__name__)
-log.addHandler(NullHandler())
+log.addHandler(logging.NullHandler())
 
 
 class ModelContextManager(object):
@@ -193,11 +193,11 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_access_key_id', None)
                     if not hasattr(attr_obj, 'aws_secret_access_key'):
                         setattr(attr_obj, 'aws_secret_access_key', None)
-                elif issubclass(attr_obj.__class__, (Index, )):
+                elif isinstance(attr_obj, Index):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
                         attr_obj.Meta.index_name = attr_name
-                elif issubclass(attr_obj.__class__, (Attribute, )):
+                elif isinstance(attr_obj, Attribute):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
@@ -242,7 +242,7 @@ class Model(AttributeContainer):
             range_keyname = self._get_meta_data().range_keyname
             if range_keyname is None:
                 raise ValueError(
-                    "This table has no range key, but a range key value was provided: {0}".format(range_key)
+                    "This table has no range key, but a range key value was provided: {}".format(range_key)
                 )
             attributes[self._dynamo_to_python_attr(range_keyname)] = range_key
         super(Model, self).__init__(**attributes)
@@ -316,9 +316,9 @@ class Model(AttributeContainer):
         if self.Meta.table_name:
             serialized = self._serialize(null_check=False)
             if self._get_meta_data().range_keyname:
-                msg = "{0}<{1}, {2}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
+                msg = "{}<{}, {}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
             else:
-                msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
+                msg = "{}<{}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
     def delete(self, condition=None):
@@ -784,7 +784,7 @@ class Model(AttributeContainer):
                 pythonic(ATTR_DEFINITIONS): []
             }
             cls._index_classes = {}
-            for name, index in getmembers_issubclass(cls, Index):
+            for name, index in getmembers(cls, lambda o: isinstance(o, Index)):
                 cls._index_classes[index.Meta.index_name] = index
                 schema = index._get_schema()
                 idx = {
@@ -795,7 +795,7 @@ class Model(AttributeContainer):
                     },
 
                 }
-                if issubclass(index.__class__, GlobalSecondaryIndex):
+                if isinstance(index, GlobalSecondaryIndex):
                     idx[pythonic(PROVISIONED_THROUGHPUT)] = {
                         READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
                         WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
@@ -803,7 +803,7 @@ class Model(AttributeContainer):
                 cls._indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
                 if index.Meta.projection.non_key_attributes:
                     idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
-                if issubclass(index.__class__, GlobalSecondaryIndex):
+                if isinstance(index, GlobalSecondaryIndex):
                     cls._indexes[pythonic(GLOBAL_SECONDARY_INDEXES)].append(idx)
                 else:
                     cls._indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
@@ -915,7 +915,7 @@ class Model(AttributeContainer):
         if not hasattr(cls, "Meta"):
             raise AttributeError(
                 'As of v1.0 PynamoDB Models require a `Meta` class.\n'
-                'Model: {0}.{1}\n'
+                'Model: {}.{}\n'
                 'See https://pynamodb.readthedocs.io/en/latest/release_notes.html\n'.format(
                     cls.__module__, cls.__name__,
                 ),
@@ -923,7 +923,7 @@ class Model(AttributeContainer):
         elif not hasattr(cls.Meta, "table_name") or cls.Meta.table_name is None:
             raise AttributeError(
                 'As of v1.0 PyanmoDB Models must have a table_name\n'
-                'Model: {0}.{1}\n'
+                'Model: {}.{}\n'
                 'See https://pynamodb.readthedocs.io/en/latest/release_notes.html'.format(
                     cls.__module__, cls.__name__,
                 ),
@@ -969,7 +969,7 @@ class Model(AttributeContainer):
             value = getattr(self, name)
             if isinstance(value, MapAttribute):
                 if not value.validate():
-                    raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
+                    raise ValueError("Attribute '{}' is not correctly typed".format(attr.attr_name))
 
             serialized = self._serialize_value(attr, value, null_check)
             if NULL in serialized:
@@ -1003,7 +1003,7 @@ class Model(AttributeContainer):
 
         if serialized is None:
             if not attr.null and null_check:
-                raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
+                raise ValueError("Attribute '{}' cannot be None".format(attr.attr_name))
             return {NULL: True}
 
         return {ATTR_TYPE_MAP[attr.attr_type]: serialized}

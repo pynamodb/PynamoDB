@@ -10,12 +10,11 @@ from datetime import datetime
 import warnings
 from dateutil.parser import parse
 from dateutil.tz import tzutc
-from inspect import getargspec
+from inspect import getargspec, getmembers
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
-from pynamodb.compat import getmembers_issubclass
 from pynamodb.expressions.operand import Path
 import collections
 
@@ -86,7 +85,7 @@ class Attribute(object):
 
     def __iter__(self):
         # Because we define __getitem__ below for condition expression support
-        raise TypeError("'{0}' object is not iterable".format(self.__class__.__name__))
+        raise TypeError("'{}' object is not iterable".format(self.__class__.__name__))
 
     # Condition Expression Support
     def __eq__(self, other):
@@ -189,7 +188,7 @@ class AttributeContainerMeta(type):
         cls._attributes = {}
         cls._dynamo_to_python_attrs = {}
 
-        for name, attribute in getmembers_issubclass(cls, Attribute):
+        for name, attribute in getmembers(cls, lambda o: isinstance(o, Attribute)):
             initialized = False
             if isinstance(attribute, MapAttribute):
                 # MapAttribute instances that are class attributes of an AttributeContainer class
@@ -269,7 +268,7 @@ class AttributeContainer(object):
         """
         for attr_name, attr_value in six.iteritems(attributes):
             if attr_name not in self.get_attributes():
-                raise ValueError("Attribute {0} specified does not exist".format(attr_name))
+                raise ValueError("Attribute {} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
 
     def __eq__(self, other):
@@ -306,7 +305,7 @@ class SetMixin(object):
         Deserializes a set
         """
         if value and len(value):
-            return set([json.loads(val) for val in value])
+            return {json.loads(val) for val in value}
 
 
 class BinaryAttribute(Attribute):
@@ -353,9 +352,9 @@ class BinarySetAttribute(SetMixin, Attribute):
         """
         try:
             if value and len(value):
-                return set([b64decode(val.decode(DEFAULT_ENCODING)) for val in value])
+                return {b64decode(val.decode(DEFAULT_ENCODING)) for val in value}
         except AttributeError:
-            return set([b64decode(val) for val in value])
+            return {b64decode(val) for val in value}
 
 
 class UnicodeSetAttribute(SetMixin, Attribute):
@@ -391,7 +390,7 @@ class UnicodeSetAttribute(SetMixin, Attribute):
 
     def deserialize(self, value):
         if value and len(value):
-            return set([self.element_deserialize(val) for val in value])
+            return {self.element_deserialize(val) for val in value}
 
 
 class UnicodeAttribute(Attribute):
@@ -636,7 +635,7 @@ class MapAttribute(Attribute, AttributeContainer):
 
     def __init__(self, **attributes):
         # Store the kwargs used by Attribute.__init__ in case `_make_attribute` is called.
-        self.attribute_kwargs = dict((arg, attributes.pop(arg)) for arg in self.attribute_args if arg in attributes)
+        self.attribute_kwargs = {arg: attributes.pop(arg) for arg in self.attribute_args if arg in attributes}
 
         # Assume all instances should behave like an AttributeContainer. Instances that are intended to be
         # used as Attributes will be transformed by AttributeContainerMeta during creation of the containing class.
@@ -713,17 +712,17 @@ class MapAttribute(Attribute, AttributeContainer):
         elif item in self._attributes:
             return getattr(self, item)
         else:
-            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, item))
+            raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, item))
 
     def __setitem__(self, item, value):
         if not self._is_attribute_container():
-            raise TypeError("'{0}' object does not support item assignment".format(self.__class__.__name__))
+            raise TypeError("'{}' object does not support item assignment".format(self.__class__.__name__))
         if self.is_raw():
             self.attribute_values[item] = value
         elif item in self._attributes:
             setattr(self, item, value)
         else:
-            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, item))
+            raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, item))
 
     def __getattr__(self, attr):
         # This should only be called for "raw" (i.e. non-subclassed) MapAttribute instances.
@@ -733,7 +732,7 @@ class MapAttribute(Attribute, AttributeContainer):
                 return self.attribute_values[attr]
             except KeyError:
                 pass
-        raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, attr))
+        raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, attr))
 
     def __setattr__(self, name, value):
         # "Raw" (i.e. non-subclassed) instances set their name-value pairs in the `attribute_values` dictionary.
@@ -764,7 +763,7 @@ class MapAttribute(Attribute, AttributeContainer):
         if can_be_null and value is None:
             return True
         if getattr(self, key) is None:
-            raise ValueError("Attribute '{0}' cannot be None".format(key))
+            raise ValueError("Attribute '{}' cannot be None".format(key))
         return True  # TODO: check that the actual type of `value` meets requirements of `attr`
 
     def validate(self):

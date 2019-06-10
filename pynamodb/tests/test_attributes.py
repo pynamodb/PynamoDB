@@ -75,8 +75,8 @@ class TestAttributeDescriptor:
         """
         Binary set attribute descriptor
         """
-        self.instance.binary_set_attr = set([b'test', b'test2'])
-        assert self.instance.binary_set_attr == set([b'test', b'test2'])
+        self.instance.binary_set_attr = {b'test', b'test2'}
+        assert self.instance.binary_set_attr == {b'test', b'test2'}
 
     def test_number_attr(self):
         """
@@ -89,8 +89,8 @@ class TestAttributeDescriptor:
         """
         Number set attribute descriptor
         """
-        self.instance.number_set_attr = set([1, 2])
-        assert self.instance.number_set_attr == set([1, 2])
+        self.instance.number_set_attr = {1, 2}
+        assert self.instance.number_set_attr == {1, 2}
 
     def test_unicode_attr(self):
         """
@@ -103,8 +103,8 @@ class TestAttributeDescriptor:
         """
         Unicode set attribute descriptor
         """
-        self.instance.unicode_set_attr = set([u"test", u"test2"])
-        assert self.instance.unicode_set_attr == set([u"test", u"test2"])
+        self.instance.unicode_set_attr = {u"test", u"test2"}
+        assert self.instance.unicode_set_attr == {u"test", u"test2"}
 
     def test_datetime_attr(self):
         """
@@ -262,8 +262,8 @@ class TestBinaryAttribute:
         """
         attr = BinarySetAttribute()
         assert attr.attr_type == BINARY_SET
-        assert attr.serialize(set([b'foo', b'bar'])) == [
-            b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(set([b'foo', b'bar']))
+        assert attr.serialize({b'foo', b'bar'}) == [
+            b64encode(val).decode(DEFAULT_ENCODING) for val in sorted({b'foo', b'bar'})
         ]
         assert attr.serialize(None) is None
 
@@ -272,7 +272,7 @@ class TestBinaryAttribute:
         BinarySetAttribute round trip
         """
         attr = BinarySetAttribute()
-        value = set([b'foo', b'bar'])
+        value = {b'foo', b'bar'}
         serial = attr.serialize(value)
         assert attr.deserialize(serial) == value
 
@@ -281,7 +281,7 @@ class TestBinaryAttribute:
         BinarySetAttribute.deserialize
         """
         attr = BinarySetAttribute()
-        value = set([b'foo', b'bar'])
+        value = {b'foo', b'bar'}
         assert attr.deserialize(
             [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]
         ) == value
@@ -293,8 +293,8 @@ class TestBinaryAttribute:
         attr = BinarySetAttribute()
         assert attr is not None
 
-        attr = BinarySetAttribute(default=set([b'foo', b'bar']))
-        assert attr.default == set([b'foo', b'bar'])
+        attr = BinarySetAttribute(default={b'foo', b'bar'})
+        assert attr.default == {b'foo', b'bar'}
 
 
 class TestNumberAttribute:
@@ -336,14 +336,14 @@ class TestNumberAttribute:
         """
         attr = NumberSetAttribute()
         assert attr.attr_type == NUMBER_SET
-        assert attr.deserialize([json.dumps(val) for val in sorted(set([1, 2]))]) == set([1, 2])
+        assert attr.deserialize([json.dumps(val) for val in sorted({1, 2})]) == {1, 2}
 
     def test_number_set_serialize(self):
         """
         NumberSetAttribute.serialize
         """
         attr = NumberSetAttribute()
-        assert attr.serialize(set([1, 2])) == [json.dumps(val) for val in sorted(set([1, 2]))]
+        assert attr.serialize({1, 2}) == [json.dumps(val) for val in sorted({1, 2})]
         assert attr.serialize(None) is None
 
     def test_number_set_attribute(self):
@@ -353,8 +353,8 @@ class TestNumberAttribute:
         attr = NumberSetAttribute()
         assert attr is not None
 
-        attr = NumberSetAttribute(default=set([1, 2]))
-        assert attr.default == set([1, 2])
+        attr = NumberSetAttribute(default={1, 2})
+        assert attr.default == {1, 2}
 
 
 class TestUnicodeAttribute:
@@ -399,29 +399,29 @@ class TestUnicodeAttribute:
         assert attr.deserialize(None) is None
 
         expected = sorted([six.u('foo'), six.u('bar')])
-        assert attr.serialize(set([six.u('foo'), six.u('bar')])) == expected
+        assert attr.serialize({six.u('foo'), six.u('bar')}) == expected
 
         expected = sorted([six.u('True'), six.u('False')])
-        assert attr.serialize(set([six.u('True'), six.u('False')])) == expected
+        assert attr.serialize({six.u('True'), six.u('False')}) == expected
 
         expected = sorted([six.u('true'), six.u('false')])
-        assert attr.serialize(set([six.u('true'), six.u('false')])) == expected
+        assert attr.serialize({six.u('true'), six.u('false')}) == expected
 
     def test_round_trip_unicode_set(self):
         """
         Round trip a unicode set
         """
         attr = UnicodeSetAttribute()
-        orig = set([six.u('foo'), six.u('bar')])
+        orig = {six.u('foo'), six.u('bar')}
         assert orig == attr.deserialize(attr.serialize(orig))
 
-        orig = set([six.u('true'), six.u('false')])
+        orig = {six.u('true'), six.u('false')}
         assert orig == attr.deserialize(attr.serialize(orig))
 
-        orig = set([six.u('1'), six.u('2.8')])
+        orig = {six.u('1'), six.u('2.8')}
         assert orig == attr.deserialize(attr.serialize(orig))
 
-        orig = set([six.u('[1,2,3]'), six.u('2.8')])
+        orig = {six.u('[1,2,3]'), six.u('2.8')}
         assert orig == attr.deserialize(attr.serialize(orig))
 
     def test_unicode_set_deserialize(self):
@@ -429,16 +429,16 @@ class TestUnicodeAttribute:
         UnicodeSetAttribute.deserialize
         """
         attr = UnicodeSetAttribute()
-        value = set([six.u('foo'), six.u('bar')])
+        value = {six.u('foo'), six.u('bar')}
         assert attr.deserialize(value) == value
 
-        value = set([six.u('True'), six.u('False')])
+        value = {six.u('True'), six.u('False')}
         assert attr.deserialize(value) == value
 
-        value = set([six.u('true'), six.u('false')])
+        value = {six.u('true'), six.u('false')}
         assert attr.deserialize(value) == value
 
-        value = set([six.u('1'), six.u('2.8')])
+        value = {six.u('1'), six.u('2.8')}
         assert attr.deserialize(value) == value
 
     def test_unicode_set_attribute(self):
@@ -448,8 +448,8 @@ class TestUnicodeAttribute:
         attr = UnicodeSetAttribute()
         assert attr is not None
         assert attr.attr_type == STRING_SET
-        attr = UnicodeSetAttribute(default=set([six.u('foo'), six.u('bar')]))
-        assert attr.default == set([six.u('foo'), six.u('bar')])
+        attr = UnicodeSetAttribute(default={six.u('foo'), six.u('bar')})
+        assert attr.default == {six.u('foo'), six.u('bar')}
 
 
 class TestLegacyBooleanAttribute:
