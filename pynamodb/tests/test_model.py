@@ -440,7 +440,7 @@ class ModelTestCase(TestCase):
     def init_table_meta(model_clz, table_data):
         with patch(PATCH_METHOD) as req:
             req.return_value = table_data
-            model_clz._get_meta_data()
+            model_clz._get_connection().describe_table()
 
     def assert_dict_lists_equal(self, list1, list2):
         """
@@ -632,7 +632,6 @@ class ModelTestCase(TestCase):
             self.assertEqual(
                 repr(item), '{}<{}, {}>'.format(UserModel.Meta.table_name, item.custom_user_name, item.user_id)
             )
-            self.assertEqual(repr(UserModel._get_meta_data()), 'MetaTable<{}>'.format('Thread'))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = SIMPLE_MODEL_TABLE_DATA
@@ -1466,7 +1465,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            CustomAttrNameModel._get_meta_data()
+            CustomAttrNameModel._get_connection().describe_table()
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1690,7 +1689,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            CustomAttrNameModel._get_meta_data()
+            CustomAttrNameModel._get_connection().describe_table()
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {"ConsumedCapacity": {"CapacityUnits": 0.5, "TableName": "UserModel"}}
@@ -1954,7 +1953,7 @@ class ModelTestCase(TestCase):
         """
         with patch(PATCH_METHOD) as req:
             req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            CustomAttrNameModel._get_meta_data()
+            CustomAttrNameModel._get_connection().describe_table()
 
         with patch(PATCH_METHOD) as req:
             req.return_value = INDEX_TABLE_DATA
@@ -1962,7 +1961,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = LOCAL_INDEX_TABLE_DATA
-            LocalIndexedModel._get_meta_data()
+            LocalIndexedModel._get_connection().describe_table()
 
         self.assertEqual(IndexedModel.include_index.Meta.index_name, "non_key_idx")
 
@@ -2160,7 +2159,7 @@ class ModelTestCase(TestCase):
             req.return_value = INDEX_TABLE_DATA
             with self.assertRaises(ValueError):
                 IndexedModel('foo', 'bar')
-            IndexedModel._get_meta_data()
+            IndexedModel._get_connection().describe_table()
 
         scope_args = {'count': 0}
 
@@ -2332,9 +2331,6 @@ class ModelTestCase(TestCase):
         """
         Display warning for pre v1.0 Models
         """
-        with self.assertRaises(AttributeError):
-            OldStyleModel._get_meta_data()
-
         with self.assertRaises(AttributeError):
             OldStyleModel.exists()
 
