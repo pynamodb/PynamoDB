@@ -565,7 +565,6 @@ class NullAttribute(Attribute):
         return None
 
 
-@add_metaclass(AttributeContainerMeta)
 class MapAttribute(Attribute, AttributeContainer):
     """
     A Map Attribute
