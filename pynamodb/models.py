@@ -415,6 +415,9 @@ class Model(AttributeContainer):
 
         :param data: A serialized DynamoDB object
         """
+        if data is None:
+            raise ValueError("Received no data to construct object")
+
         attributes = {}
         for name, value in data.items():
             attr_name = cls._dynamo_to_python_attr(name)

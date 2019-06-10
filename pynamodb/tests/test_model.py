@@ -330,7 +330,7 @@ class CarInfoMap(MapAttribute):
 class CarModel(Model):
     class Meta:
         table_name = 'CarModel'
-    car_id = NumberAttribute(null=False)
+    car_id = NumberAttribute(hash_key=True, null=False)
     car_info = CarInfoMap(null=False)
 
 
@@ -1163,7 +1163,6 @@ class ModelTestCase(TestCase):
 
     def test_query_limit_greater_than_available_items_single_page(self):
         self.init_table_meta(UserModel, MODEL_TABLE_DATA)
-        req.return_value = MODEL_TABLE_DATA
         UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
@@ -2513,14 +2512,14 @@ class ModelTestCase(TestCase):
             item.save()
 
     def test_model_with_nulls_validates(self):
-        self.init_table_meta(CarInfoMap, CAR_MODEL_WITH_NULL_ITEM_DATA)
+        self.init_table_meta(CarModel, CAR_MODEL_TABLE_DATA)
         car_info = CarInfoMap(make='Dodge')
         item = CarModel(car_id=123, car_info=car_info)
         with patch(PATCH_METHOD):
             item.save()
 
     def test_model_with_invalid_data_does_not_validate(self):
-        self.init_table_meta(CarInfoMap, CAR_MODEL_WITH_NULL_ITEM_DATA)
+        self.init_table_meta(CarModel, CAR_MODEL_TABLE_DATA)
         car_info = CarInfoMap(model='Envoy')
         item = CarModel(car_id=123, car_info=car_info)
         with patch(PATCH_METHOD):
