@@ -624,28 +624,25 @@ class ModelTestCase(TestCase):
         """
         Model()
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            item = UserModel('foo', 'bar')
-            self.assertEqual(item.email, 'needs_email')
-            self.assertEqual(item.callable_field, 42)
-            self.assertEqual(
-                repr(item), '{}<{}, {}>'.format(UserModel.Meta.table_name, item.custom_user_name, item.user_id)
-            )
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
+        item = UserModel('foo', 'bar')
+        self.assertEqual(item.email, 'needs_email')
+        self.assertEqual(item.callable_field, 42)
+        self.assertEqual(
+            repr(item), '{}<{}, {}>'.format(UserModel.Meta.table_name, item.custom_user_name, item.user_id)
+        )
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = SIMPLE_MODEL_TABLE_DATA
-            item = SimpleUserModel('foo')
-            self.assertEqual(repr(item), '{}<{}>'.format(SimpleUserModel.Meta.table_name, item.user_name))
-            self.assertRaises(ValueError, item.save)
+        self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
+        item = SimpleUserModel('foo')
+        self.assertEqual(repr(item), '{}<{}>'.format(SimpleUserModel.Meta.table_name, item.user_name))
+        self.assertRaises(ValueError, item.save)
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            item = CustomAttrNameModel('foo', 'bar', overidden_attr='test')
-            self.assertEqual(item.overidden_attr, 'test')
-            self.assertTrue(not hasattr(item, 'foo_attr'))
+        self.init_table_meta(CustomAttrNameModel, CUSTOM_ATTR_NAME_INDEX_TABLE_DATA)
+        item = CustomAttrNameModel('foo', 'bar', overidden_attr='test')
+        self.assertEqual(item.overidden_attr, 'test')
+        self.assertTrue(not hasattr(item, 'foo_attr'))
 
     def test_overidden_defaults(self):
         """
@@ -1165,9 +1162,9 @@ class ModelTestCase(TestCase):
             deep_eq(args_two, params_two, _assert=True)
 
     def test_query_limit_greater_than_available_items_single_page(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
+        req.return_value = MODEL_TABLE_DATA
+        UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -2498,35 +2495,35 @@ class ModelTestCase(TestCase):
         )
 
     def test_model_with_maps(self):
+        self.init_table_meta(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA)
         office_employee = self._get_office_employee()
-        with patch(PATCH_METHOD) as req:
-            req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
+        with patch(PATCH_METHOD):
             office_employee.save()
 
     def test_model_with_list(self):
+        self.init_table_meta(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA)
         grocery_list = self._get_grocery_list()
-        with patch(PATCH_METHOD) as req:
-            req.return_value = GROCERY_LIST_MODEL_TABLE_DATA
+        with patch(PATCH_METHOD):
             grocery_list.save()
 
     def test_model_with_list_of_map(self):
+        self.init_table_meta(Office, OFFICE_MODEL_TABLE_DATA)
         item = self._get_office()
-        with patch(PATCH_METHOD) as req:
-            req.return_value = OFFICE_MODEL_TABLE_DATA
+        with patch(PATCH_METHOD):
             item.save()
 
     def test_model_with_nulls_validates(self):
+        self.init_table_meta(CarInfoMap, CAR_MODEL_WITH_NULL_ITEM_DATA)
         car_info = CarInfoMap(make='Dodge')
         item = CarModel(car_id=123, car_info=car_info)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = CAR_MODEL_WITH_NULL_ITEM_DATA
+        with patch(PATCH_METHOD):
             item.save()
 
     def test_model_with_invalid_data_does_not_validate(self):
+        self.init_table_meta(CarInfoMap, CAR_MODEL_WITH_NULL_ITEM_DATA)
         car_info = CarInfoMap(model='Envoy')
         item = CarModel(car_id=123, car_info=car_info)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA
+        with patch(PATCH_METHOD):
             with self.assertRaises(ValueError):
                 item.save()
 
