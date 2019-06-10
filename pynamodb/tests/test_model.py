@@ -808,9 +808,8 @@ class ModelTestCase(TestCase):
         """
         Model.update
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = SIMPLE_MODEL_TABLE_DATA
-            item = SimpleUserModel('foo', is_active=True, email='foo@example.com', signature='foo')
+        self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
+        item = SimpleUserModel('foo', is_active=True, email='foo@example.com', signature='foo')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -1284,9 +1283,8 @@ class ModelTestCase(TestCase):
             self.assertEqual(results_iter.page_iter.total_scanned_count, 60)
 
     def test_query_limit_greater_than_available_items_and_page_size(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
+        UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1710,9 +1708,8 @@ class ModelTestCase(TestCase):
         """
         Model.batch_get
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = SIMPLE_MODEL_TABLE_DATA
-            SimpleUserModel('foo')
+        self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
+        SimpleUserModel('foo')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = SIMPLE_BATCH_GET_ITEMS
