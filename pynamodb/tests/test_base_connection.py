@@ -49,6 +49,10 @@ class MetaTableTestCase(TestCase):
         key_names = self.meta_table.get_key_names("LastPostIndex")
         self.assertEqual(key_names, ["ForumName", "Subject", "LastPostDateTime"])
 
+    def test_has_index_name(self):
+        self.assertTrue(self.meta_table.has_index_name("LastPostIndex"))
+        self.assertFalse(self.meta_table.has_index_name("NonExistentIndexName"))
+
 
 class ConnectionTestCase(TestCase):
     """
@@ -1641,6 +1645,15 @@ class ConnectionTestCase(TestCase):
             Path('Subject').startswith('thread'),
             Path('Subject').startswith('thread'),  # filter containing range key
             return_consumed_capacity='TOTAL'
+        )
+
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
+            limit=1,
+            index_name='NonExistentIndexName'
         )
 
         with patch(PATCH_METHOD) as req:
