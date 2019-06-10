@@ -121,15 +121,8 @@ class MetaTable(object):
         """
         global_indexes = self.data.get(GLOBAL_SECONDARY_INDEXES)
         local_indexes = self.data.get(LOCAL_SECONDARY_INDEXES)
-        indexes = []
-        if local_indexes:
-            indexes += local_indexes
-        if global_indexes:
-            indexes += global_indexes
-        for index in indexes:
-            if index.get(INDEX_NAME) == index_name:
-                return True
-        return False
+        indexes = (global_indexes or []) + (local_indexes or [])
+        return any(index.get(INDEX_NAME) == index_name for index in indexes)
 
     def get_index_hash_keyname(self, index_name):
         """
@@ -1100,7 +1093,7 @@ class Connection(object):
             raise TableError("No such table: {}".format(table_name))
         if index_name:
             if not tbl.has_index_name(index_name):
-                raise ValueError("Table {0} has no index: {1}".format(table_name, index_name))
+                raise ValueError("Table {} has no index: {}".format(table_name, index_name))
             hash_keyname = tbl.get_index_hash_keyname(index_name)
             if not hash_keyname:
                 raise ValueError("No hash key attribute for index: {}".format(index_name))
