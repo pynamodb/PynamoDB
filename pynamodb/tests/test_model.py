@@ -694,9 +694,8 @@ class ModelTestCase(TestCase):
         """
         Model with complex key
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = COMPLEX_TABLE_DATA
-            item = ComplexKeyModel('test')
+        self.init_table_meta(ComplexKeyModel, COMPLEX_TABLE_DATA)
+        item = ComplexKeyModel('test')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = COMPLEX_ITEM_DATA
@@ -706,10 +705,8 @@ class ModelTestCase(TestCase):
         """
         Model.delete
         """
-        UserModel._meta_table = None
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            item = UserModel('foo', 'bar')
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
+        item = UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = None
@@ -1046,6 +1043,7 @@ class ModelTestCase(TestCase):
         """
         Model.count(**filters)
         """
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 10, 'ScannedCount': 20}
             res = UserModel.count('foo')
@@ -1093,6 +1091,7 @@ class ModelTestCase(TestCase):
         """
         Model.index.count()
         """
+        self.init_table_meta(CustomAttrNameModel, CUSTOM_ATTR_NAME_INDEX_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 42, 'ScannedCount': 42}
             res = CustomAttrNameModel.uid_index.count(
@@ -1125,6 +1124,7 @@ class ModelTestCase(TestCase):
             deep_eq(args, params, _assert=True)
 
     def test_index_multipage_count(self):
+        self.init_table_meta(CustomAttrNameModel, CUSTOM_ATTR_NAME_INDEX_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             last_evaluated_key = {
                 'user_name': {'S': u'user'},
@@ -1636,6 +1636,7 @@ class ModelTestCase(TestCase):
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
 
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         with patch(PATCH_METHOD, new=fake_db) as req:
             item = UserModel.get(
                 'foo',
@@ -1705,7 +1706,6 @@ class ModelTestCase(TestCase):
         Model.batch_get
         """
         self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
-        SimpleUserModel('foo')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = SIMPLE_BATCH_GET_ITEMS
@@ -1790,9 +1790,7 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(params, req.call_args[0][1])
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
 
         with patch(PATCH_METHOD) as req:
             item_keys = [('hash-{}'.format(x), '{}'.format(x)) for x in range(10)]
@@ -1858,6 +1856,7 @@ class ModelTestCase(TestCase):
         """
         Model.batch_write
         """
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
 
