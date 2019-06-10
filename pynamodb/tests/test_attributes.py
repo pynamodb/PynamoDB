@@ -7,7 +7,6 @@ import six
 from base64 import b64encode
 from datetime import datetime
 
-from dateutil.parser import parse
 from dateutil.tz import tzutc
 
 from mock import patch, Mock, call
@@ -16,8 +15,7 @@ import pytest
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
-    MapAttribute, MapAttributeMeta, ListAttribute, JSONAttribute, _get_value_for_deserialize,
-    _fast_parse_utc_datestring,
+    MapAttribute, ListAttribute, JSONAttribute, _get_value_for_deserialize, _fast_parse_utc_datestring,
 )
 from pynamodb.constants import (
     DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
@@ -827,9 +825,6 @@ class TestMapAttribute:
             bad = t.nested.double_nested['bad']
         with pytest.raises(KeyError):
             bad = t.nested['something_else']
-
-    def test_metaclass(self):
-        assert type(MapAttribute) == MapAttributeMeta
 
     def test_attribute_paths_subclassing(self):
         class SubMapAttribute(MapAttribute):

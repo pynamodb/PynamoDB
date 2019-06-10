@@ -48,6 +48,7 @@ Other changes in this release:
 * Added the ``max_pool_connection`` and ``extra_headers`` settings to replace common use cases for ``session_cls``
 * Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook. Other botocore hooks remain unimplemented.
 * Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
+* The ``MapAttributeMeta`` class has been removed. Now ``type(MapAttribute) == AttributeContainerMeta``.
 
 
 v3.3.3

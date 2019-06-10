@@ -565,13 +565,6 @@ class NullAttribute(Attribute):
         return None
 
 
-class MapAttributeMeta(AttributeContainerMeta):
-    """
-    This is only here for backwards compatibility: i.e. so type(MapAttribute) == MapAttributeMeta
-    """
-
-
-@add_metaclass(MapAttributeMeta)
 class MapAttribute(Attribute, AttributeContainer):
     """
     A Map Attribute
