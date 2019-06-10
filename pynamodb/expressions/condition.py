@@ -44,11 +44,11 @@ class Condition(object):
 
     def __nonzero__(self):
         # Prevent users from accidentally comparing the condition object instead of the attribute instance
-        raise TypeError("unsupported operand type(s) for bool: '{0}'".format(self.__class__.__name__))
+        raise TypeError("unsupported operand type(s) for bool: '{}'".format(self.__class__.__name__))
 
     def __bool__(self):
         # Prevent users from accidentally comparing the condition object instead of the attribute instance
-        raise TypeError("unsupported operand type(s) for bool: {0}".format(self.__class__.__name__))
+        raise TypeError("unsupported operand type(s) for bool: {}".format(self.__class__.__name__))
 
 
 class Comparison(Condition):
