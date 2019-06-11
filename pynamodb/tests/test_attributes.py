@@ -479,8 +479,6 @@ class TestBooleanAttribute:
         BooleanAttribute.deserialize
         """
         attr = BooleanAttribute()
-        assert attr.deserialize('1') is True
-        assert attr.deserialize('0') is False
         assert attr.deserialize(True) is True
         assert attr.deserialize(False) is False
 

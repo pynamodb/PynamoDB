@@ -455,14 +455,6 @@ class BooleanAttribute(Attribute):
     def deserialize(self, value):
         return bool(value)
 
-    def get_value(self, value):
-        # we need this for legacy compatibility.
-        # previously, BOOL was serialized as N
-        value_to_deserialize = super(BooleanAttribute, self).get_value(value)
-        if value_to_deserialize is None:
-            value_to_deserialize = json.loads(value.get(NUMBER_SHORT, '0'))
-        return value_to_deserialize
-
 
 class NumberSetAttribute(SetMixin, Attribute):
     """
