@@ -4,18 +4,16 @@ DynamoDB Models for PynamoDB
 import json
 import time
 import six
-import copy
 import logging
 import warnings
+from inspect import getmembers
 
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
 from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute
-from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
-from pynamodb.compat import NullHandler, getmembers_issubclass
 from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import get_settings_value
@@ -36,7 +34,7 @@ from pynamodb.constants import (
 
 
 log = logging.getLogger(__name__)
-log.addHandler(NullHandler())
+log.addHandler(logging.NullHandler())
 
 
 class ModelContextManager(object):
@@ -169,6 +167,11 @@ class MetaModel(AttributeContainerMeta):
     """
     def __init__(cls, name, bases, attrs):
         super(MetaModel, cls).__init__(name, bases, attrs)
+        for attr_name, attribute in cls.get_attributes().items():
+            if attribute.is_hash_key:
+                cls._hash_keyname = attr_name
+            if attribute.is_range_key:
+                cls._range_keyname = attr_name
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
@@ -194,11 +197,11 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_access_key_id', None)
                     if not hasattr(attr_obj, 'aws_secret_access_key'):
                         setattr(attr_obj, 'aws_secret_access_key', None)
-                elif issubclass(attr_obj.__class__, (Index, )):
+                elif isinstance(attr_obj, Index):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
                         attr_obj.Meta.index_name = attr_name
-                elif issubclass(attr_obj.__class__, (Attribute, )):
+                elif isinstance(attr_obj, Attribute):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
@@ -225,7 +228,8 @@ class Model(AttributeContainer):
 
     # These attributes are named to avoid colliding with user defined
     # DynamoDB attributes
-    _meta_table = None
+    _hash_keyname = None
+    _range_keyname = None
     _indexes = None
     _connection = None
     _index_classes = None
@@ -238,24 +242,22 @@ class Model(AttributeContainer):
         :param attrs: A dictionary of attributes to set on this object.
         """
         if hash_key is not None:
-            attributes[self._dynamo_to_python_attr(self._get_meta_data().hash_keyname)] = hash_key
+            attributes[self._hash_keyname] = hash_key
         if range_key is not None:
-            range_keyname = self._get_meta_data().range_keyname
-            if range_keyname is None:
+            if self._range_keyname is None:
                 raise ValueError(
-                    "This table has no range key, but a range key value was provided: {0}".format(range_key)
+                    "This table has no range key, but a range key value was provided: {}".format(range_key)
                 )
-            attributes[self._dynamo_to_python_attr(range_keyname)] = range_key
+            attributes[self._range_keyname] = range_key
         super(Model, self).__init__(**attributes)
 
     def get_hash_key(self):
-        key_name = self._get_meta_data().hash_keyname
+        key_name = self._hash_keyname
         return getattr(self, key_name)
 
-
     def get_range_key(self):
-        key_name = self._get_meta_data().range_keyname
-        if key_name and hasattr(self, key_name):
+        key_name = self._range_keyname
+        if key_name is not None and hasattr(self, key_name):
             return getattr(self, key_name)
         return None
 
@@ -268,8 +270,8 @@ class Model(AttributeContainer):
             tuples if range keys are used.
         """
         items = list(items)
-        hash_keyname = cls._get_meta_data().hash_keyname
-        range_keyname = cls._get_meta_data().range_keyname
+        hash_key_attribute = cls._hash_key_attribute()
+        range_key_attribute = cls._range_key_attribute()
         keys_to_get = []
         while items:
             if len(keys_to_get) == BATCH_GET_PAGE_LIMIT:
@@ -286,16 +288,16 @@ class Model(AttributeContainer):
                     else:
                         keys_to_get = []
             item = items.pop()
-            if range_keyname:
+            if range_key_attribute:
                 hash_key, range_key = cls._serialize_keys(item[0], item[1])
                 keys_to_get.append({
-                    hash_keyname: hash_key,
-                    range_keyname: range_key
+                    hash_key_attribute.attr_name: hash_key,
+                    range_key_attribute.attr_name: range_key
                 })
             else:
                 hash_key = cls._serialize_keys(item)[0]
                 keys_to_get.append({
-                    hash_keyname: hash_key
+                    hash_key_attribute.attr_name: hash_key
                 })
 
         while keys_to_get:
@@ -327,10 +329,10 @@ class Model(AttributeContainer):
     def __repr__(self):
         if self.Meta.table_name:
             serialized = self._serialize(null_check=False)
-            if self._get_meta_data().range_keyname:
-                msg = "{0}<{1}, {2}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
+            if self._range_keyname:
+                msg = "{}<{}, {}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
             else:
-                msg = "{0}<{1}>".format(self.Meta.table_name, serialized.get(HASH))
+                msg = "{}<{}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
     @classmethod
@@ -468,30 +470,16 @@ class Model(AttributeContainer):
 
         :param data: A serialized DynamoDB object
         """
-        mutable_data = copy.copy(data)
-        if mutable_data is None:
-            raise ValueError("Received no mutable_data to construct object")
-        hash_keyname = cls._get_meta_data().hash_keyname
-        range_keyname = cls._get_meta_data().range_keyname
-        hash_key_type = cls._get_meta_data().get_attribute_type(hash_keyname)
-        hash_key = mutable_data.pop(hash_keyname).get(hash_key_type)
+        if data is None:
+            raise ValueError("Received no data to construct object")
 
-        hash_key_attr = cls.get_attributes().get(cls._dynamo_to_python_attr(hash_keyname))
-
-        hash_key = hash_key_attr.deserialize(hash_key)
-        args = (hash_key,)
-        kwargs = {}
-        if range_keyname:
-            range_key_attr = cls.get_attributes().get(cls._dynamo_to_python_attr(range_keyname))
-            range_key_type = cls._get_meta_data().get_attribute_type(range_keyname)
-            range_key = mutable_data.pop(range_keyname).get(range_key_type)
-            kwargs['range_key'] = range_key_attr.deserialize(range_key)
-        for name, value in mutable_data.items():
+        attributes = {}
+        for name, value in data.items():
             attr_name = cls._dynamo_to_python_attr(name)
             attr = cls.get_attributes().get(attr_name, None)
             if attr:
-                kwargs[attr_name] = attr.deserialize(attr.get_value(value))
-        return cls(*args, **kwargs)
+                attributes[attr_name] = attr.deserialize(attr.get_value(value))
+        return cls(**attributes)
 
     @classmethod
     def count(cls,
@@ -520,17 +508,8 @@ class Model(AttributeContainer):
         cls._get_indexes()
         if index_name:
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
-            key_attribute_classes = cls._index_classes[index_name]._get_attributes()
-            non_key_attribute_classes = cls.get_attributes()
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
-            non_key_attribute_classes = dict(cls.get_attributes())
-            key_attribute_classes = dict(cls.get_attributes())
-            for name, attr in cls.get_attributes().items():
-                if attr.is_range_key or attr.is_hash_key:
-                    key_attribute_classes[name] = attr
-                else:
-                    non_key_attribute_classes[name] = attr
 
         query_args = (hash_key,)
         query_kwargs = dict(
@@ -587,17 +566,8 @@ class Model(AttributeContainer):
         cls._get_indexes()
         if index_name:
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
-            key_attribute_classes = cls._index_classes[index_name]._get_attributes()
-            non_key_attribute_classes = cls.get_attributes()
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
-            non_key_attribute_classes = {}
-            key_attribute_classes = {}
-            for name, attr in cls.get_attributes().items():
-                if attr.is_range_key or attr.is_hash_key:
-                    key_attribute_classes[name] = attr
-                else:
-                    non_key_attribute_classes[name] = attr
 
         if page_size is None:
             page_size = limit
@@ -786,14 +756,16 @@ class Model(AttributeContainer):
         hash_key, attrs = data
         range_key = attrs.pop('range_key', None)
         attributes = attrs.pop(pythonic(ATTRIBUTES))
-        hash_keyname = cls._get_meta_data().hash_keyname
-        hash_keytype = cls._get_meta_data().get_attribute_type(hash_keyname)
+        hash_key_attribute = cls._hash_key_attribute()
+        hash_keyname = hash_key_attribute.attr_name
+        hash_keytype = ATTR_TYPE_MAP[hash_key_attribute.attr_type]
         attributes[hash_keyname] = {
             hash_keytype: hash_key
         }
         if range_key is not None:
-            range_keyname = cls._get_meta_data().range_keyname
-            range_keytype = cls._get_meta_data().get_attribute_type(range_keyname)
+            range_key_attribute = cls._range_key_attribute()
+            range_keyname = range_key_attribute.attr_name
+            range_keytype = ATTR_TYPE_MAP[range_key_attribute.attr_type]
             attributes[range_keyname] = {
                 range_keytype: range_key
             }
@@ -840,7 +812,7 @@ class Model(AttributeContainer):
                 pythonic(ATTR_DEFINITIONS): []
             }
             cls._index_classes = {}
-            for name, index in getmembers_issubclass(cls, Index):
+            for name, index in getmembers(cls, lambda o: isinstance(o, Index)):
                 cls._index_classes[index.Meta.index_name] = index
                 schema = index._get_schema()
                 idx = {
@@ -851,7 +823,7 @@ class Model(AttributeContainer):
                     },
 
                 }
-                if issubclass(index.__class__, GlobalSecondaryIndex):
+                if isinstance(index, GlobalSecondaryIndex):
                     idx[pythonic(PROVISIONED_THROUGHPUT)] = {
                         READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
                         WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
@@ -859,7 +831,7 @@ class Model(AttributeContainer):
                 cls._indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
                 if index.Meta.projection.non_key_attributes:
                     idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
-                if issubclass(index.__class__, GlobalSecondaryIndex):
+                if isinstance(index, GlobalSecondaryIndex):
                     cls._indexes[pythonic(GLOBAL_SECONDARY_INDEXES)].append(idx)
                 else:
                     cls._indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
@@ -899,26 +871,18 @@ class Model(AttributeContainer):
         return args, kwargs
 
     @classmethod
-    def _range_key_attribute(cls):
-        """
-        Returns the attribute class for the hash key
-        """
-        attributes = cls.get_attributes()
-        range_keyname = cls._get_meta_data().range_keyname
-        if range_keyname:
-            attr = attributes[cls._dynamo_to_python_attr(range_keyname)]
-        else:
-            attr = None
-        return attr
-
-    @classmethod
     def _hash_key_attribute(cls):
         """
         Returns the attribute class for the hash key
         """
-        attributes = cls.get_attributes()
-        hash_keyname = cls._get_meta_data().hash_keyname
-        return attributes[cls._dynamo_to_python_attr(hash_keyname)]
+        return cls.get_attributes()[cls._hash_keyname]
+
+    @classmethod
+    def _range_key_attribute(cls):
+        """
+        Returns the attribute class for the range key
+        """
+        return cls.get_attributes()[cls._range_keyname] if cls._range_keyname else None
 
     def _get_keys(self):
         """
@@ -927,12 +891,11 @@ class Model(AttributeContainer):
         serialized = self._serialize(null_check=False)
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
-        hash_keyname = self._get_meta_data().hash_keyname
-        range_keyname = self._get_meta_data().range_keyname
         attrs = {
-            hash_keyname: hash_key,
+            self._hash_key_attribute().attr_name: hash_key,
         }
-        if range_keyname is not None:
+        if self._range_keyname is not None:
+            range_keyname = self._range_key_attribute().attr_name
             attrs[range_keyname] = range_key
         return attrs
 
@@ -955,15 +918,6 @@ class Model(AttributeContainer):
         return item_data, unprocessed_items
 
     @classmethod
-    def _get_meta_data(cls):
-        """
-        A helper object that contains meta data about this table
-        """
-        if cls._meta_table is None:
-            cls._meta_table = MetaTable(cls._get_connection().describe_table())
-        return cls._meta_table
-
-    @classmethod
     def _get_connection(cls):
         """
         Returns a (cached) connection
@@ -971,7 +925,7 @@ class Model(AttributeContainer):
         if not hasattr(cls, "Meta"):
             raise AttributeError(
                 'As of v1.0 PynamoDB Models require a `Meta` class.\n'
-                'Model: {0}.{1}\n'
+                'Model: {}.{}\n'
                 'See https://pynamodb.readthedocs.io/en/latest/release_notes.html\n'.format(
                     cls.__module__, cls.__name__,
                 ),
@@ -979,7 +933,7 @@ class Model(AttributeContainer):
         elif not hasattr(cls.Meta, "table_name") or cls.Meta.table_name is None:
             raise AttributeError(
                 'As of v1.0 PyanmoDB Models must have a table_name\n'
-                'Model: {0}.{1}\n'
+                'Model: {}.{}\n'
                 'See https://pynamodb.readthedocs.io/en/latest/release_notes.html'.format(
                     cls.__module__, cls.__name__,
                 ),
@@ -1025,7 +979,7 @@ class Model(AttributeContainer):
             value = getattr(self, name)
             if isinstance(value, MapAttribute):
                 if not value.validate():
-                    raise ValueError("Attribute '{0}' is not correctly typed".format(attr.attr_name))
+                    raise ValueError("Attribute '{}' is not correctly typed".format(attr.attr_name))
 
             serialized = self._serialize_value(attr, value, null_check)
             if NULL in serialized:
@@ -1059,7 +1013,7 @@ class Model(AttributeContainer):
 
         if serialized is None:
             if not attr.null and null_check:
-                raise ValueError("Attribute '{0}' cannot be None".format(attr.attr_name))
+                raise ValueError("Attribute '{}' cannot be None".format(attr.attr_name))
             return {NULL: True}
 
         return {ATTR_TYPE_MAP[attr.attr_type]: serialized}

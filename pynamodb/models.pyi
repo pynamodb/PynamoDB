@@ -28,6 +28,8 @@ KeyType = Union[Text, bytes, float, int, Tuple]
 class Model(metaclass=MetaModel):
     DoesNotExist = DoesNotExist
     attribute_values: Dict[Text, Any]
+    _hash_keyname: Optional[str]
+    _range_keyname: Optional[str]
     _connection: Optional[TableConnection]
     def __init__(self, hash_key: Optional[KeyType] = ..., range_key: Optional[Any] = ..., **attrs) -> None: ...
     @classmethod

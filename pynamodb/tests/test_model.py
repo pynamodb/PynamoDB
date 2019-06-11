@@ -6,13 +6,13 @@ import random
 import json
 import copy
 from datetime import datetime
+from unittest import TestCase
 
 import six
 from botocore.client import ClientError
 import pytest
 
-from pynamodb.compat import CompatTestCase as TestCase
-from pynamodb.connection.transactions import TransactWrite, TransactGet
+from pynamodb.connection.transactions import TransactWrite
 from pynamodb.tests.deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import DoesNotExist, TableError
@@ -331,7 +331,7 @@ class CarInfoMap(MapAttribute):
 class CarModel(Model):
     class Meta:
         table_name = 'CarModel'
-    car_id = NumberAttribute(null=False)
+    car_id = NumberAttribute(hash_key=True, null=False)
     car_info = CarInfoMap(null=False)
 
 
@@ -441,7 +441,7 @@ class ModelTestCase(TestCase):
     def init_table_meta(model_clz, table_data):
         with patch(PATCH_METHOD) as req:
             req.return_value = table_data
-            model_clz._get_meta_data()
+            model_clz._get_connection().describe_table()
 
     def assert_dict_lists_equal(self, list1, list2):
         """
@@ -449,14 +449,14 @@ class ModelTestCase(TestCase):
         This function allows both the lists and dictionaries to have any order
         """
         if len(list1) != len(list2):
-            raise AssertionError("Values not equal: {0} {1}".format(list1, list2))
+            raise AssertionError("Values not equal: {} {}".format(list1, list2))
         for d1_item in list1:
             found = False
             for d2_item in list2:
                 if d2_item == d1_item:
                     found = True
             if not found:
-                raise AssertionError("Values not equal: {0} {1}".format(list1, list2))
+                raise AssertionError("Values not equal: {} {}".format(list1, list2))
 
     def test_create_model(self):
         """
@@ -590,7 +590,6 @@ class ModelTestCase(TestCase):
                     'ReadCapacityUnits': 25, 'WriteCapacityUnits': 25
                 },
                 'TableName': 'UserModel',
-                'BillingMode': 'PROVISIONED'
             }
             actual = req.call_args_list[1][0][1]
             self.assertEqual(sorted(actual.keys()), sorted(params.keys()))
@@ -626,29 +625,25 @@ class ModelTestCase(TestCase):
         """
         Model()
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            item = UserModel('foo', 'bar')
-            self.assertEqual(item.email, 'needs_email')
-            self.assertEqual(item.callable_field, 42)
-            self.assertEqual(
-                repr(item), '{0}<{1}, {2}>'.format(UserModel.Meta.table_name, item.custom_user_name, item.user_id)
-            )
-            self.assertEqual(repr(UserModel._get_meta_data()), 'MetaTable<{0}>'.format('Thread'))
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
+        item = UserModel('foo', 'bar')
+        self.assertEqual(item.email, 'needs_email')
+        self.assertEqual(item.callable_field, 42)
+        self.assertEqual(
+            repr(item), '{}<{}, {}>'.format(UserModel.Meta.table_name, item.custom_user_name, item.user_id)
+        )
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = SIMPLE_MODEL_TABLE_DATA
-            item = SimpleUserModel('foo')
-            self.assertEqual(repr(item), '{0}<{1}>'.format(SimpleUserModel.Meta.table_name, item.user_name))
-            self.assertRaises(ValueError, item.save)
+        self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
+        item = SimpleUserModel('foo')
+        self.assertEqual(repr(item), '{}<{}>'.format(SimpleUserModel.Meta.table_name, item.user_name))
+        self.assertRaises(ValueError, item.save)
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            item = CustomAttrNameModel('foo', 'bar', overidden_attr='test')
-            self.assertEqual(item.overidden_attr, 'test')
-            self.assertTrue(not hasattr(item, 'foo_attr'))
+        self.init_table_meta(CustomAttrNameModel, CUSTOM_ATTR_NAME_INDEX_TABLE_DATA)
+        item = CustomAttrNameModel('foo', 'bar', overidden_attr='test')
+        self.assertEqual(item.overidden_attr, 'test')
+        self.assertTrue(not hasattr(item, 'foo_attr'))
 
     def test_overidden_defaults(self):
         """
@@ -700,9 +695,8 @@ class ModelTestCase(TestCase):
         """
         Model with complex key
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = COMPLEX_TABLE_DATA
-            item = ComplexKeyModel('test')
+        self.init_table_meta(ComplexKeyModel, COMPLEX_TABLE_DATA)
+        item = ComplexKeyModel('test')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = COMPLEX_ITEM_DATA
@@ -712,10 +706,8 @@ class ModelTestCase(TestCase):
         """
         Model.delete
         """
-        UserModel._meta_table = None
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            item = UserModel('foo', 'bar')
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
+        item = UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = None
@@ -873,9 +865,8 @@ class ModelTestCase(TestCase):
         """
         Model.update
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = SIMPLE_MODEL_TABLE_DATA
-            item = SimpleUserModel('foo', is_active=True, email='foo@example.com', signature='foo')
+        self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
+        item = SimpleUserModel('foo', is_active=True, email='foo@example.com', signature='foo')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -893,7 +884,7 @@ class ModelTestCase(TestCase):
                         "NULL": None,
                     },
                     "aliases": {
-                        "SS": set(["bob"]),
+                        "SS": {"bob"},
                     }
                 }
             }
@@ -946,7 +937,7 @@ class ModelTestCase(TestCase):
             deep_eq(args, params, _assert=True)
 
             assert item.views is None
-            self.assertEqual(set(['bob']), item.custom_aliases)
+            self.assertEqual({'bob'}, item.custom_aliases)
 
         mock_transaction = MagicMock()
         response = item.update(
@@ -1168,6 +1159,7 @@ class ModelTestCase(TestCase):
         """
         Model.count(**filters)
         """
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 10, 'ScannedCount': 20}
             res = UserModel.count('foo')
@@ -1215,6 +1207,7 @@ class ModelTestCase(TestCase):
         """
         Model.index.count()
         """
+        self.init_table_meta(CustomAttrNameModel, CUSTOM_ATTR_NAME_INDEX_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 42, 'ScannedCount': 42}
             res = CustomAttrNameModel.uid_index.count(
@@ -1247,6 +1240,7 @@ class ModelTestCase(TestCase):
             deep_eq(args, params, _assert=True)
 
     def test_index_multipage_count(self):
+        self.init_table_meta(CustomAttrNameModel, CUSTOM_ATTR_NAME_INDEX_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             last_evaluated_key = {
                 'user_name': {'S': u'user'},
@@ -1284,15 +1278,14 @@ class ModelTestCase(TestCase):
             deep_eq(args_two, params_two, _assert=True)
 
     def test_query_limit_greater_than_available_items_single_page(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
+        UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(5):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
@@ -1309,7 +1302,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(5):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
@@ -1326,7 +1319,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1354,7 +1347,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1382,7 +1375,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1402,15 +1395,14 @@ class ModelTestCase(TestCase):
             self.assertEqual(results_iter.page_iter.total_scanned_count, 60)
 
     def test_query_limit_greater_than_available_items_and_page_size(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
+        UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1438,7 +1430,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1467,7 +1459,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1486,7 +1478,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1498,7 +1490,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1510,7 +1502,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1522,7 +1514,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1534,7 +1526,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1546,7 +1538,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1583,13 +1575,13 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            CustomAttrNameModel._get_meta_data()
+            CustomAttrNameModel._get_connection().describe_table()
 
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1636,7 +1628,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1699,7 +1691,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             scanned_items = []
@@ -1760,6 +1752,7 @@ class ModelTestCase(TestCase):
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
 
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         with patch(PATCH_METHOD, new=fake_db) as req:
             item = UserModel.get(
                 'foo',
@@ -1807,7 +1800,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            CustomAttrNameModel._get_meta_data()
+            CustomAttrNameModel._get_connection().describe_table()
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {"ConsumedCapacity": {"CapacityUnits": 0.5, "TableName": "UserModel"}}
@@ -1828,13 +1821,11 @@ class ModelTestCase(TestCase):
         """
         Model.batch_get
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = SIMPLE_MODEL_TABLE_DATA
-            SimpleUserModel('foo')
+        self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = SIMPLE_BATCH_GET_ITEMS
-            item_keys = ['hash-{0}'.format(x) for x in range(10)]
+            item_keys = ['hash-{}'.format(x) for x in range(10)]
             for item in SimpleUserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
             params = {
@@ -1860,7 +1851,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = SIMPLE_BATCH_GET_ITEMS
-            item_keys = ['hash-{0}'.format(x) for x in range(10)]
+            item_keys = ['hash-{}'.format(x) for x in range(10)]
             for item in SimpleUserModel.batch_get(item_keys, attributes_to_get=['numbers']):
                 self.assertIsNotNone(item)
             params = {
@@ -1890,7 +1881,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = SIMPLE_BATCH_GET_ITEMS
-            item_keys = ['hash-{0}'.format(x) for x in range(10)]
+            item_keys = ['hash-{}'.format(x) for x in range(10)]
             for item in SimpleUserModel.batch_get(item_keys, consistent_read=True):
                 self.assertIsNotNone(item)
             params = {
@@ -1915,12 +1906,10 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(params, req.call_args[0][1])
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
 
         with patch(PATCH_METHOD) as req:
-            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(10)]
+            item_keys = [('hash-{}'.format(x), '{}'.format(x)) for x in range(10)]
             item_keys_copy = list(item_keys)
             req.return_value = BATCH_GET_ITEMS
             for item in UserModel.batch_get(item_keys):
@@ -1975,7 +1964,7 @@ class ModelTestCase(TestCase):
         batch_get_mock.side_effect = fake_batch_get
 
         with patch(PATCH_METHOD, new=batch_get_mock) as req:
-            item_keys = [('hash-{0}'.format(x), '{0}'.format(x)) for x in range(200)]
+            item_keys = [('hash-{}'.format(x), '{}'.format(x)) for x in range(200)]
             for item in UserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
 
@@ -1983,6 +1972,7 @@ class ModelTestCase(TestCase):
         """
         Model.batch_write
         """
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
 
@@ -1994,30 +1984,30 @@ class ModelTestCase(TestCase):
 
             with self.assertRaises(ValueError):
                 with UserModel.batch_write(auto_commit=False) as batch:
-                    items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(26)]
+                    items = [UserModel('hash-{}'.format(x), '{}'.format(x)) for x in range(26)]
                     for item in items:
                         batch.delete(item)
                     self.assertRaises(ValueError, batch.save, UserModel('asdf', '1234'))
 
             with UserModel.batch_write(auto_commit=False) as batch:
-                items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(25)]
+                items = [UserModel('hash-{}'.format(x), '{}'.format(x)) for x in range(25)]
                 for item in items:
                     batch.delete(item)
                 self.assertRaises(ValueError, batch.save, UserModel('asdf', '1234'))
 
             with UserModel.batch_write(auto_commit=False) as batch:
-                items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(25)]
+                items = [UserModel('hash-{}'.format(x), '{}'.format(x)) for x in range(25)]
                 for item in items:
                     batch.save(item)
                 self.assertRaises(ValueError, batch.save, UserModel('asdf', '1234'))
 
             with UserModel.batch_write() as batch:
-                items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(30)]
+                items = [UserModel('hash-{}'.format(x), '{}'.format(x)) for x in range(30)]
                 for item in items:
                     batch.delete(item)
 
             with UserModel.batch_write() as batch:
-                items = [UserModel('hash-{0}'.format(x), '{0}'.format(x)) for x in range(30)]
+                items = [UserModel('hash-{}'.format(x), '{}'.format(x)) for x in range(30)]
                 for item in items:
                     batch.save(item)
 
@@ -2028,7 +2018,7 @@ class ModelTestCase(TestCase):
         for idx in range(10):
             items.append(UserModel(
                 'daniel',
-                '{0}'.format(idx),
+                '{}'.format(idx),
                 picture=picture_blob,
             ))
 
@@ -2038,7 +2028,7 @@ class ModelTestCase(TestCase):
                 'PutRequest': {
                     'Item': {
                         'custom_username': {STRING_SHORT: 'daniel'},
-                        'user_id': {STRING_SHORT: '{0}'.format(idx)},
+                        'user_id': {STRING_SHORT: '{}'.format(idx)},
                         'picture': {BINARY_SHORT: base64.b64encode(picture_blob).decode(DEFAULT_ENCODING)}
                     }
                 }
@@ -2071,7 +2061,7 @@ class ModelTestCase(TestCase):
         """
         with patch(PATCH_METHOD) as req:
             req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            CustomAttrNameModel._get_meta_data()
+            CustomAttrNameModel._get_connection().describe_table()
 
         with patch(PATCH_METHOD) as req:
             req.return_value = INDEX_TABLE_DATA
@@ -2079,7 +2069,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = LOCAL_INDEX_TABLE_DATA
-            LocalIndexedModel._get_meta_data()
+            LocalIndexedModel._get_connection().describe_table()
 
         self.assertEqual(IndexedModel.include_index.Meta.index_name, "non_key_idx")
 
@@ -2087,8 +2077,8 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_name'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['email'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -2122,8 +2112,8 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                item['email'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_name'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['email'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -2164,7 +2154,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_name'] = {STRING_SHORT: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -2277,7 +2267,7 @@ class ModelTestCase(TestCase):
             req.return_value = INDEX_TABLE_DATA
             with self.assertRaises(ValueError):
                 IndexedModel('foo', 'bar')
-            IndexedModel._get_meta_data()
+            IndexedModel._get_connection().describe_table()
 
         scope_args = {'count': 0}
 
@@ -2450,9 +2440,6 @@ class ModelTestCase(TestCase):
         Display warning for pre v1.0 Models
         """
         with self.assertRaises(AttributeError):
-            OldStyleModel._get_meta_data()
-
-        with self.assertRaises(AttributeError):
             OldStyleModel.exists()
 
     def test_dumps(self):
@@ -2463,8 +2450,8 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
-                item['email'] = {STRING_SHORT: 'email-{0}'.format(random.randint(0, 65536))}
+                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['email'] = {STRING_SHORT: 'email-{}'.format(random.randint(0, 65536))}
                 item['picture'] = {BINARY_SHORT: BINARY_ATTR_DATA}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
@@ -2622,35 +2609,35 @@ class ModelTestCase(TestCase):
         )
 
     def test_model_with_maps(self):
+        self.init_table_meta(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA)
         office_employee = self._get_office_employee()
-        with patch(PATCH_METHOD) as req:
-            req.return_value = OFFICE_EMPLOYEE_MODEL_TABLE_DATA
+        with patch(PATCH_METHOD):
             office_employee.save()
 
     def test_model_with_list(self):
+        self.init_table_meta(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA)
         grocery_list = self._get_grocery_list()
-        with patch(PATCH_METHOD) as req:
-            req.return_value = GROCERY_LIST_MODEL_TABLE_DATA
+        with patch(PATCH_METHOD):
             grocery_list.save()
 
     def test_model_with_list_of_map(self):
+        self.init_table_meta(Office, OFFICE_MODEL_TABLE_DATA)
         item = self._get_office()
-        with patch(PATCH_METHOD) as req:
-            req.return_value = OFFICE_MODEL_TABLE_DATA
+        with patch(PATCH_METHOD):
             item.save()
 
     def test_model_with_nulls_validates(self):
+        self.init_table_meta(CarModel, CAR_MODEL_TABLE_DATA)
         car_info = CarInfoMap(make='Dodge')
         item = CarModel(car_id=123, car_info=car_info)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = CAR_MODEL_WITH_NULL_ITEM_DATA
+        with patch(PATCH_METHOD):
             item.save()
 
     def test_model_with_invalid_data_does_not_validate(self):
+        self.init_table_meta(CarModel, CAR_MODEL_TABLE_DATA)
         car_info = CarInfoMap(model='Envoy')
         item = CarModel(car_id=123, car_info=car_info)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA
+        with patch(PATCH_METHOD):
             with self.assertRaises(ValueError):
                 item.save()
 

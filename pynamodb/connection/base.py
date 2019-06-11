@@ -22,7 +22,6 @@ from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 from six.moves import range
 
-from pynamodb.compat import NullHandler
 from pynamodb.connection.util import pythonic
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
@@ -42,11 +41,10 @@ from pynamodb.constants import (
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
     CONDITION_EXPRESSION, FILTER_EXPRESSION,
-    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
+    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE, PROVISIONED_BILLING_MODE,
     TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS, CLIENT_REQUEST_TOKEN, TRANSACT_ITEMS, TRANSACT_CONDITION_CHECK,
-    TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE,
-    TRANSACT_UPDATE,
-    UPDATE_EXPRESSION)
+    TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE, TRANSACT_UPDATE, UPDATE_EXPRESSION
+)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -62,7 +60,7 @@ from pynamodb.types import HASH, RANGE
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 
 log = logging.getLogger(__name__)
-log.addHandler(NullHandler())
+log.addHandler(logging.NullHandler())
 
 
 class MetaTable(object):
@@ -77,7 +75,7 @@ class MetaTable(object):
 
     def __repr__(self):
         if self.data:
-            return six.u("MetaTable<{0}>".format(self.data.get(TABLE_NAME)))
+            return six.u("MetaTable<{}>".format(self.data.get(TABLE_NAME)))
 
     @property
     def range_keyname(self):
@@ -185,7 +183,7 @@ class MetaTable(object):
                 if key in value:
                     return key
         attr_names = [attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS)]
-        raise ValueError("No attribute {0} in {1}".format(attribute_name, attr_names))
+        raise ValueError("No attribute {} in {}".format(attribute_name, attr_names))
 
     def get_identifier_map(self, hash_key, range_key=None, key=KEY):
         """
@@ -273,7 +271,7 @@ class Connection(object):
             self._extra_headers = get_settings_value('extra_headers')
 
     def __repr__(self):
-        return six.u("Connection<{0}>".format(self.client.meta.endpoint_url))
+        return six.u("Connection<{}>".format(self.client.meta.endpoint_url))
 
     def _log_debug(self, operation, kwargs):
         """
@@ -535,7 +533,7 @@ class Connection(object):
                 data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
                 self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
             except BotoCoreError as e:
-                raise TableError("Unable to describe table: {0}".format(e), e)
+                raise TableError("Unable to describe table: {}".format(e), e)
             except ClientError as e:
                 if 'ResourceNotFound' in e.response['Error']['Code']:
                     raise TableDoesNotExist(e.response['Error']['Message'])
@@ -575,10 +573,11 @@ class Connection(object):
         operation_kwargs[ATTR_DEFINITIONS] = attrs_list
 
         if billing_mode not in AVAILABLE_BILLING_MODES:
-            raise ValueError("incorrect value for billing_mode, available modes: {0}".format(AVAILABLE_BILLING_MODES))
-        operation_kwargs[BILLING_MODE] = billing_mode
+            raise ValueError("incorrect value for billing_mode, available modes: {}".format(AVAILABLE_BILLING_MODES))
         if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
             del operation_kwargs[PROVISIONED_THROUGHPUT]
+        elif billing_mode == PROVISIONED_BILLING_MODE:
+            del operation_kwargs[BILLING_MODE]
 
         if global_secondary_indexes:
             global_secondary_indexes_list = []
@@ -620,7 +619,7 @@ class Connection(object):
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to create table: {0}".format(e), e)
+            raise TableError("Failed to create table: {}".format(e), e)
         return data
 
     def delete_table(self, table_name):
@@ -633,7 +632,7 @@ class Connection(object):
         try:
             data = self.dispatch(DELETE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to delete table: {0}".format(e), e)
+            raise TableError("Failed to delete table: {}".format(e), e)
         return data
 
     def update_table(self,
@@ -670,7 +669,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to update table: {0}".format(e), e)
+            raise TableError("Failed to update table: {}".format(e), e)
 
     def list_tables(self, exclusive_start_table_name=None, limit=None):
         """
@@ -688,7 +687,7 @@ class Connection(object):
         try:
             return self.dispatch(LIST_TABLES, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Unable to list tables: {0}".format(e), e)
+            raise TableError("Unable to list tables: {}".format(e), e)
 
     def describe_table(self, table_name):
         """
@@ -708,7 +707,7 @@ class Connection(object):
         """
         tbl = self.get_meta_table(table_name)
         if tbl is None:
-            raise TableError("No such table {0}".format(table_name))
+            raise TableError("No such table {}".format(table_name))
         return tbl.get_item_attribute_map(
             attributes,
             item_key=item_key,
@@ -726,7 +725,7 @@ class Connection(object):
                     if return_type:
                         return key, attribute.get(key)
                     return attribute.get(key)
-            raise ValueError("Invalid attribute supplied: {0}".format(attribute))
+            raise ValueError("Invalid attribute supplied: {}".format(attribute))
         else:
             if return_type:
                 return None, attribute
@@ -739,7 +738,7 @@ class Connection(object):
         """
         tbl = self.get_meta_table(table_name)
         if tbl is None:
-            raise TableError("No such table {0}".format(table_name))
+            raise TableError("No such table {}".format(table_name))
         return tbl.get_attribute_type(attribute_name, value=value)
 
     def get_identifier_map(self, table_name, hash_key, range_key=None, key=KEY):
@@ -748,7 +747,7 @@ class Connection(object):
         """
         tbl = self.get_meta_table(table_name)
         if tbl is None:
-            raise TableError("No such table {0}".format(table_name))
+            raise TableError("No such table {}".format(table_name))
         return tbl.get_identifier_map(hash_key, range_key=range_key, key=key)
 
     def get_consumed_capacity_map(self, return_consumed_capacity):
@@ -756,7 +755,7 @@ class Connection(object):
         Builds the consumed capacity map that is common to several operations
         """
         if return_consumed_capacity.upper() not in RETURN_CONSUMED_CAPACITY_VALUES:
-            raise ValueError("{0} must be one of {1}".format(RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY_VALUES))
+            raise ValueError("{} must be one of {}".format(RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY_VALUES))
         return {
             RETURN_CONSUMED_CAPACITY: str(return_consumed_capacity).upper()
         }
@@ -766,7 +765,7 @@ class Connection(object):
         Builds the return values map that is common to several operations
         """
         if return_values.upper() not in RETURN_VALUES_VALUES:
-            raise ValueError("{0} must be one of {1}".format(RETURN_VALUES, RETURN_VALUES_VALUES))
+            raise ValueError("{} must be one of {}".format(RETURN_VALUES, RETURN_VALUES_VALUES))
         return {
             RETURN_VALUES: str(return_values).upper()
         }
@@ -776,7 +775,7 @@ class Connection(object):
         Builds the item collection map
         """
         if return_item_collection_metrics.upper() not in RETURN_ITEM_COLL_METRICS_VALUES:
-            raise ValueError("{0} must be one of {1}".format(RETURN_ITEM_COLL_METRICS, RETURN_ITEM_COLL_METRICS_VALUES))
+            raise ValueError("{} must be one of {}".format(RETURN_ITEM_COLL_METRICS, RETURN_ITEM_COLL_METRICS_VALUES))
         return {
             RETURN_ITEM_COLL_METRICS: str(return_item_collection_metrics).upper()
         }
@@ -787,7 +786,7 @@ class Connection(object):
         """
         tbl = self.get_meta_table(table_name)
         if tbl is None:
-            raise TableError("No such table {0}".format(table_name))
+            raise TableError("No such table {}".format(table_name))
         return tbl.get_exclusive_start_key_map(exclusive_start_key)
 
     def get_operation_kwargs_for_delete_item(self,
@@ -831,7 +830,7 @@ class Connection(object):
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise DeleteError("Failed to delete item: {0}".format(e), e)
+            raise DeleteError("Failed to delete item: {}".format(e), e)
 
 
     def get_operation_kwargs_for_update_item(self,
@@ -882,7 +881,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise UpdateError("Failed to update item: {0}".format(e), e)
+            raise UpdateError("Failed to update item: {}".format(e), e)
 
     def get_operation_kwargs_for_condition_check(self,
                                                  table_name,
@@ -949,7 +948,7 @@ class Connection(object):
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to put item: {0}".format(e), e)
+            raise PutError("Failed to put item: {}".format(e), e)
 
     def transact_write_items(self,
                              condition_check_items,
@@ -1041,7 +1040,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to batch write items: {0}".format(e), e)
+            raise PutError("Failed to batch write items: {}".format(e), e)
 
     def batch_get_item(self,
                        table_name,
@@ -1080,7 +1079,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to batch get items: {0}".format(e), e)
+            raise GetError("Failed to batch get items: {}".format(e), e)
 
     def get_operation_kwargs_for_get_item(self,
                                           table_name,
@@ -1108,7 +1107,7 @@ class Connection(object):
         try:
             return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to get item: {0}".format(e), e)
+            raise GetError("Failed to get item: {}".format(e), e)
 
     def scan(self,
              table_name,
@@ -1158,7 +1157,7 @@ class Connection(object):
         try:
             return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise ScanError("Failed to scan table: {0}".format(e), e)
+            raise ScanError("Failed to scan table: {}".format(e), e)
 
     def query(self,
               table_name,
@@ -1185,11 +1184,11 @@ class Connection(object):
 
         tbl = self.get_meta_table(table_name)
         if tbl is None:
-            raise TableError("No such table: {0}".format(table_name))
+            raise TableError("No such table: {}".format(table_name))
         if index_name:
             hash_keyname = tbl.get_index_hash_keyname(index_name)
             if not hash_keyname:
-                raise ValueError("No hash key attribute for index: {0}".format(index_name))
+                raise ValueError("No hash key attribute for index: {}".format(index_name))
             range_keyname = tbl.get_index_range_keyname(index_name)
         else:
             hash_keyname = tbl.hash_keyname
@@ -1205,7 +1204,7 @@ class Connection(object):
                 # Try to gracefully handle the case where a user passed in a filter as a range key condition
                 (filter_condition, range_key_condition) = (range_key_condition, None)
             else:
-                raise ValueError("{0} is not a valid range key condition".format(range_key_condition))
+                raise ValueError("{} is not a valid range key condition".format(range_key_condition))
 
         operation_kwargs[KEY_CONDITION_EXPRESSION] = key_condition.serialize(
             name_placeholders, expression_attribute_values)
@@ -1235,7 +1234,7 @@ class Connection(object):
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if select:
             if select.upper() not in SELECT_VALUES:
-                raise ValueError("{0} must be one of {1}".format(SELECT, SELECT_VALUES))
+                raise ValueError("{} must be one of {}".format(SELECT, SELECT_VALUES))
             operation_kwargs[SELECT] = str(select).upper()
         if scan_index_forward is not None:
             operation_kwargs[SCAN_INDEX_FORWARD] = scan_index_forward
@@ -1247,16 +1246,16 @@ class Connection(object):
         try:
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise QueryError("Failed to query items: {0}".format(e), e)
+            raise QueryError("Failed to query items: {}".format(e), e)
 
     def _check_condition(self, name, condition):
         if condition is not None:
             if not isinstance(condition, Condition):
-                raise ValueError("'{0}' must be an instance of Condition".format(name))
+                raise ValueError("'{}' must be an instance of Condition".format(name))
 
     @staticmethod
     def _reverse_dict(d):
-        return dict((v, k) for k, v in six.iteritems(d))
+        return {v: k for k, v in six.iteritems(d)}
 
 
 def _convert_binary(attr):
@@ -1265,4 +1264,4 @@ def _convert_binary(attr):
     elif BINARY_SET_SHORT in attr:
         value = attr[BINARY_SET_SHORT]
         if value and len(value):
-            attr[BINARY_SET_SHORT] = set(b64decode(v.encode(DEFAULT_ENCODING)) for v in value)
+            attr[BINARY_SET_SHORT] = {b64decode(v.encode(DEFAULT_ENCODING)) for v in value}
