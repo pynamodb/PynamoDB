@@ -49,6 +49,7 @@ Other changes in this release:
 * Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook. Other botocore hooks remain unimplemented.
 * Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
 * The ``MapAttributeMeta`` class has been removed. Now ``type(MapAttribute) == AttributeContainerMeta``.
+* Removed ``LegacyBooleanAttribute`` and the read-compatibility for it in ``BooleanAttribute``.
 
 
 v3.3.3
