@@ -789,6 +789,57 @@ class Connection(object):
             raise TableError("No such table {}".format(table_name))
         return tbl.get_exclusive_start_key_map(exclusive_start_key)
 
+    def _get_operation_kwargs(self,
+                              table_name=None,
+                              hash_key=None,
+                              range_key=None,
+                              key=KEY,
+                              attributes=None,
+                              attributes_to_get=None,
+                              actions=None,
+                              condition=None,
+                              consistent_read=None,
+                              return_values=None,
+                              return_consumed_capacity=None,
+                              return_item_collection_metrics=None):
+        self._check_condition('condition', condition)
+
+        operation_kwargs = {}
+        name_placeholders = {}
+        expression_attribute_values = {}
+
+        if table_name is not None and hash_key is not None:
+            operation_kwargs[TABLE_NAME] = table_name
+            operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=key))
+        if attributes:
+            attrs = self.get_item_attribute_map(table_name, attributes)
+            operation_kwargs[ITEM].update(attrs[ITEM])
+        if attributes_to_get is not None:
+            projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
+            operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
+        if condition is not None:
+            condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
+            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
+        if consistent_read is not None:
+            operation_kwargs[CONSISTENT_READ] = consistent_read
+        if return_values is not None:
+            operation_kwargs.update(self.get_return_values_map(return_values))
+        if return_consumed_capacity is not None:
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
+        if return_item_collection_metrics is not None:
+            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
+        if actions is not None:
+            update_expression = Update(*actions)
+            operation_kwargs[UPDATE_EXPRESSION] = update_expression.serialize(
+                name_placeholders,
+                expression_attribute_values
+            )
+        if name_placeholders:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
+        if expression_attribute_values:
+            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
+        return operation_kwargs
+
     def get_operation_kwargs_for_delete_item(self,
                                              table_name,
                                              hash_key,
@@ -797,30 +848,88 @@ class Connection(object):
                                              return_values=None,
                                              return_consumed_capacity=None,
                                              return_item_collection_metrics=None):
-        """
-        Performs the DeleteItem operation and returns the result
-        """
-        self._check_condition('condition', condition)
+        return self._get_operation_kwargs(
+            table_name,
+            hash_key,
+            range_key=range_key,
+            condition=condition,
+            return_values=return_values,
+            return_consumed_capacity=return_consumed_capacity,
+            return_item_collection_metrics=return_item_collection_metrics
+        )
 
-        operation_kwargs = {TABLE_NAME: table_name}
-        operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
-        name_placeholders = {}
-        expression_attribute_values = {}
+    def get_operation_kwargs_for_update_item(self,
+                                             table_name,
+                                             hash_key,
+                                             range_key=None,
+                                             actions=None,
+                                             condition=None,
+                                             return_consumed_capacity=None,
+                                             return_item_collection_metrics=None,
+                                             return_values=None):
+        if not actions:
+            raise ValueError("'actions' cannot be empty")
 
-        if condition is not None:
-            condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
-            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
-        if return_values:
-            operation_kwargs.update(self.get_return_values_map(return_values))
-        if return_consumed_capacity:
-            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
-        if return_item_collection_metrics:
-            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
-        if name_placeholders:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
-        if expression_attribute_values:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
+        return self._get_operation_kwargs(
+            table_name=table_name,
+            hash_key=hash_key,
+            range_key=range_key,
+            actions=actions,
+            condition=condition,
+            return_values=return_values,
+            return_consumed_capacity=return_consumed_capacity,
+            return_item_collection_metrics=return_item_collection_metrics
+        )
+
+    def get_operation_kwargs_for_condition_check(self,
+                                                 table_name,
+                                                 condition,
+                                                 hash_key,
+                                                 range_key=None,
+                                                 return_values=None):
+        return self._get_operation_kwargs(
+            table_name=table_name,
+            hash_key=hash_key,
+            range_key=range_key,
+            condition=condition,
+            return_values=return_values
+        )
+
+    def get_operation_kwargs_for_put_item(self,
+                                          table_name,
+                                          hash_key,
+                                          range_key=None,
+                                          attributes=None,
+                                          condition=None,
+                                          return_values=None,
+                                          return_consumed_capacity=None,
+                                          return_item_collection_metrics=None):
+        operation_kwargs = self._get_operation_kwargs(
+            table_name=table_name,
+            hash_key=hash_key,
+            range_key=range_key,
+            key=ITEM,
+            attributes=attributes,
+            condition=condition,
+            return_values=return_values,
+            return_consumed_capacity=return_consumed_capacity,
+            return_item_collection_metrics=return_item_collection_metrics
+        )
         return operation_kwargs
+
+    def get_operation_kwargs_for_get_item(self,
+                                          table_name,
+                                          hash_key,
+                                          range_key=None,
+                                          consistent_read=False,
+                                          attributes_to_get=None):
+        return self._get_operation_kwargs(
+            table_name=table_name,
+            hash_key=hash_key,
+            range_key=range_key,
+            consistent_read=consistent_read,
+            attributes_to_get=attributes_to_get
+        )
 
     def delete_item(self, *args, **kwargs):
         """
@@ -832,47 +941,6 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise DeleteError("Failed to delete item: {}".format(e), e)
 
-
-    def get_operation_kwargs_for_update_item(self,
-                                             table_name,
-                                             hash_key,
-                                             range_key=None,
-                                             actions=None,
-                                             condition=None,
-                                             return_consumed_capacity=None,
-                                             return_item_collection_metrics=None,
-                                             return_values=None):
-        """
-        Performs the UpdateItem operation
-        """
-        self._check_condition('condition', condition)
-
-        operation_kwargs = {TABLE_NAME: table_name}
-        operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
-        name_placeholders = {}
-        expression_attribute_values = {}
-
-        if condition is not None:
-            condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
-            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
-        if return_consumed_capacity:
-            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
-        if return_item_collection_metrics:
-            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
-        if return_values:
-            operation_kwargs.update(self.get_return_values_map(return_values))
-        if not actions:
-            raise ValueError("'actions' cannot be empty")
-
-        update_expression = Update(*actions)
-        operation_kwargs[UPDATE_EXPRESSION] = update_expression.serialize(name_placeholders, expression_attribute_values)
-
-        if name_placeholders:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
-        if expression_attribute_values:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
-        return operation_kwargs
-
     def update_item(self, *args, **kwargs):
         """
         Performs the UpdateItem operation
@@ -882,63 +950,6 @@ class Connection(object):
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise UpdateError("Failed to update item: {}".format(e), e)
-
-    def get_operation_kwargs_for_condition_check(self,
-                                                 table_name,
-                                                 condition,
-                                                 hash_key,
-                                                 range_key=None,
-                                                 return_values=None):
-        operation_kwargs = {}
-        name_placeholders = {}
-        expression_attribute_values = {}
-        if condition is not None:
-            condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
-            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
-        if name_placeholders:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
-        if return_values:
-            operation_kwargs.update(self.get_return_values_map(return_values))
-        operation_kwargs[TABLE_NAME] = table_name
-        operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
-        return operation_kwargs
-
-    def get_operation_kwargs_for_put_item(self,
-                                          table_name,
-                                          hash_key,
-                                          range_key=None,
-                                          attributes=None,
-                                          condition=None,
-                                          return_values=None,
-                                          return_consumed_capacity=None,
-                                          return_item_collection_metrics=None):
-        """
-        Performs the PutItem operation and returns the result
-        """
-        self._check_condition('condition', condition)
-
-        operation_kwargs = {TABLE_NAME: table_name}
-        operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=ITEM))
-        name_placeholders = {}
-        expression_attribute_values = {}
-
-        if attributes:
-            attrs = self.get_item_attribute_map(table_name, attributes)
-            operation_kwargs[ITEM].update(attrs[ITEM])
-        if condition is not None:
-            condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
-            operation_kwargs[CONDITION_EXPRESSION] = condition_expression
-        if return_consumed_capacity:
-            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
-        if return_item_collection_metrics:
-            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
-        if return_values:
-            operation_kwargs.update(self.get_return_values_map(return_values))
-        if name_placeholders:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
-        if expression_attribute_values:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
-        return operation_kwargs
 
     def put_item(self, *args, **kwargs):
         """
@@ -974,15 +985,15 @@ class Connection(object):
         transact_items.extend([
             {TRANSACT_UPDATE: item} for item in update_items
         ])
-        operation_kwargs = {
-            TRANSACT_ITEMS: transact_items
-        }
+
+        operation_kwargs = self._get_operation_kwargs(
+            return_consumed_capacity=return_consumed_capacity,
+            return_item_collection_metrics=return_item_collection_metrics
+        )
+        operation_kwargs[TRANSACT_ITEMS] = transact_items
         if client_request_token is not None:
             operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
-        if return_consumed_capacity:
-            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
-        if return_item_collection_metrics:
-            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
+
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -992,13 +1003,11 @@ class Connection(object):
         """
         Performs the TransactGet operation and returns the result
         """
-        operation_kwargs = {
-            TRANSACT_ITEMS: [
-                {TRANSACT_GET: item} for item in get_items
-            ],
-        }
-        if return_consumed_capacity:
-            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
+        operation_kwargs = self._get_operation_kwargs(return_consumed_capacity=return_consumed_capacity)
+        operation_kwargs[TRANSACT_ITEMS] = [
+            {TRANSACT_GET: item} for item in get_items
+        ]
+
         try:
             return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -1080,24 +1089,6 @@ class Connection(object):
             return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise GetError("Failed to batch get items: {}".format(e), e)
-
-    def get_operation_kwargs_for_get_item(self,
-                                          table_name,
-                                          hash_key,
-                                          range_key=None,
-                                          consistent_read=False,
-                                          attributes_to_get=None):
-        operation_kwargs = {}
-        name_placeholders = {}
-        if attributes_to_get is not None:
-            projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
-            operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
-        if name_placeholders:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
-        operation_kwargs[CONSISTENT_READ] = consistent_read
-        operation_kwargs[TABLE_NAME] = table_name
-        operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key))
-        return operation_kwargs
 
     def get_item(self, *args, **kwargs):
         """
