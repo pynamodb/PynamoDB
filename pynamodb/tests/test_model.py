@@ -2725,7 +2725,7 @@ class ModelTestCase(TestCase):
 
     def test_boolean_serializes_as_bool(self):
         with patch(PATCH_METHOD) as req:
-            req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA
+            req.return_value = BOOLEAN_MODEL_TABLE_DATA
             item = BooleanModel(user_name='justin', is_human=True)
             item.save()
 
