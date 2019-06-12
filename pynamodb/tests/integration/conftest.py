@@ -16,4 +16,4 @@ def ddb_url():
     PYNAMODB_INTEGRATION_TEST_DDB_URL environment variable.
     """
     ddb_url = os.getenv("PYNAMODB_INTEGRATION_TEST_DDB_URL")
-    return "http://localhost:8000" if ddb_url is None else ddb_url
+    return "http://localhost:8005" if ddb_url is None else ddb_url
