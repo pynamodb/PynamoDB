@@ -1333,9 +1333,7 @@ class ModelTestCase(TestCase):
         """
         Model.query
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1346,7 +1344,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id.between('id-1', 'id-3')):
-                queried.append(item._serialize().get(RANGE))
+                queried.append(item._serialize(null_check=False).get(RANGE))
             self.assertListEqual(
                 [item.get('user_id').get(STRING_SHORT) for item in items],
                 queried
@@ -1365,7 +1363,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id < 'id-1'):
-                queried.append(item._serialize())
+                queried.append(item._serialize(null_check=False))
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -1377,7 +1375,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id >= 'id-1'):
-                queried.append(item._serialize())
+                queried.append(item._serialize(null_check=False))
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -1389,7 +1387,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id <= 'id-1'):
-                queried.append(item._serialize())
+                queried.append(item._serialize(null_check=False))
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -1401,7 +1399,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id == 'id-1'):
-                queried.append(item._serialize())
+                queried.append(item._serialize(null_check=False))
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -1413,7 +1411,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id.startswith('id')):
-                queried.append(item._serialize())
+                queried.append(item._serialize(null_check=False))
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -1425,7 +1423,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo'):
-                queried.append(item._serialize())
+                queried.append(item._serialize(null_check=False))
             self.assertTrue(len(queried) == len(items))
 
         def fake_query(*args):
@@ -1471,7 +1469,7 @@ class ModelTestCase(TestCase):
                     'foo',
                     UserModel.user_id.startswith('id'),
                     UserModel.email.contains('@') & UserModel.picture.exists() & UserModel.zip_code.between(2, 3)):
-                queried.append(item._serialize())
+                queried.append(item._serialize(null_check=False))
             params = {
                 'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'FilterExpression': '((contains (#2, :2) AND attribute_exists (#3)) AND #4 BETWEEN :3 AND :4)',
@@ -1578,7 +1576,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             scanned_items = []
             for item in UserModel.scan():
-                scanned_items.append(item._serialize().get(RANGE))
+                scanned_items.append(item._serialize(null_check=False).get(RANGE))
             self.assertListEqual(
                 [item.get('user_id').get(STRING_SHORT) for item in items],
                 scanned_items
