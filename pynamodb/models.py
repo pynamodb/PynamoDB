@@ -418,13 +418,9 @@ class Model(AttributeContainer):
         if data is None:
             raise ValueError("Received no data to construct object")
 
-        attributes = {}
-        for name, value in data.items():
-            attr_name = cls._dynamo_to_python_attr(name)
-            attr = cls.get_attributes().get(attr_name, None)
-            if attr:
-                attributes[attr_name] = attr.deserialize(attr.get_value(value))
-        return cls(**attributes)
+        item = cls()
+        item._deserialize(data)
+        return item
 
     @classmethod
     def count(cls,
@@ -714,9 +710,7 @@ class Model(AttributeContainer):
             attributes[range_keyname] = {
                 range_keytype: range_key
             }
-        item = cls()
-        item._deserialize(attributes)
-        return item
+        return cls.from_raw_data(attributes)
 
     @classmethod
     def _get_schema(cls):
@@ -897,18 +891,18 @@ class Model(AttributeContainer):
                                               aws_secret_access_key=cls.Meta.aws_secret_access_key)
         return cls._connection
 
-    def _deserialize(self, attrs):
+    def _deserialize(self, data):
         """
         Sets attributes sent back from DynamoDB on this object
 
-        :param attrs: A dictionary of attributes to update this item with.
+        :param data: A dictionary of attributes to update this item with.
         """
         for name, attr in self.get_attributes().items():
-            value = attrs.get(attr.attr_name, None)
+            value = data.get(attr.attr_name)
             if value is not None:
-                value = value.get(ATTR_TYPE_MAP[attr.attr_type], None)
-                if value is not None:
-                    value = attr.deserialize(value)
+                value = attr.get_value(value)
+            if value is not None:
+                value = attr.deserialize(value)
             setattr(self, name, value)
 
     def _serialize(self, attr_map=False, null_check=True):
