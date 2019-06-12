@@ -609,6 +609,9 @@ class Connection(object):
             }
 
         try:
+            from pprint import pprint
+            print('operation_kwargs')
+            pprint(operation_kwargs)
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to create table: {}".format(e), e)

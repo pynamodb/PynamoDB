@@ -22,6 +22,7 @@ def test_connection_integration(ddb_url):
     conn = Connection(host=ddb_url)
 
     print(conn)
+    print(conn.list_tables())
     print("conn.describe_table...")
     table = None
     try:
