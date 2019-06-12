@@ -587,6 +587,7 @@ class ModelTestCase(TestCase):
                     'ReadCapacityUnits': 25, 'WriteCapacityUnits': 25
                 },
                 'TableName': 'UserModel',
+                'BillingMode': 'PROVISIONED'
             }
             actual = req.call_args_list[1][0][1]
             self.assertEqual(sorted(actual.keys()), sorted(params.keys()))
