@@ -567,7 +567,6 @@ class Connection(object):
 
         if billing_mode not in AVAILABLE_BILLING_MODES:
             raise ValueError("incorrect value for billing_mode, available modes: {}".format(AVAILABLE_BILLING_MODES))
-        operation_kwargs[BILLING_MODE] = billing_mode
         if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
             del operation_kwargs[PROVISIONED_THROUGHPUT]
 
