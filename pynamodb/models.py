@@ -250,6 +250,14 @@ class Model(AttributeContainer):
             attributes[self._range_keyname] = range_key
         super(Model, self).__init__(**attributes)
 
+    @property
+    def _hash_key(self):
+        return getattr(self, self._hash_keyname)
+
+    @property
+    def _range_key(self):
+        return getattr(self, self._range_keyname) if self._range_keyname else None
+
     @classmethod
     def batch_get(cls, items, consistent_read=None, attributes_to_get=None):
         """
@@ -317,19 +325,22 @@ class Model(AttributeContainer):
 
     def __repr__(self):
         if self.Meta.table_name:
-            serialized = self._serialize(null_check=False)
             if self._range_keyname:
-                msg = "{}<{}, {}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
+                msg = "{}<{}, {}>".format(self.Meta.table_name, self._hash_key, self._range_key)
             else:
-                msg = "{}<{}>".format(self.Meta.table_name, serialized.get(HASH))
+                msg = "{}<{}>".format(self.Meta.table_name, self._hash_key)
             return six.u(msg)
 
     def delete(self, condition=None):
         """
         Deletes this object from dynamodb
         """
-        args, kwargs = self._get_save_args(attributes=False, null_check=False)
-        kwargs.update(condition=condition)
+        hash_key, range_key = self._serialize_keys(self._hash_key, self._range_key)
+        args = (hash_key,)
+        kwargs = dict(
+            range_key=range_key,
+            condition=condition,
+        )
         return self._get_connection().delete_item(*args, **kwargs)
 
     def update(self, actions, condition=None):
@@ -342,16 +353,14 @@ class Model(AttributeContainer):
         if not isinstance(actions, list) or len(actions) == 0:
             raise TypeError("the value of `actions` is expected to be a non-empty list")
 
-        args, save_kwargs = self._get_save_args(null_check=False)
-        kwargs = {
-            pythonic(RETURN_VALUES):  ALL_NEW,
-        }
-
-        if pythonic(RANGE_KEY) in save_kwargs:
-            kwargs[pythonic(RANGE_KEY)] = save_kwargs[pythonic(RANGE_KEY)]
-
-        kwargs.update(condition=condition)
-        kwargs.update(actions=actions)
+        hash_key, range_key = self._serialize_keys(self._hash_key, self._range_key)
+        args = (hash_key, )
+        kwargs = dict(
+            range_key=range_key,
+            actions=actions,
+            condition=condition,
+            return_values=ALL_NEW,
+        )
         data = self._get_connection().update_item(*args, **kwargs)
         for name, value in data[ATTRIBUTES].items():
             attr_name = self._dynamo_to_python_attr(name)
@@ -374,8 +383,12 @@ class Model(AttributeContainer):
 
         :param consistent_read: If True, then a consistent read is performed.
         """
-        args, kwargs = self._get_save_args(attributes=False)
-        kwargs.setdefault('consistent_read', consistent_read)
+        hash_key, range_key = self._serialize_keys(self._hash_key, self._range_key)
+        args = (hash_key, )
+        kwargs = dict(
+            range_key=range_key,
+            consistent_read=consistent_read,
+        )
         attrs = self._get_connection().get_item(*args, **kwargs)
         item_data = attrs.get(ITEM, None)
         if item_data is None:
@@ -789,24 +802,20 @@ class Model(AttributeContainer):
         kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return hash_key, kwargs
 
-    def _get_save_args(self, attributes=True, null_check=True):
+    def _get_save_args(self):
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
 
         This is used for serializing items to be saved, or for serializing just the keys.
-
-        :param attributes: If True, then attributes are included.
-        :param null_check: If True, then attributes are checked for null.
         """
         kwargs = {}
-        serialized = self._serialize(null_check=null_check)
+        serialized = self._serialize(null_check=True)
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
         args = (hash_key, )
         if range_key is not None:
             kwargs[pythonic(RANGE_KEY)] = range_key
-        if attributes:
-            kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
+        kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return args, kwargs
 
     @classmethod
@@ -827,9 +836,7 @@ class Model(AttributeContainer):
         """
         Returns the proper arguments for deleting
         """
-        serialized = self._serialize(null_check=False)
-        hash_key = serialized.get(HASH)
-        range_key = serialized.get(RANGE, None)
+        hash_key, range_key = self._serialize_keys(self._hash_key, self._range_key)
         attrs = {
             self._hash_key_attribute().attr_name: hash_key,
         }
