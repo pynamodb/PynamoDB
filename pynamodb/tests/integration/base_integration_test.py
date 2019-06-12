@@ -97,7 +97,8 @@ def test_connection_integration(ddb_url):
             ]
         }
         print("conn.create_table...")
-        conn.create_table(table_name, **params)
+        x = conn.create_table(table_name, **params)
+        print(x)
 
     while table is None:
         time.sleep(1)
