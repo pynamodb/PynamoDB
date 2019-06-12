@@ -30,7 +30,7 @@ before_script:
   - sleep 2
 
 script:
-  - py.test -v --cov-report term-missing --cov=pynamodb pynamodb/tests/
+  - py.test -v -s --cov-report term-missing --cov=pynamodb pynamodb/tests/
   - if [[ "$TRAVIS_PYTHON_VERSION" == "3.7" ]]; then mypy .; fi
 
 after_success:
