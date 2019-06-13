@@ -77,3 +77,7 @@ def getmembers_issubclass(object, classinfo):
             results.append((key, value))
     results.sort()
     return results
+
+
+def timedelta_total_seconds(td):  # compensate for Python 2.6 not having total_seconds
+    return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / 10 ** 6

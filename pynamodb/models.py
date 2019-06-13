@@ -230,7 +230,7 @@ class Model(AttributeContainer):
     _index_classes = None
     DoesNotExist = DoesNotExist
 
-    def __init__(self, hash_key=None, range_key=None, _previously_saved=False, **attributes):
+    def __init__(self, hash_key=None, range_key=None, _user_instantiated=True, **attributes):
         """
         :param hash_key: Required. The hash key for this object.
         :param range_key: Only required if the table has a range key attribute.
@@ -245,7 +245,7 @@ class Model(AttributeContainer):
                     "This table has no range key, but a range key value was provided: {0}".format(range_key)
                 )
             attributes[self._dynamo_to_python_attr(range_keyname)] = range_key
-        super(Model, self).__init__(_previously_saved=_previously_saved, **attributes)
+        super(Model, self).__init__(_user_instantiated=_user_instantiated, **attributes)
 
     @classmethod
     def has_map_or_list_attributes(cls):
@@ -520,7 +520,7 @@ class Model(AttributeContainer):
 
         hash_key = hash_key_attr.deserialize(hash_key)
         args = (hash_key,)
-        kwargs = {'_previously_saved': True}
+        kwargs = {}
         if range_keyname:
             range_key_attr = cls.get_attributes().get(cls._dynamo_to_python_attr(range_keyname))
             range_key_type = cls._get_meta_data().get_attribute_type(range_keyname)
@@ -531,7 +531,7 @@ class Model(AttributeContainer):
             attr = cls.get_attributes().get(attr_name, None)
             if attr:
                 kwargs[attr_name] = attr.deserialize(attr.get_value(value))
-        return cls(*args, **kwargs)
+        return cls(*args, _user_instantiated=False, **kwargs)
 
     @classmethod
     def count(cls,
@@ -968,7 +968,7 @@ class Model(AttributeContainer):
             attributes[range_keyname] = {
                 range_keytype: range_key
             }
-        item = cls(_previously_saved=True)
+        item = cls(_user_instantiated=False)
         item._deserialize(attributes)
         return item
 

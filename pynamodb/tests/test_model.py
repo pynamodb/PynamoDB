@@ -5,7 +5,7 @@ import base64
 import random
 import json
 import copy
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import six
 from botocore.client import ClientError
@@ -449,7 +449,7 @@ class TTLModel(Model):
     class Meta:
         table_name = 'TTLModel'
     fake_attr = NumberAttribute(null=True)
-    my_ttl = TTLAttribute(default_for_new=60)
+    my_ttl = TTLAttribute(default_for_new=timedelta(minutes=1))
 
 
 class ModelTestCase(TestCase):
@@ -4481,18 +4481,18 @@ class ModelInitTestCase(TestCase):
             class BadTTLModel(Model):
                 class Meta:
                     table_name = 'BadTTLModel'
-                ttl = TTLAttribute(default_for_new=60)
+                ttl = TTLAttribute(default_for_new=timedelta(minutes=1))
                 another_ttl = TTLAttribute()
             BadTTLModel()
 
-    def test_get_ttl_attribute(self):
+    def test_get_ttl_attribute_fails(self):
         with patch(PATCH_METHOD) as req:
             req.side_effect = Exception
-            self.assertRaises(Exception, TTLmodel.update_time_to_live, False)
+            self.assertRaises(Exception, TTLModel.update_ttl, False)
 
     def test_get_ttl_attribute(self):
         assert TTLModel._ttl_attribute().attr_name == "my_ttl"
 
-    def test_previously_saved(self):
-        m = TTLModel(_previously_saved=True)
+    def test_deserialized(self):
+        m = TTLModel.from_raw_data({})
         assert m.my_ttl is None

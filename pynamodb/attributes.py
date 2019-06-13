@@ -17,7 +17,7 @@ from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
-from pynamodb.compat import getmembers_issubclass
+from pynamodb.compat import getmembers_issubclass, timedelta_total_seconds
 from pynamodb.expressions.operand import Path
 import collections
 
@@ -38,7 +38,7 @@ class Attribute(object):
                  attr_name=None
                  ):
         if default and default_for_new:
-            raise ValueError("An attribute cannot have both default and default_for_new values.")
+            raise ValueError("An attribute cannot have both default and default_for_new parameters")
         self.default = default
         # This default is only set for new objects (ie: it's not set for re-saved objects)
         self.default_for_new = default_for_new
@@ -220,14 +220,14 @@ class AttributeContainerMeta(type):
 @add_metaclass(AttributeContainerMeta)
 class AttributeContainer(object):
 
-    def __init__(self, _previously_saved = False, **attributes):
+    def __init__(self, _user_instantiated=True, **attributes):
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
         # to store the values that are bound to this instance. Attributes store values in the dictionary
         # using the `python_attr_name` as the dictionary key. "Raw" (i.e. non-subclassed) MapAttribute
         # instances do not have any Attributes defined and instead use this dictionary to store their
         # collection of name-value pairs.
         self.attribute_values = {}
-        self._set_defaults(_previously_saved=_previously_saved)
+        self._set_defaults(_user_instantiated=_user_instantiated)
         self._set_attributes(**attributes)
 
     @classmethod
@@ -258,15 +258,15 @@ class AttributeContainer(object):
         """
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
-    def _set_defaults(self, _previously_saved = False):
+    def _set_defaults(self, _user_instantiated=True):
         """
         Sets and fields that provide a default value
         """
         for name, attr in self.get_attributes().items():
-            if _previously_saved:
+            if _user_instantiated and attr.default_for_new is not None:
+                default = attr.default_for_new
+            else:
                 default = attr.default
-            else:  # New objects can have a default_for_new value that prevents us from overwriting re-saved objects
-                default = attr.default if attr.default is not None else attr.default_for_new
             if callable(default):
                 value = default()
             else:
@@ -551,17 +551,13 @@ class TTLAttribute(Attribute):
         Force a TTLAttribute to have a UTC datetime value
         """
         if isinstance(value, timedelta):
-            # Python 2.6 compatibility.. Otherwise we could use value.total_seconds()
-            total_seconds = (value.microseconds + (value.seconds + value.days * 24 * 3600) * 10**6) / 10**6
-            value = int(time.time() + total_seconds)
-        elif isinstance(value, int):
-            if value < time.time():  # Assume the value is number of seconds the object will live for
-                value = int(value + time.time())
+            value = int(time.time() + timedelta_total_seconds(value))
         elif isinstance(value, datetime):
+            if value.tzinfo is None:
+                raise ValueError("datetime must be timezone-aware")
             value = calendar.timegm(value.utctimetuple())
         elif value is not None:
-            raise ValueError("TTLAttribute value must be an int, timedelta, or datetime.")
-
+            raise ValueError("TTLAttribute value must be a timedelta or datetime")
         attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
         if value is not None:
             value = datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
