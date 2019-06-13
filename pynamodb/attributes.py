@@ -538,17 +538,17 @@ class NumberAttribute(Attribute):
 
 class TTLAttribute(Attribute):
     """
-    An attribute that signifies when how long this item can live for.
-    This can take in an int, timedelta, or datetime.  If a timedelta is passed in,
-    we assume the expiration time is datetime.utcnow() + timedelta.
-
-    It is recommended to pass in a timedelta.
+    A time-to-live attribute that signifies when this item expires
+    and can be automatically deleted.
+    It can be assigned with a timezone-aware datetime (for absolute expiry time)
+    or a timedelta (for expiry time relative to the current time),
+    but always reads as a UTC datetime.
     """
     attr_type = NUMBER
 
     def __set__(self, instance, value):
         """
-        Force a TTLAttribute to have a UTC datetime value
+        Converts assigned values to a UTC datetime
         """
         if isinstance(value, timedelta):
             value = int(time.time() + timedelta_total_seconds(value))
