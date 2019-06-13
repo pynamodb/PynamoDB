@@ -587,7 +587,7 @@ class Connection(object):
 
     def update_time_to_live(self, table_name, ttl_attribute_name):
         """
-        Performs the DeleteTable operation
+        Performs the UpdateTimeToLive operation
         """
         operation_kwargs = {
             TABLE_NAME: table_name,
