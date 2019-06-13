@@ -540,9 +540,9 @@ class TTLAttribute(Attribute):
     """
     A time-to-live attribute that signifies when this item expires
     and can be automatically deleted.
-    It can be assigned with a timezone-aware datetime (for absolute expiry time)
-    or a timedelta (for expiry time relative to the current time),
-    but always reads as a UTC datetime.
+    It can be assigned with a timezone-aware datetime value (for absolute expiry time)
+    or a timedelta value (for expiry relative to the current time),
+    but always reads as a UTC datetime value.
     """
     attr_type = NUMBER
 
@@ -565,7 +565,7 @@ class TTLAttribute(Attribute):
 
     def serialize(self, value):
         """
-        Return the epoch representation (in seconds).
+        Serializes the datetime as a timestamp (Unix time).
         """
         if value is None:
             return None
@@ -573,10 +573,10 @@ class TTLAttribute(Attribute):
 
     def deserialize(self, value):
         """
-        Decode the epoch representation into a datetime
+        Deserializes the timestamp (Unix time) as a UTC timestamp.
         """
-        epoch = json.loads(value)
-        return datetime.utcfromtimestamp(epoch).replace(tzinfo=tzutc())
+        timestamp = json.loads(value)
+        return datetime.utcfromtimestamp(timestamp).replace(tzinfo=tzutc())
 
 
 class UTCDateTimeAttribute(Attribute):
