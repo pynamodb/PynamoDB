@@ -538,8 +538,7 @@ class NumberAttribute(Attribute):
 
 class TTLAttribute(Attribute):
     """
-    A time-to-live attribute that signifies when this item expires
-    and can be automatically deleted.
+    A time-to-live attribute that signifies when the item expires and can be automatically deleted.
     It can be assigned with a timezone-aware datetime value (for absolute expiry time)
     or a timedelta value (for expiry relative to the current time),
     but always reads as a UTC datetime value.
