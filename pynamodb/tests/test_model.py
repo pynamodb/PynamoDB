@@ -11,6 +11,7 @@ import six
 from botocore.client import ClientError
 from botocore.vendored import requests
 import pytest
+from dateutil.tz import tzutc
 
 from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.tests.deep_eq import deep_eq
@@ -448,7 +449,7 @@ class Dog(Animal):
 class TTLModel(Model):
     class Meta:
         table_name = 'TTLModel'
-    fake_attr = NumberAttribute(null=True)
+    user_name = UnicodeAttribute(hash_key=True)
     my_ttl = TTLAttribute(default_for_new=timedelta(minutes=1))
 
 
@@ -4494,5 +4495,13 @@ class ModelInitTestCase(TestCase):
         assert TTLModel._ttl_attribute().attr_name == "my_ttl"
 
     def test_deserialized(self):
-        m = TTLModel.from_raw_data({})
+        with patch(PATCH_METHOD) as req:
+            req.return_value = SIMPLE_MODEL_TABLE_DATA
+            m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}})
         assert m.my_ttl is None
+
+    def test_deserialized_with_ttl(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = SIMPLE_MODEL_TABLE_DATA
+            m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}, 'my_ttl': {'N': '1546300800'}})
+        assert m.my_ttl == datetime(2019, 1, 1, tzinfo=tzutc())
