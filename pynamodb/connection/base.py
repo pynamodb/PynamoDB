@@ -42,8 +42,7 @@ from pynamodb.constants import (
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, UPDATE_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
     CONDITION_EXPRESSION, FILTER_EXPRESSION,
-    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE,  BILLING_MODE, PROVISIONED_BILLING_MODE,
-    PAY_PER_REQUEST_BILLING_MODE)
+    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE,  BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -570,8 +569,6 @@ class Connection(object):
             raise ValueError("incorrect value for billing_mode, available modes: {}".format(AVAILABLE_BILLING_MODES))
         if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
             del operation_kwargs[PROVISIONED_THROUGHPUT]
-        elif billing_mode == PROVISIONED_BILLING_MODE:
-            del operation_kwargs[BILLING_MODE]
 
         if global_secondary_indexes:
             global_secondary_indexes_list = []
