@@ -1655,3 +1655,9 @@ class ConnectionTestCase(TestCase):
         data = Connection._handle_binary_attributes(unprocessed_keys)
         self.assertEqual(data['UnprocessedKeys']['MyTable']['Keys'][0]['Subject']['B'], binary_blob)
         self.assertEqual(data['UnprocessedKeys']['MyOtherTable']['Keys'][0]['Subject']['B'], binary_blob)
+
+    def test_update_time_to_live_fail(self):
+        conn = Connection(self.region)
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = BotoCoreError
+            self.assertRaises(TableError, conn.update_time_to_live, 'test table', 'my_ttl')

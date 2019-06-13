@@ -151,6 +151,11 @@ STREAM_OLD_IMAGE = 'OLD_IMAGE'
 STREAM_NEW_AND_OLD_IMAGE = 'NEW_AND_OLD_IMAGES'
 STREAM_KEYS_ONLY = 'KEYS_ONLY'
 
+# Constants for updating a table's TTL
+UPDATE_TIME_TO_LIVE = 'UpdateTimeToLive'
+TIME_TO_LIVE_SPECIFICATION = 'TimeToLiveSpecification'
+ENABLED = 'Enabled'
+
 # These are constants used in the KeyConditionExpression parameter
 # http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
 EXCLUSIVE_START_KEY = 'ExclusiveStartKey'

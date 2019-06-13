@@ -1,12 +1,14 @@
 """
 PynamoDB attributes
 """
+import calendar
 import six
 from six import add_metaclass
 import json
+import time
 from base64 import b64encode, b64decode
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 import warnings
 from dateutil.parser import parse
 from dateutil.tz import tzutc
@@ -31,9 +33,15 @@ class Attribute(object):
                  range_key=False,
                  null=None,
                  default=None,
+                 default_for_new=None,
                  attr_name=None
                  ):
+        if default and default_for_new:
+            raise ValueError("An attribute cannot have both default and default_for_new parameters")
         self.default = default
+        # This default is only set for new objects (ie: it's not set for re-saved objects)
+        self.default_for_new = default_for_new
+
         if null is not None:
             self.null = null
         self.is_hash_key = hash_key
@@ -211,14 +219,14 @@ class AttributeContainerMeta(type):
 @add_metaclass(AttributeContainerMeta)
 class AttributeContainer(object):
 
-    def __init__(self, **attributes):
+    def __init__(self, _user_instantiated=True, **attributes):
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
         # to store the values that are bound to this instance. Attributes store values in the dictionary
         # using the `python_attr_name` as the dictionary key. "Raw" (i.e. non-subclassed) MapAttribute
         # instances do not have any Attributes defined and instead use this dictionary to store their
         # collection of name-value pairs.
         self.attribute_values = {}
-        self._set_defaults()
+        self._set_defaults(_user_instantiated=_user_instantiated)
         self._set_attributes(**attributes)
 
     @classmethod
@@ -249,12 +257,15 @@ class AttributeContainer(object):
         """
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
-    def _set_defaults(self):
+    def _set_defaults(self, _user_instantiated=True):
         """
         Sets and fields that provide a default value
         """
         for name, attr in self.get_attributes().items():
-            default = attr.default
+            if _user_instantiated and attr.default_for_new is not None:
+                default = attr.default_for_new
+            else:
+                default = attr.default
             if callable(default):
                 value = default()
             else:
@@ -481,6 +492,48 @@ class NumberAttribute(Attribute):
         Decode numbers from JSON
         """
         return json.loads(value)
+
+
+class TTLAttribute(Attribute):
+    """
+    A time-to-live attribute that signifies when the item expires and can be automatically deleted.
+    It can be assigned with a timezone-aware datetime value (for absolute expiry time)
+    or a timedelta value (for expiry relative to the current time),
+    but always reads as a UTC datetime value.
+    """
+    attr_type = NUMBER
+
+    def __set__(self, instance, value):
+        """
+        Converts assigned values to a UTC datetime
+        """
+        if isinstance(value, timedelta):
+            value = int(time.time() + timedelta_total_seconds(value))
+        elif isinstance(value, datetime):
+            if value.tzinfo is None:
+                raise ValueError("datetime must be timezone-aware")
+            value = calendar.timegm(value.utctimetuple())
+        elif value is not None:
+            raise ValueError("TTLAttribute value must be a timedelta or datetime")
+        attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+        if value is not None:
+            value = datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
+        instance.attribute_values[attr_name] = value
+
+    def serialize(self, value):
+        """
+        Serializes a datetime as a timestamp (Unix time).
+        """
+        if value is None:
+            return None
+        return json.dumps(calendar.timegm(value.utctimetuple()))
+
+    def deserialize(self, value):
+        """
+        Deserializes a timestamp (Unix time) as a UTC datetime.
+        """
+        timestamp = json.loads(value)
+        return datetime.utcfromtimestamp(timestamp).replace(tzinfo=tzutc())
 
 
 class UTCDateTimeAttribute(Attribute):
