@@ -3,10 +3,12 @@ pynamodb attributes tests
 """
 import json
 import six
+import time
 
 from base64 import b64encode
 from datetime import datetime
 
+from datetime import timedelta
 from dateutil.parser import parse
 from dateutil.tz import tzutc
 
@@ -16,7 +18,7 @@ import pytest
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
-    MapAttribute, MapAttributeMeta, ListAttribute, JSONAttribute, _get_value_for_deserialize,
+    MapAttribute, MapAttributeMeta, ListAttribute, JSONAttribute, TTLAttribute, _get_value_for_deserialize,
 )
 from pynamodb.constants import (
     DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
@@ -44,6 +46,7 @@ class AttributeTestModel(Model):
     bool_attr = BooleanAttribute()
     json_attr = JSONAttribute()
     map_attr = MapAttribute()
+    ttl_attr = TTLAttribute()
 
 
 class CustomAttrMap(MapAttribute):
@@ -492,6 +495,54 @@ class TestBooleanAttribute:
         assert attr.deserialize('0') is True
         assert attr.deserialize(True) is True
         assert attr.deserialize(False) is False
+
+
+class TestTTLAttribute:
+    """
+    Test TTLAttribute.
+    """
+    def test_default_and_default_for_new(self):
+        with pytest.raises(ValueError, match='An attribute cannot have both default and default_for_new parameters'):
+            TTLAttribute(default=timedelta(seconds=1), default_for_new=timedelta(seconds=2))
+
+    @patch('time.time')
+    def test_timedelta_ttl(self, mock_time):
+        mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
+        model = AttributeTestModel()
+        model.ttl_attr = timedelta(seconds=60)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+
+    def test_datetime_naive_ttl(self):
+        model = AttributeTestModel()
+        with pytest.raises(ValueError, match='timezone-aware'):
+            model.ttl_attr = datetime(2019, 6, 5, 0, 1)
+        assert model.ttl_attr is None
+
+    def test_datetime_with_tz_ttl(self):
+        model = AttributeTestModel()
+        model.ttl_attr = datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+
+    def test_ttl_attribute_wrong_type(self):
+        with pytest.raises(ValueError, match='TTLAttribute value must be a timedelta or datetime'):
+            model = AttributeTestModel()
+            model.ttl_attr = 'wrong type'
+
+    def test_serialize_none(self):
+        model = AttributeTestModel()
+        model.ttl_attr = None
+        assert model.ttl_attr == None
+        assert TTLAttribute().serialize(model.ttl_attr) == None
+
+    @patch('time.time')
+    def test_serialize_deserialize(self, mock_time):
+        mock_time.side_effect = [1559692800, 1559692800]  # 2019-06-05 00:00:00 UTC
+        model = AttributeTestModel()
+        model.ttl_attr = timedelta(minutes=1)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+        s = TTLAttribute().serialize(model.ttl_attr)
+        assert s == '1559692860'
+        assert TTLAttribute().deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
 
 
 class TestJSONAttribute:

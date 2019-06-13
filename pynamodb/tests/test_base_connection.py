@@ -2673,6 +2673,12 @@ class ConnectionTestCase(TestCase):
             {'Expected': {'ForumName': {'ComparisonOperator': 'EQ', 'AttributeValueList': [{'S': 'foo'}]}}}
         )
 
+    def test_update_time_to_live_fail(self):
+        conn = Connection(self.region)
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = BotoCoreError
+            self.assertRaises(TableError, conn.update_time_to_live, 'test table', 'my_ttl')
+
     def test_get_query_filter_map(self):
         conn = Connection(self.region)
         with patch(PATCH_METHOD) as req:

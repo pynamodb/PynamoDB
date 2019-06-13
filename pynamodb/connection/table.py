@@ -268,6 +268,12 @@ class TableConnection(object):
         """
         return self.connection.delete_table(self.table_name)
 
+    def update_time_to_live(self, ttl_attr_name):
+        """
+        Performs the UpdateTimeToLive operation and returns the result
+        """
+        return self.connection.update_time_to_live(self.table_name, ttl_attr_name)
+
     def update_table(self,
                      read_capacity_units=None,
                      write_capacity_units=None,

@@ -10,7 +10,8 @@ import warnings
 
 from six import add_metaclass
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
-from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute
+from pynamodb.attributes import (
+    Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, ListAttribute, TTLAttribute)
 from pynamodb.connection.base import MetaTable
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -196,6 +197,10 @@ class MetaModel(AttributeContainerMeta):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
+            ttl_attr_names = [name for name, attr_obj in attrs.items() if isinstance(attr_obj, TTLAttribute)]
+            if len(ttl_attr_names) > 1:
+                raise ValueError("The model has more than one TTL attribute: {}".format(", ".join(ttl_attr_names)))
+
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
 
@@ -225,7 +230,7 @@ class Model(AttributeContainer):
     _index_classes = None
     DoesNotExist = DoesNotExist
 
-    def __init__(self, hash_key=None, range_key=None, **attributes):
+    def __init__(self, hash_key=None, range_key=None, _user_instantiated=True, **attributes):
         """
         :param hash_key: Required. The hash key for this object.
         :param range_key: Only required if the table has a range key attribute.
@@ -240,7 +245,7 @@ class Model(AttributeContainer):
                     "This table has no range key, but a range key value was provided: {0}".format(range_key)
                 )
             attributes[self._dynamo_to_python_attr(range_keyname)] = range_key
-        super(Model, self).__init__(**attributes)
+        super(Model, self).__init__(_user_instantiated=_user_instantiated, **attributes)
 
     @classmethod
     def has_map_or_list_attributes(cls):
@@ -526,7 +531,7 @@ class Model(AttributeContainer):
             attr = cls.get_attributes().get(attr_name, None)
             if attr:
                 kwargs[attr_name] = attr.deserialize(attr.get_value(value))
-        return cls(*args, **kwargs)
+        return cls(*args, _user_instantiated=False, **kwargs)
 
     @classmethod
     def count(cls,
@@ -843,7 +848,12 @@ class Model(AttributeContainer):
         return cls._get_connection().describe_table()
 
     @classmethod
-    def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None):
+    def create_table(
+        cls,
+        wait=False,
+        read_capacity_units=None,
+        write_capacity_units=None,
+        ignore_update_ttl_errors=False):
         """
         Create the table for this model
 
@@ -885,11 +895,31 @@ class Model(AttributeContainer):
                 if status:
                     data = status.get(TABLE_STATUS)
                     if data == ACTIVE:
-                        return
+                        break
                     else:
                         time.sleep(2)
                 else:
                     raise TableError("No TableStatus returned for table")
+
+        cls.update_ttl(ignore_update_ttl_errors)
+
+    @classmethod
+    def update_ttl(cls, ignore_update_ttl_errors):
+        """
+        Attempt to update the TTL on the table.
+        Certain implementations (eg: dynalite) do not support updating TTLs and will fail.
+        """
+        ttl_attribute = cls._ttl_attribute()
+        if ttl_attribute:
+            # Some dynamoDB implementations (eg: dynalite) do not support updating TTLs so
+            # this will fail.  It's fine for this to fail in those cases.
+            try:
+                cls._get_connection().update_time_to_live(ttl_attribute.attr_name)
+            except Exception:
+                if ignore_update_ttl_errors:
+                    log.info("Unable to update the TTL for {}".format(cls.Meta.table_name))
+                else:
+                    raise
 
     @classmethod
     def dumps(cls):
@@ -939,7 +969,7 @@ class Model(AttributeContainer):
             attributes[range_keyname] = {
                 range_keytype: range_key
             }
-        item = cls()
+        item = cls(_user_instantiated=False)
         item._deserialize(attributes)
         return item
 
@@ -1219,6 +1249,17 @@ class Model(AttributeContainer):
         attributes = cls.get_attributes()
         hash_keyname = cls._get_meta_data().hash_keyname
         return attributes[cls._dynamo_to_python_attr(hash_keyname)]
+
+    @classmethod
+    def _ttl_attribute(cls):
+        """
+        Returns the ttl attribute for this table
+        """
+        attributes = cls.get_attributes()
+        for attr_obj in attributes.values():
+            if isinstance(attr_obj, TTLAttribute):
+                return attr_obj
+        return None
 
     def _get_keys(self):
         """
