@@ -565,7 +565,7 @@ class TTLAttribute(Attribute):
 
     def serialize(self, value):
         """
-        Serializes the datetime as a timestamp (Unix time).
+        Serializes a datetime as a timestamp (Unix time).
         """
         if value is None:
             return None
@@ -573,7 +573,7 @@ class TTLAttribute(Attribute):
 
     def deserialize(self, value):
         """
-        Deserializes the timestamp (Unix time) as a UTC timestamp.
+        Deserializes a timestamp (Unix time) as a UTC datetime.
         """
         timestamp = json.loads(value)
         return datetime.utcfromtimestamp(timestamp).replace(tzinfo=tzutc())
