@@ -35,6 +35,7 @@ class Index(metaclass=IndexMeta):
             page_size: Optional[int] = ...,
             rate_limit: Optional[float] = ...,
             attributes_to_get: Optional[List[str]] = ...,
+            **filters,
     ) -> ResultIterator[_T]: ...
 
 class GlobalSecondaryIndex(Index): ...
