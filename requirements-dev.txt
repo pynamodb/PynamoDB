@@ -17,8 +17,7 @@ python-coveralls==2.9.1
 tox==3.8.6
 blinker==1.4
 flake8==2.4.1
-pyyaml<5  # for Python 2.6 support -- remove once we cease Python 2.6 support
-# Pinned because latest version requires Python 2.7+ (https://github.com/sphinx-doc/sphinx/issues/2919).
-sphinx==1.5.6
-sphinx-rtd-theme==0.1.8
+pyyaml==5.1
+sphinx==1.8.5
+sphinx-rtd-theme==0.4.3
 mypy==0.701; python_version >= '3.6'
