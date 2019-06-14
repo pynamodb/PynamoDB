@@ -85,6 +85,7 @@ class Model(metaclass=MetaModel):
         last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
         page_size: Optional[int] = ...,
         rate_limit: Optional[float] = ...,
+        attributes_to_get: Optional[List[str]] = ...,
     ) -> ResultIterator[_T]: ...
 
     @classmethod
