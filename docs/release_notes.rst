@@ -1,6 +1,24 @@
 Release Notes
 =============
 
+v3.4.0
+------
+
+:date: 2019-06-13
+
+This is a backwards compatible, minor release.
+
+Changes in this release:
+
+ * Adds a TTLAttribute that specifies when items expire
+ * Enables time-to-live on a DynamoDB table if the corresponding model has a TTLAttribute
+ * Adds a default_for_new parameter for Attribute which is a default that applies to new items only
+
+Contributors to this release:
+
+ * @irhkang
+ * @ikonst
+
 v3.3.3
 ------
 
@@ -71,7 +89,7 @@ New features in this release:
 Fixes in this release:
 
 * Thread-safe client creation in botocore. (#153, #393)
-* Use attr.get_value(value) when deserialize. (#450) 
+* Use attr.get_value(value) when deserialize. (#450)
 * Skip null attributes post serialization for maps. (#455)
 * Fix deserialization bug in BinaryAttribute and BinarySetAttribute. (#459, #480)
 * Allow MapAttribute instances to be used as the RHS in expressions. (#488)
@@ -89,7 +107,7 @@ Contributors to this release:
 * @nicysneiros
 * @jcomo
 * @kevgliss
-* @asottile 
+* @asottile
 * @harleyk
 * @betamoo
 
@@ -164,8 +182,8 @@ v3.2.0rc1
 
 This is a backwards compatible, release candidate.
 
-This release candidate updates PynamoDB to interact with Dynamo via the current version of Dynamo's API. 
-It deprecates some internal methods that were used to interact with Dynamo that are no longer relevant. 
+This release candidate updates PynamoDB to interact with Dynamo via the current version of Dynamo's API.
+It deprecates some internal methods that were used to interact with Dynamo that are no longer relevant.
 If your project was calling those low level methods a warning will be logged.
 
 New features in this release:
@@ -184,7 +202,7 @@ v3.1.0
 
 This is a backwards compatible, minor release.
 
-Note that we now require ``botocore>=1.2.0``; this is required to support the 
+Note that we now require ``botocore>=1.2.0``; this is required to support the
 ``consistent_read`` parameter when scanning.
 
 Calling ``Model.count()`` without a ``hash_key`` and *with* ``filters`` will
@@ -221,8 +239,8 @@ Now object access is possible and recommended. See [here](https://github.com/pyn
 Access via the ``attr_name``, also known as the DynamoDB name, will now throw an ``AttributeError``.
 
 ``UnicodeSetAttributes`` do not json serialize or deserialize anymore.
-We deprecated the functionality of json serializing as of ``1.6.0`` but left the deserialization functionality in there so people could migrate away from the old functionality. 
-If you have any ``UnicodeSetAttributes`` that have not been persisted since version ``1.6.0`` you will need to migrate your data or manage the json encoding and decoding with a custom attribute in application. 
+We deprecated the functionality of json serializing as of ``1.6.0`` but left the deserialization functionality in there so people could migrate away from the old functionality.
+If you have any ``UnicodeSetAttributes`` that have not been persisted since version ``1.6.0`` you will need to migrate your data or manage the json encoding and decoding with a custom attribute in application.
 
 * Performance enhancements for the ``UTCDateTimeAttribute`` deserialize method. (#277)
 * There was a regression with attribute discovery. Fixes attribute discovery for model classes with inheritance (#280)
