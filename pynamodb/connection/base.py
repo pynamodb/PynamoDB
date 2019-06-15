@@ -576,8 +576,6 @@ class Connection(object):
             raise ValueError("incorrect value for billing_mode, available modes: {}".format(AVAILABLE_BILLING_MODES))
         if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
             del operation_kwargs[PROVISIONED_THROUGHPUT]
-        elif billing_mode == PROVISIONED_BILLING_MODE:
-            del operation_kwargs[BILLING_MODE]
 
         if global_secondary_indexes:
             global_secondary_indexes_list = []

@@ -14,7 +14,7 @@ import pytest
 
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
-    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, LegacyBooleanAttribute,
+    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
     MapAttribute, ListAttribute, JSONAttribute, _get_value_for_deserialize, _fast_parse_utc_datestring,
 )
 from pynamodb.constants import (
@@ -450,46 +450,6 @@ class TestUnicodeAttribute:
         assert attr.default == {six.u('foo'), six.u('bar')}
 
 
-class TestLegacyBooleanAttribute:
-    def test_legacy_boolean_attribute_can_read_future_boolean_attributes(self):
-        """
-        LegacyBooleanAttribute.deserialize
-        :return:
-        """
-        attr = LegacyBooleanAttribute()
-        assert attr.deserialize('1') is True
-        assert attr.deserialize('0') is False
-        assert attr.deserialize(json.dumps(True)) is True
-        assert attr.deserialize(json.dumps(False)) is False
-
-    def test_legacy_boolean_attribute_get_value_can_read_both(self):
-        """
-        LegacyBooleanAttribute.get_value
-        :return:
-        """
-        attr = LegacyBooleanAttribute()
-        assert attr.get_value({'N': '1'}) == '1'
-        assert attr.get_value({'N': '0'}) == '0'
-        assert attr.get_value({'BOOL': True}) == json.dumps(True)
-        assert attr.get_value({'BOOL': False}) == json.dumps(False)
-
-    def test_legacy_boolean_attribute_get_value_and_deserialize_work_together(self):
-        attr = LegacyBooleanAttribute()
-        assert attr.deserialize(attr.get_value({'N': '1'})) is True
-        assert attr.deserialize(attr.get_value({'N': '0'})) is False
-        assert attr.deserialize(attr.get_value({'BOOL': True})) is True
-        assert attr.deserialize(attr.get_value({'BOOL': False})) is False
-
-    def test_legacy_boolean_attribute_serialize(self):
-        """
-        LegacyBooleanAttribute.serialize
-        """
-        attr = LegacyBooleanAttribute()
-        assert attr.serialize(True) == '1'
-        assert attr.serialize(False) == '0'
-        assert attr.serialize(None) is None
-
-
 class TestBooleanAttribute:
     """
     Tests boolean attributes
@@ -519,8 +479,6 @@ class TestBooleanAttribute:
         BooleanAttribute.deserialize
         """
         attr = BooleanAttribute()
-        assert attr.deserialize('1') is True
-        assert attr.deserialize('0') is True
         assert attr.deserialize(True) is True
         assert attr.deserialize(False) is False
 

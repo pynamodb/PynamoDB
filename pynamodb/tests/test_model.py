@@ -42,10 +42,8 @@ from pynamodb.tests.data import (
     GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
     CAR_MODEL_TABLE_DATA, FULL_CAR_MODEL_ITEM_DATA, CAR_MODEL_WITH_NULL_ITEM_DATA, INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA,
-    BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
-    BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
-    BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA, BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
-    BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE, TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA,
+    BOOLEAN_MODEL_TABLE_DATA, BOOLEAN_MODEL_FALSE_ITEM_DATA, BOOLEAN_MODEL_TRUE_ITEM_DATA,
+    TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA,
     EXPLICIT_RAW_MAP_MODEL_TABLE_DATA, EXPLICIT_RAW_MAP_MODEL_ITEM_DATA,
     EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA, EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA
 )
@@ -369,9 +367,9 @@ class Office(Model):
     employees = ListAttribute(of=OfficeEmployeeMap)
 
 
-class BooleanConversionModel(Model):
+class BooleanModel(Model):
     class Meta:
-        table_name = 'BooleanConversionTable'
+        table_name = 'BooleanTable'
 
     user_name = UnicodeAttribute(hash_key=True)
     is_human = BooleanAttribute()
@@ -590,6 +588,7 @@ class ModelTestCase(TestCase):
                     'ReadCapacityUnits': 25, 'WriteCapacityUnits': 25
                 },
                 'TableName': 'UserModel',
+                'BillingMode': 'PROVISIONED'
             }
             actual = req.call_args_list[1][0][1]
             self.assertEqual(sorted(actual.keys()), sorted(params.keys()))
@@ -2841,59 +2840,32 @@ class ModelTestCase(TestCase):
                                   'car_id').get(NUMBER_SHORT)))
             self.assertIsNone(item.car_info.make)
 
-    def test_new_style_boolean_serializes_as_bool(self):
+    def test_boolean_serializes_as_bool(self):
         with patch(PATCH_METHOD) as req:
-            req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA
-            item = BooleanConversionModel(user_name='justin', is_human=True)
+            req.return_value = BOOLEAN_MODEL_TABLE_DATA
+            item = BooleanModel(user_name='justin', is_human=True)
             item.save()
 
-    def test_old_style_boolean_serializes_as_bool(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE
-            item = BooleanConversionModel(user_name='justin', is_human=True)
-            item.save()
-
-    def test_deserializing_old_style_bool_false_works(self):
-        fake_db = self.database_mocker(BooleanConversionModel, BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
-                                       BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA,
+    def test_deserializing_bool_false_works(self):
+        fake_db = self.database_mocker(BooleanModel,
+                                       BOOLEAN_MODEL_TABLE_DATA,
+                                       BOOLEAN_MODEL_FALSE_ITEM_DATA,
                                  'user_name', 'S',
                                  'alf')
         with patch(PATCH_METHOD, new=fake_db) as req:
-            req.return_value = BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA
-            item = BooleanConversionModel.get('alf')
-            self.assertFalse(item.is_human)
-
-    def test_deserializing_old_style_bool_true_works(self):
-        fake_db = self.database_mocker(BooleanConversionModel,
-                                       BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
-                                       BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA,
-                                 'user_name', 'S',
-                                 'justin')
-        with patch(PATCH_METHOD, new=fake_db) as req:
-            req.return_value = BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA
-            item = BooleanConversionModel.get('justin')
-            self.assertTrue(item.is_human)
-
-    def test_deserializing_new_style_bool_false_works(self):
-        fake_db = self.database_mocker(BooleanConversionModel,
-                                       BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
-                                       BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA,
-                                 'user_name', 'S',
-                                 'alf')
-        with patch(PATCH_METHOD, new=fake_db) as req:
-            req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA
-            item = BooleanConversionModel.get('alf')
+            req.return_value = BOOLEAN_MODEL_FALSE_ITEM_DATA
+            item = BooleanModel.get('alf')
             self.assertFalse(item.is_human)
 
     def test_deserializing_new_style_bool_true_works(self):
-        fake_db = self.database_mocker(BooleanConversionModel,
-                                       BOOLEAN_CONVERSION_MODEL_TABLE_DATA,
-                                       BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA,
+        fake_db = self.database_mocker(BooleanModel,
+                                       BOOLEAN_MODEL_TABLE_DATA,
+                                       BOOLEAN_MODEL_TRUE_ITEM_DATA,
                                  'user_name', 'S',
                                  'justin')
         with patch(PATCH_METHOD, new=fake_db) as req:
-            req.return_value = BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA
-            item = BooleanConversionModel.get('justin')
+            req.return_value = BOOLEAN_MODEL_TRUE_ITEM_DATA
+            item = BooleanModel.get('justin')
             self.assertTrue(item.is_human)
 
     def test_deserializing_map_four_layers_deep_works(self):
