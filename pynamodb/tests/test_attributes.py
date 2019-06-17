@@ -1,4 +1,4 @@
-    """
+"""
 pynamodb attributes tests
 """
 import json

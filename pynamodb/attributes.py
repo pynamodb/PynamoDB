@@ -508,7 +508,7 @@ class TTLAttribute(Attribute):
         Converts assigned values to a UTC datetime
         """
         if isinstance(value, timedelta):
-            value = int(time.time() + timedelta_total_seconds(value))
+            value = int(time.time() + value.total_seconds())
         elif isinstance(value, datetime):
             if value.tzinfo is None:
                 raise ValueError("datetime must be timezone-aware")
