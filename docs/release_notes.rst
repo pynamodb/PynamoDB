@@ -60,7 +60,7 @@ This is a backwards compatible, minor release.
 
 Changes in this release:
 
- * Adds a TTLAttribute that specifies when items expire
+ * Adds a TTLAttribute that specifies when items expire (#259)
  * Enables time-to-live on a DynamoDB table if the corresponding model has a TTLAttribute
  * Adds a default_for_new parameter for Attribute which is a default that applies to new items only
 

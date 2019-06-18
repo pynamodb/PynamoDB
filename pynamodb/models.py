@@ -428,7 +428,7 @@ class Model(AttributeContainer):
             attr = cls.get_attributes().get(attr_name, None)
             if attr:
                 attributes[attr_name] = attr.deserialize(attr.get_value(value))
-        return cls(*args, _user_instantiated=False, **kwargs)
+        return cls(_user_instantiated=False, **attributes)
 
     @classmethod
     def count(cls,
