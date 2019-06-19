@@ -48,7 +48,7 @@ class AttributeTestModel(Model):
 class CustomAttrMap(MapAttribute):
     overridden_number_attr = NumberAttribute(attr_name="number_attr")
     overridden_unicode_attr = UnicodeAttribute(attr_name="unicode_attr")
-
+    overridden_unicode_set_attr = UnicodeSetAttribute(attr_name='unicode_set_attr')
 
 class DefaultsMap(MapAttribute):
     map_field = MapAttribute(default={})
@@ -612,11 +612,15 @@ class TestMapAttribute:
             },
             'undeclared_attr': {
                 'S': six.u('Goodbye')
+            },
+            'unicode_set_attr': {
+                'SS': set([six.u('Hello'), six.u('world')])
             }
         }
         expected = {
             'overridden_number_attr': 10,
-            'overridden_unicode_attr': "Hello"
+            'overridden_unicode_attr': "Hello",
+            'overridden_unicode_set_attr': set(['Hello', 'world'])
         }
         assert CustomAttrMap().deserialize(raw_data).attribute_values == expected
 
