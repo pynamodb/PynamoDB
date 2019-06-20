@@ -257,7 +257,8 @@ class Model(AttributeContainer):
 
     def get_range_key(self):
         key_name = self._range_keyname
-        if key_name is not None and hasattr(self, key_name):
+        if key_name is not None:
+            return getattr(self, key_name, None)
             return getattr(self, key_name)
         return None
 
