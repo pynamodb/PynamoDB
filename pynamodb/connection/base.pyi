@@ -111,7 +111,7 @@ class Connection:
         delete_items: List[Dict],
         put_items: List[Dict],
         update_items: List[Dict],
-        client_request_token: Optional[str] = ...,
+        client_request_token: Optional[Text] = ...,
         return_consumed_capacity: Optional[Any] = ...,
         return_item_collection_metrics: Optional[Any] = ...
     ) -> Dict: ...
