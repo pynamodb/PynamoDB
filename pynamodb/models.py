@@ -1047,7 +1047,7 @@ class _ModelFuture:
 
     def get(self):
         if not self._resolved:
-            raise Exception('Cannot resolve until request has been processed')
+            raise RuntimeException('Cannot get until resolved')
         if self._model:
             return self._model
         raise self._model_cls.DoesNotExist()
