@@ -3041,7 +3041,7 @@ class ModelInitTestCase(TestCase):
         self.assertEqual(actual.right.right.value, right_instance.right.value)
 
     def test_multiple_ttl_attributes(self):
-        with self.assertRaisesRegex(ValueError, "The model has more than one TTL attribute"):
+        with self.assertRaises(ValueError):
             class BadTTLModel(Model):
                 class Meta:
                     table_name = 'BadTTLModel'
