@@ -3041,14 +3041,12 @@ class ModelInitTestCase(TestCase):
         self.assertEqual(actual.right.right.value, right_instance.right.value)
 
     def test_multiple_ttl_attributes(self):
-        class BadTTLModel(Model):
-            class Meta:
-                table_name = 'BadTTLModel'
-            ttl = TTLAttribute(default_for_new=timedelta(minutes=1))
-            another_ttl = TTLAttribute()
-
-        with self.assertRaises(ValueError):
-            BadTTLModel()
+        with self.assertRaisesRegex(ValueError, "The model has more than one TTL attribute"):
+            class BadTTLModel(Model):
+                class Meta:
+                    table_name = 'BadTTLModel'
+                ttl = TTLAttribute(default_for_new=timedelta(minutes=1))
+                another_ttl = TTLAttribute()
 
     def test_get_ttl_attribute_fails(self):
         with patch(PATCH_METHOD) as req:
