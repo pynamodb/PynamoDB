@@ -57,7 +57,7 @@ class TransactGet(Transaction):
         self._hash_model(model_cls, hash_key, range_key)
         operation_kwargs = model_cls.get_operation_kwargs_for_get_item(hash_key, range_key=range_key)
         get_item = self._format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
-        proxy_model = _ModelFuture(model_cls)
+        model_future = _ModelFuture(model_cls)
         self._proxy_models.append(proxy_model)
         self._get_items.append(get_item)
         return proxy_model
