@@ -51,7 +51,7 @@ class TransactGet(Transaction):
     def __init__(self, *args, **kwargs):
         super(TransactGet, self).__init__(*args, **kwargs)
         self._get_items = []
-        self._proxy_models = []
+        self._futures = []
 
     def get(self, model_cls, hash_key, range_key=None):
         self._hash_model(model_cls, hash_key, range_key)
