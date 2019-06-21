@@ -16,7 +16,6 @@ class Transaction(object):
 
     def __init__(self, connection, return_consumed_capacity=None):
         self._connection = connection
-        self._hashed_models = set()
         self._return_consumed_capacity = return_consumed_capacity
 
     def _commit(self):
@@ -28,21 +27,6 @@ class Transaction(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is None and exc_val is None and exc_tb is None:
             self._commit()
-
-    def _hash_model(self, model_cls, hash_key, range_key=None):
-        """
-        creates a unique identifier for the model, and hashes it
-        to ensure that we don't perform multiple operations on the same entry within the same transaction
-
-        :param model_cls:
-        :param hash_key:
-        :param range_key:
-        :return:
-        """
-        key = (model_cls, hash_key, range_key)
-        if key in self._hashed_models:
-            raise ValueError("Can't perform operation on the same entry multiple times in one transaction")
-        self._hashed_models.add(key)
 
     @staticmethod
     def _format_request_parameters(valid_parameters, operation_kwargs):
@@ -70,7 +54,6 @@ class TransactGet(Transaction):
         :param range_key:
         :return:
         """
-        self._hash_model(model_cls, hash_key, range_key)
         operation_kwargs = model_cls.get_operation_kwargs_for_get_item(hash_key, range_key=range_key)
         get_item = self._format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
         model_future = _ModelFuture(model_cls)
@@ -102,24 +85,20 @@ class TransactWrite(Transaction):
         self._put_items = []
         self._update_items = []
 
-    def add_condition_check_item(self, model_cls, hash_key, range_key, operation_kwargs):
+    def add_condition_check_item(self, operation_kwargs):
         condition_item = self._format_request_parameters(TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
-        self._hash_model(model_cls, hash_key, range_key)
         self._condition_check_items.append(condition_item)
 
-    def add_delete_item(self, model, operation_kwargs):
+    def add_delete_item(self, operation_kwargs):
         delete_item = self._format_request_parameters(TRANSACTION_DELETE_REQUEST_PARAMETERS, operation_kwargs)
-        self._hash_model(model.__class__, model.get_hash_key(), model.get_range_key())
         self._delete_items.append(delete_item)
 
-    def add_save_item(self, model, operation_kwargs):
+    def add_save_item(self, operation_kwargs):
         put_item = self._format_request_parameters(TRANSACTION_PUT_REQUEST_PARAMETERS, operation_kwargs)
-        self._hash_model(model.__class__, model.get_hash_key(), model.get_range_key())
         self._put_items.append(put_item)
 
-    def add_update_item(self, model, operation_kwargs):
+    def add_update_item(self, operation_kwargs):
         update_item = self._format_request_parameters(TRANSACTION_UPDATE_REQUEST_PARAMETERS, operation_kwargs)
-        self._hash_model(model.__class__, model.get_hash_key(), model.get_range_key())
         self._update_items.append(update_item)
 
     def _commit(self):

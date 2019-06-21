@@ -340,12 +340,7 @@ class Model(AttributeContainer):
             range_key=range_key,
             condition=condition,
         )
-        in_transaction.add_condition_check_item(
-            model_cls=cls,
-            hash_key=hash_key,
-            range_key=range_key,
-            operation_kwargs=operation_kwargs
-        )
+        in_transaction.add_condition_check_item(operation_kwargs=operation_kwargs)
 
     def delete(self, condition=None, in_transaction=None):
         """
@@ -356,7 +351,7 @@ class Model(AttributeContainer):
 
         if in_transaction is not None:
             operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
-            in_transaction.add_delete_item(model=self, operation_kwargs=operation_kwargs)
+            in_transaction.add_delete_item(operation_kwargs=operation_kwargs)
             return {}
         return self._get_connection().delete_item(*args, **kwargs)
 
@@ -384,7 +379,7 @@ class Model(AttributeContainer):
         if in_transaction is not None:
             kwargs[pythonic(RETURN_VALUES)] = NONE
             operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
-            in_transaction.add_update_item(model=self, operation_kwargs=operation_kwargs)
+            in_transaction.add_update_item(operation_kwargs=operation_kwargs)
             return {}
 
         data = self._get_connection().update_item(*args, **kwargs)
@@ -405,7 +400,7 @@ class Model(AttributeContainer):
         if in_transaction is not None:
             kwargs.update(key=ITEM)
             operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
-            in_transaction.add_save_item(model=self, operation_kwargs=operation_kwargs)
+            in_transaction.add_save_item(operation_kwargs=operation_kwargs)
             return {}
         return self._get_connection().put_item(*args, **kwargs)
 

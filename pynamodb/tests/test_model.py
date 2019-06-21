@@ -791,7 +791,6 @@ class ModelTestCase(TestCase):
         )
         assert response == {}
         mock_transaction.add_delete_item.assert_called_with(
-            model=item,
             operation_kwargs={
             'Key': {
                 'user_id': {
@@ -846,9 +845,6 @@ class ModelTestCase(TestCase):
             condition=(UserModel.user_id.does_not_exist())
         )
         mock_transaction.add_condition_check_item.assert_called_with(
-            hash_key='foo',
-            model_cls=UserModel,
-            range_key='bar',
             operation_kwargs={
                 'ConditionExpression': 'attribute_not_exists (#0)',
                 'ExpressionAttributeNames': {'#0': 'user_id'},
@@ -946,7 +942,6 @@ class ModelTestCase(TestCase):
 
         assert response == {}
         mock_transaction.add_update_item.assert_called_with(
-            model=item,
             operation_kwargs={
                 'TableName': 'SimpleModel',
                 'Key': {
@@ -1135,7 +1130,6 @@ class ModelTestCase(TestCase):
 
         assert response == {}
         mock_transaction.add_save_item.assert_called_with(
-            model=item,
             operation_kwargs={
             'TableName': 'UserModel',
             'Item': {
