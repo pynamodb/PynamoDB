@@ -93,7 +93,7 @@ def get_error_code(error):
 
 
 @pytest.mark.ddblocal
-def test_transact_write__error__idempotent_parameter_mismatch(ddb_url, connection):
+def test_transact_write__error__idempotent_parameter_mismatch(connection):
     client_token = str(uuid.uuid4())
 
     with TransactWrite(connection=connection, client_request_token=client_token) as transaction:
@@ -118,7 +118,7 @@ def test_transact_write__error__idempotent_parameter_mismatch(ddb_url, connectio
 
 
 @pytest.mark.ddblocal
-def test_transact_write__error__different_regions(ddb_url, connection):
+def test_transact_write__error__different_regions(connection):
     try:
         with TransactWrite(connection=connection) as transact_write:
             # creating a model in a table outside the region everyone else operates in
@@ -130,7 +130,7 @@ def test_transact_write__error__different_regions(ddb_url, connection):
 
 
 @pytest.mark.ddblocal
-def test_transact_write__error__transaction_cancelled(ddb_url, connection):
+def test_transact_write__error__transaction_cancelled(connection):
     # create a users and a bank statements for them
     User(1).save()
     BankStatement(1).save()
@@ -146,7 +146,7 @@ def test_transact_write__error__transaction_cancelled(ddb_url, connection):
 
 
 @pytest.mark.ddblocal
-def test_transact_get(ddb_url, connection):
+def test_transact_get(connection):
     # making sure these entries exist, and with the expected info
     User(1).save()
     BankStatement(1).save()
@@ -172,7 +172,7 @@ def test_transact_get(ddb_url, connection):
 
 
 @pytest.mark.ddblocal
-def test_transact_write(ddb_url, connection):
+def test_transact_write(connection):
     # making sure these entries exist, and with the expected info
     BankStatement(1, balance=0).save()
     BankStatement(2, balance=100).save()
@@ -211,7 +211,7 @@ def test_transact_write(ddb_url, connection):
 
 
 @pytest.mark.ddblocal
-def test_transact_write__one_of_each(ddb_url, connection):
+def test_transact_write__one_of_each(connection):
     User(1).save()
     User(2).save()
     statement = BankStatement(1, balance=100, active=True)
