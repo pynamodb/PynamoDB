@@ -335,7 +335,7 @@ class Model(AttributeContainer):
     @classmethod
     def condition_check(cls, hash_key, in_transaction, condition, range_key=None):
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
-        operation_kwargs = cls._get_connection().get_operation_kwargs_for_condition_check(
+        operation_kwargs = cls._get_connection().get_operation_kwargs(
             hash_key=hash_key,
             range_key=range_key,
             condition=condition,
@@ -355,7 +355,7 @@ class Model(AttributeContainer):
         kwargs.update(condition=condition)
 
         if in_transaction is not None:
-            operation_kwargs = self._get_connection().get_operation_kwargs_for_delete_item(*args, **kwargs)
+            operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
             in_transaction.add_delete_item(model=self, operation_kwargs=operation_kwargs)
             return {}
         return self._get_connection().delete_item(*args, **kwargs)
@@ -383,7 +383,7 @@ class Model(AttributeContainer):
 
         if in_transaction is not None:
             kwargs[pythonic(RETURN_VALUES)] = NONE
-            operation_kwargs = self._get_connection().get_operation_kwargs_for_update_item(*args, **kwargs)
+            operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
             in_transaction.add_update_item(model=self, operation_kwargs=operation_kwargs)
             return {}
 
@@ -403,7 +403,8 @@ class Model(AttributeContainer):
         kwargs.update(condition=condition)
 
         if in_transaction is not None:
-            operation_kwargs = self._get_connection().get_operation_kwargs_for_put_item(*args, **kwargs)
+            kwargs.update(key=ITEM)
+            operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
             in_transaction.add_save_item(model=self, operation_kwargs=operation_kwargs)
             return {}
         return self._get_connection().put_item(*args, **kwargs)
@@ -425,7 +426,7 @@ class Model(AttributeContainer):
     @classmethod
     def get_operation_kwargs_for_get_item(cls, hash_key, range_key=None):
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
-        return cls._get_connection().get_operation_kwargs_for_get_item(hash_key, range_key)
+        return cls._get_connection().get_operation_kwargs(hash_key, range_key)
 
     @classmethod
     def get(cls,

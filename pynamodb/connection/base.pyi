@@ -58,53 +58,20 @@ class Connection:
     def get_item_collection_map(self, return_item_collection_metrics): ...
     def get_exclusive_start_key_map(self, table_name: Text, exclusive_start_key): ...
 
-    def get_operation_kwargs_for_condition_check(
-        self,
-        table_name: Text,
-        condition: Optional[Condition],
-        hash_key: Any,
-        range_key: Optional[Any] = ...,
-        return_values: Optional[Any] = ...
-    ) -> Dict: ...
-    def get_operation_kwargs_for_delete_item(
+    def get_operation_kwargs(
         self,
         table_name: Text,
         hash_key,
         range_key: Optional[Any] = ...,
-        condition: Optional[Condition] = ...,
-        return_values: Optional[Any] = ...,
-        return_consumed_capacity: Optional[Any] = ...,
-        return_item_collection_metrics: Optional[Any] = ...
-    ) -> Dict: ...
-    def get_operation_kwargs_for_get_item(
-        self,
-        table_name: Text,
-        hash_key,
-        range_key: Optional[Any] = ...,
-        consistent_read: bool = ...,
-        attributes_to_get: Optional[Any] = ...
-    ) -> Dict: ...
-    def get_operation_kwargs_for_put_item(
-        self,
-        table_name: Text,
-        hash_key,
-        range_key: Optional[Any] = ...,
+        key: Text = ...,
         attributes: Optional[Any] = ...,
-        condition: Optional[Condition] = ...,
-        return_values: Optional[Any] = ...,
-        return_consumed_capacity: Optional[Any] = ...,
-        return_item_collection_metrics: Optional[Any] = ...
-    ) -> Dict: ...
-    def get_operation_kwargs_for_update_item(
-        self,
-        table_name: Text,
-        hash_key,
-        range_key: Optional[Any] = ...,
+        attributes_to_get: Optional[Any] = ...,
         actions: Optional[Sequence[Action]] = ...,
         condition: Optional[Condition] = ...,
+        consistent_read: bool = ...,
+        return_values: Optional[Any] = ...,
         return_consumed_capacity: Optional[Any] = ...,
-        return_item_collection_metrics: Optional[Any] = ...,
-        return_values: Optional[Any] = ...
+        return_item_collection_metrics: Optional[Any] = ...
     ) -> Dict: ...
 
     def delete_item(
