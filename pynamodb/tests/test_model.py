@@ -789,7 +789,7 @@ class ModelTestCase(TestCase):
             (UserModel.user_id == 'bar') & UserModel.email.contains('@'),
             in_transaction=mock_transaction
         )
-        assert response == {}
+        assert response == None
         mock_transaction.add_delete_item.assert_called_with(
             operation_kwargs={
             'Key': {
@@ -940,7 +940,7 @@ class ModelTestCase(TestCase):
             in_transaction=mock_transaction
         )
 
-        assert response == {}
+        assert response is None
         mock_transaction.add_update_item.assert_called_with(
             operation_kwargs={
                 'TableName': 'SimpleModel',
@@ -1128,7 +1128,7 @@ class ModelTestCase(TestCase):
         mock_transaction = MagicMock()
         response = item.save(in_transaction=mock_transaction)
 
-        assert response == {}
+        assert response is None
         mock_transaction.add_save_item.assert_called_with(
             operation_kwargs={
             'TableName': 'UserModel',
