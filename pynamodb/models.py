@@ -256,11 +256,7 @@ class Model(AttributeContainer):
         return getattr(self, key_name)
 
     def get_range_key(self):
-        key_name = self._range_keyname
-        if key_name is not None:
-            return getattr(self, key_name, None)
-            return getattr(self, key_name)
-        return None
+        return getattr(self, self._range_keyname, None) if self._range_keyname is not None else None
 
     @classmethod
     def batch_get(cls, items, consistent_read=None, attributes_to_get=None):
@@ -364,13 +360,6 @@ class Model(AttributeContainer):
             return {}
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def _update_item_with_raw_data(self, data):
-        for name, value in data.items():
-            attr_name = self._dynamo_to_python_attr(name)
-            attr = self.get_attributes().get(attr_name)
-            if attr:
-                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
-
     def update(self, actions, condition=None, in_transaction=None):
         """
         Updates an item using the UpdateItem operation.
@@ -399,7 +388,11 @@ class Model(AttributeContainer):
             return {}
 
         data = self._get_connection().update_item(*args, **kwargs)
-        self._update_item_with_raw_data(data.get(ATTRIBUTES))
+        for name, value in data[ATTRIBUTES].items():
+            attr_name = self._dynamo_to_python_attr(name)
+            attr = self.get_attributes().get(attr_name)
+            if attr:
+                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
         return data
 
     def save(self, condition=None, in_transaction=None):
@@ -1034,7 +1027,12 @@ class Model(AttributeContainer):
 
 
 class _ModelFuture:
+    """
+    A placeholder object for a model that does not exist yet
 
+    For example: when performing a TransactGet request, this is a stand-in for a model that will be returned
+    when the operation is complete
+    """
     def __init__(self, model_cls):
         self._model_cls = model_cls
         self._model = None
@@ -1047,7 +1045,7 @@ class _ModelFuture:
 
     def get(self):
         if not self._resolved:
-            raise RuntimeException('Cannot get until resolved')
+            raise Exception('Cannot get until resolved')
         if self._model:
             return self._model
         raise self._model_cls.DoesNotExist()

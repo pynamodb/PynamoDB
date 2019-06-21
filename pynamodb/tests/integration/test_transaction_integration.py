@@ -19,12 +19,8 @@ TRANSACTION_CANCELLED = 'TransactionCanceledException'
 TRANSACTION_IN_PROGRESS = 'TransactionInProgressException'
 
 
-DDB_URL = os.getenv('PYNAMODB_INTEGRATION_TEST_DDB_URL', 'http://localhost:8000')
-
-
 class User(Model):
     class Meta:
-        host = DDB_URL
         region = 'us-east-1'
         table_name = 'user'
 
@@ -34,7 +30,6 @@ class User(Model):
 class BankStatement(Model):
 
     class Meta:
-        host = DDB_URL
         region = 'us-east-1'
         table_name = 'statement'
 
@@ -46,7 +41,6 @@ class BankStatement(Model):
 class LineItem(Model):
 
     class Meta:
-        host = DDB_URL
         region = 'us-east-1'
         table_name = 'line-item'
 
@@ -59,7 +53,6 @@ class LineItem(Model):
 class DifferentRegion(Model):
 
     class Meta:
-        host = DDB_URL
         region = 'us-east-2'
         table_name = 'different-region'
 
@@ -74,174 +67,188 @@ TEST_MODELS = [
 ]
 
 
-CONNECTION = Connection(host=DDB_URL)
+CONNECTION = None
 
 
-class TestTransactionIntegration:
+def _get_connection(url):
+    global CONNECTION
+    if not CONNECTION:
+        CONNECTION = Connection(host=url)
+    return CONNECTION
 
-    @classmethod
-    def setup_class(cls):
-        for m in TEST_MODELS:
-            if not m.exists():
-                m.create_table(
-                    read_capacity_units=10,
-                    write_capacity_units=10,
-                    wait=True
-                )
 
-    @classmethod
-    def teardown_class(cls):
-        for m in TEST_MODELS:
-            if m.exists():
-                m.delete_table()
+@pytest.fixture(scope='function', autouse=True)
+def create_tables(ddb_url):
+    for m in TEST_MODELS:
+        m.Meta.host = ddb_url
+        m.create_table(
+            read_capacity_units=10,
+            write_capacity_units=10,
+            wait=True
+        )
 
-    @staticmethod
-    def get_error_code(error):
-        return error.cause.response['Error'].get('Code')
+    yield
 
-    @pytest.mark.ddblocal
-    def test_transact_write__error__idempotent_parameter_mismatch(self):
-        client_token = str(uuid.uuid4())
+    for m in TEST_MODELS:
+        if m.exists():
+            m.delete_table()
 
-        with TransactWrite(connection=CONNECTION, client_request_token=client_token) as transaction:
-            User(1).save(in_transaction=transaction)
-            User(2).save(in_transaction=transaction)
 
-        try:
-            # committing the first time, then adding more info and committing again
-            with TransactWrite(connection=CONNECTION, client_request_token=client_token) as transaction:
-                User(3).save(in_transaction=transaction)
-            assert False, 'Failed to raise error'
-        except PutError as e:
-            assert self.get_error_code(e) == IDEMPOTENT_PARAMETER_MISMATCH
+def get_error_code(error):
+    return error.cause.response['Error'].get('Code')
 
-        # ensure that the first request succeeded in creating new users
-        assert User.get(1)
-        assert User.get(2)
 
-        with pytest.raises(DoesNotExist):
-            # ensure it did not create the user from second request
-            User.get(3)
+@pytest.mark.ddblocal
+def test_transact_write__error__idempotent_parameter_mismatch(ddb_url):
+    client_token = str(uuid.uuid4())
 
-    @pytest.mark.ddblocal
-    def test_transact_write__error__different_regions(self):
-        try:
-            with TransactWrite(connection=CONNECTION) as transact_write:
-                # creating a model in a table outside the region everyone else operates in
-                DifferentRegion(entry_index=0).save(in_transaction=transact_write)
-                BankStatement(1).save(in_transaction=transact_write)
-                User(1).save(in_transaction=transact_write)
-        except PutError as e:
-            assert self.get_error_code(e) == RESOURCE_NOT_FOUND
+    with TransactWrite(connection=_get_connection(ddb_url), client_request_token=client_token) as transaction:
+        User(1).save(in_transaction=transaction)
+        User(2).save(in_transaction=transaction)
 
-    @pytest.mark.ddblocal
-    def test_transact_write__error__transaction_cancelled(self):
-        # create a users and a bank statements for them
-        User(1).save()
-        BankStatement(1).save()
+    try:
+        # committing the first time, then adding more info and committing again
+        with TransactWrite(connection=_get_connection(ddb_url), client_request_token=client_token) as transaction:
+            User(3).save(in_transaction=transaction)
+        assert False, 'Failed to raise error'
+    except PutError as e:
+        assert get_error_code(e) == IDEMPOTENT_PARAMETER_MISMATCH
 
-        # attempt to do this as a transaction with the condition that they don't already exist
-        try:
-            with TransactWrite(connection=CONNECTION) as transaction:
-                User(1).save(condition=(User.user_id.does_not_exist()), in_transaction=transaction)
-                BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transaction)
-            assert False, 'Failed to raise error'
-        except PutError as e:
-            assert self.get_error_code(e) == TRANSACTION_CANCELLED
+    # ensure that the first request succeeded in creating new users
+    assert User.get(1)
+    assert User.get(2)
 
-    @pytest.mark.ddblocal
-    def test_transact_get(self):
-        # making sure these entries exist, and with the expected info
-        User(1).save()
-        BankStatement(1).save()
-        User(2).save()
-        BankStatement(2, balance=100).save()
+    with pytest.raises(DoesNotExist):
+        # ensure it did not create the user from second request
+        User.get(3)
 
-        # get users and statements we just created and assign them to variables
-        with TransactGet(connection=CONNECTION) as transaction:
-            _user1_future = transaction.get(User, 1)
-            _statement1_future = transaction.get(BankStatement, 1)
-            _user2_future = transaction.get(User, 2)
-            _statement2_future = transaction.get(BankStatement, 2)
 
-        user1 = _user1_future.get()
-        statement1 = _statement1_future.get()
-        user2 = _user2_future.get()
-        statement2 = _statement2_future.get()
+@pytest.mark.ddblocal
+def test_transact_write__error__different_regions(ddb_url):
+    try:
+        with TransactWrite(connection=_get_connection(ddb_url)) as transact_write:
+            # creating a model in a table outside the region everyone else operates in
+            DifferentRegion(entry_index=0).save(in_transaction=transact_write)
+            BankStatement(1).save(in_transaction=transact_write)
+            User(1).save(in_transaction=transact_write)
+    except PutError as e:
+        assert get_error_code(e) == RESOURCE_NOT_FOUND
 
-        assert user1.user_id == statement1.user_id == 1
-        assert statement1.balance == 0
-        assert user2.user_id == statement2.user_id == 2
-        assert statement2.balance == 100
 
-    @pytest.mark.ddblocal
-    def test_transact_write(self):
-        # making sure these entries exist, and with the expected info
-        BankStatement(1, balance=0).save()
-        BankStatement(2, balance=100).save()
+@pytest.mark.ddblocal
+def test_transact_write__error__transaction_cancelled(ddb_url):
+    # create a users and a bank statements for them
+    User(1).save()
+    BankStatement(1).save()
 
-        # assert values are what we think they should be
-        statement1 = BankStatement.get(1)
-        statement2 = BankStatement.get(2)
-        assert statement1.balance == 0
-        assert statement2.balance == 100
+    # attempt to do this as a transaction with the condition that they don't already exist
+    try:
+        with TransactWrite(connection=_get_connection(ddb_url)) as transaction:
+            User(1).save(condition=(User.user_id.does_not_exist()), in_transaction=transaction)
+            BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transaction)
+        assert False, 'Failed to raise error'
+    except PutError as e:
+        assert get_error_code(e) == TRANSACTION_CANCELLED
 
-        with TransactWrite(connection=CONNECTION) as transaction:
-            # let the users send money to one another
-            # create a credit line item to user 1's account
-            LineItem(user_id=1, amount=50, currency='USD').save(
-                condition=(LineItem.user_id.does_not_exist()),
-                in_transaction=transaction
-            )
-            # create a debit to user 2's account
-            LineItem(user_id=2, amount=-50, currency='USD').save(
-                condition=(LineItem.user_id.does_not_exist()),
-                in_transaction=transaction
-            )
 
-            # add credit to user 1's account
-            statement1.update(actions=[BankStatement.balance.add(50)], in_transaction=transaction)
-            # debit from user 2's account if they have enough in the bank
-            statement2.update(
-                actions=[BankStatement.balance.add(-50)],
-                condition=(BankStatement.balance >= 50),
-                in_transaction=transaction
-            )
+@pytest.mark.ddblocal
+def test_transact_get(ddb_url):
+    # making sure these entries exist, and with the expected info
+    User(1).save()
+    BankStatement(1).save()
+    User(2).save()
+    BankStatement(2, balance=100).save()
 
-        statement1.refresh()
-        statement2.refresh()
-        assert statement1.balance == statement2.balance == 50
+    # get users and statements we just created and assign them to variables
+    with TransactGet(connection=_get_connection(ddb_url)) as transaction:
+        _user1_future = transaction.get(User, 1)
+        _statement1_future = transaction.get(BankStatement, 1)
+        _user2_future = transaction.get(User, 2)
+        _statement2_future = transaction.get(BankStatement, 2)
 
-    @pytest.mark.ddblocal
-    def test_transact_write__one_of_each(self):
-        statement = BankStatement(1, balance=100, active=True)
-        statement.save()
-        with TransactWrite(connection=CONNECTION) as transaction:
-            User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
-            User(2).delete(in_transaction=transaction)
-            LineItem(4, amount=100, currency='USD').save(condition=(LineItem.user_id.does_not_exist()))
-            statement.update(
-                actions=[
-                    BankStatement.active.set(False),
-                    BankStatement.balance.set(0),
-                ],
-                in_transaction=transaction
-            )
+    user1 = _user1_future.get()
+    statement1 = _statement1_future.get()
+    user2 = _user2_future.get()
+    statement2 = _statement2_future.get()
 
-        # confirming transaction correct and successful
-        assert User.get(1)
-        try:
-            User.get(2)
-            assert False, 'Failed to delete model'
-        except DoesNotExist:
-            assert True
+    assert user1.user_id == statement1.user_id == 1
+    assert statement1.balance == 0
+    assert user2.user_id == statement2.user_id == 2
+    assert statement2.balance == 100
 
-        new_line_item = next(LineItem.query(4, scan_index_forward=False, limit=1), None)
-        assert new_line_item
-        assert new_line_item.amount == 100
-        assert new_line_item.currency == 'USD'
 
-        statement.refresh()
-        assert not statement.active
-        assert statement.balance == 0
+@pytest.mark.ddblocal
+def test_transact_write(ddb_url):
+    # making sure these entries exist, and with the expected info
+    BankStatement(1, balance=0).save()
+    BankStatement(2, balance=100).save()
+
+    # assert values are what we think they should be
+    statement1 = BankStatement.get(1)
+    statement2 = BankStatement.get(2)
+    assert statement1.balance == 0
+    assert statement2.balance == 100
+
+    with TransactWrite(connection=_get_connection(ddb_url)) as transaction:
+        # let the users send money to one another
+        # create a credit line item to user 1's account
+        LineItem(user_id=1, amount=50, currency='USD').save(
+            condition=(LineItem.user_id.does_not_exist()),
+            in_transaction=transaction
+        )
+        # create a debit to user 2's account
+        LineItem(user_id=2, amount=-50, currency='USD').save(
+            condition=(LineItem.user_id.does_not_exist()),
+            in_transaction=transaction
+        )
+
+        # add credit to user 1's account
+        statement1.update(actions=[BankStatement.balance.add(50)], in_transaction=transaction)
+        # debit from user 2's account if they have enough in the bank
+        statement2.update(
+            actions=[BankStatement.balance.add(-50)],
+            condition=(BankStatement.balance >= 50),
+            in_transaction=transaction
+        )
+
+    statement1.refresh()
+    statement2.refresh()
+    assert statement1.balance == statement2.balance == 50
+
+
+@pytest.mark.ddblocal
+def test_transact_write__one_of_each(ddb_url):
+    User(1).save()
+    User(2).save()
+    statement = BankStatement(1, balance=100, active=True)
+    statement.save()
+
+    with TransactWrite(connection=_get_connection(ddb_url)) as transaction:
+        User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
+        User(2).delete(in_transaction=transaction)
+        LineItem(4, amount=100, currency='USD').save(condition=(LineItem.user_id.does_not_exist()))
+        statement.update(
+            actions=[
+                BankStatement.active.set(False),
+                BankStatement.balance.set(0),
+            ],
+            in_transaction=transaction
+        )
+
+    # confirming transaction correct and successful
+    assert User.get(1)
+    try:
+        User.get(2)
+        assert False, 'Failed to delete model'
+    except DoesNotExist:
+        assert True
+
+    new_line_item = next(LineItem.query(4, scan_index_forward=False, limit=1), None)
+    assert new_line_item
+    assert new_line_item.amount == 100
+    assert new_line_item.currency == 'USD'
+
+    statement.refresh()
+    assert not statement.active
+    assert statement.balance == 0
 

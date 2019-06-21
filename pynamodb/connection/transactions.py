@@ -1,5 +1,3 @@
-from pynamodb.exceptions import GetError
-
 from pynamodb.constants import (
     RETURN_VALUES_ON_CONDITION_FAILURE, ITEM, RETURN_VALUES, RESPONSES,
     TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, TRANSACTION_DELETE_REQUEST_PARAMETERS,
@@ -10,10 +8,11 @@ from pynamodb.models import _ModelFuture
 
 class Transaction(object):
 
-    _connection = None
-    _hashed_models = None
+    """
+    Base class for a type of transaction operation
+    """
+
     _results = None
-    _return_consumed_capacity = None
 
     def __init__(self, connection, return_consumed_capacity=None):
         self._connection = connection
@@ -30,6 +29,15 @@ class Transaction(object):
         self._commit()
 
     def _hash_model(self, model_cls, hash_key, range_key=None):
+        """
+        creates a unique identifier for the model, and hashes it
+        to ensure that we don't perform multiple operations on the same entry within the same transaction
+
+        :param model_cls:
+        :param hash_key:
+        :param range_key:
+        :return:
+        """
         key = (model_cls, hash_key, range_key)
         if key in self._hashed_models:
             raise ValueError("Can't perform operation on the same entry multiple times in one transaction")
@@ -45,8 +53,6 @@ class Transaction(object):
 
 
 class TransactGet(Transaction):
-    _get_items = None
-    _proxy_models = None
 
     def __init__(self, *args, **kwargs):
         super(TransactGet, self).__init__(*args, **kwargs)
@@ -54,16 +60,25 @@ class TransactGet(Transaction):
         self._futures = []
 
     def get(self, model_cls, hash_key, range_key=None):
+        """
+        Adds the operation arguments for an item to list of models to get
+        returns a _ModelFuture object as a placeholder
+
+        :param model_cls:
+        :param hash_key:
+        :param range_key:
+        :return:
+        """
         self._hash_model(model_cls, hash_key, range_key)
         operation_kwargs = model_cls.get_operation_kwargs_for_get_item(hash_key, range_key=range_key)
         get_item = self._format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
         model_future = _ModelFuture(model_cls)
-        self._proxy_models.append(proxy_model)
+        self._futures.append(model_future)
         self._get_items.append(get_item)
-        return proxy_model
+        return model_future
 
-    def _update_proxy_models(self):
-        for model, data in zip(self._proxy_models, self._results):
+    def _update_futures(self):
+        for model, data in zip(self._futures, self._results):
             model.update_with_raw_data(data[ITEM])
 
     def _commit(self):
@@ -72,16 +87,10 @@ class TransactGet(Transaction):
             return_consumed_capacity=self._return_consumed_capacity
         )
         self._results = response[RESPONSES]
-        self._update_proxy_models()
+        self._update_futures()
 
 
 class TransactWrite(Transaction):
-    _condition_check_items = None
-    _delete_items = None
-    _put_items = None
-    _update_items = None
-    _client_request_token = None
-    _return_item_collection_metrics = None
 
     def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
         super(TransactWrite, self).__init__(**kwargs)

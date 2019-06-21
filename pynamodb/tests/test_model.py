@@ -2896,34 +2896,6 @@ class ModelTestCase(TestCase):
         for k in rs:
             self.assertTrue(k in results)
 
-    def test_update_item_with_raw_data(self):
-        user = UserModel()
-        user._update_item_with_raw_data({
-            'user_name': {'S': 'test_user'},
-            'user_id': {'S': '123456'},
-            'picture': {'B': BINARY_ATTR_DATA},
-            'zip_code': {'N': '94103'}
-        })
-        self.assertEqual(user.custom_user_name, 'test_user')
-        self.assertEqual(user.user_id, '123456')
-        self.assertIsNotNone(user.picture)
-        self.assertEqual(user.zip_code, 94103)
-
-    def test_update_item_with_raw_data__no_data(self):
-        user = UserModel()
-        user._update_item_with_raw_data({})
-        self.assertIsNone(user.custom_user_name)
-        self.assertIsNone(user.user_id)
-        self.assertIsNone(user.picture)
-        self.assertIsNone(user.zip_code)
-
-    def test_update_item_with_raw_data__wrong_data(self):
-        user = UserModel()
-        user._update_item_with_raw_data({
-            'fake_attr': {'N': '404'}
-        })
-        self.assertFalse(hasattr(user, 'fake_attr'))
-
     def test_explicit_raw_map_serialize_pass(self):
         map_native = {'foo': 'bar'}
         map_serialized = {'M': {'foo': {'S': 'bar'}}}
