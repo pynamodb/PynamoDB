@@ -433,8 +433,7 @@ class Model(AttributeContainer):
             hash_key,
             range_key=None,
             consistent_read=False,
-            attributes_to_get=None
-            ):
+            attributes_to_get=None):
         """
         Returns a single object using the provided keys
 

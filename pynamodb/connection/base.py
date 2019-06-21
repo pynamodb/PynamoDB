@@ -795,6 +795,7 @@ class Connection(object):
                              attributes=None,
                              attributes_to_get=None,
                              actions=None,
+                             client_request_token=None,
                              condition=None,
                              consistent_read=None,
                              return_values=None,
@@ -815,6 +816,8 @@ class Connection(object):
         if attributes_to_get is not None:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
+        if client_request_token is not None:
+            operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
         if condition is not None:
             condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
             operation_kwargs[CONDITION_EXPRESSION] = condition_expression
@@ -947,12 +950,11 @@ class Connection(object):
         ])
 
         operation_kwargs = self.get_operation_kwargs(
+            client_request_token=client_request_token,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics
         )
         operation_kwargs[TRANSACT_ITEMS] = transact_items
-        if client_request_token is not None:
-            operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
 
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)

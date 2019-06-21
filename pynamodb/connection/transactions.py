@@ -26,7 +26,8 @@ class Transaction(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._commit()
+        if exc_type is None and exc_val is None and exc_tb is None:
+            self._commit()
 
     def _hash_model(self, model_cls, hash_key, range_key=None):
         """
