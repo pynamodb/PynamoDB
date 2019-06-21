@@ -16,6 +16,7 @@ PROVISIONED_THROUGHPUT_EXCEEDED = 'ProvisionedThroughputExceededException'
 RESOURCE_NOT_FOUND = 'ResourceNotFoundException'
 TRANSACTION_CANCELLED = 'TransactionCanceledException'
 TRANSACTION_IN_PROGRESS = 'TransactionInProgressException'
+VALIDATION_EXCEPTION = 'ValidationException'
 
 
 class User(Model):
@@ -146,6 +147,20 @@ def test_transact_write__error__transaction_cancelled(connection):
 
 
 @pytest.mark.ddblocal
+def test_transact_write__error__multiple_operations_on_same_record(connection):
+    BankStatement(1).save()
+
+    # attempt to do a transaction with multiple operations on the same record
+    try:
+        with TransactWrite(connection=connection) as transaction:
+            BankStatement.condition_check(1, condition=(BankStatement.user_id.exists()), in_transaction=transaction)
+            BankStatement(1).update(actions=[(BankStatement.balance.add(10))], in_transaction=transaction)
+        assert False, 'Failed to raise error'
+    except PutError as e:
+        assert get_error_code(e) == VALIDATION_EXCEPTION
+
+
+@pytest.mark.ddblocal
 def test_transact_get(connection):
     # making sure these entries exist, and with the expected info
     User(1).save()
@@ -245,4 +260,3 @@ def test_transact_write__one_of_each(connection):
     statement.refresh()
     assert not statement.active
     assert statement.balance == 0
-
