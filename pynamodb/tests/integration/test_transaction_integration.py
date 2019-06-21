@@ -1,4 +1,3 @@
-import os
 import uuid
 from datetime import datetime
 
@@ -67,17 +66,12 @@ TEST_MODELS = [
 ]
 
 
-CONNECTION = None
+@pytest.fixture(scope='module')
+def connection(ddb_url):
+    yield Connection(host=ddb_url)
 
 
-def _get_connection(url):
-    global CONNECTION
-    if not CONNECTION:
-        CONNECTION = Connection(host=url)
-    return CONNECTION
-
-
-@pytest.fixture(scope='function', autouse=True)
+@pytest.fixture(scope='module', autouse=True)
 def create_tables(ddb_url):
     for m in TEST_MODELS:
         m.Meta.host = ddb_url
@@ -99,16 +93,16 @@ def get_error_code(error):
 
 
 @pytest.mark.ddblocal
-def test_transact_write__error__idempotent_parameter_mismatch(ddb_url):
+def test_transact_write__error__idempotent_parameter_mismatch(ddb_url, connection):
     client_token = str(uuid.uuid4())
 
-    with TransactWrite(connection=_get_connection(ddb_url), client_request_token=client_token) as transaction:
+    with TransactWrite(connection=connection, client_request_token=client_token) as transaction:
         User(1).save(in_transaction=transaction)
         User(2).save(in_transaction=transaction)
 
     try:
         # committing the first time, then adding more info and committing again
-        with TransactWrite(connection=_get_connection(ddb_url), client_request_token=client_token) as transaction:
+        with TransactWrite(connection=connection, client_request_token=client_token) as transaction:
             User(3).save(in_transaction=transaction)
         assert False, 'Failed to raise error'
     except PutError as e:
@@ -124,9 +118,9 @@ def test_transact_write__error__idempotent_parameter_mismatch(ddb_url):
 
 
 @pytest.mark.ddblocal
-def test_transact_write__error__different_regions(ddb_url):
+def test_transact_write__error__different_regions(ddb_url, connection):
     try:
-        with TransactWrite(connection=_get_connection(ddb_url)) as transact_write:
+        with TransactWrite(connection=connection) as transact_write:
             # creating a model in a table outside the region everyone else operates in
             DifferentRegion(entry_index=0).save(in_transaction=transact_write)
             BankStatement(1).save(in_transaction=transact_write)
@@ -136,14 +130,14 @@ def test_transact_write__error__different_regions(ddb_url):
 
 
 @pytest.mark.ddblocal
-def test_transact_write__error__transaction_cancelled(ddb_url):
+def test_transact_write__error__transaction_cancelled(ddb_url, connection):
     # create a users and a bank statements for them
     User(1).save()
     BankStatement(1).save()
 
     # attempt to do this as a transaction with the condition that they don't already exist
     try:
-        with TransactWrite(connection=_get_connection(ddb_url)) as transaction:
+        with TransactWrite(connection=connection) as transaction:
             User(1).save(condition=(User.user_id.does_not_exist()), in_transaction=transaction)
             BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transaction)
         assert False, 'Failed to raise error'
@@ -152,7 +146,7 @@ def test_transact_write__error__transaction_cancelled(ddb_url):
 
 
 @pytest.mark.ddblocal
-def test_transact_get(ddb_url):
+def test_transact_get(ddb_url, connection):
     # making sure these entries exist, and with the expected info
     User(1).save()
     BankStatement(1).save()
@@ -160,7 +154,7 @@ def test_transact_get(ddb_url):
     BankStatement(2, balance=100).save()
 
     # get users and statements we just created and assign them to variables
-    with TransactGet(connection=_get_connection(ddb_url)) as transaction:
+    with TransactGet(connection=connection) as transaction:
         _user1_future = transaction.get(User, 1)
         _statement1_future = transaction.get(BankStatement, 1)
         _user2_future = transaction.get(User, 2)
@@ -178,7 +172,7 @@ def test_transact_get(ddb_url):
 
 
 @pytest.mark.ddblocal
-def test_transact_write(ddb_url):
+def test_transact_write(ddb_url, connection):
     # making sure these entries exist, and with the expected info
     BankStatement(1, balance=0).save()
     BankStatement(2, balance=100).save()
@@ -189,7 +183,7 @@ def test_transact_write(ddb_url):
     assert statement1.balance == 0
     assert statement2.balance == 100
 
-    with TransactWrite(connection=_get_connection(ddb_url)) as transaction:
+    with TransactWrite(connection=connection) as transaction:
         # let the users send money to one another
         # create a credit line item to user 1's account
         LineItem(user_id=1, amount=50, currency='USD').save(
@@ -217,13 +211,13 @@ def test_transact_write(ddb_url):
 
 
 @pytest.mark.ddblocal
-def test_transact_write__one_of_each(ddb_url):
+def test_transact_write__one_of_each(ddb_url, connection):
     User(1).save()
     User(2).save()
     statement = BankStatement(1, balance=100, active=True)
     statement.save()
 
-    with TransactWrite(connection=_get_connection(ddb_url)) as transaction:
+    with TransactWrite(connection=connection) as transaction:
         User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
         User(2).delete(in_transaction=transaction)
         LineItem(4, amount=100, currency='USD').save(condition=(LineItem.user_id.does_not_exist()))
