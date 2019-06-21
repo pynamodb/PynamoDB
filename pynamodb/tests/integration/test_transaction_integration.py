@@ -101,11 +101,11 @@ def test_transact_write__error__idempotent_parameter_mismatch(connection):
         User(1).save(in_transaction=transaction)
         User(2).save(in_transaction=transaction)
 
-    with pytest.raises(PutError) as exec_info:
+    with pytest.raises(PutError) as exc_info:
         # committing the first time, then adding more info and committing again
         with TransactWrite(connection=connection, client_request_token=client_token) as transaction:
             User(3).save(in_transaction=transaction)
-    assert get_error_code(exec_info.value) == IDEMPOTENT_PARAMETER_MISMATCH
+    assert get_error_code(exc_info.value) == IDEMPOTENT_PARAMETER_MISMATCH
 
     # ensure that the first request succeeded in creating new users
     assert User.get(1)
@@ -118,13 +118,13 @@ def test_transact_write__error__idempotent_parameter_mismatch(connection):
 
 @pytest.mark.ddblocal
 def test_transact_write__error__different_regions(connection):
-    with pytest.raises(PutError) as exec_info:
+    with pytest.raises(PutError) as exc_info:
         with TransactWrite(connection=connection) as transact_write:
             # creating a model in a table outside the region everyone else operates in
             DifferentRegion(entry_index=0).save(in_transaction=transact_write)
             BankStatement(1).save(in_transaction=transact_write)
             User(1).save(in_transaction=transact_write)
-    assert get_error_code(exec_info.value) == RESOURCE_NOT_FOUND
+    assert get_error_code(exc_info.value) == RESOURCE_NOT_FOUND
 
 
 @pytest.mark.ddblocal
@@ -134,11 +134,11 @@ def test_transact_write__error__transaction_cancelled(connection):
     BankStatement(1).save()
 
     # attempt to do this as a transaction with the condition that they don't already exist
-    with pytest.raises(PutError) as exec_info:
+    with pytest.raises(PutError) as exc_info:
         with TransactWrite(connection=connection) as transaction:
             User(1).save(condition=(User.user_id.does_not_exist()), in_transaction=transaction)
             BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transaction)
-    assert get_error_code(exec_info.value) == TRANSACTION_CANCELLED
+    assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
 
 
 @pytest.mark.ddblocal
@@ -146,11 +146,11 @@ def test_transact_write__error__multiple_operations_on_same_record(connection):
     BankStatement(1).save()
 
     # attempt to do a transaction with multiple operations on the same record
-    with pytest.raises(PutError) as exec_info:
+    with pytest.raises(PutError) as exc_info:
         with TransactWrite(connection=connection) as transaction:
             BankStatement.condition_check(1, condition=(BankStatement.user_id.exists()), in_transaction=transaction)
             BankStatement(1).update(actions=[(BankStatement.balance.add(10))], in_transaction=transaction)
-    assert get_error_code(exec_info.value) == VALIDATION_EXCEPTION
+    assert get_error_code(exc_info.value) == VALIDATION_EXCEPTION
 
 
 @pytest.mark.ddblocal

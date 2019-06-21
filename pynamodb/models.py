@@ -352,7 +352,7 @@ class Model(AttributeContainer):
         if in_transaction is not None:
             operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
             in_transaction.add_delete_item(operation_kwargs=operation_kwargs)
-            return {}
+            return None
         return self._get_connection().delete_item(*args, **kwargs)
 
     def update(self, actions, condition=None, in_transaction=None):
@@ -361,6 +361,7 @@ class Model(AttributeContainer):
 
         :param actions: a list of Action updates to apply
         :param condition: an optional Condition on which to update
+        :param in_transaction: optional TransactWrite
         """
         if not isinstance(actions, list) or len(actions) == 0:
             raise TypeError("the value of `actions` is expected to be a non-empty list")
@@ -380,7 +381,7 @@ class Model(AttributeContainer):
             kwargs[pythonic(RETURN_VALUES)] = NONE
             operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
             in_transaction.add_update_item(operation_kwargs=operation_kwargs)
-            return {}
+            return None
 
         data = self._get_connection().update_item(*args, **kwargs)
         for name, value in data[ATTRIBUTES].items():
@@ -401,7 +402,7 @@ class Model(AttributeContainer):
             kwargs.update(key=ITEM)
             operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
             in_transaction.add_save_item(operation_kwargs=operation_kwargs)
-            return {}
+            return None
         return self._get_connection().put_item(*args, **kwargs)
 
     def refresh(self, consistent_read=False):
