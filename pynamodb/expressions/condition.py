@@ -25,27 +25,27 @@ class Condition(object):
 
     def __and__(self, other):
         if not isinstance(other, Condition):
-            raise TypeError("unsupported operand type(s) for &: '{0}' and '{1}'"
+            raise TypeError("unsupported operand type(s) for &: '{}' and '{}'"
                             .format(self.__class__.__name__, other.__class__.__name__))
         return And(self, other)
 
     def __rand__(self, other):
         # special case 'None & condition' to enable better syntax for chaining
         if other is not None:
-            raise TypeError("unsupported operand type(s) for &: '{0}' and '{1}'"
+            raise TypeError("unsupported operand type(s) for &: '{}' and '{}'"
                             .format(other.__class__.__name__, self.__class__.__name__))
         return self
 
     def __or__(self, other):
         if not isinstance(other, Condition):
-            raise TypeError("unsupported operand type(s) for |: '{0}' and '{1}'"
+            raise TypeError("unsupported operand type(s) for |: '{}' and '{}'"
                             .format(self.__class__.__name__, other.__class__.__name__))
         return Or(self, other)
 
     def __ror__(self, other):
         # special case 'None | condition' to enable better syntax for chaining
         if other is not None:
-            raise TypeError("unsupported operand type(s) for |: '{0}' and '{1}'"
+            raise TypeError("unsupported operand type(s) for |: '{}' and '{}'"
                             .format(other.__class__.__name__, self.__class__.__name__))
         return self
 
