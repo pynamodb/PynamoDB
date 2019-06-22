@@ -276,7 +276,7 @@ class ConditionExpressionTestCase(TestCase):
         condition &= self.attribute < 'bar'
         placeholder_names, expression_attribute_values = {}, {}
         expression = condition.serialize(placeholder_names, expression_attribute_values)
-        assert expression == "(#0 < :0)"
+        assert expression == "#0 < :0"
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'S': 'bar'}}
 
@@ -293,7 +293,7 @@ class ConditionExpressionTestCase(TestCase):
         condition |= self.attribute < 'bar'
         placeholder_names, expression_attribute_values = {}, {}
         expression = condition.serialize(placeholder_names, expression_attribute_values)
-        assert expression == "(#0 < :0)"
+        assert expression == "#0 < :0"
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'S': 'bar'}}
 
