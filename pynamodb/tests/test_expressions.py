@@ -271,6 +271,15 @@ class ConditionExpressionTestCase(TestCase):
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'S': 'bar'}, ':1': {'S': 'baz'}}
 
+    def test_rand(self):
+        condition = None
+        condition &= self.attribute < 'bar'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "(#0 < :0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
+
     def test_or(self):
         condition = (self.attribute < 'bar') | (self.attribute > 'baz')
         placeholder_names, expression_attribute_values = {}, {}
@@ -278,6 +287,15 @@ class ConditionExpressionTestCase(TestCase):
         assert expression == "(#0 < :0 OR #0 > :1)"
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'S': 'bar'}, ':1': {'S': 'baz'}}
+
+    def test_ror(self):
+        condition = None
+        condition |= self.attribute < 'bar'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "(#0 < :0)"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
 
     def test_not(self):
         condition = ~(self.attribute < 'bar')
