@@ -42,13 +42,6 @@ class Condition(object):
                             .format(self.__class__.__name__, other.__class__.__name__))
         return Or(self, other)
 
-    def __ror__(self, other):
-        # special case 'None | condition' to enable better syntax for chaining
-        if other is not None:
-            raise TypeError("unsupported operand type(s) for |: '{}' and '{}'"
-                            .format(other.__class__.__name__, self.__class__.__name__))
-        return self
-
     def __invert__(self):
         return Not(self)
 

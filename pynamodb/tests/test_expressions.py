@@ -303,20 +303,6 @@ class ConditionExpressionTestCase(TestCase):
         with self.assertRaises(TypeError):
             condition |= None
 
-    def test_ror(self):
-        condition = None
-        condition |= self.attribute < 'bar'
-        placeholder_names, expression_attribute_values = {}, {}
-        expression = condition.serialize(placeholder_names, expression_attribute_values)
-        assert expression == "#0 < :0"
-        assert placeholder_names == {'foo': '#0'}
-        assert expression_attribute_values == {':0': {'S': 'bar'}}
-
-    def test_invalid_ror(self):
-        condition = 42
-        with self.assertRaises(TypeError):
-            condition |= self.attribute < 'bar'
-
     def test_not(self):
         condition = ~(self.attribute < 'bar')
         placeholder_names, expression_attribute_values = {}, {}
