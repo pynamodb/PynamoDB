@@ -17,22 +17,12 @@ class TestTransaction:
         with pytest.raises(NotImplementedError):
             t._commit()
 
-    def test_format_request_parameters(self, mocker):
-        transaction = Transaction(connection=mocker.MagicMock())
-        valid_parameters = {'a', 'c', 'e', 'ReturnValuesOnConditionCheckFailure'}
-        operation_kwargs = {'ReturnValues': 'ALL_OLD'}
-
-        item = transaction._format_request_parameters(valid_parameters, operation_kwargs)
-        assert item == {'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'}
-
-        item = transaction._format_request_parameters(valid_parameters, {'a': 1, 'b': 2, 'c': 3})
-        assert item == {'a': 1, 'c': 3}
-
 
 class TestTransactGet:
 
     def setup(self):
         self.mock_model_cls = MagicMock(__name__='MockModel')
+        self.mock_model_cls.get_operation_kwargs_from_class.return_value = {}
 
     def test_commit(self, mocker):
         mock_connection = mocker.MagicMock(spec=Connection)
@@ -51,10 +41,10 @@ class TestTransactWrite:
     def test_commit(self, mocker):
         mock_connection = mocker.MagicMock(spec=Connection)
         with TransactWrite(connection=mock_connection) as t:
-            t.add_condition_check_item({})
-            t.add_delete_item({})
-            t.add_save_item({})
-            t.add_update_item({})
+            t._condition_check_items = [{}]
+            t._delete_items = [{}]
+            t._put_items = [{}]
+            t._update_items = [{}]
 
         mock_connection.transact_write_items.assert_called_once_with(
             condition_check_items=[{}],

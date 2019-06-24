@@ -56,7 +56,8 @@ class TableConnection(object):
                              consistent_read=None,
                              return_values=None,
                              return_consumed_capacity=None,
-                             return_item_collection_metrics=None):
+                             return_item_collection_metrics=None,
+                             return_values_on_condition_failure=None):
         return self.connection.get_operation_kwargs(
             self.table_name,
             hash_key,
@@ -69,7 +70,8 @@ class TableConnection(object):
             consistent_read=consistent_read,
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
-            return_item_collection_metrics=return_item_collection_metrics
+            return_item_collection_metrics=return_item_collection_metrics,
+            return_values_on_condition_failure=return_values_on_condition_failure
         )
 
     def delete_item(self,

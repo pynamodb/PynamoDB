@@ -34,7 +34,8 @@ class TableConnection:
         consistent_read: bool = ...,
         return_values: Optional[Any] = ...,
         return_consumed_capacity: Optional[Any] = ...,
-        return_item_collection_metrics: Optional[Any] = ...
+        return_item_collection_metrics: Optional[Any] = ...,
+        return_values_on_condition_failure: Optional[Any] = ...
     ) -> Dict: ...
 
     def delete_item(

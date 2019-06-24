@@ -332,27 +332,12 @@ class Model(AttributeContainer):
                 msg = "{}<{}>".format(self.Meta.table_name, serialized.get(HASH))
             return six.u(msg)
 
-    @classmethod
-    def condition_check(cls, hash_key, in_transaction, condition, range_key=None):
-        hash_key, range_key = cls._serialize_keys(hash_key, range_key)
-        operation_kwargs = cls._get_connection().get_operation_kwargs(
-            hash_key=hash_key,
-            range_key=range_key,
-            condition=condition,
-        )
-        in_transaction.add_condition_check_item(operation_kwargs=operation_kwargs)
-
-    def delete(self, condition=None, in_transaction=None):
+    def delete(self, condition=None):
         """
         Deletes this object from dynamodb
         """
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
         kwargs.update(condition=condition)
-
-        if in_transaction is not None:
-            operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
-            in_transaction.add_delete_item(operation_kwargs=operation_kwargs)
-            return None
         return self._get_connection().delete_item(*args, **kwargs)
 
     def update(self, actions, condition=None, in_transaction=None):
@@ -377,12 +362,6 @@ class Model(AttributeContainer):
         kwargs.update(condition=condition)
         kwargs.update(actions=actions)
 
-        if in_transaction is not None:
-            kwargs[pythonic(RETURN_VALUES)] = NONE
-            operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
-            in_transaction.add_update_item(operation_kwargs=operation_kwargs)
-            return None
-
         data = self._get_connection().update_item(*args, **kwargs)
         for name, value in data[ATTRIBUTES].items():
             attr_name = self._dynamo_to_python_attr(name)
@@ -391,18 +370,12 @@ class Model(AttributeContainer):
                 setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
         return data
 
-    def save(self, condition=None, in_transaction=None):
+    def save(self, condition=None):
         """
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args()
         kwargs.update(condition=condition)
-
-        if in_transaction is not None:
-            kwargs.update(key=ITEM)
-            operation_kwargs = self._get_connection().get_operation_kwargs(*args, **kwargs)
-            in_transaction.add_save_item(operation_kwargs=operation_kwargs)
-            return None
         return self._get_connection().put_item(*args, **kwargs)
 
     def refresh(self, consistent_read=False):
@@ -419,10 +392,39 @@ class Model(AttributeContainer):
             raise self.DoesNotExist("This item does not exist in the table.")
         self._deserialize(item_data)
 
+    def get_operation_kwargs_from_instance(self,
+                                           key=KEY,
+                                           actions=None,
+                                           condition=None,
+                                           return_values=None,
+                                           return_values_on_condition_failure=None):
+        is_update = actions is not None
+        args, save_kwargs = self._get_save_args(null_check=not is_update)
+        kwargs = dict(
+            key=key,
+            actions=actions,
+            condition=condition,
+            return_values=return_values,
+            return_values_on_condition_failure=return_values_on_condition_failure
+        )
+        if not is_update:
+            kwargs.update(save_kwargs)
+        elif pythonic(RANGE_KEY) in save_kwargs:
+            kwargs[pythonic(RANGE_KEY)] = save_kwargs[pythonic(RANGE_KEY)]
+        return self._get_connection().get_operation_kwargs(*args, **kwargs)
+
     @classmethod
-    def get_operation_kwargs_for_get_item(cls, hash_key, range_key=None):
+    def get_operation_kwargs_from_class(cls,
+                                        hash_key,
+                                        range_key=None,
+                                        condition=None
+                                        ):
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
-        return cls._get_connection().get_operation_kwargs(hash_key, range_key)
+        return cls._get_connection().get_operation_kwargs(
+            hash_key=hash_key,
+            range_key=range_key,
+            condition=condition
+        )
 
     @classmethod
     def get(cls,

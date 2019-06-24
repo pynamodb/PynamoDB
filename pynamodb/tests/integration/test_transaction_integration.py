@@ -98,13 +98,13 @@ def test_transact_write__error__idempotent_parameter_mismatch(connection):
     client_token = str(uuid.uuid4())
 
     with TransactWrite(connection=connection, client_request_token=client_token) as transaction:
-        User(1).save(in_transaction=transaction)
-        User(2).save(in_transaction=transaction)
+        transaction.save(User(1))
+        transaction.save(User(2))
 
     with pytest.raises(PutError) as exc_info:
         # committing the first time, then adding more info and committing again
         with TransactWrite(connection=connection, client_request_token=client_token) as transaction:
-            User(3).save(in_transaction=transaction)
+            transaction.save(User(3))
     assert get_error_code(exc_info.value) == IDEMPOTENT_PARAMETER_MISMATCH
 
     # ensure that the first request succeeded in creating new users
@@ -121,9 +121,9 @@ def test_transact_write__error__different_regions(connection):
     with pytest.raises(PutError) as exc_info:
         with TransactWrite(connection=connection) as transact_write:
             # creating a model in a table outside the region everyone else operates in
-            DifferentRegion(entry_index=0).save(in_transaction=transact_write)
-            BankStatement(1).save(in_transaction=transact_write)
-            User(1).save(in_transaction=transact_write)
+            transact_write.save(DifferentRegion(entry_index=0))
+            transact_write.save(BankStatement(1))
+            transact_write.save(User(1))
     assert get_error_code(exc_info.value) == RESOURCE_NOT_FOUND
 
 
@@ -136,8 +136,8 @@ def test_transact_write__error__transaction_cancelled(connection):
     # attempt to do this as a transaction with the condition that they don't already exist
     with pytest.raises(PutError) as exc_info:
         with TransactWrite(connection=connection) as transaction:
-            User(1).save(condition=(User.user_id.does_not_exist()), in_transaction=transaction)
-            BankStatement(1).save(condition=(BankStatement.user_id.does_not_exist()), in_transaction=transaction)
+            transaction.save(User(1), condition=(User.user_id.does_not_exist()))
+            transaction.save(BankStatement(1), condition=(BankStatement.user_id.does_not_exist()))
     assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
 
 
@@ -148,8 +148,8 @@ def test_transact_write__error__multiple_operations_on_same_record(connection):
     # attempt to do a transaction with multiple operations on the same record
     with pytest.raises(PutError) as exc_info:
         with TransactWrite(connection=connection) as transaction:
-            BankStatement.condition_check(1, condition=(BankStatement.user_id.exists()), in_transaction=transaction)
-            BankStatement(1).update(actions=[(BankStatement.balance.add(10))], in_transaction=transaction)
+            transaction.condition_check(BankStatement, 1, condition=(BankStatement.user_id.exists()))
+            transaction.update(BankStatement(1), actions=[(BankStatement.balance.add(10))])
     assert get_error_code(exc_info.value) == VALIDATION_EXCEPTION
 
 
@@ -194,23 +194,23 @@ def test_transact_write(connection):
     with TransactWrite(connection=connection) as transaction:
         # let the users send money to one another
         # create a credit line item to user 1's account
-        LineItem(user_id=1, amount=50, currency='USD').save(
+        transaction.save(
+            LineItem(user_id=1, amount=50, currency='USD'),
             condition=(LineItem.user_id.does_not_exist()),
-            in_transaction=transaction
         )
         # create a debit to user 2's account
-        LineItem(user_id=2, amount=-50, currency='USD').save(
+        transaction.save(
+            LineItem(user_id=2, amount=-50, currency='USD'),
             condition=(LineItem.user_id.does_not_exist()),
-            in_transaction=transaction
         )
 
         # add credit to user 1's account
-        statement1.update(actions=[BankStatement.balance.add(50)], in_transaction=transaction)
+        transaction.update(statement1, actions=[BankStatement.balance.add(50)])
         # debit from user 2's account if they have enough in the bank
-        statement2.update(
+        transaction.update(
+            statement2,
             actions=[BankStatement.balance.add(-50)],
-            condition=(BankStatement.balance >= 50),
-            in_transaction=transaction
+            condition=(BankStatement.balance >= 50)
         )
 
     statement1.refresh()
@@ -226,15 +226,15 @@ def test_transact_write__one_of_each(connection):
     statement.save()
 
     with TransactWrite(connection=connection) as transaction:
-        User.condition_check(1, in_transaction=transaction, condition=(User.user_id.exists()))
-        User(2).delete(in_transaction=transaction)
-        LineItem(4, amount=100, currency='USD').save(condition=(LineItem.user_id.does_not_exist()))
-        statement.update(
+        transaction.condition_check(User, 1, condition=(User.user_id.exists()))
+        transaction.delete(User(2))
+        transaction.save(LineItem(4, amount=100, currency='USD'), condition=(LineItem.user_id.does_not_exist()))
+        transaction.update(
+            statement,
             actions=[
                 BankStatement.active.set(False),
                 BankStatement.balance.set(0),
-            ],
-            in_transaction=transaction
+            ]
         )
 
     # confirming transaction correct and successful

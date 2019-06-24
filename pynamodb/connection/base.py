@@ -43,8 +43,8 @@ from pynamodb.constants import (
     CONDITION_EXPRESSION, FILTER_EXPRESSION,
     AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE, PROVISIONED_BILLING_MODE,
     TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS, CLIENT_REQUEST_TOKEN, TRANSACT_ITEMS, TRANSACT_CONDITION_CHECK,
-    TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE, TRANSACT_UPDATE, UPDATE_EXPRESSION
-)
+    TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE, TRANSACT_UPDATE, UPDATE_EXPRESSION,
+    RETURN_VALUES_ON_CONDITION_FAILURE_VALUES, RETURN_VALUES_ON_CONDITION_FAILURE)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -768,6 +768,19 @@ class Connection(object):
             RETURN_VALUES: str(return_values).upper()
         }
 
+    def get_return_values_on_condition_failure_map(self, return_values_on_condition_failure):
+        """
+        Builds the return values map that is common to several operations
+        """
+        if return_values_on_condition_failure.upper() not in RETURN_VALUES_VALUES:
+            raise ValueError("{} must be one of {}".format(
+                RETURN_VALUES_ON_CONDITION_FAILURE,
+                RETURN_VALUES_ON_CONDITION_FAILURE_VALUES
+            ))
+        return {
+            RETURN_VALUES_ON_CONDITION_FAILURE: str(return_values_on_condition_failure).upper()
+        }
+
     def get_item_collection_map(self, return_item_collection_metrics):
         """
         Builds the item collection map
@@ -800,7 +813,8 @@ class Connection(object):
                              consistent_read=None,
                              return_values=None,
                              return_consumed_capacity=None,
-                             return_item_collection_metrics=None):
+                             return_item_collection_metrics=None,
+                             return_values_on_condition_failure=None):
         self._check_condition('condition', condition)
 
         operation_kwargs = {}
@@ -825,6 +839,8 @@ class Connection(object):
             operation_kwargs[CONSISTENT_READ] = consistent_read
         if return_values is not None:
             operation_kwargs.update(self.get_return_values_map(return_values))
+        if return_values_on_condition_failure is not None:
+            operation_kwargs.update(self.get_return_values_on_condition_failure_map(return_values_on_condition_failure))
         if return_consumed_capacity is not None:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics is not None:

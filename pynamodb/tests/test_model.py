@@ -784,38 +784,6 @@ class ModelTestCase(TestCase):
             req.return_value = None
             deep_eq(args, params, _assert=True)
 
-        mock_transaction = MagicMock(spec=TransactWrite)
-        response = item.delete(
-            (UserModel.user_id == 'bar') & UserModel.email.contains('@'),
-            in_transaction=mock_transaction
-        )
-        assert response == None
-        mock_transaction.add_delete_item.assert_called_with(
-            operation_kwargs={
-            'Key': {
-                'user_id': {
-                    'S': 'bar'
-                },
-                'user_name': {
-                    'S': 'foo'
-                }
-            },
-            'ConditionExpression': '(#0 = :0 AND contains (#1, :1))',
-            'ExpressionAttributeNames': {
-                '#0': 'user_id',
-                '#1': 'email'
-            },
-            'ExpressionAttributeValues': {
-                ':0': {
-                    'S': 'bar'
-                },
-                ':1': {
-                    'S': '@'
-                }
-            },
-            'TableName': 'UserModel'
-        })
-
     def test_delete_doesnt_do_validation_on_null_attributes(self):
         """
         Model.delete
@@ -829,32 +797,6 @@ class ModelTestCase(TestCase):
             with CarModel.batch_write() as batch:
                 car = CarModel('foo')
                 batch.delete(car)
-
-    def test_condition_check(self):
-        def fake_dynamodb(*args):
-            return MODEL_TABLE_DATA
-
-        with patch(PATCH_METHOD, new=MagicMock(side_effect=fake_dynamodb)):
-            UserModel('foo')
-
-        mock_transaction = MagicMock(spec=TransactWrite)
-        UserModel.condition_check(
-            hash_key='foo',
-            range_key='bar',
-            in_transaction=mock_transaction,
-            condition=(UserModel.user_id.does_not_exist())
-        )
-        mock_transaction.add_condition_check_item.assert_called_with(
-            operation_kwargs={
-                'ConditionExpression': 'attribute_not_exists (#0)',
-                'ExpressionAttributeNames': {'#0': 'user_id'},
-                'TableName': 'UserModel',
-                'Key': {
-                    'user_name': {'S': 'foo'},
-                    'user_id': {'S': 'bar'}
-                }
-            }
-        )
 
     def test_update(self):
         """
@@ -933,34 +875,6 @@ class ModelTestCase(TestCase):
 
             assert item.views is None
             self.assertEqual({'bob'}, item.custom_aliases)
-
-        mock_transaction = MagicMock()
-        response = item.update(
-            actions=[SimpleUserModel.email.set('bleep@bloop.com')],
-            in_transaction=mock_transaction
-        )
-
-        assert response is None
-        mock_transaction.add_update_item.assert_called_with(
-            operation_kwargs={
-                'TableName': 'SimpleModel',
-                'Key': {
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ReturnValues': 'NONE',
-                'UpdateExpression': 'SET #0 = :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'email'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'bleep@bloop.com'
-                    }
-                }
-            }
-        )
 
     def test_save(self):
         """
@@ -1124,29 +1038,6 @@ class ModelTestCase(TestCase):
                 'TableName': 'UserModel'
             }
             deep_eq(args, params, _assert=True)
-
-        mock_transaction = MagicMock()
-        response = item.save(in_transaction=mock_transaction)
-
-        assert response is None
-        mock_transaction.add_save_item.assert_called_with(
-            operation_kwargs={
-            'TableName': 'UserModel',
-            'Item': {
-                'callable_field': {
-                    'N': '42'
-                },
-                'email': {
-                    'S': u'needs_email'
-                },
-                'user_id': {
-                    'S': u'bar'
-                },
-                'user_name': {
-                    'S': u'foo'
-                },
-            },
-        })
 
     def test_filter_count(self):
         """

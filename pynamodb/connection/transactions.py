@@ -1,8 +1,4 @@
-from pynamodb.constants import (
-    RETURN_VALUES_ON_CONDITION_FAILURE, ITEM, RETURN_VALUES, RESPONSES,
-    TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, TRANSACTION_DELETE_REQUEST_PARAMETERS,
-    TRANSACTION_GET_REQUEST_PARAMETERS, TRANSACTION_PUT_REQUEST_PARAMETERS, TRANSACTION_UPDATE_REQUEST_PARAMETERS
-)
+from pynamodb.constants import ITEM, RESPONSES
 from pynamodb.models import _ModelFuture
 
 
@@ -28,14 +24,6 @@ class Transaction(object):
         if exc_type is None and exc_val is None and exc_tb is None:
             self._commit()
 
-    @staticmethod
-    def _format_request_parameters(valid_parameters, operation_kwargs):
-        if RETURN_VALUES in operation_kwargs.keys():
-            operation_kwargs[RETURN_VALUES_ON_CONDITION_FAILURE] = operation_kwargs.pop(RETURN_VALUES)
-        return {
-            key: value for key, value in operation_kwargs.items() if key in valid_parameters
-        }
-
 
 class TransactGet(Transaction):
 
@@ -54,11 +42,10 @@ class TransactGet(Transaction):
         :param range_key:
         :return:
         """
-        operation_kwargs = model_cls.get_operation_kwargs_for_get_item(hash_key, range_key=range_key)
-        get_item = self._format_request_parameters(TRANSACTION_GET_REQUEST_PARAMETERS, operation_kwargs)
+        operation_kwargs = model_cls.get_operation_kwargs_from_class(hash_key, range_key=range_key)
         model_future = _ModelFuture(model_cls)
         self._futures.append(model_future)
-        self._get_items.append(get_item)
+        self._get_items.append(operation_kwargs)
         return model_future
 
     def _update_futures(self):
@@ -85,21 +72,35 @@ class TransactWrite(Transaction):
         self._put_items = []
         self._update_items = []
 
-    def add_condition_check_item(self, operation_kwargs):
-        condition_item = self._format_request_parameters(TRANSACTION_CONDITION_CHECK_REQUEST_PARAMETERS, operation_kwargs)
-        self._condition_check_items.append(condition_item)
+    def condition_check(self, model_cls, hash_key, range_key=None, condition=None):
+        if condition is None:
+            raise TypeError('`condition` cannot be None')
+        operation_kwargs = model_cls.get_operation_kwargs_from_class(
+            hash_key,
+            range_key=range_key,
+            condition=condition
+        )
+        self._condition_check_items.append(operation_kwargs)
 
-    def add_delete_item(self, operation_kwargs):
-        delete_item = self._format_request_parameters(TRANSACTION_DELETE_REQUEST_PARAMETERS, operation_kwargs)
-        self._delete_items.append(delete_item)
+    def delete(self, model, condition=None):
+        operation_kwargs = model.get_operation_kwargs_from_instance(condition=condition)
+        self._delete_items.append(operation_kwargs)
 
-    def add_save_item(self, operation_kwargs):
-        put_item = self._format_request_parameters(TRANSACTION_PUT_REQUEST_PARAMETERS, operation_kwargs)
-        self._put_items.append(put_item)
+    def save(self, model, condition=None, return_values=None):
+        operation_kwargs = model.get_operation_kwargs_from_instance(
+            key=ITEM,
+            condition=condition,
+            return_values_on_condition_failure=return_values
+        )
+        self._put_items.append(operation_kwargs)
 
-    def add_update_item(self, operation_kwargs):
-        update_item = self._format_request_parameters(TRANSACTION_UPDATE_REQUEST_PARAMETERS, operation_kwargs)
-        self._update_items.append(update_item)
+    def update(self, model, actions, condition=None, return_values=None):
+        operation_kwargs = model.get_operation_kwargs_from_instance(
+            actions=actions,
+            condition=condition,
+            return_values_on_condition_failure=return_values
+        )
+        self._update_items.append(operation_kwargs)
 
     def _commit(self):
         self._connection.transact_write_items(
