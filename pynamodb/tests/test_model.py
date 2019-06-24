@@ -12,7 +12,6 @@ import six
 from botocore.client import ClientError
 import pytest
 
-from pynamodb.connection.transactions import TransactWrite
 from pynamodb.tests.deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import DoesNotExist, TableError
