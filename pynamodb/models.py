@@ -119,7 +119,6 @@ class BatchWrite(ModelContextManager):
                 put_items.append(item['item']._serialize(attr_map=True)[attrs_name])
             elif item['action'] == DELETE:
                 delete_items.append(item['item']._get_keys())
-        self.pending_operations = []
         if not len(put_items) and not len(delete_items):
             return
         data = self.model._get_connection().batch_write_item(
@@ -143,6 +142,7 @@ class BatchWrite(ModelContextManager):
                 delete_items=delete_items
             )
             unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
+        self.pending_operations = []
 
 
 class DefaultMeta(object):
