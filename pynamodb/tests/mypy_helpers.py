@@ -14,7 +14,7 @@ def _run_mypy(program: str) -> Iterable[str]:
     with TemporaryDirectory() as tempdirname:
         with open(f'{tempdirname}/__main__.py', 'w') as f:
             f.write(program)
-        error_pattern = re.compile(fr'^{re.escape(f.name)}:(\d+): error: (.*)$')
+        error_pattern = re.compile(fr'^{re.escape(f.name)}:(\d+): (?:error|note): (.*)$')
         stdout, stderr, exit_status = mypy.api.run([
             f.name,
             '--show-traceback',
