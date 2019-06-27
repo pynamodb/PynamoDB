@@ -380,7 +380,7 @@ class Model(AttributeContainer):
         item_data = attrs.get(ITEM, None)
         if item_data is None:
             raise self.DoesNotExist("This item does not exist in the table.")
-        self._deserialize(item_data)
+        self.deserialize(item_data)
 
     @classmethod
     def get(cls,
@@ -692,6 +692,23 @@ class Model(AttributeContainer):
         with open(filename, 'r') as inf:
             cls.loads(inf.read())
 
+    def deserialize(self, attrs):
+        """
+        Sets attributes sent back from DynamoDB on this object
+
+        Useful e.g. when working with DynamoDB Streams to create objects
+        from the received JSON data.
+
+        :param attrs: A dictionary of attributes to update this item with.
+        """
+        for name, attr in self.get_attributes().items():
+            value = attrs.get(attr.attr_name, None)
+            if value is not None:
+                value = value.get(ATTR_TYPE_MAP[attr.attr_type], None)
+                if value is not None:
+                    value = attr.deserialize(value)
+            setattr(self, name, value)
+
     # Private API below
     @classmethod
     def _from_data(cls, data):
@@ -715,7 +732,7 @@ class Model(AttributeContainer):
                 range_keytype: range_key
             }
         item = cls()
-        item._deserialize(attributes)
+        item.deserialize(attributes)
         return item
 
     @classmethod
@@ -896,20 +913,6 @@ class Model(AttributeContainer):
                                               aws_access_key_id=cls.Meta.aws_access_key_id,
                                               aws_secret_access_key=cls.Meta.aws_secret_access_key)
         return cls._connection
-
-    def _deserialize(self, attrs):
-        """
-        Sets attributes sent back from DynamoDB on this object
-
-        :param attrs: A dictionary of attributes to update this item with.
-        """
-        for name, attr in self.get_attributes().items():
-            value = attrs.get(attr.attr_name, None)
-            if value is not None:
-                value = value.get(ATTR_TYPE_MAP[attr.attr_type], None)
-                if value is not None:
-                    value = attr.deserialize(value)
-            setattr(self, name, value)
 
     def _serialize(self, attr_map=False, null_check=True):
         """

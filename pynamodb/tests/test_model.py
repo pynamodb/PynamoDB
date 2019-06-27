@@ -2822,7 +2822,7 @@ class ModelTestCase(TestCase):
             }
         }
         instance = ExplicitRawMapModel()
-        instance._deserialize({'map_attr': map_serialized})
+        instance.deserialize({'map_attr': map_serialized})
         actual = instance.map_attr
         for k, v in six.iteritems(map_native):
             self.assertEqual(v, actual[k])
