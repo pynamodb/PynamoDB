@@ -525,6 +525,9 @@ class TestJSONAttribute:
         encoded = six.u(json.dumps(item))
         assert attr.deserialize(encoded) == item
 
+    def test_json_desrialize_none(self):
+         assert JSONAttribute().deserialize(None) == None
+
     def test_control_chars(self):
         """
         JSONAttribute with control chars
