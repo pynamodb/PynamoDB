@@ -1,13 +1,14 @@
 """
 PynamoDB Indexes
 """
+from inspect import getmembers
+
 from pynamodb.constants import (
     INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, ATTR_TYPE_MAP, KEY_SCHEMA,
     ATTR_DEFINITIONS, META_CLASS_NAME
 )
 from pynamodb.attributes import Attribute
 from pynamodb.types import HASH, RANGE
-from pynamodb.compat import getmembers_issubclass
 from pynamodb.connection.util import pythonic
 from six import with_metaclass
 
@@ -26,7 +27,7 @@ class IndexMeta(type):
                     meta_cls = attrs.get(META_CLASS_NAME)
                     if meta_cls is not None:
                         meta_cls.attributes = None
-                elif issubclass(attr_obj.__class__, (Attribute, )):
+                elif isinstance(attr_obj, Attribute):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
 
@@ -95,7 +96,6 @@ class Index(with_metaclass(IndexMeta)):
              segment=None,
              total_segments=None,
              limit=None,
-             conditional_operator=None,
              last_evaluated_key=None,
              page_size=None,
              consistent_read=None,
@@ -108,7 +108,6 @@ class Index(with_metaclass(IndexMeta)):
             segment=segment,
             total_segments=total_segments,
             limit=limit,
-            conditional_operator=conditional_operator,
             last_evaluated_key=last_evaluated_key,
             page_size=page_size,
             consistent_read=consistent_read,
@@ -159,7 +158,7 @@ class Index(with_metaclass(IndexMeta)):
         """
         if cls.Meta.attributes is None:
             cls.Meta.attributes = {}
-            for name, attribute in getmembers_issubclass(cls, Attribute):
+            for name, attribute in getmembers(cls, lambda o: isinstance(o, Attribute)):
                 cls.Meta.attributes[name] = attribute
         return cls.Meta.attributes
 

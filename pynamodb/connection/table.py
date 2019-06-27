@@ -44,11 +44,10 @@ class TableConnection(object):
         """
         return self.connection.get_meta_table(self.table_name, refresh=refresh)
 
-    def delete_item(self, hash_key,
+    def delete_item(self,
+                    hash_key,
                     range_key=None,
                     condition=None,
-                    expected=None,
-                    conditional_operator=None,
                     return_values=None,
                     return_consumed_capacity=None,
                     return_item_collection_metrics=None):
@@ -60,8 +59,6 @@ class TableConnection(object):
             hash_key,
             range_key=range_key,
             condition=condition,
-            expected=expected,
-            conditional_operator=conditional_operator,
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics)
@@ -70,10 +67,7 @@ class TableConnection(object):
                     hash_key,
                     range_key=None,
                     actions=None,
-                    attribute_updates=None,
                     condition=None,
-                    expected=None,
-                    conditional_operator=None,
                     return_consumed_capacity=None,
                     return_item_collection_metrics=None,
                     return_values=None
@@ -86,10 +80,7 @@ class TableConnection(object):
             hash_key,
             range_key=range_key,
             actions=actions,
-            attribute_updates=attribute_updates,
             condition=condition,
-            expected=expected,
-            conditional_operator=conditional_operator,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
             return_values=return_values)
@@ -98,8 +89,6 @@ class TableConnection(object):
                  range_key=None,
                  attributes=None,
                  condition=None,
-                 expected=None,
-                 conditional_operator=None,
                  return_values=None,
                  return_consumed_capacity=None,
                  return_item_collection_metrics=None):
@@ -112,8 +101,6 @@ class TableConnection(object):
             range_key=range_key,
             attributes=attributes,
             condition=condition,
-            expected=expected,
-            conditional_operator=conditional_operator,
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics)
@@ -155,52 +142,10 @@ class TableConnection(object):
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get)
 
-    def rate_limited_scan(
-             self,
-             filter_condition=None,
-             attributes_to_get=None,
-             page_size=None,
-             limit=None,
-             conditional_operator=None,
-             scan_filter=None,
-             segment=None,
-             total_segments=None,
-             exclusive_start_key=None,
-             timeout_seconds=None,
-             read_capacity_to_consume_per_second=None,
-             allow_rate_limited_scan_without_consumed_capacity=None,
-             max_sleep_between_retry=None,
-             max_consecutive_exceptions=None,
-             consistent_read=None,
-             index_name=None):
-        """
-        Performs the scan operation with rate limited
-        """
-        return self.connection.rate_limited_scan(
-            self.table_name,
-            filter_condition=filter_condition,
-            attributes_to_get=attributes_to_get,
-            page_size=page_size,
-            limit=limit,
-            conditional_operator=conditional_operator,
-            scan_filter=scan_filter,
-            segment=segment,
-            total_segments=total_segments,
-            exclusive_start_key=exclusive_start_key,
-            timeout_seconds=timeout_seconds,
-            read_capacity_to_consume_per_second=read_capacity_to_consume_per_second,
-            allow_rate_limited_scan_without_consumed_capacity=allow_rate_limited_scan_without_consumed_capacity,
-            max_sleep_between_retry=max_sleep_between_retry,
-            max_consecutive_exceptions=max_consecutive_exceptions,
-            consistent_read=consistent_read,
-            index_name=index_name)
-
     def scan(self,
              filter_condition=None,
              attributes_to_get=None,
              limit=None,
-             conditional_operator=None,
-             scan_filter=None,
              return_consumed_capacity=None,
              segment=None,
              total_segments=None,
@@ -215,8 +160,6 @@ class TableConnection(object):
             filter_condition=filter_condition,
             attributes_to_get=attributes_to_get,
             limit=limit,
-            conditional_operator=conditional_operator,
-            scan_filter=scan_filter,
             return_consumed_capacity=return_consumed_capacity,
             segment=segment,
             total_segments=total_segments,
@@ -232,12 +175,9 @@ class TableConnection(object):
               consistent_read=False,
               exclusive_start_key=None,
               index_name=None,
-              key_conditions=None,
-              query_filters=None,
               limit=None,
               return_consumed_capacity=None,
               scan_index_forward=None,
-              conditional_operator=None,
               select=None
               ):
         """
@@ -252,12 +192,9 @@ class TableConnection(object):
             consistent_read=consistent_read,
             exclusive_start_key=exclusive_start_key,
             index_name=index_name,
-            key_conditions=key_conditions,
-            query_filters=query_filters,
             limit=limit,
             return_consumed_capacity=return_consumed_capacity,
             scan_index_forward=scan_index_forward,
-            conditional_operator=conditional_operator,
             select=select)
 
     def describe_table(self):

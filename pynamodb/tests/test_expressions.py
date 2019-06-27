@@ -1,5 +1,6 @@
+from unittest import TestCase
+
 from pynamodb.attributes import ListAttribute, MapAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
-from pynamodb.compat import CompatTestCase as TestCase
 from pynamodb.expressions.condition import size
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.projection import create_projection_expression
@@ -270,6 +271,25 @@ class ConditionExpressionTestCase(TestCase):
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'S': 'bar'}, ':1': {'S': 'baz'}}
 
+    def test_invalid_and(self):
+        condition = self.attribute < 'bar'
+        with self.assertRaises(TypeError):
+            condition &= None
+
+    def test_rand(self):
+        condition = None
+        condition &= self.attribute < 'bar'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0 < :0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
+
+    def test_invalid_rand(self):
+        condition = 42
+        with self.assertRaises(TypeError):
+            condition &= self.attribute < 'bar'
+
     def test_or(self):
         condition = (self.attribute < 'bar') | (self.attribute > 'baz')
         placeholder_names, expression_attribute_values = {}, {}
@@ -277,6 +297,11 @@ class ConditionExpressionTestCase(TestCase):
         assert expression == "(#0 < :0 OR #0 > :1)"
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {':0': {'S': 'bar'}, ':1': {'S': 'baz'}}
+
+    def test_invalid_or(self):
+        condition = self.attribute < 'bar'
+        with self.assertRaises(TypeError):
+            condition |= None
 
     def test_not(self):
         condition = ~(self.attribute < 'bar')
@@ -529,7 +554,7 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {':0': {'NS': ['0', '1']}}
 
     def test_delete_action_set(self):
-        action = NumberSetAttribute(attr_name='foo').delete(set([0, 1]))
+        action = NumberSetAttribute(attr_name='foo').delete({0, 1})
         placeholder_names, expression_attribute_values = {}, {}
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0 :0"

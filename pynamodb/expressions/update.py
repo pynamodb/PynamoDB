@@ -78,7 +78,7 @@ class Update(object):
         elif isinstance(action, DeleteAction):
             self.delete_actions.append(action)
         else:
-            raise ValueError("unsupported action type: '{0}'".format(action.__class__.__name__))
+            raise ValueError("unsupported action type: '{}'".format(action.__class__.__name__))
 
     def serialize(self, placeholder_names, expression_attribute_values):
         expression = None
