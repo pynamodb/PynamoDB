@@ -22,8 +22,8 @@ from pynamodb.constants import (
     PROVISIONED_BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE)
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
-from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
-from pynamodb.tests.deep_eq import deep_eq
+from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
+from .deep_eq import deep_eq
 
 if six.PY3:
     from unittest.mock import patch
