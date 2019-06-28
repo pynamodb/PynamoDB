@@ -7,8 +7,8 @@ from unittest import TestCase
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION, PROVISIONED_BILLING_MODE
 from pynamodb.expressions.operand import Path
-from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
-from pynamodb.tests.response import HttpOK
+from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
+from .response import HttpOK
 
 if six.PY3:
     from unittest.mock import patch

@@ -5,15 +5,15 @@ import base64
 import random
 import json
 import copy
-from unittest import TestCase
 from datetime import datetime, timedelta
+from unittest import TestCase
 
 import six
 from botocore.client import ClientError
 import pytest
 from dateutil.tz import tzutc
 
-from pynamodb.tests.deep_eq import deep_eq
+from .deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import DoesNotExist, TableError
 from pynamodb.types import RANGE
@@ -31,7 +31,7 @@ from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
     BooleanAttribute, ListAttribute, TTLAttribute)
-from pynamodb.tests.data import (
+from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     DESCRIBE_TABLE_DATA_PAY_PER_REQUEST,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
