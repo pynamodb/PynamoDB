@@ -1,6 +1,18 @@
 Release Notes
 =============
 
+v3.4.1
+------
+
+:date: 2019-06-28
+
+This is a backwards compatible, minor release.
+
+Changes in this release:
+
+ * Fix type stubs to include new methods and parameters introduced with time-to-live support
+
+
 v3.4.0
 ------
 
@@ -18,6 +30,7 @@ Contributors to this release:
 
  * @irhkang
  * @ikonst
+
 
 v3.3.3
 ------
