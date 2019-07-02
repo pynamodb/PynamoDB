@@ -255,13 +255,6 @@ class Model(AttributeContainer):
             attributes[self._range_keyname] = range_key
         super(Model, self).__init__(_user_instantiated=_user_instantiated, **attributes)
 
-    def get_hash_key(self):
-        key_name = self._hash_keyname
-        return getattr(self, key_name)
-
-    def get_range_key(self):
-        return getattr(self, self._range_keyname, None) if self._range_keyname is not None else None
-
     @classmethod
     def batch_get(cls, items, consistent_read=None, attributes_to_get=None):
         """
@@ -400,7 +393,6 @@ class Model(AttributeContainer):
                                            key=KEY,
                                            actions=None,
                                            condition=None,
-                                           return_values=None,
                                            return_values_on_condition_failure=None):
         is_update = actions is not None
         args, save_kwargs = self._get_save_args(null_check=not is_update)
@@ -408,7 +400,6 @@ class Model(AttributeContainer):
             key=key,
             actions=actions,
             condition=condition,
-            return_values=return_values,
             return_values_on_condition_failure=return_values_on_condition_failure
         )
         if not is_update:
@@ -421,8 +412,7 @@ class Model(AttributeContainer):
     def get_operation_kwargs_from_class(cls,
                                         hash_key,
                                         range_key=None,
-                                        condition=None
-                                        ):
+                                        condition=None):
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
         return cls._get_connection().get_operation_kwargs(
             hash_key=hash_key,
