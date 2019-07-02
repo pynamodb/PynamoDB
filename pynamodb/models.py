@@ -9,7 +9,8 @@ import warnings
 from inspect import getmembers
 
 from six import add_metaclass
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, TransactionCancelledError, \
+    InvalidStateError
 from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -1035,15 +1036,18 @@ class _ModelFuture:
         self._model_cls = model_cls
         self._model = None
         self._resolved = False
+        self._cancelled = False
 
     def update_with_raw_data(self, data):
-        if data:
+        if data is not None and data != {}:
             self._model = self._model_cls.from_raw_data(data=data)
         self._resolved = True
 
     def get(self):
         if not self._resolved:
-            raise Exception('Cannot get until resolved')
+            raise InvalidStateError()
+        if self._cancelled:
+            raise TransactionCancelledError()
         if self._model:
             return self._model
         raise self._model_cls.DoesNotExist()

@@ -87,6 +87,22 @@ class TableDoesNotExist(PynamoDBException):
         super(TableDoesNotExist, self).__init__(msg)
 
 
+class TransactWriteError(PynamoDBException):
+    msg = ""
+
+
+class TransactGetError(PynamoDBException):
+    msg = ""
+
+
+class InvalidStateError(PynamoDBException):
+    msg = ""
+
+
+class TransactionCancelledError(PynamoDBException):
+    msg = ""
+
+
 class VerboseClientError(botocore.exceptions.ClientError):
     def __init__(self, error_response, operation_name, verbose_properties=None):
         """ Modify the message template to include the desired verbose properties """

@@ -1,4 +1,5 @@
 from pynamodb.constants import ITEM, RESPONSES
+from pynamodb.exceptions import TransactGetError
 from pynamodb.models import _ModelFuture
 
 
@@ -22,7 +23,7 @@ class Transaction(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is None and exc_val is None and exc_tb is None:
-            self._commit()
+            return self._commit()
 
 
 class TransactGet(Transaction):
@@ -52,13 +53,27 @@ class TransactGet(Transaction):
         for model, data in zip(self._futures, self._results):
             model.update_with_raw_data(data[ITEM])
 
+    def _cancel_futures(self):
+        for future in self._futures:
+            future._cancelled = True
+
+    @staticmethod
+    def _get_error_code(error):
+        return error.cause.response['Error'].get('Code')
+
     def _commit(self):
-        response = self._connection.transact_get_items(
-            get_items=self._get_items,
-            return_consumed_capacity=self._return_consumed_capacity
-        )
-        self._results = response[RESPONSES]
-        self._update_futures()
+        try:
+            response = self._connection.transact_get_items(
+                get_items=self._get_items,
+                return_consumed_capacity=self._return_consumed_capacity
+            )
+            self._results = response[RESPONSES]
+            self._update_futures()
+            return response
+        except TransactGetError as exc:
+            if self._get_error_code(exc) == 'TransactionCanceledException':
+                self._cancel_futures()
+            raise
 
 
 class TransactWrite(Transaction):
@@ -71,6 +86,7 @@ class TransactWrite(Transaction):
         self._delete_items = []
         self._put_items = []
         self._update_items = []
+        self.response = None
 
     def condition_check(self, model_cls, hash_key, range_key=None, condition=None):
         if condition is None:
@@ -103,7 +119,7 @@ class TransactWrite(Transaction):
         self._update_items.append(operation_kwargs)
 
     def _commit(self):
-        self._connection.transact_write_items(
+        return self._connection.transact_write_items(
             condition_check_items=self._condition_check_items,
             delete_items=self._delete_items,
             put_items=self._put_items,

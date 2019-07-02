@@ -47,8 +47,8 @@ from pynamodb.constants import (
     RETURN_VALUES_ON_CONDITION_FAILURE_VALUES, RETURN_VALUES_ON_CONDITION_FAILURE)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
-    VerboseClientError
-)
+    VerboseClientError,
+    TransactGetError, TransactWriteError)
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
@@ -984,7 +984,7 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to write transaction items: {0}".format(e), e)
+            raise TransactWriteError("Failed to write transaction items: {0}".format(e), e)
 
     def transact_get_items(self, get_items, return_consumed_capacity=None):
         """
@@ -998,7 +998,7 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to get transaction items: {0}".format(e), e)
+            raise TransactGetError("Failed to get transaction items: {0}".format(e), e)
 
     def batch_write_item(self,
                          table_name,

@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 
 from pynamodb.connection import Connection
-from pynamodb.exceptions import PutError, DoesNotExist
+from pynamodb.exceptions import DoesNotExist, TransactWriteError
 
 from pynamodb.attributes import NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute, BooleanAttribute
 from pynamodb.connection.transactions import TransactGet, TransactWrite
@@ -101,7 +101,7 @@ def test_transact_write__error__idempotent_parameter_mismatch(connection):
         transaction.save(User(1))
         transaction.save(User(2))
 
-    with pytest.raises(PutError) as exc_info:
+    with pytest.raises(TransactWriteError) as exc_info:
         # committing the first time, then adding more info and committing again
         with TransactWrite(connection=connection, client_request_token=client_token) as transaction:
             transaction.save(User(3))
@@ -118,7 +118,7 @@ def test_transact_write__error__idempotent_parameter_mismatch(connection):
 
 @pytest.mark.ddblocal
 def test_transact_write__error__different_regions(connection):
-    with pytest.raises(PutError) as exc_info:
+    with pytest.raises(TransactWriteError) as exc_info:
         with TransactWrite(connection=connection) as transact_write:
             # creating a model in a table outside the region everyone else operates in
             transact_write.save(DifferentRegion(entry_index=0))
@@ -134,7 +134,7 @@ def test_transact_write__error__transaction_cancelled(connection):
     BankStatement(1).save()
 
     # attempt to do this as a transaction with the condition that they don't already exist
-    with pytest.raises(PutError) as exc_info:
+    with pytest.raises(TransactWriteError) as exc_info:
         with TransactWrite(connection=connection) as transaction:
             transaction.save(User(1), condition=(User.user_id.does_not_exist()))
             transaction.save(BankStatement(1), condition=(BankStatement.user_id.does_not_exist()))
@@ -146,7 +146,7 @@ def test_transact_write__error__multiple_operations_on_same_record(connection):
     BankStatement(1).save()
 
     # attempt to do a transaction with multiple operations on the same record
-    with pytest.raises(PutError) as exc_info:
+    with pytest.raises(TransactWriteError) as exc_info:
         with TransactWrite(connection=connection) as transaction:
             transaction.condition_check(BankStatement, 1, condition=(BankStatement.user_id.exists()))
             transaction.update(BankStatement(1), actions=[(BankStatement.balance.add(10))])

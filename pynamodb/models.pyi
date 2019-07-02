@@ -130,6 +130,7 @@ class BatchWrite(Generic[_T], ModelContextManager[_T]):
     def commit(self) -> None: ...
 
 class _ModelFuture(Generic[_T]):
+    _cancelled: bool
     _model_cls: Type[_T]
     _model: Optional[_T]
     _resolved: bool
