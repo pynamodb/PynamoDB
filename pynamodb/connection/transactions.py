@@ -14,10 +14,6 @@ class Transaction(object):
         self._connection = connection
         self._return_consumed_capacity = return_consumed_capacity
 
-    @staticmethod
-    def _get_error_code(error):
-        return error.cause.response['Error'].get('Code')
-
     def _commit(self):
         raise NotImplementedError()
 
@@ -55,10 +51,6 @@ class TransactGet(Transaction):
     def _update_futures(self):
         for model, data in zip(self._futures, self._results):
             model.update_with_raw_data(data[ITEM])
-
-    def _cancel_futures(self):
-        for future in self._futures:
-            future._cancelled = True
 
     def _commit(self):
         response = self._connection.transact_get_items(

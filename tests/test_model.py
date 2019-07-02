@@ -5,12 +5,13 @@ import base64
 import random
 import json
 import copy
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest import TestCase
 
 import six
 from botocore.client import ClientError
 import pytest
+from dateutil.tz import tzutc
 
 from .deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
@@ -29,7 +30,7 @@ from pynamodb.indexes import (
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
-    BooleanAttribute, ListAttribute)
+    BooleanAttribute, ListAttribute, TTLAttribute)
 from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     DESCRIBE_TABLE_DATA_PAY_PER_REQUEST,
@@ -230,6 +231,7 @@ class UserModel(Model):
     zip_code = NumberAttribute(null=True)
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)
+    ttl = TTLAttribute(null=True)
 
 
 class HostSpecificModel(Model):
@@ -428,6 +430,13 @@ class Dog(Animal):
         table_name = 'Dog'
 
     breed = UnicodeAttribute()
+
+
+class TTLModel(Model):
+    class Meta:
+        table_name = 'TTLModel'
+    user_name = UnicodeAttribute(hash_key=True)
+    my_ttl = TTLAttribute(default_for_new=timedelta(minutes=1))
 
 
 class ModelTestCase(TestCase):
@@ -3030,3 +3039,31 @@ class ModelInitTestCase(TestCase):
         self.assertEqual(actual.left.left.value, left_instance.left.value)
         self.assertEqual(actual.right.right.left.value, right_instance.right.left.value)
         self.assertEqual(actual.right.right.value, right_instance.right.value)
+
+    def test_multiple_ttl_attributes(self):
+        with self.assertRaises(ValueError):
+            class BadTTLModel(Model):
+                class Meta:
+                    table_name = 'BadTTLModel'
+                ttl = TTLAttribute(default_for_new=timedelta(minutes=1))
+                another_ttl = TTLAttribute()
+
+    def test_get_ttl_attribute_fails(self):
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = Exception
+            self.assertRaises(Exception, TTLModel.update_ttl, False)
+
+    def test_get_ttl_attribute(self):
+        assert TTLModel._ttl_attribute().attr_name == "my_ttl"
+
+    def test_deserialized(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = SIMPLE_MODEL_TABLE_DATA
+            m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}})
+        assert m.my_ttl is None
+
+    def test_deserialized_with_ttl(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = SIMPLE_MODEL_TABLE_DATA
+            m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}, 'my_ttl': {'N': '1546300800'}})
+        assert m.my_ttl == datetime(2019, 1, 1, tzinfo=tzutc())
