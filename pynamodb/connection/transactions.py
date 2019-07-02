@@ -1,5 +1,4 @@
 from pynamodb.constants import ITEM, RESPONSES
-from pynamodb.exceptions import TransactGetError
 from pynamodb.models import _ModelFuture
 
 
@@ -26,7 +25,6 @@ class Transaction(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        print(exc_type, exc_val)
         if exc_type is None and exc_val is None and exc_tb is None:
             self._commit()
 
@@ -63,17 +61,12 @@ class TransactGet(Transaction):
             future._cancelled = True
 
     def _commit(self):
-        try:
-            response = self._connection.transact_get_items(
-                get_items=self._get_items,
-                return_consumed_capacity=self._return_consumed_capacity
-            )
-            self._results = response[RESPONSES]
-            self._update_futures()
-        except TransactGetError as exc:
-            if self._get_error_code(exc) == 'TransactionCanceledException':
-                self._cancel_futures()
-            raise
+        response = self._connection.transact_get_items(
+            get_items=self._get_items,
+            return_consumed_capacity=self._return_consumed_capacity
+        )
+        self._results = response[RESPONSES]
+        self._update_futures()
         return response
 
 
