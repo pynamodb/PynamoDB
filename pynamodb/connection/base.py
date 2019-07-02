@@ -984,7 +984,7 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TransactWriteError("Failed to write transaction items: {0}".format(e), e)
+            raise TransactWriteError("Failed to write transaction items", e)
 
     def transact_get_items(self, get_items, return_consumed_capacity=None):
         """
@@ -998,7 +998,7 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TransactGetError("Failed to get transaction items: {0}".format(e), e)
+            raise TransactGetError("Failed to get transaction items", e)
 
     def batch_write_item(self,
                          table_name,

@@ -9,8 +9,7 @@ import warnings
 from inspect import getmembers
 
 from six import add_metaclass
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, TransactionCancelledError, \
-    InvalidStateError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError
 from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -21,7 +20,7 @@ from pynamodb.settings import get_settings_value
 from pynamodb.constants import (
     ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
-    NONE, RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES,
+    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ALL_NEW,
     GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, KEYS,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES,
@@ -1036,7 +1035,6 @@ class _ModelFuture:
         self._model_cls = model_cls
         self._model = None
         self._resolved = False
-        self._cancelled = False
 
     def update_with_raw_data(self, data):
         if data is not None and data != {}:
@@ -1046,8 +1044,6 @@ class _ModelFuture:
     def get(self):
         if not self._resolved:
             raise InvalidStateError()
-        if self._cancelled:
-            raise TransactionCancelledError()
         if self._model:
             return self._model
         raise self._model_cls.DoesNotExist()

@@ -88,19 +88,24 @@ class TableDoesNotExist(PynamoDBException):
 
 
 class TransactWriteError(PynamoDBException):
-    msg = ""
+    """
+    Raised when a TransactWrite operation fails
+    """
+    pass
 
 
 class TransactGetError(PynamoDBException):
-    msg = ""
+    """
+    Raised when a TransactGet operation fails
+    """
+    pass
 
 
 class InvalidStateError(PynamoDBException):
-    msg = ""
-
-
-class TransactionCancelledError(PynamoDBException):
-    msg = ""
+    """
+    Raises when the internal state of an operation context is invalid
+    """
+    msg = "Operation in invalid state"
 
 
 class VerboseClientError(botocore.exceptions.ClientError):

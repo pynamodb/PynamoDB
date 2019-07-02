@@ -15,6 +15,10 @@ class Transaction(object):
         self._connection = connection
         self._return_consumed_capacity = return_consumed_capacity
 
+    @staticmethod
+    def _get_error_code(error):
+        return error.cause.response['Error'].get('Code')
+
     def _commit(self):
         raise NotImplementedError()
 
@@ -22,8 +26,9 @@ class Transaction(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        print(exc_type, exc_val)
         if exc_type is None and exc_val is None and exc_tb is None:
-            return self._commit()
+            self._commit()
 
 
 class TransactGet(Transaction):
@@ -57,10 +62,6 @@ class TransactGet(Transaction):
         for future in self._futures:
             future._cancelled = True
 
-    @staticmethod
-    def _get_error_code(error):
-        return error.cause.response['Error'].get('Code')
-
     def _commit(self):
         try:
             response = self._connection.transact_get_items(
@@ -69,11 +70,11 @@ class TransactGet(Transaction):
             )
             self._results = response[RESPONSES]
             self._update_futures()
-            return response
         except TransactGetError as exc:
             if self._get_error_code(exc) == 'TransactionCanceledException':
                 self._cancel_futures()
             raise
+        return response
 
 
 class TransactWrite(Transaction):
