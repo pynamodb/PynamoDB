@@ -8,8 +8,6 @@ class Transaction(object):
     Base class for a type of transaction operation
     """
 
-    _results = None
-
     def __init__(self, connection, return_consumed_capacity=None):
         self._connection = connection
         self._return_consumed_capacity = return_consumed_capacity
@@ -27,10 +25,12 @@ class Transaction(object):
 
 class TransactGet(Transaction):
 
+    _results = None
+
     def __init__(self, *args, **kwargs):
-        super(TransactGet, self).__init__(*args, **kwargs)
         self._get_items = []
         self._futures = []
+        super(TransactGet, self).__init__(*args, **kwargs)
 
     def get(self, model_cls, hash_key, range_key=None):
         """
@@ -72,7 +72,6 @@ class TransactWrite(Transaction):
         self._delete_items = []
         self._put_items = []
         self._update_items = []
-        self.response = None
 
     def condition_check(self, model_cls, hash_key, range_key=None, condition=None):
         if condition is None:
