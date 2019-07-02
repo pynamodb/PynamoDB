@@ -116,6 +116,15 @@ class MetaTable(object):
                 key_names.append(index_range_keyname)
         return key_names
 
+    def has_index_name(self, index_name):
+        """
+        Returns True if the base table has a global or local secondary index with index_name
+        """
+        global_indexes = self.data.get(GLOBAL_SECONDARY_INDEXES)
+        local_indexes = self.data.get(LOCAL_SECONDARY_INDEXES)
+        indexes = (global_indexes or []) + (local_indexes or [])
+        return any(index.get(INDEX_NAME) == index_name for index in indexes)
+
     def get_index_hash_keyname(self, index_name):
         """
         Returns the name of the hash key for a given index
@@ -1166,6 +1175,8 @@ class Connection(object):
         if tbl is None:
             raise TableError("No such table: {}".format(table_name))
         if index_name:
+            if not tbl.has_index_name(index_name):
+                raise ValueError("Table {} has no index: {}".format(table_name, index_name))
             hash_keyname = tbl.get_index_hash_keyname(index_name)
             if not hash_keyname:
                 raise ValueError("No hash key attribute for index: {}".format(index_name))
