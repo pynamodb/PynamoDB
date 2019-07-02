@@ -61,8 +61,8 @@ class Connection:
 
     def get_operation_kwargs(
         self,
-        table_name: Optional[Text] = ...,
-        hash_key: Optional[Any] = ...,
+        table_name: Text,
+        hash_key: Any,
         range_key: Optional[Any] = ...,
         key: Text = ...,
         attributes: Optional[Any] = ...,
@@ -111,6 +111,7 @@ class Connection:
         return_item_collection_metrics: Optional[Any] = ...
     ) -> Dict: ...
 
+    def _get_transact_operation_kwargs(self, client_request_token: Optional[str] = ..., return_consumed_capacity: Optional[Any] = ..., return_item_collection_metrics: Optional[Any] = ...) -> Dict: ...
     def transact_get_items(self, get_items: List[Dict], return_consumed_capacity: Optional[Any] = ...) -> Dict: ...
     def transact_write_items(self, condition_check_items: List[Dict], delete_items: List[Dict], put_items: List[Dict], update_items: List[Dict], client_request_token: Optional[Text] = ..., return_consumed_capacity: Optional[Any] = ..., return_item_collection_metrics: Optional[Any] = ...) -> Dict: ...
 

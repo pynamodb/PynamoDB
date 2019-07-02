@@ -810,14 +810,13 @@ class Connection(object):
         return tbl.get_exclusive_start_key_map(exclusive_start_key)
 
     def get_operation_kwargs(self,
-                             table_name=None,
-                             hash_key=None,
+                             table_name,
+                             hash_key,
                              range_key=None,
                              key=KEY,
                              attributes=None,
                              attributes_to_get=None,
                              actions=None,
-                             client_request_token=None,
                              condition=None,
                              consistent_read=None,
                              return_values=None,
@@ -830,17 +829,14 @@ class Connection(object):
         name_placeholders = {}
         expression_attribute_values = {}
 
-        if table_name is not None and hash_key is not None:
-            operation_kwargs[TABLE_NAME] = table_name
-            operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=key))
+        operation_kwargs[TABLE_NAME] = table_name
+        operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=key))
         if attributes:
             attrs = self.get_item_attribute_map(table_name, attributes)
             operation_kwargs[ITEM].update(attrs[ITEM])
         if attributes_to_get is not None:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
-        if client_request_token is not None:
-            operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
         if condition is not None:
             condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
             operation_kwargs[CONDITION_EXPRESSION] = condition_expression
@@ -949,6 +945,20 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to put item: {}".format(e), e)
 
+    def _get_transact_operation_kwargs(self,
+                                       client_request_token=None,
+                                       return_consumed_capacity=None,
+                                       return_item_collection_metrics=None):
+        operation_kwargs = {}
+        if client_request_token is not None:
+            operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
+        if return_consumed_capacity is not None:
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
+        if return_item_collection_metrics is not None:
+            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
+
+        return operation_kwargs
+
     def transact_write_items(self,
                              condition_check_items,
                              delete_items,
@@ -974,7 +984,7 @@ class Connection(object):
             {TRANSACT_UPDATE: item} for item in update_items
         ])
 
-        operation_kwargs = self.get_operation_kwargs(
+        operation_kwargs = self._get_transact_operation_kwargs(
             client_request_token=client_request_token,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics
@@ -990,7 +1000,7 @@ class Connection(object):
         """
         Performs the TransactGet operation and returns the result
         """
-        operation_kwargs = self.get_operation_kwargs(return_consumed_capacity=return_consumed_capacity)
+        operation_kwargs = self._get_transact_operation_kwargs(return_consumed_capacity=return_consumed_capacity)
         operation_kwargs[TRANSACT_ITEMS] = [
             {TRANSACT_GET: item} for item in get_items
         ]

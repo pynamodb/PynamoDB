@@ -46,7 +46,7 @@ class TableConnection(object):
         return self.connection.get_meta_table(self.table_name, refresh=refresh)
 
     def get_operation_kwargs(self,
-                             hash_key=None,
+                             hash_key,
                              range_key=None,
                              key=KEY,
                              attributes=None,
