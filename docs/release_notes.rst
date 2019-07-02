@@ -48,6 +48,8 @@ Other changes in this release:
 * Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
 * The ``MapAttributeMeta`` class has been removed. Now ``type(MapAttribute) == AttributeContainerMeta``.
 * Removed ``LegacyBooleanAttribute`` and the read-compatibility for it in ``BooleanAttribute``.
+* `None` can now be used to bootstrap condition chaining (#653)
+
 
 v3.4.0
 ------
@@ -66,6 +68,7 @@ Contributors to this release:
 
  * @irhkang
  * @ikonst
+
 
 v3.3.3
 ------
@@ -917,4 +920,5 @@ v0.1.11
 * Better PEP8 Compliance
 * More tests
 * Removed session and endpoint caching to avoid using stale IAM role credentials
+
 
