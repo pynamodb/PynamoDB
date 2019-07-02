@@ -42,7 +42,8 @@ from pynamodb.constants import (
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED, UPDATE_EXPRESSION,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
     CONDITION_EXPRESSION, FILTER_EXPRESSION,
-    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE,  BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE)
+    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE,  BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
+    TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE)
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError
@@ -320,7 +321,7 @@ class Connection(object):
 
         Raises TableDoesNotExist if the specified table does not exist
         """
-        if operation_name not in [DESCRIBE_TABLE, LIST_TABLES, UPDATE_TABLE, DELETE_TABLE, CREATE_TABLE]:
+        if operation_name not in [DESCRIBE_TABLE, LIST_TABLES, UPDATE_TABLE, UPDATE_TIME_TO_LIVE, DELETE_TABLE, CREATE_TABLE]:
             if RETURN_CONSUMED_CAPACITY not in operation_kwargs:
                 operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         self._log_debug(operation_name, operation_kwargs)
@@ -621,6 +622,22 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to create table: {}".format(e), e)
         return data
+
+    def update_time_to_live(self, table_name, ttl_attribute_name):
+        """
+        Performs the UpdateTimeToLive operation
+        """
+        operation_kwargs = {
+            TABLE_NAME: table_name,
+            TIME_TO_LIVE_SPECIFICATION: {
+                ATTR_NAME: ttl_attribute_name,
+                ENABLED: True,
+            }
+        }
+        try:
+            return self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
+        except BOTOCORE_EXCEPTIONS as e:
+            raise TableError("Failed to update TTL on table: {}".format(e), e)
 
     def delete_table(self, table_name):
         """
