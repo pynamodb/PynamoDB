@@ -51,6 +51,18 @@ Other changes in this release:
 * `None` can now be used to bootstrap condition chaining (#653)
 
 
+v3.4.1
+------
+
+:date: 2019-06-28
+
+This is a backwards compatible, minor release.
+
+Changes in this release:
+
+* Fix type stubs to include new methods and parameters introduced with time-to-live support
+
+
 v3.4.0
 ------
 
@@ -60,14 +72,14 @@ This is a backwards compatible, minor release.
 
 Changes in this release:
 
- * Adds a TTLAttribute that specifies when items expire (#259)
- * Enables time-to-live on a DynamoDB table if the corresponding model has a TTLAttribute
- * Adds a default_for_new parameter for Attribute which is a default that applies to new items only
+* Adds a TTLAttribute that specifies when items expire (#259)
+* Enables time-to-live on a DynamoDB table if the corresponding model has a TTLAttribute
+* Adds a default_for_new parameter for Attribute which is a default that applies to new items only
 
 Contributors to this release:
 
- * @irhkang
- * @ikonst
+* @irhkang
+* @ikonst
 
 
 v3.3.3
@@ -135,7 +147,6 @@ New features in this release:
 * Externalizes AWS Credentials. (#426)
 * Add migration support for LegacyBooleanAttribute. (#404, #405)
 * Rate limited Page Iterator. (#481)
-
 
 Fixes in this release:
 
@@ -920,5 +931,4 @@ v0.1.11
 * Better PEP8 Compliance
 * More tests
 * Removed session and endpoint caching to avoid using stale IAM role credentials
-
 
