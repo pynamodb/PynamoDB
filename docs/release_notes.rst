@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-v4.0.0b1
+v4.0.0b2
 --------
 
 :date: 2019-04-10
@@ -15,11 +15,9 @@ This is major release and contains breaking changes. Please read the notes below
 Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP requests, we'll be doing the same (via ``botocore``). This means the following:
 
 * The ``session_cls`` option is no longer supported.
-
 * The ``request_timeout_seconds`` parameter is no longer supported. ``connect_timeout_seconds`` and ``read_timeout_seconds`` are available instead.
 
   + Note that the timeouts for connection and read are now ``15`` and ``30`` seconds respectively. This represents a change from the previous ``60`` second combined ``requests`` timeout.
-
 * *Wrapped* exceptions (i.e ``exc.cause``) that were from ``requests.exceptions`` will now be comparable ones from ``botocore.exceptions`` instead.
 
 **Deprecation of old APIs**
@@ -46,10 +44,24 @@ Other changes in this release:
 
 * Python 2.6 is no longer supported. 4.x.x will be the last major release to support Python 2.7 given the upcoming EOL.
 * Added the ``max_pool_connection`` and ``extra_headers`` settings to replace common use cases for ``session_cls``
-* Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook. Other botocore hooks remain unimplemented.
+* Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook.
 * Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
 * The ``MapAttributeMeta`` class has been removed. Now ``type(MapAttribute) == AttributeContainerMeta``.
 * Removed ``LegacyBooleanAttribute`` and the read-compatibility for it in ``BooleanAttribute``.
+* `None` can now be used to bootstrap condition chaining (#653)
+
+
+v3.4.1
+------
+
+:date: 2019-06-28
+
+This is a backwards compatible, minor release.
+
+Changes in this release:
+
+* Fix type stubs to include new methods and parameters introduced with time-to-live support
+
 
 v3.4.0
 ------
@@ -60,14 +72,15 @@ This is a backwards compatible, minor release.
 
 Changes in this release:
 
- * Adds a TTLAttribute that specifies when items expire (#259)
- * Enables time-to-live on a DynamoDB table if the corresponding model has a TTLAttribute
- * Adds a default_for_new parameter for Attribute which is a default that applies to new items only
+* Adds a TTLAttribute that specifies when items expire (#259)
+* Enables time-to-live on a DynamoDB table if the corresponding model has a TTLAttribute
+* Adds a default_for_new parameter for Attribute which is a default that applies to new items only
 
 Contributors to this release:
 
- * @irhkang
- * @ikonst
+* @irhkang
+* @ikonst
+
 
 v3.3.3
 ------
@@ -134,7 +147,6 @@ New features in this release:
 * Externalizes AWS Credentials. (#426)
 * Add migration support for LegacyBooleanAttribute. (#404, #405)
 * Rate limited Page Iterator. (#481)
-
 
 Fixes in this release:
 
