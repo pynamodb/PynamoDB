@@ -50,7 +50,7 @@ class TransactGet(Transaction):
 
     def _update_futures(self):
         for model, data in zip(self._futures, self._results):
-            model.update_with_raw_data(data[ITEM])
+            model.update_with_raw_data(data.get(ITEM))
 
     def _commit(self):
         response = self._connection.transact_get_items(
