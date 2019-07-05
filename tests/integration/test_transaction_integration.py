@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 
 from pynamodb.connection import Connection
-from pynamodb.exceptions import DoesNotExist, TransactWriteError, TransactGetError
+from pynamodb.exceptions import DoesNotExist, TransactWriteError, TransactGetError, InvalidStateError
 
 from pynamodb.attributes import NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute, BooleanAttribute
 from pynamodb.connection.transactions import TransactGet, TransactWrite
@@ -182,6 +182,22 @@ def test_transact_get(connection):
     assert statement1.balance == 0
     assert user2.user_id == statement2.user_id == 2
     assert statement2.balance == 100
+
+
+@pytest.mark.ddblocal
+def test_transact_get__does_not_exist(connection):
+    with TransactGet(connection=connection) as transaction:
+        _user_future = transaction.get(User, 100)
+    with pytest.raises(User.DoesNotExist):
+        _user_future.get()
+
+
+@pytest.mark.ddblocal
+def test_transact_get__invalid_state(connection):
+    with TransactGet(connection=connection) as transaction:
+        _user_future = transaction.get(User, 100)
+        with pytest.raises(InvalidStateError):
+            _user_future.get()
 
 
 @pytest.mark.ddblocal

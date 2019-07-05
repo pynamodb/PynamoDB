@@ -38,6 +38,11 @@ class TestTransactGet:
 
 class TestTransactWrite:
 
+    def test_condition_check__no_condition(self):
+        with pytest.raises(TypeError):
+            with TransactWrite(connection=MagicMock()) as transaction:
+                transaction.condition_check(MagicMock(__name__='MockModel'), hash_key=1, condition=None)
+
     def test_commit(self, mocker):
         mock_connection = mocker.MagicMock(spec=Connection)
         with TransactWrite(connection=mock_connection) as t:
