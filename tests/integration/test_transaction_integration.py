@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 
 from pynamodb.connection import Connection
-from pynamodb.exceptions import DoesNotExist, TransactWriteError
+from pynamodb.exceptions import DoesNotExist, TransactWriteError, TransactGetError
 
 from pynamodb.attributes import NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute, BooleanAttribute
 from pynamodb.connection.transactions import TransactGet, TransactWrite
@@ -93,6 +93,10 @@ def get_error_code(error):
     return error.cause.response['Error'].get('Code')
 
 
+def get_error_message(error):
+    return error.cause.response['Error'].get('Message')
+
+
 @pytest.mark.ddblocal
 def test_transact_write__error__idempotent_parameter_mismatch(connection):
     client_token = str(uuid.uuid4())
@@ -128,7 +132,7 @@ def test_transact_write__error__different_regions(connection):
 
 
 @pytest.mark.ddblocal
-def test_transact_write__error__transaction_cancelled(connection):
+def test_transact_write__error__transaction_cancelled__condition_check_failure(connection):
     # create a users and a bank statements for them
     User(1).save()
     BankStatement(1).save()
@@ -139,6 +143,28 @@ def test_transact_write__error__transaction_cancelled(connection):
             transaction.save(User(1), condition=(User.user_id.does_not_exist()))
             transaction.save(BankStatement(1), condition=(BankStatement.user_id.does_not_exist()))
     assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
+    assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+
+
+@pytest.mark.ddblocal
+def test_transact_get__error__transaction_cancelled__conflict(connection):
+    User(1).save()
+    BankStatement(1).save()
+
+    transact_get = TransactGet(connection=connection)
+    transact_get.get(User, 1)
+    transact_get.get(BankStatement, 1)
+
+    transact_write = TransactWrite(connection=connection)
+    transact_write.delete(User(1))
+    transact_write.update(BankStatement(1), actions=[BankStatement.balance.set(0)])
+
+    # attempting to GET records as they're being modified in another transaction
+    with pytest.raises(TransactGetError) as exc_info:
+        transact_write._commit()
+        transact_get._commit()
+    assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
+    assert 'TransactionConflict' in get_error_message(exc_info.value)
 
 
 @pytest.mark.ddblocal
