@@ -14,6 +14,16 @@ class PynamoDBException(Exception):
         self.cause = cause
         super(PynamoDBException, self).__init__(self.msg)
 
+    def get_cause_response_code(self):
+        if hasattr(self.cause, 'response'):
+            return self.cause.response.get('Error', {}).get('Code')
+        return None
+
+    def get_cause_response_message(self):
+        if hasattr(self.cause, 'response'):
+            return self.cause.response.get('Error', {}).get('Message')
+        return None
+
 
 class PynamoDBConnectionError(PynamoDBException):
     """
