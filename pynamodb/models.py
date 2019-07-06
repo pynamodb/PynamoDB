@@ -1068,9 +1068,7 @@ class _ModelFuture:
         self._resolved = False
 
     def update_with_raw_data(self, data):
-        if data is None:
-            return
-        if data != {}:
+        if data is None and data != {}:
             self._model = self._model_cls.from_raw_data(data=data)
         self._resolved = True
 
