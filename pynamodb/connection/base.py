@@ -989,18 +989,18 @@ class Connection(object):
         Performs the TransactWrite operation and returns the result
         """
         transact_items = []
-        transact_items.extend([
+        transact_items.extend(
             {TRANSACT_CONDITION_CHECK: item} for item in condition_check_items
-        ])
-        transact_items.extend([
+        )
+        transact_items.extend(
             {TRANSACT_DELETE: item} for item in delete_items
-        ])
-        transact_items.extend([
+        )
+        transact_items.extend(
             {TRANSACT_PUT: item} for item in put_items
-        ])
-        transact_items.extend([
+        )
+        transact_items.extend(
             {TRANSACT_UPDATE: item} for item in update_items
-        ])
+        )
 
         operation_kwargs = self._get_transact_operation_kwargs(
             client_request_token=client_request_token,

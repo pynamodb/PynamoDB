@@ -337,13 +337,12 @@ class Model(AttributeContainer):
         kwargs.update(condition=condition)
         return self._get_connection().delete_item(*args, **kwargs)
 
-    def update(self, actions, condition=None, in_transaction=None):
+    def update(self, actions, condition=None):
         """
         Updates an item using the UpdateItem operation.
 
         :param actions: a list of Action updates to apply
         :param condition: an optional Condition on which to update
-        :param in_transaction: optional TransactWrite
         """
         if not isinstance(actions, list) or len(actions) == 0:
             raise TypeError("the value of `actions` is expected to be a non-empty list")
