@@ -907,6 +907,30 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
+    def test_transact_write_items(self):
+        conn = Connection()
+        with patch(PATCH_METHOD) as req:
+            conn.transact_write_items([], [], [], [])
+            self.assertEqual(req.call_args[0][0], 'TransactWriteItems')
+            self.assertDictEqual(
+                req.call_args[0][1], {
+                    'TransactItems': [],
+                    'ReturnConsumedCapacity': 'TOTAL'
+                }
+            )
+
+    def test_transact_get_items(self):
+        conn = Connection()
+        with patch(PATCH_METHOD) as req:
+            conn.transact_get_items([])
+            self.assertEqual(req.call_args[0][0], 'TransactGetItems')
+            self.assertDictEqual(
+                req.call_args[0][1], {
+                    'TransactItems': [],
+                    'ReturnConsumedCapacity': 'TOTAL'
+                }
+            )
+
     def test_batch_write_item(self):
         """
         Connection.batch_write_item
