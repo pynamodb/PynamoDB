@@ -14,12 +14,12 @@ def test_get_cause_response_code():
             operation_name='test'
         )
     )
-    assert error.get_cause_response_code() == 'hello'
+    assert error.cause_response_code == 'hello'
 
 
 def test_get_cause_response_code__no_code():
     error = PutError()
-    assert error.get_cause_response_code() is None
+    assert error.cause_response_code is None
 
 
 def test_get_cause_response_message():
@@ -33,10 +33,10 @@ def test_get_cause_response_message():
             operation_name='test'
         )
     )
-    assert error.get_cause_response_message() == 'hiya'
+    assert error.cause_response_message == 'hiya'
 
 
 def test_get_cause_response_message__no_message():
     error = PutError()
-    assert error.get_cause_response_message() is None
+    assert error.cause_response_message is None
 
