@@ -1,6 +1,6 @@
 import pytest
 import six
-from pynamodb.attributes import NumberAttribute
+from pynamodb.attributes import NumberAttribute, UnicodeAttribute
 
 from pynamodb.connection import Connection
 from pynamodb.connection.transactions import Transaction, TransactGet, TransactWrite
@@ -19,6 +19,7 @@ class MockModel(Model):
 
     mock_hash = NumberAttribute(hash_key=True)
     mock_range = NumberAttribute(range_key=True)
+    mock_toot = UnicodeAttribute(null=True)
 
 
 MOCK_TABLE_DESCRIPTOR = {
@@ -86,16 +87,39 @@ class TestTransactWrite:
         with patch(PATCH_METHOD) as req:
             req.return_value = MOCK_TABLE_DESCRIPTOR
             with TransactWrite(connection=connection) as t:
-                t._condition_check_items = [{}]
-                t._delete_items = [{}]
-                t._put_items = [{}]
-                t._update_items = [{}]
+                t.condition_check(MockModel, 1, 3, condition=(MockModel.mock_hash.does_not_exist()))
+                t.delete(MockModel(2, 4))
+                t.save(MockModel(3, 5))
+                t.update(MockModel(4, 6), actions=[MockModel.mock_toot.set('hello')], return_values='ALL_OLD')
+
+        expected_condition_checks = [{
+            'ConditionExpression': 'attribute_not_exists (#0)',
+            'ExpressionAttributeNames': {'#0': 'mock_hash'},
+            'Key': {'MockHash': {'N': '1'}, 'MockRange': {'N': '3'}},
+            'TableName': 'mock'}
+        ]
+        expected_deletes = [{
+            'Key': {'MockHash': {'N': '2'}, 'MockRange': {'N': '4'}},
+            'TableName': 'mock'
+        }]
+        expected_puts = [{
+            'Item': {'MockHash': {'N': '3'}, 'MockRange': {'N': '5'}},
+            'TableName': 'mock'
+        }]
+        expected_updates = [{
+            'TableName': 'mock',
+            'Key': {'MockHash': {'N': '4'}, 'MockRange': {'N': '6'}},
+            'ReturnValuesOnConditionCheckFailure': 'ALL_OLD',
+            'UpdateExpression': 'SET #0 = :0',
+            'ExpressionAttributeNames': {'#0': 'mock_toot'},
+            'ExpressionAttributeValues': {':0': {'S': 'hello'}}
+        }]
 
         mock_connection_transact_write.assert_called_once_with(
-            condition_check_items=[{}],
-            delete_items=[{}],
-            put_items=[{}],
-            update_items=[{}],
+            condition_check_items=expected_condition_checks,
+            delete_items=expected_deletes,
+            put_items=expected_puts,
+            update_items=expected_updates,
             client_request_token=None,
             return_consumed_capacity=None,
             return_item_collection_metrics=None
