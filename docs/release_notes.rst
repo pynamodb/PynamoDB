@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-v4.0.0b2
+v4.0.0b3
 --------
 
 :date: 2019-04-10
@@ -39,6 +39,10 @@ removed. See a complete list of affected ``Model`` methods below:
 When upgrading, pay special attention to use of ``**filters`` and ``**expected_values``, as you'll need to check for arbitrary names that correspond to
 attribute names. Also keep an eye out for kwargs like ``user_id__eq=5`` or ``email__null=True``, which are no longer supported. If you're not already using
 ``mypy`` to type check your code, it can help you catch cases like these.
+
+New features in this release:
+
+* Support for Transactions (``TransactGet`` and ``TransactWrite``) (#618)
 
 Other changes in this release:
 
