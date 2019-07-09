@@ -565,6 +565,8 @@ class UTCDateTimeAttribute(Attribute):
                 return datetime.strptime(value, DATETIME_FORMAT)
             except ValueError:
                 return parse(value)
+        except IndexError:
+            return parse(value)
 
 
 class NullAttribute(Attribute):
