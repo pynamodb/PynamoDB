@@ -20,6 +20,16 @@ Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP 
   + Note that the timeouts for connection and read are now ``15`` and ``30`` seconds respectively. This represents a change from the previous ``60`` second combined ``requests`` timeout.
 * *Wrapped* exceptions (i.e ``exc.cause``) that were from ``requests.exceptions`` will now be comparable ones from ``botocore.exceptions`` instead.
 
+**Key attribute types must match table**
+
+The previous release would call `DescribeTable` to discover table metadata
+and would use the key types as defined in the DynamoDB table. This could obscure
+type mismatches e.g. where a table's hash key is a number (`N`) in DynamoDB,
+but defined in PynamoDB as a `UnicodeAttribute`.
+
+With this release, we're always using the PynamoDB model's definition
+of all attributes including the key attributes.
+
 **Deprecation of old APIs**
 
 Support for `Legacy Conditional Parameters <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.html>`_ has been
