@@ -33,7 +33,7 @@ Here's an example of using a context manager for a `TransactWrite` operation:
 .. code-block:: python
 
     with TransactWrite(client_request_toke='super-unique-key') as transaction:
-        """ attempting to transfer funds from user1's account to user2's """
+        # attempting to transfer funds from user1's account to user2's
         transfer_amount = 1000
         transaction.update(
             BankStatement(user_id='user1'),
