@@ -1,7 +1,7 @@
 Transaction Operations
 ======================
 
-Transact operations are supported using context managers. The DynamoDB API has limits for the number of items in
+Transact operations are supported using context managers. The DynamoDB API has limits on the number of items in
 each request, but PynamoDB doesn't currently handle grouping or paginating, so this is something you must handle on your
 own.
 
