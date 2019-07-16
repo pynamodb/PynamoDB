@@ -557,7 +557,7 @@ class UTCDateTimeAttribute(Attribute):
         """
         try:
             return _fast_parse_utc_datestring(value)
-        except ValueError:
+        except (ValueError, IndexError):
             try:
                 # Attempt to parse the datetime with the datetime format used
                 # by default when storing UTCDateTimeAttributes.  This is signifantly
