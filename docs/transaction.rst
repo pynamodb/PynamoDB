@@ -5,13 +5,10 @@ Transact operations are similar to Batch operations, with the key differences be
 inclusion of condition checks, and they all must fail or succeed together.
 
 
-Transaction operations are supported using context managers. The DynamoDB API has limits on the number of items in
-each request, but PynamoDB doesn't currently handle grouping or paginating, so this is something you must handle on your
-own.
+Transaction operations are supported using context managers. Keep in mind that DynamoDB imposes limits on the number of
+items that a single transaction can contain. PynamoDB doesn't currently handle automatic grouping or paginating, so this
+is something you must handle on your own.
 
-.. note::
-
-    An ordered array of up to 25 `TransactWriteItem` objects, each of which contains a `ConditionCheck`, `Put`, `Update`, or `Delete` object. These can operate on items in different tables, but the tables must reside in the same AWS account and Region, and no two of them can operate on the same item.
 
 Suppose you have defined a BankStatement model, like in the example below.
 
@@ -36,9 +33,16 @@ Here's an example of using a context manager for a `TransactWrite` operation:
 
 .. code-block:: python
 
+    from pynamodb.connection import Connection
+    from pynamodb.connection.transactions import TransactWrite
+
+    # Two existing bank statements in the following states
+    user1_statement = BankStatement('user1', account_balance=2000, is_active=True).save()
+    user2_statement = BankStatement('user2', account_balance=0, is_active=True).save()
+
     connection = Connection()
 
-    with TransactWrite(connection=connection, client_request_toke='super-unique-key') as transaction:
+    with TransactWrite(connection=connection, client_request_token='super-unique-key') as transaction:
         # attempting to transfer funds from user1's account to user2's
         transfer_amount = 1000
         transaction.update(
@@ -46,14 +50,59 @@ Here's an example of using a context manager for a `TransactWrite` operation:
             actions=[BankStatement.account_balance.add(transfer_amount * -1)],
             condition=(
                 (BankStatement.account_balance >= transfer_amount) &
-                (BankStatement.is_active)
+                (BankStatement.is_active == True)
             )
         )
         transaction.update(
             BankStatement(user_id='user2'),
             actions=[BankStatement.account_balance.add(transfer_amount)],
-            condition=(BankStatement.is_active)
+            condition=(BankStatement.is_active == True)
         )
+
+    user1_statement.refresh()
+    user2_statement.refresh()
+
+    assert user1_statement.account_balance == 1000
+    assert user2_statement.account_balance == 1000
+
+
+Now, say you make another attempt to debit one of the accounts when they don't have enough money in the bank:
+
+.. code-block:: python
+
+    from pynamodb.exceptions import TransactWriteError
+
+    assert user1_statement.account_balance == 1000
+    assert user2_statement.account_balance == 1000
+
+    try:
+        with TransactWrite(connection=connection, client_request_token='another-super-unique-key') as transaction:
+            # attempting to transfer funds from user1's account to user2's
+            transfer_amount = 2000
+            transaction.update(
+                BankStatement(user_id='user1'),
+                actions=[BankStatement.account_balance.add(transfer_amount * -1)],
+                condition=(
+                    (BankStatement.account_balance >= transfer_amount) &
+                    (BankStatement.is_active == True)
+                )
+            )
+            transaction.update(
+                BankStatement(user_id='user2'),
+                actions=[BankStatement.account_balance.add(transfer_amount)],
+                condition=(BankStatement.is_active == True)
+            )
+    except TransactWriteError as e:
+        # Because the condition check on the account balance failed,
+        # the entire transaction should be cancelled
+        assert e.cause_response_code == 'TransactionCanceledException'
+
+        user1_statement.refresh()
+        user2_statement.refresh()
+        # and both models should be unchanged
+        assert user1_statement.account_balance == 1000
+        assert user2_statement.account_balance == 1000
+
 
 Condition Check
 ---------------
