@@ -5,7 +5,7 @@ Transact operations are similar to Batch operations, with the key differences be
 inclusion of condition checks, and they all must fail or succeed together.
 
 
-Transact operations are supported using context managers. The DynamoDB API has limits on the number of items in
+Transaction operations are supported using context managers. The DynamoDB API has limits on the number of items in
 each request, but PynamoDB doesn't currently handle grouping or paginating, so this is something you must handle on your
 own.
 
@@ -39,7 +39,7 @@ Here's an example of using a context manager for a `TransactWrite` operation:
     connection = Connection()
 
     with TransactWrite(connection=connection, client_request_toke='super-unique-key') as transaction:
-        """ attempting to transfer funds from user1's account to user2's """
+        # attempting to transfer funds from user1's account to user2's
         transfer_amount = 1000
         transaction.update(
             BankStatement(user_id='user1'),
