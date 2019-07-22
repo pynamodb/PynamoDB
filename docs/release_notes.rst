@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-v4.0.0b2
+v4.0.0b3
 --------
 
 :date: 2019-04-10
@@ -19,6 +19,16 @@ Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP 
 
   + Note that the timeouts for connection and read are now ``15`` and ``30`` seconds respectively. This represents a change from the previous ``60`` second combined ``requests`` timeout.
 * *Wrapped* exceptions (i.e ``exc.cause``) that were from ``requests.exceptions`` will now be comparable ones from ``botocore.exceptions`` instead.
+
+**Key attribute types must match table**
+
+The previous release would call `DescribeTable` to discover table metadata
+and would use the key types as defined in the DynamoDB table. This could obscure
+type mismatches e.g. where a table's hash key is a number (`N`) in DynamoDB,
+but defined in PynamoDB as a `UnicodeAttribute`.
+
+With this release, we're always using the PynamoDB model's definition
+of all attributes including the key attributes.
 
 **Deprecation of old APIs**
 
@@ -39,6 +49,10 @@ removed. See a complete list of affected ``Model`` methods below:
 When upgrading, pay special attention to use of ``**filters`` and ``**expected_values``, as you'll need to check for arbitrary names that correspond to
 attribute names. Also keep an eye out for kwargs like ``user_id__eq=5`` or ``email__null=True``, which are no longer supported. If you're not already using
 ``mypy`` to type check your code, it can help you catch cases like these.
+
+New features in this release:
+
+* Support for Transactions (``TransactGet`` and ``TransactWrite``) (#618)
 
 Other changes in this release:
 

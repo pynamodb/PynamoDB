@@ -22,6 +22,22 @@ class TableConnection:
         aws_secret_access_key: Optional[str] = ...,
     ) -> None: ...
 
+    def get_operation_kwargs(
+        self,
+        hash_key,
+        range_key: Optional[Any] = ...,
+        key: Text = ...,
+        attributes: Optional[Any] = ...,
+        attributes_to_get: Optional[Any] = ...,
+        actions: Optional[Sequence[Action]] = ...,
+        condition: Optional[Condition] = ...,
+        consistent_read: bool = ...,
+        return_values: Optional[Any] = ...,
+        return_consumed_capacity: Optional[Any] = ...,
+        return_item_collection_metrics: Optional[Any] = ...,
+        return_values_on_condition_failure: Optional[Any] = ...
+    ) -> Dict: ...
+
     def delete_item(
         self,
         hash_key,

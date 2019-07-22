@@ -43,6 +43,7 @@ venv
 pip-log.txt
 
 # Unit test / coverage reports
+build/
 .coverage
 cover/
 .tox
@@ -60,6 +61,7 @@ cover/
 
 # PyCharm
 .idea/
+build/
 
 # Ignore Cache
 .cache/

@@ -9,7 +9,7 @@ import warnings
 from inspect import getmembers
 
 from six import add_metaclass
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError
 from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
@@ -29,7 +29,8 @@ from pynamodb.constants import (
     BATCH_WRITE_PAGE_LIMIT,
     META_CLASS_NAME, REGION, HOST, NULL,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
-    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE)
+    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE
+)
 
 
 log = logging.getLogger(__name__)
@@ -356,6 +357,7 @@ class Model(AttributeContainer):
 
         kwargs.update(condition=condition)
         kwargs.update(actions=actions)
+
         data = self._get_connection().update_item(*args, **kwargs)
         for name, value in data[ATTRIBUTES].items():
             attr_name = self._dynamo_to_python_attr(name)
@@ -386,6 +388,37 @@ class Model(AttributeContainer):
             raise self.DoesNotExist("This item does not exist in the table.")
         self._deserialize(item_data)
 
+    def get_operation_kwargs_from_instance(self,
+                                           key=KEY,
+                                           actions=None,
+                                           condition=None,
+                                           return_values_on_condition_failure=None):
+        is_update = actions is not None
+        args, save_kwargs = self._get_save_args(null_check=not is_update)
+        kwargs = dict(
+            key=key,
+            actions=actions,
+            condition=condition,
+            return_values_on_condition_failure=return_values_on_condition_failure
+        )
+        if not is_update:
+            kwargs.update(save_kwargs)
+        elif pythonic(RANGE_KEY) in save_kwargs:
+            kwargs[pythonic(RANGE_KEY)] = save_kwargs[pythonic(RANGE_KEY)]
+        return self._get_connection().get_operation_kwargs(*args, **kwargs)
+
+    @classmethod
+    def get_operation_kwargs_from_class(cls,
+                                        hash_key,
+                                        range_key=None,
+                                        condition=None):
+        hash_key, range_key = cls._serialize_keys(hash_key, range_key)
+        return cls._get_connection().get_operation_kwargs(
+            hash_key=hash_key,
+            range_key=range_key,
+            condition=condition
+        )
+
     @classmethod
     def get(cls,
             hash_key,
@@ -397,8 +430,11 @@ class Model(AttributeContainer):
 
         :param hash_key: The hash key of the desired item
         :param range_key: The range key of the desired item, only used when appropriate.
+        :param consistent_read
+        :param attributes_to_get
         """
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
+
         data = cls._get_connection().get_item(
             hash_key,
             range_key=range_key,
@@ -1016,3 +1052,28 @@ class Model(AttributeContainer):
         if range_key is not None:
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key
+
+
+class _ModelFuture:
+    """
+    A placeholder object for a model that does not exist yet
+
+    For example: when performing a TransactGet request, this is a stand-in for a model that will be returned
+    when the operation is complete
+    """
+    def __init__(self, model_cls):
+        self._model_cls = model_cls
+        self._model = None
+        self._resolved = False
+
+    def update_with_raw_data(self, data):
+        if data is not None and data != {}:
+            self._model = self._model_cls.from_raw_data(data=data)
+        self._resolved = True
+
+    def get(self):
+        if not self._resolved:
+            raise InvalidStateError()
+        if self._model:
+            return self._model
+        raise self._model_cls.DoesNotExist()
