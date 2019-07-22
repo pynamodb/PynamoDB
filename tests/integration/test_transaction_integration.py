@@ -7,7 +7,7 @@ from pynamodb.connection import Connection
 from pynamodb.exceptions import DoesNotExist, TransactWriteError, TransactGetError, InvalidStateError
 
 from pynamodb.attributes import NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute, BooleanAttribute
-from pynamodb.connection.transactions import TransactGet, TransactWrite
+from pynamodb.transactions import TransactGet, TransactWrite
 
 from pynamodb.models import Model
 
