@@ -3,7 +3,7 @@ import six
 from pynamodb.attributes import NumberAttribute, UnicodeAttribute
 
 from pynamodb.connection import Connection
-from pynamodb.connection.transactions import Transaction, TransactGet, TransactWrite
+from pynamodb.transactions import Transaction, TransactGet, TransactWrite
 from pynamodb.models import Model
 from tests.test_base_connection import PATCH_METHOD
 
