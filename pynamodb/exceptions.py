@@ -119,7 +119,7 @@ class TransactError(PynamoDBException):
         if self.cause_response_code != 'TransactionCanceledException':
             return None
         reason_list = self._get_reason_list_from_message(self.cause_response_message)
-        return [item for item in zip(transact_items, reason_list)]
+        return list(zip(transact_items, reason_list))
 
 
 class TransactWriteError(TransactError):
