@@ -1,8 +1,11 @@
 """
 PynamoDB exceptions
 """
-
+import re
 import botocore.exceptions
+
+
+TRANSACTION_CANCELED_REGEX = re.compile(r'\[([A-Za-z]+,?\s?)+\]')
 
 
 class PynamoDBException(Exception):
@@ -95,14 +98,38 @@ class TableDoesNotExist(PynamoDBException):
         super(TableDoesNotExist, self).__init__(msg)
 
 
-class TransactWriteError(PynamoDBException):
+class TransactError(PynamoDBException):
+
+    def __init__(self, transact_items, *args, **kwargs):
+        super(TransactError, self).__init__(*args, **kwargs)
+        self._cancel_reasons = self.parse_cancel_reasons(transact_items=transact_items)
+
+    @property
+    def cancel_reasons(self):
+        return self._cancel_reasons
+
+    @staticmethod
+    def _get_reason_list_from_message(message):
+        reasons = TRANSACTION_CANCELED_REGEX.search(message)
+        if not reasons:
+            return None
+        return reasons.group()[1:-1].split(', ')
+
+    def parse_cancel_reasons(self, transact_items):
+        if self.cause_response_code != 'TransactionCanceledException':
+            return None
+        reason_list = self._get_reason_list_from_message(self.cause_response_message)
+        return [item for item in zip(transact_items, reason_list)]
+
+
+class TransactWriteError(TransactError):
     """
     Raised when a TransactWrite operation fails
     """
     pass
 
 
-class TransactGetError(PynamoDBException):
+class TransactGetError(TransactError):
     """
     Raised when a TransactGet operation fails
     """

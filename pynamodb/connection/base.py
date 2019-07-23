@@ -1012,21 +1012,22 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TransactWriteError("Failed to write transaction items", e)
+            raise TransactWriteError(transact_items=transact_items, msg="Failed to write transaction items", cause=e)
 
     def transact_get_items(self, get_items, return_consumed_capacity=None):
         """
         Performs the TransactGet operation and returns the result
         """
         operation_kwargs = self._get_transact_operation_kwargs(return_consumed_capacity=return_consumed_capacity)
-        operation_kwargs[TRANSACT_ITEMS] = [
+        transact_items = [
             {TRANSACT_GET: item} for item in get_items
         ]
+        operation_kwargs[TRANSACT_ITEMS] = transact_items
 
         try:
             return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TransactGetError("Failed to get transaction items", e)
+            raise TransactGetError(transact_items=transact_items, msg="Failed to get transaction items", cause=e)
 
     def batch_write_item(self,
                          table_name,
