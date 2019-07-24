@@ -2,7 +2,7 @@ Rate-Limited Operation
 ================
 
 `Scan`, `Query` and `Count` operations can be rate-limited based on the consumed capacities returned from DynamoDB.
-Simply specify the `rate_limit` argument when calling these methods.
+Simply specify the `rate_limit` argument when calling these methods. Rate limited writes are not currently supported, although workarounds are discussed below. 
 
 .. note::
 
@@ -11,7 +11,7 @@ Simply specify the `rate_limit` argument when calling these methods.
     writing speed allowed by the environment, will not have any effect.
 
 Example Usage
-^^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 Suppose that you have defined a `User` Model for the examples below.
 
@@ -41,7 +41,7 @@ Here is an example using `rate-limit` in while scaning the `User` model
 
 
 Query
-^^^^^^^^^^^^^
+^^^^^
 
 You can use `rate-limit` when querying items from your table:
 
@@ -53,7 +53,7 @@ You can use `rate-limit` when querying items from your table:
 
 
 Count
-^^^^^^^^^^^^^
+^^^^^
 
 You can use `rate-limit` when counting items in your table:
 
@@ -62,4 +62,22 @@ You can use `rate-limit` when counting items in your table:
     # Using only 15 RCU per second
     count = User.count(rate_limit = 15):
     print("Count : {}".format(count))
+    
+Unsupported Scenarios: Rate limiting Writes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Rate limiting writes are currently not supported. One workaround for this is to keep a count that gets increased based on the time passed, and only batch that number of writes (called Leaky bucket algorithm). The pseudocode below assumes writes
+are happening constantly. In the case that they're not, sleeping during low utilization could also be useful.
+
+.. code-block:: python
+
+    def write(items):
+    while True:
+       allowance= min(
+                   allowance + time_passed/RATE_OF_WRITING, 
+                   MAX_ALLOWED_RATE
+                   )
+       number_of_items_to_be_written = min(int(allowance), len(items))
+       batch_write(items[:number_of_items_to_be_written])
+       allowance -= number_of_items_to_be_written
+       items = items[number_of_items_to_be_written:]
 
