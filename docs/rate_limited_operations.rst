@@ -2,7 +2,8 @@ Rate-Limited Operation
 ================
 
 `Scan`, `Query` and `Count` operations can be rate-limited based on the consumed capacities returned from DynamoDB.
-Simply specify the `rate_limit` argument when calling these methods. Rate limited batch writes are not currently supported, although workarounds are discussed below. 
+Simply specify the `rate_limit` argument when calling these methods. Rate limited batch writes are not currently supported,
+but if you would like to see it in a future version, please add a feature request for it in Issues.
 
 .. note::
 
@@ -63,22 +64,3 @@ You can use `rate-limit` when counting items in your table:
     count = User.count(rate_limit = 15):
     print("Count : {}".format(count))
     
-Unsupported Scenarios: Rate limiting Writes
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Rate limiting writes are currently not supported. One workaround for this is to keep a count that gets increased based on the time passed, and only batch that number of writes (called Leaky bucket algorithm). The **pseudocode** below assumes writes are happening constantly. In the case that they're not, sleeping during low utilization could also be useful.
-
-.. code-block:: python
-    # Note: This is pseudocode
-    def write(items):
-        while True:
-            allowance= min(
-                       allowance + time_passed/RATE_OF_WRITING, 
-                       MAX_ALLOWED_RATE
-                       )
-             number_of_items_to_be_written = min(int(allowance), len(items))
-             batch_write(items[:number_of_items_to_be_written])
-             allowance -= number_of_items_to_be_written
-             items = items[number_of_items_to_be_written:]
-             # Optional
-             sleep(some_time)
-
