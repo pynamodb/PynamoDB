@@ -79,6 +79,6 @@ Rate limiting writes are currently not supported. One workaround for this is to 
              batch_write(items[:number_of_items_to_be_written])
              allowance -= number_of_items_to_be_written
              items = items[number_of_items_to_be_written:]
-             #optional
+             # Optional
              sleep(some_time)
 
