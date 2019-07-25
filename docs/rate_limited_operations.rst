@@ -2,7 +2,8 @@ Rate-Limited Operation
 ================
 
 `Scan`, `Query` and `Count` operations can be rate-limited based on the consumed capacities returned from DynamoDB.
-Simply specify the `rate_limit` argument when calling these methods.
+Simply specify the `rate_limit` argument when calling these methods. Rate limited batch writes are not currently supported,
+but if you would like to see it in a future version, please add a feature request for it in Issues.
 
 .. note::
 
@@ -11,7 +12,7 @@ Simply specify the `rate_limit` argument when calling these methods.
     writing speed allowed by the environment, will not have any effect.
 
 Example Usage
-^^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 Suppose that you have defined a `User` Model for the examples below.
 
@@ -41,7 +42,7 @@ Here is an example using `rate-limit` in while scaning the `User` model
 
 
 Query
-^^^^^^^^^^^^^
+^^^^^
 
 You can use `rate-limit` when querying items from your table:
 
@@ -53,7 +54,7 @@ You can use `rate-limit` when querying items from your table:
 
 
 Count
-^^^^^^^^^^^^^
+^^^^^
 
 You can use `rate-limit` when counting items in your table:
 
@@ -62,4 +63,4 @@ You can use `rate-limit` when counting items in your table:
     # Using only 15 RCU per second
     count = User.count(rate_limit = 15):
     print("Count : {}".format(count))
-
+    
