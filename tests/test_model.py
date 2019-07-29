@@ -190,6 +190,7 @@ class SimpleUserModel(Model):
     views = NumberAttribute(null=True)
     is_active = BooleanAttribute(null=True)
     signature = UnicodeAttribute(null=True)
+    ttl = TTLAttribute(null=True)
 
 
 class CustomAttrIndex(LocalSecondaryIndex):
@@ -806,10 +807,12 @@ class ModelTestCase(TestCase):
                 car = CarModel('foo')
                 batch.delete(car)
 
-    def test_update(self):
+    @patch('time.time')
+    def test_update(self, mock_time):
         """
         Model.update
         """
+        mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
         self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
         item = SimpleUserModel('foo', is_active=True, email='foo@example.com', signature='foo')
 
@@ -839,7 +842,8 @@ class ModelTestCase(TestCase):
                 SimpleUserModel.is_active.set(None),
                 SimpleUserModel.signature.set(None),
                 SimpleUserModel.custom_aliases.set(['bob']),
-                SimpleUserModel.numbers.delete(0, 1)
+                SimpleUserModel.numbers.delete(0, 1),
+                SimpleUserModel.ttl.set(timedelta(seconds=60)),
             ])
 
             args = req.call_args[0][1]
@@ -851,14 +855,15 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3 REMOVE #4 DELETE #5 :4',
+                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3, #4 = :4 REMOVE #5 DELETE #6 :5',
                 'ExpressionAttributeNames': {
                     '#0': 'email',
                     '#1': 'is_active',
                     '#2': 'signature',
                     '#3': 'aliases',
-                    '#4': 'views',
-                    '#5': 'numbers'
+                    '#4': 'ttl',
+                    '#5': 'views',
+                    '#6': 'numbers'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
@@ -874,6 +879,9 @@ class ModelTestCase(TestCase):
                         'SS': ['bob']
                     },
                     ':4': {
+                        'N': str(1559692800 + 60)
+                    },
+                    ':5': {
                         'NS': ['0', '1']
                     }
                 },

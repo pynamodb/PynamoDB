@@ -503,22 +503,27 @@ class TTLAttribute(Attribute):
     """
     attr_type = NUMBER
 
-    def __set__(self, instance, value):
+    def _normalize(self, value):
         """
-        Converts assigned values to a UTC datetime
+        Converts value to a UTC datetime
         """
+        if value is None:
+            return
         if isinstance(value, timedelta):
             value = int(time.time() + value.total_seconds())
         elif isinstance(value, datetime):
             if value.tzinfo is None:
                 raise ValueError("datetime must be timezone-aware")
             value = calendar.timegm(value.utctimetuple())
-        elif value is not None:
+        else:
             raise ValueError("TTLAttribute value must be a timedelta or datetime")
-        attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
-        if value is not None:
-            value = datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
-        instance.attribute_values[attr_name] = value
+        return datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
+
+    def __set__(self, instance, value):
+        """
+        Converts assigned values to a UTC datetime
+        """
+        super(TTLAttribute, self).__set__(instance, self._normalize(value))
 
     def serialize(self, value):
         """
@@ -526,7 +531,7 @@ class TTLAttribute(Attribute):
         """
         if value is None:
             return None
-        return json.dumps(calendar.timegm(value.utctimetuple()))
+        return json.dumps(calendar.timegm(self._normalize(value).utctimetuple()))
 
     def deserialize(self, value):
         """
