@@ -13,7 +13,7 @@ def test_binary_attribute_update(ddb_url):
         pkey = UnicodeAttribute(hash_key=True)
         data = BinaryAttribute()
 
-    DataModel.create_table(read_capacity_units=1, write_capacity_units=1)
+    DataModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
     data = b'\x00hey\xfb'
     pkey = 'pkey'
     DataModel(pkey, data=data).save()
@@ -33,13 +33,13 @@ def test_binary_set_attribute_update(ddb_url):
         pkey = UnicodeAttribute(hash_key=True)
         data = BinarySetAttribute()
 
-    DataModel.create_table(read_capacity_units=1, write_capacity_units=1)
-    data = set([b'\x00hey\xfb', b'\x00beautiful\xfb'])
+    DataModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+    data = {b'\x00hey\xfb', b'\x00beautiful\xfb'}
     pkey = 'pkey'
     DataModel(pkey, data=data).save()
     m = DataModel.get(pkey)
     assert m.data == data
 
-    new_data = set([b'\xff'])
+    new_data = {b'\xff'}
     m.update(actions=[DataModel.data.set(new_data)])
     assert new_data == m.data

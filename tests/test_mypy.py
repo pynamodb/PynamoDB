@@ -5,7 +5,7 @@ Note: The expected error strings may change in a future version of mypy.
 import pytest
 
 pytest.importorskip('mypy')  # we only install mypy in python>=3.6 tests
-pytest.register_assert_rewrite('pynamodb.tests.mypy_helpers')
+pytest.register_assert_rewrite('tests.mypy_helpers')
 from .mypy_helpers import assert_mypy_output  # noqa
 
 
@@ -42,6 +42,42 @@ def test_model_query():
 
     # test conditions are optional
     MyModel.query(123, range_key_condition=None, filter_condition=None)
+    """)
+
+
+def test_pagination():
+    assert_mypy_output("""
+    from pynamodb.attributes import NumberAttribute
+    from pynamodb.models import Model
+
+    class MyModel(Model):
+        my_attr = NumberAttribute()
+
+    result_iterator = MyModel.query(123)
+    for model in result_iterator:
+        reveal_type(model)  # E: Revealed type is '__main__.MyModel*'
+    if result_iterator.last_evaluated_key:
+        reveal_type(result_iterator.last_evaluated_key['my_attr'])  # E: Revealed type is 'builtins.dict*[builtins.str, Any]'
+    """)
+
+
+def test_model_update():
+    assert_mypy_output("""
+    from pynamodb.attributes import NumberAttribute
+    from pynamodb.models import Model
+
+    class MyModel(Model):
+        my_attr = NumberAttribute()
+
+    my_model = MyModel()
+    my_model.update(actions=[
+        # test update expressions
+        MyModel.my_attr.set(MyModel.my_attr + 123),
+        MyModel.my_attr.set(123 + MyModel.my_attr),
+        MyModel.my_attr.set(MyModel.my_attr - 123),
+        MyModel.my_attr.set(123 - MyModel.my_attr),
+        MyModel.my_attr.set(MyModel.my_attr | 123),
+    ])
     """)  # noqa: E501
 
 

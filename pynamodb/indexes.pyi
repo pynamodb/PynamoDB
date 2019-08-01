@@ -1,4 +1,5 @@
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Text
+
 
 class IndexMeta(type):
     def __init__(cls, name, bases, attrs) -> None: ...
@@ -9,7 +10,16 @@ class Index(metaclass=IndexMeta):
     @classmethod
     def count(cls, hash_key, consistent_read: bool = ..., **filters) -> int: ...
     @classmethod
-    def query(self, hash_key, scan_index_forward: Optional[Any] = ..., consistent_read: bool = ..., limit: Optional[Any] = ..., last_evaluated_key: Optional[Any] = ..., attributes_to_get: Optional[Any] = ..., **filters): ...
+    def query(
+        cls,
+        hash_key,
+        scan_index_forward: Optional[Any] = ...,
+        consistent_read: bool = ...,
+        limit: Optional[Any] = ...,
+        last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
+        attributes_to_get: Optional[Any] = ...,
+        **filters,
+    ): ...
 
 class GlobalSecondaryIndex(Index): ...
 class LocalSecondaryIndex(Index): ...

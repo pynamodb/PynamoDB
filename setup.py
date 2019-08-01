@@ -24,14 +24,14 @@ if sys.argv[-1] == 'publish':
 
 install_requires = [
     'six',
-    'botocore>=1.2.0',
+    'botocore>=1.12.54',
     'python-dateutil>=2.1,<3.0.0',
 ]
 
 setup(
     name='pynamodb',
     version=__import__('pynamodb').__version__,
-    packages=find_packages(),
+    packages=find_packages(exclude=('tests',)),
     url='http://jlafon.io/pynamodb.html',
     author='Jharrod LaFon',
     author_email='jlafon@eyesopen.com',

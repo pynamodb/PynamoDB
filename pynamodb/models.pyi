@@ -1,3 +1,4 @@
+
 from .attributes import Attribute
 from .exceptions import DoesNotExist as DoesNotExist
 from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar, Text, Union
@@ -26,6 +27,8 @@ KeyType = Union[Text, bytes, float, int, Tuple]
 class Model(metaclass=MetaModel):
     DoesNotExist = DoesNotExist
     attribute_values: Dict[Text, Any]
+    _hash_keyname: Optional[str]
+    _range_keyname: Optional[str]
     _connection: Optional[TableConnection]
     def __init__(self, hash_key: Optional[KeyType] = ..., range_key: Optional[Any] = ..., **attrs) -> None: ...
     @classmethod
@@ -34,15 +37,15 @@ class Model(metaclass=MetaModel):
     def batch_get(cls: Type[_T], items: Iterable[Union[KeyType, Iterable[KeyType]]], consistent_read: Optional[bool] = ..., attributes_to_get: Optional[Sequence[Text]] = ...) -> Iterator[_T]: ...
     @classmethod
     def batch_write(cls: Type[_T], auto_commit: bool = ...) -> BatchWrite[_T]: ...
-    def delete(self, condition: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., **expected_values) -> Any: ...
-    def update(self, attributes: Optional[Dict[Text, Dict[Text, Any]]] = ..., actions: Optional[List[Any]] = ..., condition: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., **expected_values) -> Any: ...
-    def update_item(self, attribute: Text, value: Optional[Any] = ..., action: Optional[Text] = ..., conditional_operator: Optional[Text] = ..., **expected_values): ...
-    def save(self, condition: Optional[Any] = ..., conditional_operator: Optional[Text] = ..., **expected_values) -> Dict[str, Any]: ...
+    def delete(self, condition: Optional[Any] = ...) -> Any: ...
+    def update(self, actions: List[Any], condition: Optional[Condition] = ...) -> Any: ...
+    def save(self, condition: Optional[Condition] = ...) -> Dict[str, Any]: ...
     def refresh(self, consistent_read: bool = ...): ...
     @classmethod
     def get(cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ..., consistent_read: bool = ...) -> _T: ...
     @classmethod
     def from_raw_data(cls: Type[_T], data) -> _T: ...
+
     @classmethod
     def count(
         cls: Type[_T],
@@ -53,8 +56,8 @@ class Model(metaclass=MetaModel):
         index_name: Optional[Text] = ...,
         limit: Optional[int] = ...,
         rate_limit: Optional[float] = ...,
-        **filters
     ) -> int: ...
+
     @classmethod
     def query(
         cls: Type[_T],
@@ -64,33 +67,12 @@ class Model(metaclass=MetaModel):
         consistent_read: bool = ...,
         index_name: Optional[Text] = ...,
         scan_index_forward: Optional[Any] = ...,
-        conditional_operator: Optional[Text] = ...,
         limit: Optional[int] = ...,
-        last_evaluated_key: Optional[Any] = ...,
+        last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
         attributes_to_get: Optional[Iterable[Text]] = ...,
         page_size: Optional[int] = ...,
-        **filters
+        rate_limit: Optional[float] = ...,
     ) -> ResultIterator[_T]: ...
-    @classmethod
-    def rate_limited_scan(
-        cls: Type[_T],
-        filter_condition: Optional[Condition] = ...,
-        attributes_to_get: Optional[Sequence[Text]] = ...,
-        segment: Optional[int] = ...,
-        total_segments: Optional[int] = ...,
-        limit: Optional[int] = ...,
-        conditional_operator: Optional[Text] = ...,
-        last_evaluated_key: Optional[Any] = ...,
-        page_size: Optional[int] = ...,
-        timeout_seconds: Optional[int] = ...,
-        read_capacity_to_consume_per_second: int = ...,
-        allow_rate_limited_scan_without_consumed_capacity: Optional[bool] = ...,
-        max_sleep_between_retry: int = ...,
-        max_consecutive_exceptions: int = ...,
-        consistent_read: Optional[bool] = ...,
-        index_name: Optional[str] = ...,
-        **filters: Any
-    ) -> Iterator[_T]: ...
 
     @classmethod
     def scan(
@@ -99,10 +81,9 @@ class Model(metaclass=MetaModel):
         segment: Optional[int] = ...,
         total_segments: Optional[int] = ...,
         limit: Optional[int] = ...,
-        conditional_operator: Optional[Text] = ...,
-        last_evaluated_key: Optional[Any] = ...,
+        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
         page_size: Optional[int] = ...,
-        **filters
+        rate_limit: Optional[float] = ...,
     ) -> ResultIterator[_T]: ...
 
     @classmethod
@@ -112,7 +93,16 @@ class Model(metaclass=MetaModel):
     @classmethod
     def describe_table(cls): ...
     @classmethod
-    def create_table(cls: Type[_T], wait: bool = ..., read_capacity_units: Optional[Any] = ..., write_capacity_units: Optional[Any] = ...): ...
+    def create_table(
+        cls: Type[_T],
+        wait: bool = ...,
+        read_capacity_units: Optional[Any] = ...,
+        write_capacity_units: Optional[Any] = ...,
+        billing_mode: Optional[Any] = ...,
+        ignore_update_ttl_errors: bool = ...
+    ): ...
+    @classmethod
+    def update_ttl(cls, ignore_update_ttl_errors: bool): ...
     @classmethod
     def dumps(cls): ...
     @classmethod
@@ -125,6 +115,8 @@ class Model(metaclass=MetaModel):
     def add_throttle_record(cls, records): ...
     @classmethod
     def get_throttle(cls): ...
+    @classmethod
+    def _ttl_attribute(cls): ...
     @classmethod
     def get_attributes(cls) -> Dict[str, Attribute]: ...
     @classmethod
@@ -147,3 +139,11 @@ class BatchWrite(Generic[_T], ModelContextManager[_T]):
     def __exit__(self, exc_type, exc_val, exc_tb) -> None: ...
     pending_operations: Any
     def commit(self) -> None: ...
+
+class _ModelFuture(Generic[_T]):
+    _model_cls: Type[_T]
+    _model: Optional[_T]
+    _resolved: bool
+    def __init__(self, model_cls: Type[_T]) -> None: ...
+    def update_with_raw_data(self, data: Dict) -> None: ...
+    def get(self) -> _T: ...
