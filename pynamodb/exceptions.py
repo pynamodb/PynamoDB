@@ -14,6 +14,14 @@ class PynamoDBException(Exception):
         self.cause = cause
         super(PynamoDBException, self).__init__(self.msg)
 
+    @property
+    def cause_response_code(self):
+        return getattr(self.cause, 'response', {}).get('Error', {}).get('Code')
+
+    @property
+    def cause_response_message(self):
+        return getattr(self.cause, 'response', {}).get('Error', {}).get('Message')
+
 
 class PynamoDBConnectionError(PynamoDBException):
     """
@@ -83,8 +91,29 @@ class TableDoesNotExist(PynamoDBException):
     Raised when an operation is attempted on a table that doesn't exist
     """
     def __init__(self, table_name):
-        msg = "Table does not exist: `{0}`".format(table_name)
+        msg = "Table does not exist: `{}`".format(table_name)
         super(TableDoesNotExist, self).__init__(msg)
+
+
+class TransactWriteError(PynamoDBException):
+    """
+    Raised when a TransactWrite operation fails
+    """
+    pass
+
+
+class TransactGetError(PynamoDBException):
+    """
+    Raised when a TransactGet operation fails
+    """
+    pass
+
+
+class InvalidStateError(PynamoDBException):
+    """
+    Raises when the internal state of an operation context is invalid
+    """
+    msg = "Operation in invalid state"
 
 
 class VerboseClientError(botocore.exceptions.ClientError):

@@ -108,25 +108,19 @@ first name begins with 'D':
 
 .. code-block:: python
 
-    for user in UserModel.query("John", first_name__begins_with="D"):
+    for user in UserModel.query("Denver", UserModel.first_name.startswith("J"):
         print(user.first_name)
 
 Examples of ways to query your table with filter conditions:
 
 .. code-block:: python
 
-    for user in UserModel.query("John", filter_condition= (UserModel.email=="djohn@company.org")):
+    for user in UserModel.query("Denver", UserModel.email=="djohn@company.org"):
         print(user.first_name)
 
 .. code-block:: python
 
-    for user in UserModel.query("John", UserModel.email=="djohn@company.org"):
-        print(user.first_name)
-
-.. code-block:: python
-
-    # Deprecated, use UserModel.email=="djohn@company.org" instead
-    for user in UserModel.query("John", email__eq="djohn@company.org"):
+    for user in UserModel.query("Denver", UserModel.email=="djohn@company.org"):
         print(user.first_name)
 
 Retrieve an existing user:
@@ -228,7 +222,7 @@ Want to backup and restore a table? No problem.
 Features
 ========
 
-* Python 3.3, 3.4, 2.6, and 2.7 support
+* Python >= 3.3, and 2.7 support
 * An ORM-like interface with query and scan filters
 * Compatible with DynamoDB Local
 * Supports the entire DynamoDB API
@@ -238,6 +232,6 @@ Features
 * Provides iterators for working with queries, scans, that are automatically paginated
 * Automatic pagination for bulk operations
 * Complex queries
-* Support for Global and Local Secondary Indexes
 * Batch operations with automatic pagination
 * Iterators for working with Query and Scan operations
+
