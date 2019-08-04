@@ -9,8 +9,12 @@ import warnings
 from inspect import getmembers
 
 from six import add_metaclass
+
+from pynamodb.expressions.condition import NotExists, Comparison
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError
-from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute
+from pynamodb.attributes import (
+    Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
+)
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
@@ -172,6 +176,13 @@ class MetaModel(AttributeContainerMeta):
                 cls._hash_keyname = attr_name
             if attribute.is_range_key:
                 cls._range_keyname = attr_name
+            if isinstance(attribute, VersionAttribute):
+                if cls._version_attribute_name:
+                    raise ValueError(
+                        "The model has more than one Version attribute: {}, {}"
+                        .format(cls._version_attribute_name, attr_name)
+                    )
+                cls._version_attribute_name = attr_name
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
@@ -238,6 +249,7 @@ class Model(AttributeContainer):
     _connection = None
     _index_classes = None
     DoesNotExist = DoesNotExist
+    _version_attribute_name = None
 
     def __init__(self, hash_key=None, range_key=None, _user_instantiated=True, **attributes):
         """
@@ -334,6 +346,10 @@ class Model(AttributeContainer):
         Deletes this object from dynamodb
         """
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
+        version_condition = self._handle_version_attribute(kwargs)
+        if version_condition is not None:
+            condition &= version_condition
+
         kwargs.update(condition=condition)
         return self._get_connection().delete_item(*args, **kwargs)
 
@@ -348,6 +364,9 @@ class Model(AttributeContainer):
             raise TypeError("the value of `actions` is expected to be a non-empty list")
 
         args, save_kwargs = self._get_save_args(null_check=False)
+        version_condition = self._handle_version_attribute(save_kwargs, actions=actions)
+        if version_condition is not None:
+            condition &= version_condition
         kwargs = {
             pythonic(RETURN_VALUES):  ALL_NEW,
         }
@@ -371,8 +390,13 @@ class Model(AttributeContainer):
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args()
+        version_condition = self._handle_version_attribute(serialized_attributes=kwargs)
+        if version_condition is not None:
+            condition &= version_condition
         kwargs.update(condition=condition)
-        return self._get_connection().put_item(*args, **kwargs)
+        data = self._get_connection().put_item(*args, **kwargs)
+        self.update_local_version_attribute()
+        return data
 
     def refresh(self, consistent_read=False):
         """
@@ -394,7 +418,16 @@ class Model(AttributeContainer):
                                            condition=None,
                                            return_values_on_condition_failure=None):
         is_update = actions is not None
+        is_delete = actions is None and key is KEY
         args, save_kwargs = self._get_save_args(null_check=not is_update)
+
+        version_condition = self._handle_version_attribute(
+            serialized_attributes={} if is_delete else save_kwargs,
+            actions=actions
+        )
+        if version_condition is not None:
+            condition &= version_condition
+
         kwargs = dict(
             key=key,
             actions=actions,
@@ -880,6 +913,43 @@ class Model(AttributeContainer):
         if attributes:
             kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return args, kwargs
+
+    def _handle_version_attribute(self, serialized_attributes, actions=None):
+        """
+        Handles modifying the request to set or increment the version attribute.
+
+        :param serialized_attributes: A dictionary mapping attribute names to serialized values.
+        :param actions: A non-empty list when performing an update, otherwise None.
+        """
+        if self._version_attribute_name is None:
+            return
+
+        version_attribute = self.get_attributes()[self._version_attribute_name]
+        version_attribute_value = getattr(self, self._version_attribute_name)
+
+        if version_attribute_value:
+            version_condition = version_attribute == version_attribute_value
+            if actions:
+                actions.append(version_attribute.add(1))
+            elif pythonic(ATTRIBUTES) in serialized_attributes:
+                serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+                    version_attribute, version_attribute_value + 1, null_check=True
+                )
+        else:
+            version_condition = version_attribute.does_not_exist()
+            if actions:
+                actions.append(version_attribute.set(1))
+            elif pythonic(ATTRIBUTES) in serialized_attributes:
+                serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+                    version_attribute, 1, null_check=True
+                )
+
+        return version_condition
+
+    def update_local_version_attribute(self):
+        if self._version_attribute_name:
+            value = getattr(self, self._version_attribute_name, None) or 0
+            setattr(self, self._version_attribute_name, value + 1)
 
     @classmethod
     def _hash_key_attribute(cls):

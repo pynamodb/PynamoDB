@@ -5,8 +5,8 @@ from datetime import datetime
 from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
 from pynamodb.attributes import (
-    UnicodeAttribute, BinaryAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute
-)
+    UnicodeAttribute, BinaryAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute,
+    VersionAttribute)
 
 import pytest
 
@@ -51,6 +51,7 @@ def test_model_integration(ddb_url):
         epoch = UTCDateTimeAttribute(default=datetime.now)
         content = BinaryAttribute(null=True)
         scores = NumberSetAttribute()
+        version = VersionAttribute()
 
     if not TestModel.exists():
         print("Creating table")
@@ -100,3 +101,4 @@ def test_model_integration(ddb_url):
         print("Item queried from index: {}".format(item.view))
 
     print(query_obj.update([TestModel.view.add(1)], condition=TestModel.forum.exists()))
+    TestModel.delete_table()

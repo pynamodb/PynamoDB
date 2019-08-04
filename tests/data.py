@@ -1412,3 +1412,38 @@ DOG_TABLE_DATA = {
         "TableStatus": "ACTIVE"
     }
 }
+
+VERSIONED_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "name",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "email",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "version",
+                "AttributeType": "N"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 42,
+        "KeySchema": [
+            {
+                "AttributeName": "name",
+                "KeyType": "HASH"
+            },
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "VersionedModel",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}

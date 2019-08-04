@@ -18,7 +18,7 @@ from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute,
     ListAttribute, JSONAttribute, TTLAttribute, _get_value_for_deserialize, _fast_parse_utc_datestring,
-)
+    VersionAttribute)
 from pynamodb.constants import (
     DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, BOOLEAN,
@@ -1004,3 +1004,18 @@ class TestMapAndListAttribute:
         assert deserialized == inp
         assert serialize_mock.call_args_list == [call(1), call(2)]
         assert deserialize_mock.call_args_list == [call('1'), call('2')]
+
+
+class TestVersionAttribute:
+    def test_serialize(self):
+        attr = VersionAttribute()
+        assert attr.attr_type == NUMBER
+        assert attr.serialize(3.141) == '3'
+        assert attr.serialize(1) == '1'
+        assert attr.serialize(12345678909876543211234234324234) == '12345678909876543211234234324234'
+
+    def test_deserialize(self):
+        attr = VersionAttribute()
+        assert attr.deserialize('1') == 1
+        assert attr.deserialize('3.141') == 3
+        assert attr.deserialize('12345678909876543211234234324234') == 12345678909876543211234234324234
