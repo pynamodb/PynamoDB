@@ -517,6 +517,11 @@ class TestTTLAttribute:
             model = AttributeTestModel()
             model.ttl_attr = 'wrong type'
 
+    @patch('time.time')
+    def test_serialize_timedelta(self, mock_time):
+        mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
+        assert TTLAttribute().serialize(timedelta(seconds=60)) == str(1559692800 + 60)
+
     def test_serialize_none(self):
         model = AttributeTestModel()
         model.ttl_attr = None
