@@ -29,6 +29,13 @@ Suppose you have defined a BankStatement model, like in the example below.
 Transact Writes
 ^^^^^^^^^^^^^^^
 
+A `TransactWrite`:code: can be initialized with the following parameters:
+
+* `connection`:code: (required) - the `Connection <https://pynamodb.readthedocs.io/en/latest/api.html#pynamodb.connection.Connection>`_ used to make the request
+* `client_request_token`:code: - an idempotency key for the request (`see here <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ClientRequestToken>`_)
+* `return_consumed_capacity`:code: - determines the level of detail about provisioned throughput consumption that is returned in the response (`see here <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ReturnConsumedCapacity>`_)
+* `return_item_collection_metrics`:code: - determines whether item collection metrics are returned (`see here <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ReturnItemCollectionMetrics>`_)
+
 Here's an example of using a context manager for a `TransactWrite`:code: operation:
 
 .. code-block:: python
@@ -114,9 +121,10 @@ transaction to fail. The `condition`:code: argument is of type `Condition <https
 * `model_cls`:code: (required)
 * `hash_key`:code:  (required)
 * `range_key`:code: (optional)
-* `condition`:code: (required)
+* `condition`:code: (required) - of type `Condition <https://pynamodb.readthedocs.io/en/latest/conditional.html>`_
 
 .. code-block:: python
+
     with TransactWrite(connection=connection) as transaction:
         transaction.condition_check(BankStatement, 'user1', condition=(BankStatement.is_active == True))
 
@@ -125,9 +133,10 @@ Delete
 ------
 
 * `model`:code: (required)
-* `condition`:code: (optional)
+* `condition`:code: (optional) - of type `Condition <https://pynamodb.readthedocs.io/en/latest/conditional.html>`_
 
 .. code-block:: python
+
     with TransactWrite(connection=connection) as transaction:
         transaction.delete(BankStatement('user1'), condition=(~BankStatement.is_active))
 
@@ -172,7 +181,7 @@ The `TransactGet`:code: operation currently only supports the `Get`:code: method
 The `.get`:code: returns a class of type `_ModelFuture`:code: that acts as a placeholder for the record until the transaction completes.
 
 To retrieve the resolved model, you say `model_future.get()`. Any attempt to access this model before the transaction is complete
-will result in a `InvalidStateError`:code:
+will result in a `InvalidStateError`:code:.
 
 Error Types
 ^^^^^^^^^^^
