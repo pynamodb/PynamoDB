@@ -29,7 +29,7 @@ Suppose you have defined a BankStatement model, like in the example below.
 Transact Writes
 ^^^^^^^^^^^^^^^
 
-Here's an example of using a context manager for a **TransactWrite** operation:
+Here's an example of using a context manager for a `TransactWrite`:code: operation:
 
 .. code-block:: python
 
@@ -107,20 +107,31 @@ Now, say you make another attempt to debit one of the accounts when they don't h
 Condition Check
 ---------------
 
-The **ConditionCheck** operation is used on a **TransactWrite** to check if the current state of a record you
+The `ConditionCheck`:code: operation is used on a `TransactWrite`:code: to check if the current state of a record you
 aren't modifying within the overall transaction fits some criteria that, if it fails, would cause the entire
-transaction to fail. The :`condition`:code: argument is of type `Condition <https://pynamodb.readthedocs.io/en/latest/conditional.html>`_.
+transaction to fail. The `condition`:code: argument is of type `Condition <https://pynamodb.readthedocs.io/en/latest/conditional.html>`_.
 
-========= ========
-  field   required
-========= ========
-model_cls True
-hash_key  True
-range_key False
-condition True
+* `model_cls`:code: (required)
+* `hash_key`:code:  (required)
+* `range_key`:code: (optional)
+* `condition`:code: (required)
+
+.. code-block:: python
+    with TransactWrite(connection=connection) as transaction:
+        transaction.condition_check(BankStatement, 'user1', condition=(BankStatement.is_active == True))
 
 Delete
 ------
+
+* `model`:code: (required)
+* `hash_key`:code:  (required)
+* `range_key`:code: (optional)
+* `condition`:code: (optional)
+
+.. code-block:: python
+    with TransactWrite(connection=connection) as transaction:
+        transaction.delete(BankStatement('user1'), condition=(~BankStatement.is_active))
+
 
 Save
 ----
@@ -135,22 +146,22 @@ Transact Gets
 
     with TransactGet(connection=connection) as transaction:
         """ attempting to get records of users' bank statements """
-        user1_statement_promise = transaction.get(BankStatement, 'user1')
-        user2_statement_promise = transaction.get(BankStatement, 'user2')
+        user1_statement_future = transaction.get(BankStatement, 'user1')
+        user2_statement_future = transaction.get(BankStatement, 'user2')
 
-    user1_statement = user1_statement_promise.get()
-    user2_statement = user2_statement_promise.get()
+    user1_statement: BankStatement = user1_statement_future.get()
+    user2_statement: BankStatement = user2_statement_future.get()
 
-The **TransactGet** operation currently only supports the **Get** method, which only takes the following parameters:
+The `TransactGet`:code: operation currently only supports the `Get`:code: method, which only takes the following parameters:
 
-========= ========
-  field   required
-========= ========
-model_cls True
-hash_key  True
-range_key False
+* `model_cls`:code: (required)
+* `hash_key`:code:  (required)
+* `range_key`:code: (optional)
 
-The `.get`
+The `.get`:code: returns a class of type `_ModelFuture`:code: that acts as a placeholder for the record until the transaction completes.
+
+To retrieve the resolved model, you say `model_future.get()`. Any attempt to access this model before the transaction is complete
+will result in a `InvalidStateError`:code:
 
 Error Types
 ^^^^^^^^^^^

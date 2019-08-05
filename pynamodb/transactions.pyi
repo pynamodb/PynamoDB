@@ -1,4 +1,4 @@
-from typing import Set, Tuple, TypeVar, Type, Any, List, Optional, Dict, Union, Text
+from typing import Tuple, TypeVar, Type, Any, List, Optional, Dict, Union, Text
 
 from pynamodb.expressions.condition import Condition
 from pynamodb.models import Model, _ModelFuture
