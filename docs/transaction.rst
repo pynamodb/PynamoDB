@@ -29,7 +29,7 @@ Suppose you have defined a BankStatement model, like in the example below.
 Transact Writes
 ^^^^^^^^^^^^^^^
 
-Here's an example of using a context manager for a `TransactWrite` operation:
+Here's an example of using a context manager for a **TransactWrite** operation:
 
 .. code-block:: python
 
@@ -107,6 +107,18 @@ Now, say you make another attempt to debit one of the accounts when they don't h
 Condition Check
 ---------------
 
+The **ConditionCheck** operation is used on a **TransactWrite** to check if the current state of a record you
+aren't modifying within the overall transaction fits some criteria that, if it fails, would cause the entire
+transaction to fail. The :`condition`:code: argument is of type `Condition <https://pynamodb.readthedocs.io/en/latest/conditional.html>`_.
+
+========= ========
+  field   required
+========= ========
+model_cls True
+hash_key  True
+range_key False
+condition True
+
 Delete
 ------
 
@@ -129,11 +141,14 @@ Transact Gets
     user1_statement = user1_statement_promise.get()
     user2_statement = user2_statement_promise.get()
 
-The `TransactGet` operation currently only supports the `Get` method, which only takes the following parameters:
+The **TransactGet** operation currently only supports the **Get** method, which only takes the following parameters:
 
-- model_cls (required)
-- hash_key (required)
-- range_key (optional)
+========= ========
+  field   required
+========= ========
+model_cls True
+hash_key  True
+range_key False
 
 The `.get`
 
