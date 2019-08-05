@@ -120,12 +120,11 @@ transaction to fail. The `condition`:code: argument is of type `Condition <https
     with TransactWrite(connection=connection) as transaction:
         transaction.condition_check(BankStatement, 'user1', condition=(BankStatement.is_active == True))
 
+
 Delete
 ------
 
 * `model`:code: (required)
-* `hash_key`:code:  (required)
-* `range_key`:code: (optional)
 * `condition`:code: (optional)
 
 .. code-block:: python
@@ -133,11 +132,23 @@ Delete
         transaction.delete(BankStatement('user1'), condition=(~BankStatement.is_active))
 
 
+
 Save
 ----
 
+* `model`:code: (required)
+* `condition`:code: (optional) - of type `Condition <https://pynamodb.readthedocs.io/en/latest/conditional.html>`_
+* `return_values`:code: (optional) - the values that should be returned if the condition fails (`see here <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Put.html#DDB-Type-Put-ReturnValuesOnConditionCheckFailure>`_)
+
 Update
 ------
+
+* `model_cls`:code: (required)
+* `hash_key`:code:  (required)
+* `range_key`:code: (optional)
+* `actions`:code: (required) - a list of type `Action <https://pynamodb.readthedocs.io/en/latest/updates.html>`_
+* `condition`:code: (optional) - of type `Condition <https://pynamodb.readthedocs.io/en/latest/conditional.html>`_
+* `return_values`:code: (optional) - the values that should be returned if the condition fails (`see here <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Update.html#DDB-Type-Update-ReturnValuesOnConditionCheckFailure>`_)
 
 
 Transact Gets
