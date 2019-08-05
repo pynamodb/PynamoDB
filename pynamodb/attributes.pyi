@@ -119,6 +119,11 @@ class NumberAttribute(Attribute[float]):
     @overload
     def __get__(self, instance: Any, owner: Any) -> float: ...
 
+class VersionAttribute(NumberAttribute):
+    @overload
+    def __get__(self: _A, instance: None, owner: Any) -> _A: ...
+    @overload
+    def __get__(self, instance: Any, owner: Any) -> int: ...
 
 class TTLAttribute(Attribute[datetime]):
     @overload

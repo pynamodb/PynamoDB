@@ -849,7 +849,7 @@ class Connection(object):
 
         operation_kwargs[TABLE_NAME] = table_name
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=key))
-        if attributes:
+        if attributes and operation_kwargs.get(ITEM) is not None:
             attrs = self.get_item_attribute_map(table_name, attributes)
             operation_kwargs[ITEM].update(attrs[ITEM])
         if attributes_to_get is not None:

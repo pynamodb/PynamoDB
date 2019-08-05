@@ -494,6 +494,38 @@ class NumberAttribute(Attribute):
         return json.loads(value)
 
 
+class VersionAttribute(NumberAttribute):
+    """
+    A version attribute
+    """
+    null = True
+
+    def __set__(self, instance, value):
+        """
+        Cast assigned value to int.
+        """
+        super(VersionAttribute, self).__set__(instance, int(value))
+
+    def __get__(self, instance, owner):
+        """
+        Cast retrieved value to int.
+        """
+        val = super(VersionAttribute, self).__get__(instance, owner)
+        return int(val) if isinstance(val, float) else val
+
+    def serialize(self, value):
+        """
+        Cast value to int then encode as JSON
+        """
+        return super(VersionAttribute, self).serialize(int(value))
+
+    def deserialize(self, value):
+        """
+        Decode numbers from JSON and cast to int.
+        """
+        return int(super(VersionAttribute, self).deserialize(value))
+
+
 class TTLAttribute(Attribute):
     """
     A time-to-live attribute that signifies when the item expires and can be automatically deleted.
