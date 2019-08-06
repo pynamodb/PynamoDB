@@ -31,6 +31,10 @@ From GitHub::
 
     $ pip install git+https://github.com/pynamodb/PynamoDB#egg=pynamodb
 
+From conda-forge::
+    
+    $ conda install -c conda-forge pynamodb
+
 Upgrading
 =========
 
