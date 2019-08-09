@@ -44,8 +44,11 @@ Here's an example of using a context manager for a `TransactWrite`:code: operati
     from pynamodb.connection.transactions import TransactWrite
 
     # Two existing bank statements in the following states
-    user1_statement = BankStatement('user1', account_balance=2000, is_active=True).save()
-    user2_statement = BankStatement('user2', account_balance=0, is_active=True).save()
+    user1_statement = BankStatement('user1', account_balance=2000, is_active=True)
+    user2_statement = BankStatement('user2', account_balance=0, is_active=True)
+
+    user1_statement.save()
+    user2_statement.save()
 
     connection = Connection()
 
@@ -132,25 +135,41 @@ transaction to fail. The `condition`:code: argument is of type `Condition <https
 Delete
 ------
 
+The `Delete`:code: operation functions similarly to `Model.delete`:code:.
+
 * `model`:code: (required)
 * `condition`:code: (optional) - of type `Condition <https://pynamodb.readthedocs.io/en/latest/conditional.html>`_
 
 .. code-block:: python
 
+    statement = BankStatement.get('user1')
+
     with TransactWrite(connection=connection) as transaction:
-        transaction.delete(BankStatement('user1'), condition=(~BankStatement.is_active))
+        transaction.delete(statement, condition=(~BankStatement.is_active))
 
 
 
 Save
 ----
 
+The `Put`:code: operation functions similarly to `Model.save`:code:.
+
 * `model`:code: (required)
 * `condition`:code: (optional) - of type `Condition <https://pynamodb.readthedocs.io/en/latest/conditional.html>`_
 * `return_values`:code: (optional) - the values that should be returned if the condition fails (`see here <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Put.html#DDB-Type-Put-ReturnValuesOnConditionCheckFailure>`_)
 
+.. code-block:: python
+
+    statement = BankStatement(user_id='user3', account_balance=20, is_active=True)
+
+    with TransactWrite(connection=connection) as transaction:
+        transaction.save(statement, condition=(BankStatement.user_id.does_not_exist()))
+
+
 Update
 ------
+
+The `Update`:code: operation functions similarly to `Model.update`:code:.
 
 * `model_cls`:code: (required)
 * `hash_key`:code:  (required)
@@ -158,6 +177,17 @@ Update
 * `actions`:code: (required) - a list of type `Action <https://pynamodb.readthedocs.io/en/latest/updates.html>`_
 * `condition`:code: (optional) - of type `Condition <https://pynamodb.readthedocs.io/en/latest/conditional.html>`_
 * `return_values`:code: (optional) - the values that should be returned if the condition fails (`see here <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Update.html#DDB-Type-Update-ReturnValuesOnConditionCheckFailure>`_)
+
+
+.. code-block:: python
+
+    with TransactWrite(connection=connection) as transaction:
+        transaction.update(
+            BankStatement,
+            'user1',
+            actions=[BankStatement.account_balance.set(0), BankStatement.is_active.set(False)]
+            condition=(BankStatement.user_id.exists())
+        )
 
 
 Transact Gets
@@ -185,3 +215,11 @@ will result in a `InvalidStateError`:code:.
 
 Error Types
 ^^^^^^^^^^^
+
+You can expect some new error types with transactions, such as:
+
+* `TransactWriteError`:code: - thrown when a `TransactWrite`:code: request returns a bad response.
+* `TransactGetError`:code: - thrown when a `TransactGet`:code: request returns a bad response.
+* `InvalidStateError`:code: - thrown when an attempt is made to access data on a `_ModelFuture`:code: before the `TransactGet` request is completed.
+
+You can learn more about the new error messages `here <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-response-ItemCollectionMetrics>`_
