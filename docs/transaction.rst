@@ -217,8 +217,8 @@ Error Types
 
 You can expect some new error types with transactions, such as:
 
-* :py:class:`TransactWriteError <pynamodb.exceptions.TransactWriteError>` - thrown when a :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` request returns a bad response.
-* :py:class:`TransactGetError <pynamodb.exceptions.TransactGetError>` - thrown when a :py:class:`TransactGet <pynamodb.transactions.TransactGet>` request returns a bad response.
-* :py:class:`InvalidStateError <pynamodb.exceptions.InvalidStateError>` - thrown when an attempt is made to access data on a :py:class:`_ModelFuture <pynamodb.models._ModelFuture>` before the `TransactGet` request is completed.
+* :py:exc:`TransactWriteError <pynamodb.exceptions.TransactWriteError>` - thrown when a :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` request returns a bad response.
+* :py:exc:`TransactGetError <pynamodb.exceptions.TransactGetError>` - thrown when a :py:class:`TransactGet <pynamodb.transactions.TransactGet>` request returns a bad response.
+* :py:exc:`InvalidStateError <pynamodb.exceptions.InvalidStateError>` - thrown when an attempt is made to access data on a :py:class:`pynamodb.models._ModelFuture` before the `TransactGet` request is completed.
 
 You can learn more about the new error messages `here <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-response-ItemCollectionMetrics>`_
