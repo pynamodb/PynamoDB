@@ -30,10 +30,10 @@ Transact Writes
 
 A :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` can be initialized with the following parameters:
 
-* ``connection`` (required) - the :ref:`connection`_ used to make the request
-* ``client_request_token`` - an idempotency key for the request (:ref:`client-request-token`_)
-* ``return_consumed_capacity`` - determines the level of detail about provisioned throughput consumption that is returned in the response (:ref:`return_consumed_write_capacity`_)
-* ``return_item_collection_metrics`` - determines whether item collection metrics are returned (:ref:`return_item_collection_metrics`_)
+* ``connection`` (required) - the :ref:`connection` used to make the request
+* ``client_request_token`` - an idempotency key for the request (:ref:`client-request-token`)
+* ``return_consumed_capacity`` - determines the level of detail about provisioned throughput consumption that is returned in the response (:ref:`return_consumed_write_capacity`)
+* ``return_item_collection_metrics`` - determines whether item collection metrics are returned (:ref:`return_item_collection_metrics`)
 
 Here's an example of using a context manager for a :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` operation:
 
@@ -118,12 +118,12 @@ Condition Check
 
 The ``ConditionCheck`` operation is used on a :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` to check if the current state of a record you
 aren't modifying within the overall transaction fits some criteria that, if it fails, would cause the entire
-transaction to fail. The ``condition`` argument is of type :ref:`condition`_.
+transaction to fail. The ``condition`` argument is of type :ref:`condition`.
 
 * ``model_cls`` (required)
 * ``hash_key``  (required)
 * ``range_key`` (optional)
-* ``condition`` (required) - of type :ref:`condition`_
+* ``condition`` (required) - of type :ref:`condition`
 
 .. code-block:: python
 
@@ -137,7 +137,7 @@ Delete
 The ``Delete`` operation functions similarly to ``Model.delete``.
 
 * ``model`` (required)
-* ``condition`` (optional) - of type :ref:`condition`_
+* ``condition`` (optional) - of type :ref:`condition`
 
 .. code-block:: python
 
@@ -154,8 +154,8 @@ Save
 The ``Put`` operation functions similarly to ``Model.save``.
 
 * ``model`` (required)
-* ``condition`` (optional) - of type :ref:`condition`_
-* ``return_values`` (optional) - the values that should be returned if the condition fails (:ref:`return_values_on_check_failure_update`_)
+* ``condition`` (optional) - of type :ref:`condition`
+* ``return_values`` (optional) - the values that should be returned if the condition fails (:ref:`return_values_on_check_failure_update`)
 
 .. code-block:: python
 
@@ -173,9 +173,9 @@ The ``Update`` operation functions similarly to ``Model.update``.
 * ``model_cls`` (required)
 * ``hash_key``  (required)
 * ``range_key`` (optional)
-* ``actions`` (required) - a list of type :ref:`action`_
-* ``condition`` (optional) - of type :ref:`condition`_
-* ``return_values`` (optional) - the values that should be returned if the condition fails (:ref:`return_values_on_check_failure_save`_)
+* ``actions`` (required) - a list of type :ref:`action`
+* ``condition`` (optional) - of type :ref:`condition`
+* ``return_values`` (optional) - the values that should be returned if the condition fails (:ref:`return_values_on_check_failure_save`)
 
 
 .. code-block:: python
@@ -221,7 +221,7 @@ You can expect some new error types with transactions, such as:
 * :py:exc:`TransactGetError <pynamodb.exceptions.TransactGetError>` - thrown when a :py:class:`TransactGet <pynamodb.transactions.TransactGet>` request returns a bad response.
 * :py:exc:`InvalidStateError <pynamodb.exceptions.InvalidStateError>` - thrown when an attempt is made to access data on a :py:class:`_ModelFuture <pynamodb.models._ModelFuture>` before the `TransactGet` request is completed.
 
-You can learn more about the new error messages :ref:`transaction_errors`_
+You can learn more about the new error messages :ref:`transaction_errors`
 
 .. _action: https://pynamodb.readthedocs.io/en/latest/updates.html
 .. _client-request-token: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ClientRequestToken
