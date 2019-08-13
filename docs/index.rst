@@ -33,6 +33,7 @@ Topics
    updates
    conditional
    attributes
+   transaction
    local
    backup_restore
    signals
@@ -43,7 +44,6 @@ Topics
    logging
    contributing
    release_notes
-   transaction
    versioning
 
 API docs
