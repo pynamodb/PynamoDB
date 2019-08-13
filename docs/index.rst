@@ -43,6 +43,7 @@ Topics
    logging
    contributing
    release_notes
+   transaction
    versioning
 
 API docs

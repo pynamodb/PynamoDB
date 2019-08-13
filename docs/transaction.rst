@@ -30,7 +30,7 @@ Transact Writes
 
 A :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` can be initialized with the following parameters:
 
-* ``connection`` (required) - the :ref:`connection` used to make the request
+* ``connection`` (required) - the :py:class:`Connection <pynamodb.connection.base.Connection>` used to make the request (see :ref:`low_level`)
 * ``client_request_token`` - an idempotency key for the request (:ref:`client-request-token`)
 * ``return_consumed_capacity`` - determines the level of detail about provisioned throughput consumption that is returned in the response (:ref:`return_consumed_write_capacity`)
 * ``return_item_collection_metrics`` - determines whether item collection metrics are returned (:ref:`return_item_collection_metrics`)
@@ -118,12 +118,12 @@ Condition Check
 
 The ``ConditionCheck`` operation is used on a :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` to check if the current state of a record you
 aren't modifying within the overall transaction fits some criteria that, if it fails, would cause the entire
-transaction to fail. The ``condition`` argument is of type :ref:`condition`.
+transaction to fail. The ``condition`` argument is of type :ref:`conditional`.
 
 * ``model_cls`` (required)
 * ``hash_key``  (required)
 * ``range_key`` (optional)
-* ``condition`` (required) - of type :ref:`condition`
+* ``condition`` (required) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional`)
 
 .. code-block:: python
 
@@ -137,7 +137,7 @@ Delete
 The ``Delete`` operation functions similarly to ``Model.delete``.
 
 * ``model`` (required)
-* ``condition`` (optional) - of type :ref:`condition`
+* ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional`)
 
 .. code-block:: python
 
@@ -154,7 +154,7 @@ Save
 The ``Put`` operation functions similarly to ``Model.save``.
 
 * ``model`` (required)
-* ``condition`` (optional) - of type :ref:`condition`
+* ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional`)
 * ``return_values`` (optional) - the values that should be returned if the condition fails (:ref:`return_values_on_check_failure_update`)
 
 .. code-block:: python
@@ -173,8 +173,8 @@ The ``Update`` operation functions similarly to ``Model.update``.
 * ``model_cls`` (required)
 * ``hash_key``  (required)
 * ``range_key`` (optional)
-* ``actions`` (required) - a list of type :ref:`action`
-* ``condition`` (optional) - of type :ref:`condition`
+* ``actions`` (required) - a list of type :py:class:`Action <pynamodb.expressions.update.Action>` (see :ref:`updates`)
+* ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional`)
 * ``return_values`` (optional) - the values that should be returned if the condition fails (:ref:`return_values_on_check_failure_save`)
 
 
@@ -223,10 +223,7 @@ You can expect some new error types with transactions, such as:
 
 You can learn more about the new error messages :ref:`transaction_errors`
 
-.. _action: https://pynamodb.readthedocs.io/en/latest/updates.html
 .. _client-request-token: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ClientRequestToken
-.. _condition: https://pynamodb.readthedocs.io/en/latest/conditional.html
-.. _connection: https://pynamodb.readthedocs.io/en/latest/api.html#pynamodb.connection.Connection
 .. _return_consumed_write_capacity: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ReturnConsumedCapacity
 .. _return_item_collection_metrics: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ReturnItemCollectionMetrics
 .. _return_values_on_check_failure_update: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Put.html#DDB-Type-Put-ReturnValuesOnConditionCheckFailure
