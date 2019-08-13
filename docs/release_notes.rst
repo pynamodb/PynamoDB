@@ -1,12 +1,10 @@
 Release Notes
 =============
 
-v4.0.0b3
+v4.0.0
 --------
 
 :date: 2019-04-10
-
-NB: This is a beta release and these notes are subject to change.
 
 This is major release and contains breaking changes. Please read the notes below carefully.
 
@@ -52,7 +50,8 @@ attribute names. Also keep an eye out for kwargs like ``user_id__eq=5`` or ``ema
 
 New features in this release:
 
-* Support for Transactions (``TransactGet`` and ``TransactWrite``) (#618)
+* Support for transactions (``TransactGet`` and ``TransactWrite``) (#618)
+* Support for versioned optimistic locking (#664)
 
 Other changes in this release:
 
@@ -63,6 +62,7 @@ Other changes in this release:
 * The ``MapAttributeMeta`` class has been removed. Now ``type(MapAttribute) == AttributeContainerMeta``.
 * Removed ``LegacyBooleanAttribute`` and the read-compatibility for it in ``BooleanAttribute``.
 * `None` can now be used to bootstrap condition chaining (#653)
+* Allow specifying timedeltas in expressions involving TTLAttributes (#665)
 
 
 v3.4.1
