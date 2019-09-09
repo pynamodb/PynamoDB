@@ -33,7 +33,7 @@ from pynamodb.constants import (
     BATCH_WRITE_PAGE_LIMIT,
     META_CLASS_NAME, REGION, HOST, NULL,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
-    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE
+    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE
 )
 
 
@@ -868,10 +868,11 @@ class Model(AttributeContainer):
 
                 }
                 if isinstance(index, GlobalSecondaryIndex):
-                    idx[pythonic(PROVISIONED_THROUGHPUT)] = {
-                        READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
-                        WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
-                    }
+                    if cls.Meta.billing_mode != PAY_PER_REQUEST_BILLING_MODE:
+                        idx[pythonic(PROVISIONED_THROUGHPUT)] = {
+                            READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
+                            WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
+                        }
                 cls._indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
                 if index.Meta.projection.non_key_attributes:
                     idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
