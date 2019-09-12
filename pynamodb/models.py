@@ -868,7 +868,7 @@ class Model(AttributeContainer):
 
                 }
                 if isinstance(index, GlobalSecondaryIndex):
-                    if cls.Meta.billing_mode != PAY_PER_REQUEST_BILLING_MODE:
+                    if getattr(cls.Meta, 'billing_mode', None) != PAY_PER_REQUEST_BILLING_MODE:
                         idx[pythonic(PROVISIONED_THROUGHPUT)] = {
                             READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
                             WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
