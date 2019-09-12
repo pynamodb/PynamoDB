@@ -5,3 +5,4 @@ PynamoDB is written and maintained by Jharrod LaFon and numerous contributors:
 * Andy Wolfe
 * Pior Bastida
 * Eric Muller
+* Mohit Ahuja
