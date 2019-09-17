@@ -40,7 +40,7 @@ Here's an example of using a context manager for a :py:class:`TransactWrite <pyn
 .. code-block:: python
 
     from pynamodb.connection import Connection
-    from pynamodb.connection.transactions import TransactWrite
+    from pynamodb.transactions import TransactWrite
 
     # Two existing bank statements in the following states
     user1_statement = BankStatement('user1', account_balance=2000, is_active=True)
