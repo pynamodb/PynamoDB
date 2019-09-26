@@ -591,12 +591,15 @@ class Connection(object):
         if global_secondary_indexes:
             global_secondary_indexes_list = []
             for index in global_secondary_indexes:
-                global_secondary_indexes_list.append({
+                index_kwargs = {
                     INDEX_NAME: index.get(pythonic(INDEX_NAME)),
                     KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
                     PROJECTION: index.get(pythonic(PROJECTION)),
                     PROVISIONED_THROUGHPUT: index.get(pythonic(PROVISIONED_THROUGHPUT))
-                })
+                }
+                if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
+                    del index_kwargs[PROVISIONED_THROUGHPUT]
+                global_secondary_indexes_list.append(index_kwargs)
             operation_kwargs[GLOBAL_SECONDARY_INDEXES] = global_secondary_indexes_list
 
         if key_schema is None:
