@@ -12,12 +12,13 @@ from datetime import datetime, timedelta
 import warnings
 from dateutil.parser import parse
 from dateutil.tz import tzutc
-from inspect import getargspec, getmembers
+from inspect import getmembers
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
 from pynamodb.expressions.operand import Path
+from pynamodb._compat import getfullargspec
 import collections
 
 
@@ -673,7 +674,7 @@ class MapAttribute(Attribute, AttributeContainer):
     """
     attr_type = MAP
 
-    attribute_args = getargspec(Attribute.__init__).args[1:]
+    attribute_args = getfullargspec(Attribute.__init__).args[1:]
 
     def __init__(self, **attributes):
         # Store the kwargs used by Attribute.__init__ in case `_make_attribute` is called.
