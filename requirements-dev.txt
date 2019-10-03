@@ -1,23 +1,7 @@
-# It turns out we "actually" require >=1.6.0 for folks on Python 3.6 because of:
-#
-#   https://github.com/boto/botocore/issues/1079
-#
-# This was discovered as a result of integration tests that exercised boto. However, until 4.x
-# we didn't want to bump the actual dependency of the library for consumers as it would effectively
-# be a breaking change. As a result, we use the 1.6.0 dependency for development here for the
-# purpose of integration tests, even though requirements.txt still has 1.2.0.
-botocore==1.12.54
-six==1.10.0
-coverage==4.5.3
-mock==2.0.0
-pytest==4.4.0
-pytest-cov==2.6.1
-pytest-mock==1.6.0
-python-coveralls==2.9.1
-tox==3.8.6
-blinker==1.4
-flake8==2.4.1
-pyyaml==5.1
-sphinx==1.8.5
-sphinx-rtd-theme==0.4.3
-mypy==0.710; python_version >= '3.6'
+mock
+pytest
+pytest-mock
+# only used in .travis.yml
+coveralls
+mypy==0.710;python_version>="3.7"
+pytest-cov
