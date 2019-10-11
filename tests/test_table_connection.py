@@ -45,6 +45,19 @@ class ConnectionTestCase(TestCase):
         self.assertEqual(credentials.access_key, 'access_key_id')
         self.assertEqual(credentials.secret_key, 'secret_access_key')
 
+    def test_connection_session_set_credentials_with_session_token(self):
+        conn = TableConnection(
+            self.test_table_name,
+            aws_access_key_id='access_key_id',
+            aws_secret_access_key='secret_access_key',
+            aws_session_token='session_token')
+
+        credentials = conn.connection.session.get_credentials()
+
+        self.assertEqual(credentials.access_key, 'access_key_id')
+        self.assertEqual(credentials.secret_key, 'secret_access_key')
+        self.assertEqual(credentials.token, 'session_token')
+
     def test_create_table(self):
         """
         TableConnection.create_table

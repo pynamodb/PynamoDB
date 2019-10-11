@@ -22,6 +22,7 @@ If for some reason you can't use conventional AWS configuration methods, you can
         class Meta:
             aws_access_key_id = 'my_access_key_id'
             aws_secret_access_key = 'my_secret_access_key'
+            aws_session_token = 'my_session_token' # Optional, only for temporary credentials like those received when assuming a role
 
 Finally, see the `AWS CLI documentation <http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-installing-credentials>`_
 for more details on how to pass credentials to botocore.
