@@ -7,8 +7,8 @@ from unittest import TestCase
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION, PROVISIONED_BILLING_MODE
 from pynamodb.expressions.operand import Path
-from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
-from pynamodb.tests.response import HttpOK
+from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
+from .response import HttpOK
 
 if six.PY3:
     from unittest.mock import patch
@@ -44,6 +44,19 @@ class ConnectionTestCase(TestCase):
 
         self.assertEqual(credentials.access_key, 'access_key_id')
         self.assertEqual(credentials.secret_key, 'secret_access_key')
+
+    def test_connection_session_set_credentials_with_session_token(self):
+        conn = TableConnection(
+            self.test_table_name,
+            aws_access_key_id='access_key_id',
+            aws_secret_access_key='secret_access_key',
+            aws_session_token='session_token')
+
+        credentials = conn.connection.session.get_credentials()
+
+        self.assertEqual(credentials.access_key, 'access_key_id')
+        self.assertEqual(credentials.secret_key, 'secret_access_key')
+        self.assertEqual(credentials.token, 'session_token')
 
     def test_create_table(self):
         """
@@ -109,6 +122,24 @@ class ConnectionTestCase(TestCase):
             conn.create_table(
                 **kwargs
             )
+            kwargs = req.call_args[0][1]
+            self.assertEqual(kwargs, params)
+
+    def test_update_time_to_live(self):
+        """
+        TableConnection.update_time_to_live
+        """
+        params = {
+            'TableName': 'ci-table',
+            'TimeToLiveSpecification': {
+                'AttributeName': 'ttl_attr',
+                'Enabled': True,
+            }
+        }
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), None
+            conn = TableConnection(self.test_table_name)
+            conn.update_time_to_live('ttl_attr')
             kwargs = req.call_args[0][1]
             self.assertEqual(kwargs, params)
 

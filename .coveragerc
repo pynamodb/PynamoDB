@@ -1,3 +1,2 @@
 [run]
 source = pynamodb/.
-omit = pynamodb/tests/*

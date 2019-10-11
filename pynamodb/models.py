@@ -9,8 +9,12 @@ import warnings
 from inspect import getmembers
 
 from six import add_metaclass
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError
-from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute
+
+from pynamodb.expressions.condition import NotExists, Comparison
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError
+from pynamodb.attributes import (
+    Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
+)
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
@@ -29,7 +33,8 @@ from pynamodb.constants import (
     BATCH_WRITE_PAGE_LIMIT,
     META_CLASS_NAME, REGION, HOST, NULL,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
-    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE)
+    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE
+)
 
 
 log = logging.getLogger(__name__)
@@ -171,6 +176,13 @@ class MetaModel(AttributeContainerMeta):
                 cls._hash_keyname = attr_name
             if attribute.is_range_key:
                 cls._range_keyname = attr_name
+            if isinstance(attribute, VersionAttribute):
+                if cls._version_attribute_name:
+                    raise ValueError(
+                        "The model has more than one Version attribute: {}, {}"
+                        .format(cls._version_attribute_name, attr_name)
+                    )
+                cls._version_attribute_name = attr_name
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
@@ -196,6 +208,8 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_access_key_id', None)
                     if not hasattr(attr_obj, 'aws_secret_access_key'):
                         setattr(attr_obj, 'aws_secret_access_key', None)
+                    if not hasattr(attr_obj, 'aws_session_token'):
+                        setattr(attr_obj, 'aws_session_token', None)
                 elif isinstance(attr_obj, Index):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -203,6 +217,10 @@ class MetaModel(AttributeContainerMeta):
                 elif isinstance(attr_obj, Attribute):
                     if attr_obj.attr_name is None:
                         attr_obj.attr_name = attr_name
+
+            ttl_attr_names = [name for name, attr_obj in attrs.items() if isinstance(attr_obj, TTLAttribute)]
+            if len(ttl_attr_names) > 1:
+                raise ValueError("The model has more than one TTL attribute: {}".format(", ".join(ttl_attr_names)))
 
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
@@ -233,8 +251,9 @@ class Model(AttributeContainer):
     _connection = None
     _index_classes = None
     DoesNotExist = DoesNotExist
+    _version_attribute_name = None
 
-    def __init__(self, hash_key=None, range_key=None, **attributes):
+    def __init__(self, hash_key=None, range_key=None, _user_instantiated=True, **attributes):
         """
         :param hash_key: Required. The hash key for this object.
         :param range_key: Only required if the table has a range key attribute.
@@ -248,7 +267,7 @@ class Model(AttributeContainer):
                     "This table has no range key, but a range key value was provided: {}".format(range_key)
                 )
             attributes[self._range_keyname] = range_key
-        super(Model, self).__init__(**attributes)
+        super(Model, self).__init__(_user_instantiated=_user_instantiated, **attributes)
 
     @classmethod
     def batch_get(cls, items, consistent_read=None, attributes_to_get=None):
@@ -329,6 +348,10 @@ class Model(AttributeContainer):
         Deletes this object from dynamodb
         """
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
+        version_condition = self._handle_version_attribute(kwargs)
+        if version_condition is not None:
+            condition &= version_condition
+
         kwargs.update(condition=condition)
         return self._get_connection().delete_item(*args, **kwargs)
 
@@ -343,6 +366,9 @@ class Model(AttributeContainer):
             raise TypeError("the value of `actions` is expected to be a non-empty list")
 
         args, save_kwargs = self._get_save_args(null_check=False)
+        version_condition = self._handle_version_attribute(save_kwargs, actions=actions)
+        if version_condition is not None:
+            condition &= version_condition
         kwargs = {
             pythonic(RETURN_VALUES):  ALL_NEW,
         }
@@ -352,6 +378,7 @@ class Model(AttributeContainer):
 
         kwargs.update(condition=condition)
         kwargs.update(actions=actions)
+
         data = self._get_connection().update_item(*args, **kwargs)
         for name, value in data[ATTRIBUTES].items():
             attr_name = self._dynamo_to_python_attr(name)
@@ -365,8 +392,13 @@ class Model(AttributeContainer):
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args()
+        version_condition = self._handle_version_attribute(serialized_attributes=kwargs)
+        if version_condition is not None:
+            condition &= version_condition
         kwargs.update(condition=condition)
-        return self._get_connection().put_item(*args, **kwargs)
+        data = self._get_connection().put_item(*args, **kwargs)
+        self.update_local_version_attribute()
+        return data
 
     def refresh(self, consistent_read=False):
         """
@@ -382,6 +414,46 @@ class Model(AttributeContainer):
             raise self.DoesNotExist("This item does not exist in the table.")
         self._deserialize(item_data)
 
+    def get_operation_kwargs_from_instance(self,
+                                           key=KEY,
+                                           actions=None,
+                                           condition=None,
+                                           return_values_on_condition_failure=None):
+        is_update = actions is not None
+        is_delete = actions is None and key is KEY
+        args, save_kwargs = self._get_save_args(null_check=not is_update)
+
+        version_condition = self._handle_version_attribute(
+            serialized_attributes={} if is_delete else save_kwargs,
+            actions=actions
+        )
+        if version_condition is not None:
+            condition &= version_condition
+
+        kwargs = dict(
+            key=key,
+            actions=actions,
+            condition=condition,
+            return_values_on_condition_failure=return_values_on_condition_failure
+        )
+        if not is_update:
+            kwargs.update(save_kwargs)
+        elif pythonic(RANGE_KEY) in save_kwargs:
+            kwargs[pythonic(RANGE_KEY)] = save_kwargs[pythonic(RANGE_KEY)]
+        return self._get_connection().get_operation_kwargs(*args, **kwargs)
+
+    @classmethod
+    def get_operation_kwargs_from_class(cls,
+                                        hash_key,
+                                        range_key=None,
+                                        condition=None):
+        hash_key, range_key = cls._serialize_keys(hash_key, range_key)
+        return cls._get_connection().get_operation_kwargs(
+            hash_key=hash_key,
+            range_key=range_key,
+            condition=condition
+        )
+
     @classmethod
     def get(cls,
             hash_key,
@@ -393,8 +465,11 @@ class Model(AttributeContainer):
 
         :param hash_key: The hash key of the desired item
         :param range_key: The range key of the desired item, only used when appropriate.
+        :param consistent_read
+        :param attributes_to_get
         """
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
+
         data = cls._get_connection().get_item(
             hash_key,
             range_key=range_key,
@@ -424,7 +499,7 @@ class Model(AttributeContainer):
             attr = cls.get_attributes().get(attr_name, None)
             if attr:
                 attributes[attr_name] = attr.deserialize(attr.get_value(value))
-        return cls(**attributes)
+        return cls(_user_instantiated=False, **attributes)
 
     @classmethod
     def count(cls,
@@ -614,7 +689,13 @@ class Model(AttributeContainer):
         return cls._get_connection().describe_table()
 
     @classmethod
-    def create_table(cls, wait=False, read_capacity_units=None, write_capacity_units=None, billing_mode=None):
+    def create_table(
+        cls,
+        wait=False,
+        read_capacity_units=None,
+        write_capacity_units=None,
+        billing_mode=None,
+        ignore_update_ttl_errors=False):
         """
         Create the table for this model
 
@@ -661,11 +742,31 @@ class Model(AttributeContainer):
                 if status:
                     data = status.get(TABLE_STATUS)
                     if data == ACTIVE:
-                        return
+                        break
                     else:
                         time.sleep(2)
                 else:
                     raise TableError("No TableStatus returned for table")
+
+        cls.update_ttl(ignore_update_ttl_errors)
+
+    @classmethod
+    def update_ttl(cls, ignore_update_ttl_errors):
+        """
+        Attempt to update the TTL on the table.
+        Certain implementations (eg: dynalite) do not support updating TTLs and will fail.
+        """
+        ttl_attribute = cls._ttl_attribute()
+        if ttl_attribute:
+            # Some dynamoDB implementations (eg: dynalite) do not support updating TTLs so
+            # this will fail.  It's fine for this to fail in those cases.
+            try:
+                cls._get_connection().update_time_to_live(ttl_attribute.attr_name)
+            except Exception:
+                if ignore_update_ttl_errors:
+                    log.info("Unable to update the TTL for {}".format(cls.Meta.table_name))
+                else:
+                    raise
 
     @classmethod
     def dumps(cls):
@@ -717,7 +818,7 @@ class Model(AttributeContainer):
             attributes[range_keyname] = {
                 range_keytype: range_key
             }
-        item = cls()
+        item = cls(_user_instantiated=False)
         item._deserialize(attributes)
         return item
 
@@ -772,10 +873,11 @@ class Model(AttributeContainer):
 
                 }
                 if isinstance(index, GlobalSecondaryIndex):
-                    idx[pythonic(PROVISIONED_THROUGHPUT)] = {
-                        READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
-                        WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
-                    }
+                    if getattr(cls.Meta, 'billing_mode', None) != PAY_PER_REQUEST_BILLING_MODE:
+                        idx[pythonic(PROVISIONED_THROUGHPUT)] = {
+                            READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
+                            WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
+                        }
                 cls._indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
                 if index.Meta.projection.non_key_attributes:
                     idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
@@ -818,6 +920,43 @@ class Model(AttributeContainer):
             kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return args, kwargs
 
+    def _handle_version_attribute(self, serialized_attributes, actions=None):
+        """
+        Handles modifying the request to set or increment the version attribute.
+
+        :param serialized_attributes: A dictionary mapping attribute names to serialized values.
+        :param actions: A non-empty list when performing an update, otherwise None.
+        """
+        if self._version_attribute_name is None:
+            return
+
+        version_attribute = self.get_attributes()[self._version_attribute_name]
+        version_attribute_value = getattr(self, self._version_attribute_name)
+
+        if version_attribute_value:
+            version_condition = version_attribute == version_attribute_value
+            if actions:
+                actions.append(version_attribute.add(1))
+            elif pythonic(ATTRIBUTES) in serialized_attributes:
+                serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+                    version_attribute, version_attribute_value + 1, null_check=True
+                )
+        else:
+            version_condition = version_attribute.does_not_exist()
+            if actions:
+                actions.append(version_attribute.set(1))
+            elif pythonic(ATTRIBUTES) in serialized_attributes:
+                serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+                    version_attribute, 1, null_check=True
+                )
+
+        return version_condition
+
+    def update_local_version_attribute(self):
+        if self._version_attribute_name:
+            value = getattr(self, self._version_attribute_name, None) or 0
+            setattr(self, self._version_attribute_name, value + 1)
+
     @classmethod
     def _hash_key_attribute(cls):
         """
@@ -831,6 +970,17 @@ class Model(AttributeContainer):
         Returns the attribute class for the range key
         """
         return cls.get_attributes()[cls._range_keyname] if cls._range_keyname else None
+
+    @classmethod
+    def _ttl_attribute(cls):
+        """
+        Returns the ttl attribute for this table
+        """
+        attributes = cls.get_attributes()
+        for attr_obj in attributes.values():
+            if isinstance(attr_obj, TTLAttribute):
+                return attr_obj
+        return None
 
     def _get_keys(self):
         """
@@ -897,7 +1047,8 @@ class Model(AttributeContainer):
                                               max_pool_connections=cls.Meta.max_pool_connections,
                                               extra_headers=cls.Meta.extra_headers,
                                               aws_access_key_id=cls.Meta.aws_access_key_id,
-                                              aws_secret_access_key=cls.Meta.aws_secret_access_key)
+                                              aws_secret_access_key=cls.Meta.aws_secret_access_key,
+                                              aws_session_token=cls.Meta.aws_session_token)
         return cls._connection
 
     def _deserialize(self, attrs):
@@ -978,3 +1129,28 @@ class Model(AttributeContainer):
         if range_key is not None:
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key
+
+
+class _ModelFuture:
+    """
+    A placeholder object for a model that does not exist yet
+
+    For example: when performing a TransactGet request, this is a stand-in for a model that will be returned
+    when the operation is complete
+    """
+    def __init__(self, model_cls):
+        self._model_cls = model_cls
+        self._model = None
+        self._resolved = False
+
+    def update_with_raw_data(self, data):
+        if data is not None and data != {}:
+            self._model = self._model_cls.from_raw_data(data=data)
+        self._resolved = True
+
+    def get(self):
+        if not self._resolved:
+            raise InvalidStateError()
+        if self._model:
+            return self._model
+        raise self._model_cls.DoesNotExist()

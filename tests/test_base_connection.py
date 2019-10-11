@@ -22,8 +22,8 @@ from pynamodb.constants import (
     PROVISIONED_BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE)
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
-from pynamodb.tests.data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
-from pynamodb.tests.deep_eq import deep_eq
+from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
+from .deep_eq import deep_eq
 
 if six.PY3:
     from unittest.mock import patch
@@ -55,6 +55,10 @@ class MetaTableTestCase(TestCase):
         assert self.meta_table.get_attribute_type('ForumName') == 'S'
         with pytest.raises(ValueError):
             self.meta_table.get_attribute_type('wrongone')
+
+    def test_has_index_name(self):
+        self.assertTrue(self.meta_table.has_index_name("LastPostIndex"))
+        self.assertFalse(self.meta_table.has_index_name("NonExistentIndexName"))
 
 
 class ConnectionTestCase(TestCase):
@@ -903,6 +907,30 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
+    def test_transact_write_items(self):
+        conn = Connection()
+        with patch(PATCH_METHOD) as req:
+            conn.transact_write_items([], [], [], [])
+            self.assertEqual(req.call_args[0][0], 'TransactWriteItems')
+            self.assertDictEqual(
+                req.call_args[0][1], {
+                    'TransactItems': [],
+                    'ReturnConsumedCapacity': 'TOTAL'
+                }
+            )
+
+    def test_transact_get_items(self):
+        conn = Connection()
+        with patch(PATCH_METHOD) as req:
+            conn.transact_get_items([])
+            self.assertEqual(req.call_args[0][0], 'TransactGetItems')
+            self.assertDictEqual(
+                req.call_args[0][1], {
+                    'TransactItems': [],
+                    'ReturnConsumedCapacity': 'TOTAL'
+                }
+            )
+
     def test_batch_write_item(self):
         """
         Connection.batch_write_item
@@ -1173,6 +1201,15 @@ class ConnectionTestCase(TestCase):
             Path('Subject').startswith('thread'),
             Path('Subject').startswith('thread'),  # filter containing range key
             return_consumed_capacity='TOTAL'
+        )
+
+        self.assertRaises(
+            ValueError,
+            conn.query,
+            table_name,
+            "FooForum",
+            limit=1,
+            index_name='NonExistentIndexName'
         )
 
         with patch(PATCH_METHOD) as req:
@@ -1655,3 +1692,9 @@ class ConnectionTestCase(TestCase):
         data = Connection._handle_binary_attributes(unprocessed_keys)
         self.assertEqual(data['UnprocessedKeys']['MyTable']['Keys'][0]['Subject']['B'], binary_blob)
         self.assertEqual(data['UnprocessedKeys']['MyOtherTable']['Keys'][0]['Subject']['B'], binary_blob)
+
+    def test_update_time_to_live_fail(self):
+        conn = Connection(self.region)
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = BotoCoreError
+            self.assertRaises(TableError, conn.update_time_to_live, 'test table', 'my_ttl')

@@ -33,6 +33,7 @@ Topics
    updates
    conditional
    attributes
+   transaction
    local
    backup_restore
    signals

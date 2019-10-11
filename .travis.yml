@@ -17,11 +17,8 @@ matrix:
 env:
   - AWS_SECRET_ACCESS_KEY=fake_key AWS_ACCESS_KEY_ID=fake_id
 
-before_install:
-  - pip install six==1.9.0
-
 install:
-  - pip install -r requirements-dev.txt
+  - pip install -e .[signals] -r requirements-dev.txt
 
 before_script:
   - wget http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest.tar.gz -O /tmp/dynamodb_local_latest.tar.gz
@@ -30,8 +27,22 @@ before_script:
   - sleep 2
 
 script:
-  - py.test --cov-report term-missing --cov=pynamodb pynamodb/tests/
+  - pytest --cov-report term-missing --cov=pynamodb tests
   - if [[ "$TRAVIS_PYTHON_VERSION" == "3.7" ]]; then mypy .; fi
 
 after_success:
   - coveralls
+
+jobs:
+  include:
+    - stage: deploy
+      python: '3.6'
+      deploy:
+        provider: pypi
+        user: lyft-pynamodb
+        password:
+          secure: "B2AAd62kRYOiCcLjhfIJsICS9laH9J9c5H4tU2C2Vojnb+3W/qj9xP+/GnEZ6Tc2h4SNMQ81Wtzn1CjD3Ut8CCudoBKSZnJmip+EACgpNXjZiU+g0PlEgVbDfJV15OrmFGUeDexxLF3DEQKp8YiMpAhJAH6+SV5W17Er1M6mwBs="
+        distributions: "sdist bdist_wheel"
+        on:
+          tags: true
+          repo: pynamodb/PynamoDB

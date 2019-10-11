@@ -1,21 +1,24 @@
 """
 PynamoDB attributes
 """
+import calendar
 import six
 from six import add_metaclass
 import json
+import time
 from base64 import b64encode, b64decode
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 import warnings
 from dateutil.parser import parse
 from dateutil.tz import tzutc
-from inspect import getargspec, getmembers
+from inspect import getmembers
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
 from pynamodb.expressions.operand import Path
+from pynamodb._compat import getfullargspec
 import collections
 
 
@@ -31,9 +34,15 @@ class Attribute(object):
                  range_key=False,
                  null=None,
                  default=None,
+                 default_for_new=None,
                  attr_name=None
                  ):
+        if default and default_for_new:
+            raise ValueError("An attribute cannot have both default and default_for_new parameters")
         self.default = default
+        # This default is only set for new objects (ie: it's not set for re-saved objects)
+        self.default_for_new = default_for_new
+
         if null is not None:
             self.null = null
         self.is_hash_key = hash_key
@@ -211,14 +220,14 @@ class AttributeContainerMeta(type):
 @add_metaclass(AttributeContainerMeta)
 class AttributeContainer(object):
 
-    def __init__(self, **attributes):
+    def __init__(self, _user_instantiated=True, **attributes):
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
         # to store the values that are bound to this instance. Attributes store values in the dictionary
         # using the `python_attr_name` as the dictionary key. "Raw" (i.e. non-subclassed) MapAttribute
         # instances do not have any Attributes defined and instead use this dictionary to store their
         # collection of name-value pairs.
         self.attribute_values = {}
-        self._set_defaults()
+        self._set_defaults(_user_instantiated=_user_instantiated)
         self._set_attributes(**attributes)
 
     @classmethod
@@ -249,12 +258,15 @@ class AttributeContainer(object):
         """
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
-    def _set_defaults(self):
+    def _set_defaults(self, _user_instantiated=True):
         """
         Sets and fields that provide a default value
         """
         for name, attr in self.get_attributes().items():
-            default = attr.default
+            if _user_instantiated and attr.default_for_new is not None:
+                default = attr.default_for_new
+            else:
+                default = attr.default
             if callable(default):
                 value = default()
             else:
@@ -483,6 +495,85 @@ class NumberAttribute(Attribute):
         return json.loads(value)
 
 
+class VersionAttribute(NumberAttribute):
+    """
+    A version attribute
+    """
+    null = True
+
+    def __set__(self, instance, value):
+        """
+        Cast assigned value to int.
+        """
+        super(VersionAttribute, self).__set__(instance, int(value))
+
+    def __get__(self, instance, owner):
+        """
+        Cast retrieved value to int.
+        """
+        val = super(VersionAttribute, self).__get__(instance, owner)
+        return int(val) if isinstance(val, float) else val
+
+    def serialize(self, value):
+        """
+        Cast value to int then encode as JSON
+        """
+        return super(VersionAttribute, self).serialize(int(value))
+
+    def deserialize(self, value):
+        """
+        Decode numbers from JSON and cast to int.
+        """
+        return int(super(VersionAttribute, self).deserialize(value))
+
+
+class TTLAttribute(Attribute):
+    """
+    A time-to-live attribute that signifies when the item expires and can be automatically deleted.
+    It can be assigned with a timezone-aware datetime value (for absolute expiry time)
+    or a timedelta value (for expiry relative to the current time),
+    but always reads as a UTC datetime value.
+    """
+    attr_type = NUMBER
+
+    def _normalize(self, value):
+        """
+        Converts value to a UTC datetime
+        """
+        if value is None:
+            return
+        if isinstance(value, timedelta):
+            value = int(time.time() + value.total_seconds())
+        elif isinstance(value, datetime):
+            if value.tzinfo is None:
+                raise ValueError("datetime must be timezone-aware")
+            value = calendar.timegm(value.utctimetuple())
+        else:
+            raise ValueError("TTLAttribute value must be a timedelta or datetime")
+        return datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
+
+    def __set__(self, instance, value):
+        """
+        Converts assigned values to a UTC datetime
+        """
+        super(TTLAttribute, self).__set__(instance, self._normalize(value))
+
+    def serialize(self, value):
+        """
+        Serializes a datetime as a timestamp (Unix time).
+        """
+        if value is None:
+            return None
+        return json.dumps(calendar.timegm(self._normalize(value).utctimetuple()))
+
+    def deserialize(self, value):
+        """
+        Deserializes a timestamp (Unix time) as a UTC datetime.
+        """
+        timestamp = json.loads(value)
+        return datetime.utcfromtimestamp(timestamp).replace(tzinfo=tzutc())
+
+
 class UTCDateTimeAttribute(Attribute):
     """
     An attribute for storing a UTC Datetime
@@ -504,7 +595,7 @@ class UTCDateTimeAttribute(Attribute):
         """
         try:
             return _fast_parse_utc_datestring(value)
-        except ValueError:
+        except (ValueError, IndexError):
             try:
                 # Attempt to parse the datetime with the datetime format used
                 # by default when storing UTCDateTimeAttributes.  This is signifantly
@@ -583,7 +674,7 @@ class MapAttribute(Attribute, AttributeContainer):
     """
     attr_type = MAP
 
-    attribute_args = getargspec(Attribute.__init__).args[1:]
+    attribute_args = getfullargspec(Attribute.__init__).args[1:]
 
     def __init__(self, **attributes):
         # Store the kwargs used by Attribute.__init__ in case `_make_attribute` is called.

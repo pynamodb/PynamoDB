@@ -5,14 +5,15 @@ import base64
 import random
 import json
 import copy
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest import TestCase
 
 import six
 from botocore.client import ClientError
 import pytest
+from dateutil.tz import tzutc
 
-from pynamodb.tests.deep_eq import deep_eq
+from .deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
 from pynamodb.exceptions import DoesNotExist, TableError
 from pynamodb.types import RANGE
@@ -29,8 +30,8 @@ from pynamodb.indexes import (
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
-    BooleanAttribute, ListAttribute)
-from pynamodb.tests.data import (
+    BooleanAttribute, ListAttribute, TTLAttribute, VersionAttribute)
+from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     DESCRIBE_TABLE_DATA_PAY_PER_REQUEST,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
@@ -40,12 +41,13 @@ from pynamodb.tests.data import (
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
     GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
-    CAR_MODEL_TABLE_DATA, FULL_CAR_MODEL_ITEM_DATA, CAR_MODEL_WITH_NULL_ITEM_DATA, INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA,
+    CAR_MODEL_TABLE_DATA, FULL_CAR_MODEL_ITEM_DATA, CAR_MODEL_WITH_NULL_ITEM_DATA,
+    INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA,
     BOOLEAN_MODEL_TABLE_DATA, BOOLEAN_MODEL_FALSE_ITEM_DATA, BOOLEAN_MODEL_TRUE_ITEM_DATA,
     TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA,
     EXPLICIT_RAW_MAP_MODEL_TABLE_DATA, EXPLICIT_RAW_MAP_MODEL_ITEM_DATA,
-    EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA, EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA
-)
+    EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA, EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA,
+    VERSIONED_TABLE_DATA)
 
 if six.PY3:
     from unittest.mock import patch, MagicMock
@@ -189,6 +191,7 @@ class SimpleUserModel(Model):
     views = NumberAttribute(null=True)
     is_active = BooleanAttribute(null=True)
     signature = UnicodeAttribute(null=True)
+    ttl = TTLAttribute(null=True)
 
 
 class CustomAttrIndex(LocalSecondaryIndex):
@@ -230,6 +233,7 @@ class UserModel(Model):
     zip_code = NumberAttribute(null=True)
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)
+    ttl = TTLAttribute(null=True)
 
 
 class HostSpecificModel(Model):
@@ -428,6 +432,22 @@ class Dog(Animal):
         table_name = 'Dog'
 
     breed = UnicodeAttribute()
+
+
+class TTLModel(Model):
+    class Meta:
+        table_name = 'TTLModel'
+    user_name = UnicodeAttribute(hash_key=True)
+    my_ttl = TTLAttribute(default_for_new=timedelta(minutes=1))
+
+
+class VersionedModel(Model):
+    class Meta:
+        table_name = 'VersionedModel'
+
+    name = UnicodeAttribute(hash_key=True)
+    email = UnicodeAttribute()
+    version = VersionAttribute()
 
 
 class ModelTestCase(TestCase):
@@ -797,10 +817,12 @@ class ModelTestCase(TestCase):
                 car = CarModel('foo')
                 batch.delete(car)
 
-    def test_update(self):
+    @patch('time.time')
+    def test_update(self, mock_time):
         """
         Model.update
         """
+        mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
         self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
         item = SimpleUserModel('foo', is_active=True, email='foo@example.com', signature='foo')
 
@@ -830,7 +852,8 @@ class ModelTestCase(TestCase):
                 SimpleUserModel.is_active.set(None),
                 SimpleUserModel.signature.set(None),
                 SimpleUserModel.custom_aliases.set(['bob']),
-                SimpleUserModel.numbers.delete(0, 1)
+                SimpleUserModel.numbers.delete(0, 1),
+                SimpleUserModel.ttl.set(timedelta(seconds=60)),
             ])
 
             args = req.call_args[0][1]
@@ -842,14 +865,15 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3 REMOVE #4 DELETE #5 :4',
+                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3, #4 = :4 REMOVE #5 DELETE #6 :5',
                 'ExpressionAttributeNames': {
                     '#0': 'email',
                     '#1': 'is_active',
                     '#2': 'signature',
                     '#3': 'aliases',
-                    '#4': 'views',
-                    '#5': 'numbers'
+                    '#4': 'ttl',
+                    '#5': 'views',
+                    '#6': 'numbers'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
@@ -865,6 +889,9 @@ class ModelTestCase(TestCase):
                         'SS': ['bob']
                     },
                     ':4': {
+                        'N': str(1559692800 + 60)
+                    },
+                    ':5': {
                         'NS': ['0', '1']
                     }
                 },
@@ -2967,6 +2994,153 @@ class ModelTestCase(TestCase):
             self.assert_dict_lists_equal(actual['AttributeDefinitions'],
                                          DOG_TABLE_DATA['Table']['AttributeDefinitions'])
 
+    def test_model_version_attribute_save(self):
+        self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
+        item = VersionedModel('test_user_name', email='test_user@email.com')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item.save()
+            args = req.call_args[0][1]
+            params = {
+                'Item': {
+                    'name': {
+                        'S': 'test_user_name'
+                    },
+                    'email': {
+                        'S': 'test_user@email.com'
+                    },
+                    'version': {
+                        'N': '1'
+                    },
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'VersionedModel',
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {'#0': 'version'},
+            }
+
+            deep_eq(args, params, _assert=True)
+            item.version = 1
+            item.name = "test_new_username"
+            item.save()
+            args = req.call_args[0][1]
+
+            params = {
+                'Item': {
+                    'name': {
+                        'S': 'test_new_username'
+                    },
+                    'email': {
+                        'S': 'test_user@email.com'
+                    },
+                    'version': {
+                        'N': '2'
+                    },
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'VersionedModel',
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {'#0': 'version'},
+                'ExpressionAttributeValues': {':0': {'N': '1'}}
+            }
+
+            deep_eq(args, params, _assert=True)
+
+    def test_version_attribute_increments_on_update(self):
+        self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
+        item = VersionedModel('test_user_name', email='test_user@email.com')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    'name': {
+                        'S': 'test_user_name'
+                    },
+                    'email': {
+                        'S': 'new@email.com'
+                    },
+                    'version': {
+                        'N': '1'
+                    },
+                }
+            }
+            item.update(actions=[VersionedModel.email.set('new@email.com')])
+            args = req.call_args[0][1]
+            params = {
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'version',
+                    '#1': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'new@email.com'
+                    },
+                    ':1': {
+                        'N': '1'
+                    }
+                },
+                'Key': {
+                    'name': {
+                        'S': 'test_user_name'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ReturnValues': 'ALL_NEW',
+                'TableName': 'VersionedModel',
+                'UpdateExpression': 'SET #1 = :0, #0 = :1'
+            }
+
+            deep_eq(args, params, _assert=True)
+            assert item.version == 1
+
+            req.return_value = {
+                ATTRIBUTES: {
+                    'name': {
+                        'S': 'test_user_name'
+                    },
+                    'email': {
+                        'S': 'newer@email.com'
+                    },
+                    'version': {
+                        'N': '2'
+                    },
+                }
+            }
+
+            item.update(actions=[VersionedModel.email.set('newer@email.com')])
+            args = req.call_args[0][1]
+            params = {
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'version',
+                    '#1': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'N': '1'
+                    },
+                    ':1': {
+                        'S': 'newer@email.com'
+                    },
+                    ':2': {
+                        'N': '1'
+                    }
+                },
+                'Key': {
+                    'name': {
+                        'S': 'test_user_name'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ReturnValues': 'ALL_NEW',
+                'TableName': 'VersionedModel',
+                'UpdateExpression': 'SET #1 = :1 ADD #0 :2'
+            }
+
+            deep_eq(args, params, _assert=True)
+
 
 class ModelInitTestCase(TestCase):
 
@@ -3050,3 +3224,40 @@ class ModelInitTestCase(TestCase):
         self.assertEqual(actual.left.left.value, left_instance.left.value)
         self.assertEqual(actual.right.right.left.value, right_instance.right.left.value)
         self.assertEqual(actual.right.right.value, right_instance.right.value)
+
+    def test_multiple_ttl_attributes(self):
+        with self.assertRaises(ValueError):
+            class BadTTLModel(Model):
+                class Meta:
+                    table_name = 'BadTTLModel'
+                ttl = TTLAttribute(default_for_new=timedelta(minutes=1))
+                another_ttl = TTLAttribute()
+
+    def test_get_ttl_attribute_fails(self):
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = Exception
+            self.assertRaises(Exception, TTLModel.update_ttl, False)
+
+    def test_get_ttl_attribute(self):
+        assert TTLModel._ttl_attribute().attr_name == "my_ttl"
+
+    def test_deserialized(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = SIMPLE_MODEL_TABLE_DATA
+            m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}})
+        assert m.my_ttl is None
+
+    def test_deserialized_with_ttl(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = SIMPLE_MODEL_TABLE_DATA
+            m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}, 'my_ttl': {'N': '1546300800'}})
+        assert m.my_ttl == datetime(2019, 1, 1, tzinfo=tzutc())
+
+    def test_multiple_version_attributes(self):
+        with self.assertRaises(ValueError):
+            class BadVersionedModel(Model):
+                class Meta:
+                    table_name = 'BadVersionedModel'
+
+                version = VersionAttribute()
+                another_version = VersionAttribute()

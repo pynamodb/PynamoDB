@@ -3,7 +3,8 @@ PynamoDB Connection classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 from pynamodb.connection.base import Connection
-from pynamodb.constants import DEFAULT_BILLING_MODE
+from pynamodb.constants import DEFAULT_BILLING_MODE, KEY
+
 
 class TableConnection(object):
     """
@@ -21,7 +22,8 @@ class TableConnection(object):
                  max_pool_connections=None,
                  extra_headers=None,
                  aws_access_key_id=None,
-                 aws_secret_access_key=None):
+                 aws_secret_access_key=None,
+                 aws_session_token=None):
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
@@ -36,13 +38,43 @@ class TableConnection(object):
 
         if aws_access_key_id and aws_secret_access_key:
             self.connection.session.set_credentials(aws_access_key_id,
-                                                    aws_secret_access_key)
+                                                    aws_secret_access_key,
+                                                    aws_session_token)
 
     def get_meta_table(self, refresh=False):
         """
         Returns a MetaTable
         """
         return self.connection.get_meta_table(self.table_name, refresh=refresh)
+
+    def get_operation_kwargs(self,
+                             hash_key,
+                             range_key=None,
+                             key=KEY,
+                             attributes=None,
+                             attributes_to_get=None,
+                             actions=None,
+                             condition=None,
+                             consistent_read=None,
+                             return_values=None,
+                             return_consumed_capacity=None,
+                             return_item_collection_metrics=None,
+                             return_values_on_condition_failure=None):
+        return self.connection.get_operation_kwargs(
+            self.table_name,
+            hash_key,
+            range_key=range_key,
+            key=key,
+            attributes=attributes,
+            attributes_to_get=attributes_to_get,
+            actions=actions,
+            condition=condition,
+            consistent_read=consistent_read,
+            return_values=return_values,
+            return_consumed_capacity=return_consumed_capacity,
+            return_item_collection_metrics=return_item_collection_metrics,
+            return_values_on_condition_failure=return_values_on_condition_failure
+        )
 
     def delete_item(self,
                     hash_key,
@@ -85,7 +117,8 @@ class TableConnection(object):
             return_item_collection_metrics=return_item_collection_metrics,
             return_values=return_values)
 
-    def put_item(self, hash_key,
+    def put_item(self,
+                 hash_key,
                  range_key=None,
                  attributes=None,
                  condition=None,
@@ -208,6 +241,12 @@ class TableConnection(object):
         Performs the DeleteTable operation and returns the result
         """
         return self.connection.delete_table(self.table_name)
+
+    def update_time_to_live(self, ttl_attr_name):
+        """
+        Performs the UpdateTimeToLive operation and returns the result
+        """
+        return self.connection.update_time_to_live(self.table_name, ttl_attr_name)
 
     def update_table(self,
                      read_capacity_units=None,

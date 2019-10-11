@@ -4,6 +4,8 @@ PynamoDB
 
 .. image:: https://img.shields.io/pypi/v/pynamodb.svg
     :target: https://pypi.python.org/pypi/pynamodb/
+.. image:: https://img.shields.io/conda/vn/conda-forge/pynamodb.svg
+    :target: https://anaconda.org/conda-forge/pynamodb
 .. image:: https://img.shields.io/travis/pynamodb/PynamoDB/master.svg
     :target: https://travis-ci.org/pynamodb/PynamoDB
 .. image:: https://img.shields.io/coveralls/pynamodb/PynamoDB/master.svg
@@ -30,6 +32,10 @@ From PyPi::
 From GitHub::
 
     $ pip install git+https://github.com/pynamodb/PynamoDB#egg=pynamodb
+
+From conda-forge::
+    
+    $ conda install -c conda-forge pynamodb
 
 Upgrading
 =========
