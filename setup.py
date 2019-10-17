@@ -42,12 +42,12 @@ setup(
     keywords='python dynamodb amazon',
     install_requires=install_requires,
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Programming Language :: Python',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.5',
         'License :: OSI Approved :: MIT License',
     ],
     extras_require={
