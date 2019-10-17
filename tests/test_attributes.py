@@ -744,7 +744,7 @@ class TestMapAttribute:
         }
         attr = MapAttribute(**raw)
 
-        assert list(iter(raw)) == list(iter(attr))
+        assert sorted(iter(raw)) == sorted(iter(attr))
 
     def test_raw_map_json_serialize(self):
         raw = {
