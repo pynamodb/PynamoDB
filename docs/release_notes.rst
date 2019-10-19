@@ -1,6 +1,38 @@
 Release Notes
 =============
 
+v4.1.0
+------
+
+:date: 2019-10-17
+
+This is a backwards compatible, minor release.
+
+* In the Model's Meta, you may now provide an AWS session token, which is mostly useful for assumed roles (#700)::
+
+    sts_client = boto3.client("sts")
+    role_object = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="role_name", DurationSeconds=BOTO3_CLIENT_DURATION)
+    role_credentials = role_object["Credentials"]
+
+    class MyModel(Model):
+      class Meta:
+        table_name = "table_name"
+        aws_access_key_id = role_credentials["AccessKeyId"]
+        aws_secret_access_key = role_credentials["SecretAccessKey"]
+        aws_session_token = role_credentials["SessionToken"]
+
+      hash = UnicodeAttribute(hash_key=True)
+      range = UnicodeAttribute(range_key=True)
+
+* Fix warning about `inspect.getargspec` (#701)
+* Fix provisioning GSIs when using pay-per-request billing (#690)
+* Suppress Python 3 exception chaining when "re-raising" botocore errors as PynamoDB model exceptions (#705)
+
+Contributors to this release:
+
+* @asottile
+* @julienduchesne
+
 v4.0.0
 --------
 
