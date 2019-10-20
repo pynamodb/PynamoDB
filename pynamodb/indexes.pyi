@@ -18,7 +18,7 @@ class Index(metaclass=IndexMeta):
         cls: Type[_T],
         hash_key,
         scan_index_forward: Optional[Any] = ...,
-        consistent_read: bool = ...,
+        consistent_read: Optional[bool] = ...,
         limit: Optional[Any] = ...,
         last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
         attributes_to_get: Optional[Any] = ...,
@@ -26,16 +26,16 @@ class Index(metaclass=IndexMeta):
     ) -> ResultIterator[_T]: ...
     @classmethod
     def scan(
-            cls: Type[_T],
-            filter_condition: Optional[Condition] = ...,
-            segment: Optional[int] = ...,
-            total_segments: Optional[int] = ...,
-            limit: Optional[int] = ...,
-            last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
-            page_size: Optional[int] = ...,
-            rate_limit: Optional[float] = ...,
-            attributes_to_get: Optional[List[str]] = ...,
-            **filters,
+        cls: Type[_T],
+        filter_condition: Optional[Condition] = ...,
+        segment: Optional[int] = ...,
+        total_segments: Optional[int] = ...,
+        limit: Optional[int] = ...,
+        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
+        page_size: Optional[int] = ...,
+        consistent_read: Optional[bool] = ...,
+        attributes_to_get: Optional[List[str]] = ...,
+        **filters,
     ) -> ResultIterator[_T]: ...
 
 class GlobalSecondaryIndex(Index): ...
