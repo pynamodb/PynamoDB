@@ -28,5 +28,3 @@ By default, certain tests that require a running instance of `DynamoDB Local
 <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html>`_ will
 not be executed by tox. They will always be executed in Travis-ci. If you wish to run them locally,
 edit ``tox.ini`` to not pass ``'-m ddblocal'`` to ``py.test``.
-
-Don't forget to add yourself to `AUTHORS.rst <https://github.com/pynamodb/PynamoDB/blob/devel/AUTHORS.rst>`_.
