@@ -576,8 +576,9 @@ class Model(AttributeContainer):
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
         :param limit: Used to limit the number of results returned
-        :param scan_index_forward: If set, then used to specify the same parameter to the DynamoDB API.
-            Controls descending or ascending results
+        :param scan_index_forward: (boolean) If set, then used to specify the same parameter to the DynamoDB API.
+            Controls descending or ascending results; If True, the results are sorted ascending on the range key (default behaviour)
+            and if False, the results are sorted descending on the range key
         :param last_evaluated_key: If set, provides the starting point for query.
         :param attributes_to_get: If set, only returns these elements
         :param page_size: Page size of the query to DynamoDB
