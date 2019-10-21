@@ -526,6 +526,7 @@ class Connection(object):
         # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
         if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
             config = botocore.client.Config(
+                parameter_validation=False,  # Disable unnecessary validation for performance
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
                 max_pool_connections=self._max_pool_connections)
