@@ -345,6 +345,89 @@ DESCRIBE_TABLE_DATA = {
     }
 }
 
+DESCRIBE_TABLE_DATA_PAY_PER_REQUEST = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "ForumName",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "LastPostDateTime",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "Subject",
+                "AttributeType": "S"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 0,
+        "KeySchema": [
+            {
+                "AttributeName": "ForumName",
+                "KeyType": "HASH"
+            },
+            {
+                "AttributeName": "Subject",
+                "KeyType": "RANGE"
+            }
+        ],
+        "GlobalSecondaryIndexes": [
+            {
+                "IndexName": "LastPostIndex",
+                "IndexSizeBytes": 0,
+                "ItemCount": 0,
+                "KeySchema": [
+                    {
+                        "AttributeName": "ForumName",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "LastPostDateTime",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "KEYS_ONLY"
+                }
+            }
+        ],
+        "LocalSecondaryIndexes": [
+            {
+                "IndexName": "LastPostIndex",
+                "IndexSizeBytes": 0,
+                "ItemCount": 0,
+                "KeySchema": [
+                    {
+                        "AttributeName": "ForumName",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "LastPostDateTime",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "KEYS_ONLY"
+                }
+            }
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 0,
+            "WriteCapacityUnits": 0
+        },
+        "TableName": "Thread",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE",
+        "BillingModeSummary": {
+            "BillingMode": "PAY_PER_REQUEST",
+            "LastUpdateToPayPerRequestDateTime": 1548353644.074
+        }
+    }
+}
+
 GET_MODEL_ITEM_DATA = {
     'Item': {
         'user_name': {
@@ -1016,38 +1099,9 @@ COMPLEX_MODEL_TABLE_DATA = {
      }
 }
 
-BOOLEAN_CONVERSION_MODEL_TABLE_DATA_OLD_STYLE = {
+BOOLEAN_MODEL_TABLE_DATA = {
     'Table': {
-        'ItemCount': 0, 'TableName': 'BooleanConversionTable',
-        'ProvisionedThroughput': {
-            'ReadCapacityUnits': 2,
-            'WriteCapacityUnits': 2,
-            'NumberOfDecreasesToday': 0
-        },
-        'CreationDateTime': 1391471876.86,
-        'TableStatus': 'ACTIVE',
-        'AttributeDefinitions': [
-            {
-                'AttributeName': 'user_name',
-                'AttributeType': 'S'
-            },
-            {
-                'AttributeName': 'is_human',
-                'AttributeType': 'N'
-            }
-        ],
-        'KeySchema': [
-            {
-                'AttributeName': 'user_name', 'KeyType': 'HASH'
-            }
-        ],
-        'TableSizeBytes': 0
-    }
-}
-
-BOOLEAN_CONVERSION_MODEL_TABLE_DATA = {
-    'Table': {
-        'ItemCount': 0, 'TableName': 'BooleanConversionTable',
+        'ItemCount': 0, 'TableName': 'BooleanTable',
         'ProvisionedThroughput': {
             'ReadCapacityUnits': 2,
             'WriteCapacityUnits': 2,
@@ -1074,29 +1128,7 @@ BOOLEAN_CONVERSION_MODEL_TABLE_DATA = {
     }
 }
 
-BOOLEAN_CONVERSION_MODEL_OLD_STYLE_TRUE_ITEM_DATA = {
-    'Item': {
-        'user_name': {
-            'S': 'justin'
-        },
-        'is_human': {
-            'N': '1'
-        }
-    }
-}
-
-BOOLEAN_CONVERSION_MODEL_OLD_STYLE_FALSE_ITEM_DATA = {
-    'Item': {
-        'user_name': {
-            'S': 'alf'
-        },
-        'is_human': {
-            'N': '0'
-        }
-    }
-}
-
-BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA = {
+BOOLEAN_MODEL_TRUE_ITEM_DATA = {
     'Item': {
         'user_name': {
             'S': 'justin'
@@ -1107,7 +1139,7 @@ BOOLEAN_CONVERSION_MODEL_NEW_STYLE_TRUE_ITEM_DATA = {
     }
 }
 
-BOOLEAN_CONVERSION_MODEL_NEW_STYLE_FALSE_ITEM_DATA = {
+BOOLEAN_MODEL_FALSE_ITEM_DATA = {
     'Item': {
         'user_name': {
             'S': 'alf'
@@ -1376,6 +1408,41 @@ DOG_TABLE_DATA = {
             "WriteCapacityUnits": 5
         },
         "TableName": "Dog",
+        "TableSizeBytes": 0,
+        "TableStatus": "ACTIVE"
+    }
+}
+
+VERSIONED_TABLE_DATA = {
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "name",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "email",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "version",
+                "AttributeType": "N"
+            }
+        ],
+        "CreationDateTime": 1.363729002358E9,
+        "ItemCount": 42,
+        "KeySchema": [
+            {
+                "AttributeName": "name",
+                "KeyType": "HASH"
+            },
+        ],
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+        },
+        "TableName": "VersionedModel",
         "TableSizeBytes": 0,
         "TableStatus": "ACTIVE"
     }

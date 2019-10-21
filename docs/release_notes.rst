@@ -1,6 +1,150 @@
 Release Notes
 =============
 
+v4.1.0
+------
+
+:date: 2019-10-17
+
+This is a backwards compatible, minor release.
+
+* In the Model's Meta, you may now provide an AWS session token, which is mostly useful for assumed roles (#700)::
+
+    sts_client = boto3.client("sts")
+    role_object = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="role_name", DurationSeconds=BOTO3_CLIENT_DURATION)
+    role_credentials = role_object["Credentials"]
+
+    class MyModel(Model):
+      class Meta:
+        table_name = "table_name"
+        aws_access_key_id = role_credentials["AccessKeyId"]
+        aws_secret_access_key = role_credentials["SecretAccessKey"]
+        aws_session_token = role_credentials["SessionToken"]
+
+      hash = UnicodeAttribute(hash_key=True)
+      range = UnicodeAttribute(range_key=True)
+
+* Fix warning about `inspect.getargspec` (#701)
+* Fix provisioning GSIs when using pay-per-request billing (#690)
+* Suppress Python 3 exception chaining when "re-raising" botocore errors as PynamoDB model exceptions (#705)
+
+Contributors to this release:
+
+* @asottile
+* @julienduchesne
+
+v4.0.0
+--------
+
+:date: 2019-04-10
+
+This is major release and contains breaking changes. Please read the notes below carefully.
+
+**Requests Removal**
+
+Given that ``botocore`` has moved to using ``urllib3`` directly for making HTTP requests, we'll be doing the same (via ``botocore``). This means the following:
+
+* The ``session_cls`` option is no longer supported.
+* The ``request_timeout_seconds`` parameter is no longer supported. ``connect_timeout_seconds`` and ``read_timeout_seconds`` are available instead.
+
+  + Note that the timeouts for connection and read are now ``15`` and ``30`` seconds respectively. This represents a change from the previous ``60`` second combined ``requests`` timeout.
+* *Wrapped* exceptions (i.e ``exc.cause``) that were from ``requests.exceptions`` will now be comparable ones from ``botocore.exceptions`` instead.
+
+**Key attribute types must match table**
+
+The previous release would call `DescribeTable` to discover table metadata
+and would use the key types as defined in the DynamoDB table. This could obscure
+type mismatches e.g. where a table's hash key is a number (`N`) in DynamoDB,
+but defined in PynamoDB as a `UnicodeAttribute`.
+
+With this release, we're always using the PynamoDB model's definition
+of all attributes including the key attributes.
+
+**Deprecation of old APIs**
+
+Support for `Legacy Conditional Parameters <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.html>`_ has been
+removed. See a complete list of affected ``Model`` methods below:
+
+* ``update_item``: removed in favor of ``update``.
+* ``rate_limited_scan``: removed in favor of ``scan`` and ``ResultIterator``.
+
+  + Relatedly, the ``allow_rate_limited_scan_without_consumed_capacity`` option has been removed.
+* ``delete``: ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``condition`` instead.
+* ``update``: ``attributes``, ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``actions`` and ``condition`` instead.
+* ``save``: ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``condition`` instead.
+* ``count``: ``**filters`` kwargs removed. Use ``range_key_condition``/``filter_condition`` instead.
+* ``query``: ``conditional_operator`` and ``**filters`` kwargs removed. Use ``range_key_condition``/``filter_condition`` instead.
+* ``scan``: ``conditional_operator`` and ``**filters`` kwargs removed. Use ``filter_condition`` instead.
+
+When upgrading, pay special attention to use of ``**filters`` and ``**expected_values``, as you'll need to check for arbitrary names that correspond to
+attribute names. Also keep an eye out for kwargs like ``user_id__eq=5`` or ``email__null=True``, which are no longer supported. If you're not already using
+``mypy`` to type check your code, it can help you catch cases like these.
+
+New features in this release:
+
+* Support for transactions (``TransactGet`` and ``TransactWrite``) (#618)
+* Support for versioned optimistic locking (#664)
+
+Other changes in this release:
+
+* Python 2.6 is no longer supported. 4.x.x will be the last major release to support Python 2.7 given the upcoming EOL.
+* Added the ``max_pool_connection`` and ``extra_headers`` settings to replace common use cases for ``session_cls``
+* Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook.
+* Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
+* The ``MapAttributeMeta`` class has been removed. Now ``type(MapAttribute) == AttributeContainerMeta``.
+* Removed ``LegacyBooleanAttribute`` and the read-compatibility for it in ``BooleanAttribute``.
+* `None` can now be used to bootstrap condition chaining (#653)
+* Allow specifying timedeltas in expressions involving TTLAttributes (#665)
+
+
+v3.4.1
+------
+
+:date: 2019-06-28
+
+This is a backwards compatible, minor release.
+
+Changes in this release:
+
+* Fix type stubs to include new methods and parameters introduced with time-to-live support
+
+
+v3.4.0
+------
+
+:date: 2019-06-13
+
+This is a backwards compatible, minor release.
+
+Changes in this release:
+
+* Adds a TTLAttribute that specifies when items expire (#259)
+* Enables time-to-live on a DynamoDB table if the corresponding model has a TTLAttribute
+* Adds a default_for_new parameter for Attribute which is a default that applies to new items only
+
+Contributors to this release:
+
+* @irhkang
+* @ikonst
+
+
+v3.3.3
+------
+
+:date: 2019-01-15
+
+This is a backwards compatible, minor release.
+
+Fixes in this release:
+
+* Legacy boolean attribute migration fix. (#538)
+* Correctly package type stubs. (#585)
+
+Contributors to this release:
+
+* @vo-va
+
+
 v3.3.2
 ------
 
@@ -10,7 +154,7 @@ This is a backwards compatible, minor release.
 
 Changes in this release:
 
- * Built-in support for mypy type stubs, superseding those in python/typeshed. (#537)
+* Built-in support for mypy type stubs, superseding those in python/typeshed. (#537)
 
 
 v3.3.1
@@ -50,11 +194,10 @@ New features in this release:
 * Add migration support for LegacyBooleanAttribute. (#404, #405)
 * Rate limited Page Iterator. (#481)
 
-
 Fixes in this release:
 
 * Thread-safe client creation in botocore. (#153, #393)
-* Use attr.get_value(value) when deserialize. (#450) 
+* Use attr.get_value(value) when deserialize. (#450)
 * Skip null attributes post serialization for maps. (#455)
 * Fix deserialization bug in BinaryAttribute and BinarySetAttribute. (#459, #480)
 * Allow MapAttribute instances to be used as the RHS in expressions. (#488)
@@ -72,7 +215,7 @@ Contributors to this release:
 * @nicysneiros
 * @jcomo
 * @kevgliss
-* @asottile 
+* @asottile
 * @harleyk
 * @betamoo
 
@@ -147,8 +290,8 @@ v3.2.0rc1
 
 This is a backwards compatible, release candidate.
 
-This release candidate updates PynamoDB to interact with Dynamo via the current version of Dynamo's API. 
-It deprecates some internal methods that were used to interact with Dynamo that are no longer relevant. 
+This release candidate updates PynamoDB to interact with Dynamo via the current version of Dynamo's API.
+It deprecates some internal methods that were used to interact with Dynamo that are no longer relevant.
 If your project was calling those low level methods a warning will be logged.
 
 New features in this release:
@@ -167,7 +310,7 @@ v3.1.0
 
 This is a backwards compatible, minor release.
 
-Note that we now require ``botocore>=1.2.0``; this is required to support the 
+Note that we now require ``botocore>=1.2.0``; this is required to support the
 ``consistent_read`` parameter when scanning.
 
 Calling ``Model.count()`` without a ``hash_key`` and *with* ``filters`` will
@@ -204,8 +347,8 @@ Now object access is possible and recommended. See [here](https://github.com/pyn
 Access via the ``attr_name``, also known as the DynamoDB name, will now throw an ``AttributeError``.
 
 ``UnicodeSetAttributes`` do not json serialize or deserialize anymore.
-We deprecated the functionality of json serializing as of ``1.6.0`` but left the deserialization functionality in there so people could migrate away from the old functionality. 
-If you have any ``UnicodeSetAttributes`` that have not been persisted since version ``1.6.0`` you will need to migrate your data or manage the json encoding and decoding with a custom attribute in application. 
+We deprecated the functionality of json serializing as of ``1.6.0`` but left the deserialization functionality in there so people could migrate away from the old functionality.
+If you have any ``UnicodeSetAttributes`` that have not been persisted since version ``1.6.0`` you will need to migrate your data or manage the json encoding and decoding with a custom attribute in application.
 
 * Performance enhancements for the ``UTCDateTimeAttribute`` deserialize method. (#277)
 * There was a regression with attribute discovery. Fixes attribute discovery for model classes with inheritance (#280)
@@ -834,3 +977,4 @@ v0.1.11
 * Better PEP8 Compliance
 * More tests
 * Removed session and endpoint caching to avoid using stale IAM role credentials
+

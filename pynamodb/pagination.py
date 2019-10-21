@@ -198,7 +198,7 @@ class ResultIterator(object):
         # The operation should be resumed starting at the last item returned, not the last item evaluated.
         # This can occur if the 'limit' is reached in the middle of a page.
         item = self._items[self._index - 1]
-        return dict((key, item[key]) for key in self.page_iter.key_names)
+        return {key: item[key] for key in self.page_iter.key_names}
 
     @property
     def total_count(self):

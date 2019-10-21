@@ -1,22 +1,24 @@
 """
 PynamoDB attributes
 """
+import calendar
 import six
 from six import add_metaclass
 import json
+import time
 from base64 import b64encode, b64decode
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 import warnings
 from dateutil.parser import parse
 from dateutil.tz import tzutc
-from inspect import getargspec
+from inspect import getmembers
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
-from pynamodb.compat import getmembers_issubclass
 from pynamodb.expressions.operand import Path
+from pynamodb._compat import getfullargspec
 import collections
 
 
@@ -32,9 +34,15 @@ class Attribute(object):
                  range_key=False,
                  null=None,
                  default=None,
+                 default_for_new=None,
                  attr_name=None
                  ):
+        if default and default_for_new:
+            raise ValueError("An attribute cannot have both default and default_for_new parameters")
         self.default = default
+        # This default is only set for new objects (ie: it's not set for re-saved objects)
+        self.default_for_new = default_for_new
+
         if null is not None:
             self.null = null
         self.is_hash_key = hash_key
@@ -86,7 +94,7 @@ class Attribute(object):
 
     def __iter__(self):
         # Because we define __getitem__ below for condition expression support
-        raise TypeError("'{0}' object is not iterable".format(self.__class__.__name__))
+        raise TypeError("'{}' object is not iterable".format(self.__class__.__name__))
 
     # Condition Expression Support
     def __eq__(self, other):
@@ -189,7 +197,7 @@ class AttributeContainerMeta(type):
         cls._attributes = {}
         cls._dynamo_to_python_attrs = {}
 
-        for name, attribute in getmembers_issubclass(cls, Attribute):
+        for name, attribute in getmembers(cls, lambda o: isinstance(o, Attribute)):
             initialized = False
             if isinstance(attribute, MapAttribute):
                 # MapAttribute instances that are class attributes of an AttributeContainer class
@@ -212,14 +220,14 @@ class AttributeContainerMeta(type):
 @add_metaclass(AttributeContainerMeta)
 class AttributeContainer(object):
 
-    def __init__(self, **attributes):
+    def __init__(self, _user_instantiated=True, **attributes):
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
         # to store the values that are bound to this instance. Attributes store values in the dictionary
         # using the `python_attr_name` as the dictionary key. "Raw" (i.e. non-subclassed) MapAttribute
         # instances do not have any Attributes defined and instead use this dictionary to store their
         # collection of name-value pairs.
         self.attribute_values = {}
-        self._set_defaults()
+        self._set_defaults(_user_instantiated=_user_instantiated)
         self._set_attributes(**attributes)
 
     @classmethod
@@ -250,12 +258,15 @@ class AttributeContainer(object):
         """
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
 
-    def _set_defaults(self):
+    def _set_defaults(self, _user_instantiated=True):
         """
         Sets and fields that provide a default value
         """
         for name, attr in self.get_attributes().items():
-            default = attr.default
+            if _user_instantiated and attr.default_for_new is not None:
+                default = attr.default_for_new
+            else:
+                default = attr.default
             if callable(default):
                 value = default()
             else:
@@ -269,7 +280,7 @@ class AttributeContainer(object):
         """
         for attr_name, attr_value in six.iteritems(attributes):
             if attr_name not in self.get_attributes():
-                raise ValueError("Attribute {0} specified does not exist".format(attr_name))
+                raise ValueError("Attribute {} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
 
     def __eq__(self, other):
@@ -306,7 +317,7 @@ class SetMixin(object):
         Deserializes a set
         """
         if value and len(value):
-            return set([json.loads(val) for val in value])
+            return {json.loads(val) for val in value}
 
 
 class BinaryAttribute(Attribute):
@@ -353,9 +364,9 @@ class BinarySetAttribute(SetMixin, Attribute):
         """
         try:
             if value and len(value):
-                return set([b64decode(val.decode(DEFAULT_ENCODING)) for val in value])
+                return {b64decode(val.decode(DEFAULT_ENCODING)) for val in value}
         except AttributeError:
-            return set([b64decode(val) for val in value])
+            return {b64decode(val) for val in value}
 
 
 class UnicodeSetAttribute(SetMixin, Attribute):
@@ -391,7 +402,7 @@ class UnicodeSetAttribute(SetMixin, Attribute):
 
     def deserialize(self, value):
         if value and len(value):
-            return set([self.element_deserialize(val) for val in value])
+            return {self.element_deserialize(val) for val in value}
 
 
 class UnicodeAttribute(Attribute):
@@ -439,39 +450,6 @@ class JSONAttribute(Attribute):
         return json.loads(value, strict=False)
 
 
-class LegacyBooleanAttribute(Attribute):
-    """
-    A class for legacy boolean attributes
-
-    Previous versions of this library serialized bools as numbers.
-    This class allows you to continue to use that functionality.
-    """
-
-    attr_type = NUMBER
-
-    def serialize(self, value):
-        if value is None:
-            return None
-        elif value:
-            return json.dumps(1)
-        else:
-            return json.dumps(0)
-
-    def deserialize(self, value):
-        return bool(json.loads(value))
-
-    def get_value(self, value):
-        # we need this for the period in which you are upgrading
-        # you can switch all BooleanAttributes to LegacyBooleanAttributes
-        # this can read both but serializes as Numbers
-        # once you've transitioned, you can then switch back to
-        # BooleanAttribute and it will serialize the new fancy way
-        value_to_deserialize = super(LegacyBooleanAttribute, self).get_value(value)
-        if value_to_deserialize is None:
-            value_to_deserialize = json.dumps(value.get(BOOLEAN, 0))
-        return value_to_deserialize
-
-
 class BooleanAttribute(Attribute):
     """
     A class for boolean attributes
@@ -488,14 +466,6 @@ class BooleanAttribute(Attribute):
 
     def deserialize(self, value):
         return bool(value)
-
-    def get_value(self, value):
-        # we need this for legacy compatibility.
-        # previously, BOOL was serialized as N
-        value_to_deserialize = super(BooleanAttribute, self).get_value(value)
-        if value_to_deserialize is None:
-            value_to_deserialize = json.loads(value.get(NUMBER_SHORT, '0'))
-        return value_to_deserialize
 
 
 class NumberSetAttribute(SetMixin, Attribute):
@@ -525,6 +495,85 @@ class NumberAttribute(Attribute):
         return json.loads(value)
 
 
+class VersionAttribute(NumberAttribute):
+    """
+    A version attribute
+    """
+    null = True
+
+    def __set__(self, instance, value):
+        """
+        Cast assigned value to int.
+        """
+        super(VersionAttribute, self).__set__(instance, int(value))
+
+    def __get__(self, instance, owner):
+        """
+        Cast retrieved value to int.
+        """
+        val = super(VersionAttribute, self).__get__(instance, owner)
+        return int(val) if isinstance(val, float) else val
+
+    def serialize(self, value):
+        """
+        Cast value to int then encode as JSON
+        """
+        return super(VersionAttribute, self).serialize(int(value))
+
+    def deserialize(self, value):
+        """
+        Decode numbers from JSON and cast to int.
+        """
+        return int(super(VersionAttribute, self).deserialize(value))
+
+
+class TTLAttribute(Attribute):
+    """
+    A time-to-live attribute that signifies when the item expires and can be automatically deleted.
+    It can be assigned with a timezone-aware datetime value (for absolute expiry time)
+    or a timedelta value (for expiry relative to the current time),
+    but always reads as a UTC datetime value.
+    """
+    attr_type = NUMBER
+
+    def _normalize(self, value):
+        """
+        Converts value to a UTC datetime
+        """
+        if value is None:
+            return
+        if isinstance(value, timedelta):
+            value = int(time.time() + value.total_seconds())
+        elif isinstance(value, datetime):
+            if value.tzinfo is None:
+                raise ValueError("datetime must be timezone-aware")
+            value = calendar.timegm(value.utctimetuple())
+        else:
+            raise ValueError("TTLAttribute value must be a timedelta or datetime")
+        return datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
+
+    def __set__(self, instance, value):
+        """
+        Converts assigned values to a UTC datetime
+        """
+        super(TTLAttribute, self).__set__(instance, self._normalize(value))
+
+    def serialize(self, value):
+        """
+        Serializes a datetime as a timestamp (Unix time).
+        """
+        if value is None:
+            return None
+        return json.dumps(calendar.timegm(self._normalize(value).utctimetuple()))
+
+    def deserialize(self, value):
+        """
+        Deserializes a timestamp (Unix time) as a UTC datetime.
+        """
+        timestamp = json.loads(value)
+        return datetime.utcfromtimestamp(timestamp).replace(tzinfo=tzutc())
+
+
 class UTCDateTimeAttribute(Attribute):
     """
     An attribute for storing a UTC Datetime
@@ -544,13 +593,16 @@ class UTCDateTimeAttribute(Attribute):
         """
         Takes a UTC datetime string and returns a datetime object
         """
-        # First attempt to parse the datetime with the datetime format used
-        # by default when storing UTCDateTimeAttributes.  This is signifantly
-        # faster than always going through dateutil.
         try:
-            return datetime.strptime(value, DATETIME_FORMAT)
-        except ValueError:
-            return parse(value)
+            return _fast_parse_utc_datestring(value)
+        except (ValueError, IndexError):
+            try:
+                # Attempt to parse the datetime with the datetime format used
+                # by default when storing UTCDateTimeAttributes.  This is signifantly
+                # faster than always going through dateutil.
+                return datetime.strptime(value, DATETIME_FORMAT)
+            except ValueError:
+                return parse(value)
 
 
 class NullAttribute(Attribute):
@@ -563,13 +615,6 @@ class NullAttribute(Attribute):
         return None
 
 
-class MapAttributeMeta(AttributeContainerMeta):
-    """
-    This is only here for backwards compatibility: i.e. so type(MapAttribute) == MapAttributeMeta
-    """
-
-
-@add_metaclass(MapAttributeMeta)
 class MapAttribute(Attribute, AttributeContainer):
     """
     A Map Attribute
@@ -629,11 +674,11 @@ class MapAttribute(Attribute, AttributeContainer):
     """
     attr_type = MAP
 
-    attribute_args = getargspec(Attribute.__init__).args[1:]
+    attribute_args = getfullargspec(Attribute.__init__).args[1:]
 
     def __init__(self, **attributes):
         # Store the kwargs used by Attribute.__init__ in case `_make_attribute` is called.
-        self.attribute_kwargs = dict((arg, attributes.pop(arg)) for arg in self.attribute_args if arg in attributes)
+        self.attribute_kwargs = {arg: attributes.pop(arg) for arg in self.attribute_args if arg in attributes}
 
         # Assume all instances should behave like an AttributeContainer. Instances that are intended to be
         # used as Attributes will be transformed by AttributeContainerMeta during creation of the containing class.
@@ -710,17 +755,17 @@ class MapAttribute(Attribute, AttributeContainer):
         elif item in self._attributes:
             return getattr(self, item)
         else:
-            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, item))
+            raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, item))
 
     def __setitem__(self, item, value):
         if not self._is_attribute_container():
-            raise TypeError("'{0}' object does not support item assignment".format(self.__class__.__name__))
+            raise TypeError("'{}' object does not support item assignment".format(self.__class__.__name__))
         if self.is_raw():
             self.attribute_values[item] = value
         elif item in self._attributes:
             setattr(self, item, value)
         else:
-            raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, item))
+            raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, item))
 
     def __getattr__(self, attr):
         # This should only be called for "raw" (i.e. non-subclassed) MapAttribute instances.
@@ -730,7 +775,7 @@ class MapAttribute(Attribute, AttributeContainer):
                 return self.attribute_values[attr]
             except KeyError:
                 pass
-        raise AttributeError("'{0}' has no attribute '{1}'".format(self.__class__.__name__, attr))
+        raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, attr))
 
     def __setattr__(self, name, value):
         # "Raw" (i.e. non-subclassed) instances set their name-value pairs in the `attribute_values` dictionary.
@@ -761,7 +806,7 @@ class MapAttribute(Attribute, AttributeContainer):
         if can_be_null and value is None:
             return True
         if getattr(self, key) is None:
-            raise ValueError("Attribute '{0}' cannot be None".format(key))
+            raise ValueError("Attribute '{}' cannot be None".format(key))
         return True  # TODO: check that the actual type of `value` meets requirements of `attr`
 
     def validate(self):
@@ -879,6 +924,26 @@ def _get_key_for_serialize(value):
     if value_type not in SERIALIZE_KEY_MAP:
         raise ValueError('Unknown value: {}'.format(value_type))
     return SERIALIZE_KEY_MAP[value_type]
+
+
+def _fast_parse_utc_datestring(datestring):
+    # Method to quickly parse strings formatted with '%Y-%m-%dT%H:%M:%S.%f+0000'.
+    # This is ~5.8x faster than using strptime and 38x faster than dateutil.parser.parse.
+    _int = int  # Hack to prevent global lookups of int, speeds up the function ~10%
+    try:
+        if (datestring[4] != '-' or datestring[7] != '-' or datestring[10] != 'T' or
+                datestring[13] != ':' or datestring[16] != ':' or datestring[19] != '.' or
+                datestring[-5:] != '+0000'):
+            raise ValueError("Datetime string '{}' does not match format "
+                            "'%Y-%m-%dT%H:%M:%S.%f+0000'".format(datestring))
+        return datetime(
+            _int(datestring[0:4]), _int(datestring[5:7]), _int(datestring[8:10]),
+            _int(datestring[11:13]), _int(datestring[14:16]), _int(datestring[17:19]),
+            _int(round(float(datestring[19:-5]) * 1e6)), tzutc()
+        )
+    except (TypeError, ValueError):
+        raise ValueError("Datetime string '{}' does not match format "
+                         "'%Y-%m-%dT%H:%M:%S.%f+0000'".format(datestring))
 
 
 class ListAttribute(Attribute):

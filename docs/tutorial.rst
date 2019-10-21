@@ -31,7 +31,14 @@ Installation
     $ pip install pynamodb
 
 
-Don't have pip? `Here are instructions for installing pip. <https://pip.readthedocs.io/en/latest/installing.html>`_.
+Don't have pip? `Here are instructions for installing pip <https://pip.readthedocs.io/en/latest/installing.html>`_.
+
+Alternatively, if you are running `Anaconda or miniconda <https://www.anaconda.com/distribution/#download-section>`_, use:
+
+::
+
+    $ conda install -c conda-forge pynamodb
+
 
 Getting Started
 ^^^^^^^^^^^^^^^
