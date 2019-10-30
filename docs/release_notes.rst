@@ -1,6 +1,21 @@
 Release Notes
 =============
 
+v4.2.0
+------
+
+:date: 2019-10-17
+
+This is a backwards compatible, minor release.
+
+* Add ``attributes_to_get`` parameter to ``Model.scan`` (#431)
+* Disable botocore parameter validation for performance (#711)
+
+Contributors to this release:
+
+* @ButtaKnife
+
+
 v4.1.0
 ------
 
@@ -32,6 +47,7 @@ Contributors to this release:
 
 * @asottile
 * @julienduchesne
+
 
 v4.0.0
 --------
