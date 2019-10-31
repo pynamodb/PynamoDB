@@ -171,8 +171,6 @@ Update
 The ``Update`` operation functions similarly to ``Model.update``.
 
 * ``model`` (required)
-* ``hash_key``  (required)
-* ``range_key`` (optional)
 * ``actions`` (required) - a list of type :py:class:`Action <pynamodb.expressions.update.Action>` (see :ref:`updates`)
 * ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional`)
 * ``return_values`` (optional) - the values that should be returned if the condition fails (:ref:`return_values_on_check_failure_save`)
