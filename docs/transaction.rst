@@ -170,7 +170,7 @@ Update
 
 The ``Update`` operation functions similarly to ``Model.update``.
 
-* ``model_cls`` (required)
+* ``model`` (required)
 * ``hash_key``  (required)
 * ``range_key`` (optional)
 * ``actions`` (required) - a list of type :py:class:`Action <pynamodb.expressions.update.Action>` (see :ref:`updates`)
