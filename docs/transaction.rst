@@ -178,10 +178,10 @@ The ``Update`` operation functions similarly to ``Model.update``.
 
 .. code-block:: python
 
+    user1_statement = BankStatement('user1')
     with TransactWrite(connection=connection) as transaction:
         transaction.update(
-            BankStatement,
-            'user1',
+            user1_statement,
             actions=[BankStatement.account_balance.set(0), BankStatement.is_active.set(False)]
             condition=(BankStatement.user_id.exists())
         )
