@@ -170,9 +170,7 @@ Update
 
 The ``Update`` operation functions similarly to ``Model.update``.
 
-* ``model_cls`` (required)
-* ``hash_key``  (required)
-* ``range_key`` (optional)
+* ``model`` (required)
 * ``actions`` (required) - a list of type :py:class:`Action <pynamodb.expressions.update.Action>` (see :ref:`updates`)
 * ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional`)
 * ``return_values`` (optional) - the values that should be returned if the condition fails (:ref:`return_values_on_check_failure_save`)
@@ -180,10 +178,10 @@ The ``Update`` operation functions similarly to ``Model.update``.
 
 .. code-block:: python
 
+    user1_statement = BankStatement('user1')
     with TransactWrite(connection=connection) as transaction:
         transaction.update(
-            BankStatement,
-            'user1',
+            user1_statement,
             actions=[BankStatement.account_balance.set(0), BankStatement.is_active.set(False)]
             condition=(BankStatement.user_id.exists())
         )
