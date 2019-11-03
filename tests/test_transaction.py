@@ -82,9 +82,10 @@ class TestTransactWrite:
             with TransactWrite(connection=Connection()) as transaction:
                 transaction.condition_check(MockModel, hash_key=1, condition=None)
 
-    def test_commit(self, mocker):
-        connection = Connection()
-        mock_connection_transact_write = mocker.patch.object(connection, 'transact_write_items')
+    @staticmethod
+    def _handle_transact_write(connection, auto_version_condition):
+        old_auto_version_condition = MockModel.Meta.auto_version_condition
+        MockModel.Meta.auto_version_condition = auto_version_condition
         with patch(PATCH_METHOD) as req:
             req.return_value = MOCK_TABLE_DESCRIPTOR
             with TransactWrite(connection=connection) as t:
@@ -92,13 +93,19 @@ class TestTransactWrite:
                 t.delete(MockModel(2, 4))
                 t.save(MockModel(3, 5))
                 t.update(MockModel(4, 6), actions=[MockModel.mock_toot.set('hello')], return_values='ALL_OLD')
+        MockModel.Meta.auto_version_condition = old_auto_version_condition
+
+    def test_commit_auto_version_condition(self, mocker):
+        connection = Connection()
+        mock_connection_transact_write = mocker.patch.object(connection, 'transact_write_items')
+        self._handle_transact_write(connection, True)
 
         expected_condition_checks = [{
             'ConditionExpression': 'attribute_not_exists (#0)',
             'ExpressionAttributeNames': {'#0': 'mock_hash'},
             'Key': {'MockHash': {'N': '1'}, 'MockRange': {'N': '3'}},
-            'TableName': 'mock'}
-        ]
+            'TableName': 'mock'
+        }]
         expected_deletes = [{
             'ConditionExpression': 'attribute_not_exists (#0)',
             'ExpressionAttributeNames': {'#0': 'mock_version'},
@@ -116,8 +123,45 @@ class TestTransactWrite:
             'TableName': 'mock',
             'Key': {'MockHash': {'N': '4'}, 'MockRange': {'N': '6'}},
             'ReturnValuesOnConditionCheckFailure': 'ALL_OLD',
-            'UpdateExpression': 'SET #1 = :0, #0 = :1',
+            'UpdateExpression': 'SET #1 = :0 ADD #0 :1',
             'ExpressionAttributeNames': {'#0': 'mock_version', '#1': 'mock_toot'},
+            'ExpressionAttributeValues': {':0': {'S': 'hello'}, ':1': {'N': '1'}}
+        }]
+        mock_connection_transact_write.assert_called_once_with(
+            condition_check_items=expected_condition_checks,
+            delete_items=expected_deletes,
+            put_items=expected_puts,
+            update_items=expected_updates,
+            client_request_token=None,
+            return_consumed_capacity=None,
+            return_item_collection_metrics=None
+        )
+
+    def test_commit_auto_version_condition(self, mocker):
+        connection = Connection()
+        mock_connection_transact_write = mocker.patch.object(connection, 'transact_write_items')
+        self._handle_transact_write(connection, False)
+
+        expected_condition_checks = [{
+            'ConditionExpression': 'attribute_not_exists (#0)',
+            'ExpressionAttributeNames': {'#0': 'mock_hash'},
+            'Key': {'MockHash': {'N': '1'}, 'MockRange': {'N': '3'}},
+            'TableName': 'mock'
+        }]
+        expected_deletes = [{
+            'Key': {'MockHash': {'N': '2'}, 'MockRange': {'N': '4'}},
+            'TableName': 'mock'
+        }]
+        expected_puts = [{
+            'Item': {'MockHash': {'N': '3'}, 'MockRange': {'N': '5'}, 'mock_version': {'N': '1'}},
+            'TableName': 'mock'
+        }]
+        expected_updates = [{
+            'TableName': 'mock',
+            'Key': {'MockHash': {'N': '4'}, 'MockRange': {'N': '6'}},
+            'ReturnValuesOnConditionCheckFailure': 'ALL_OLD',
+            'UpdateExpression': 'SET #0 = :0 ADD #1 :1',
+            'ExpressionAttributeNames': {'#0': 'mock_toot', '#1': 'mock_version'},
             'ExpressionAttributeValues': {':0': {'S': 'hello'}, ':1': {'N': '1'}}
         }]
         mock_connection_transact_write.assert_called_once_with(

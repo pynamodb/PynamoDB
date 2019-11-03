@@ -210,6 +210,8 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_secret_access_key', None)
                     if not hasattr(attr_obj, 'aws_session_token'):
                         setattr(attr_obj, 'aws_session_token', None)
+                    if not hasattr(attr_obj, 'auto_version_condition'):
+                        setattr(attr_obj, 'auto_version_condition', get_settings_value('auto_version_condition'))
                 elif isinstance(attr_obj, Index):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -349,7 +351,7 @@ class Model(AttributeContainer):
         """
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
         version_condition = self._handle_version_attribute(kwargs)
-        if version_condition is not None:
+        if self.Meta.auto_version_condition and version_condition is not None:
             condition &= version_condition
 
         kwargs.update(condition=condition)
@@ -367,7 +369,7 @@ class Model(AttributeContainer):
 
         args, save_kwargs = self._get_save_args(null_check=False)
         version_condition = self._handle_version_attribute(save_kwargs, actions=actions)
-        if version_condition is not None:
+        if self.Meta.auto_version_condition and version_condition is not None:
             condition &= version_condition
         kwargs = {
             pythonic(RETURN_VALUES):  ALL_NEW,
@@ -393,7 +395,7 @@ class Model(AttributeContainer):
         """
         args, kwargs = self._get_save_args()
         version_condition = self._handle_version_attribute(serialized_attributes=kwargs)
-        if version_condition is not None:
+        if self.Meta.auto_version_condition and version_condition is not None:
             condition &= version_condition
         kwargs.update(condition=condition)
         data = self._get_connection().put_item(*args, **kwargs)
@@ -427,7 +429,7 @@ class Model(AttributeContainer):
             serialized_attributes={} if is_delete else save_kwargs,
             actions=actions
         )
-        if version_condition is not None:
+        if self.Meta.auto_version_condition and version_condition is not None:
             condition &= version_condition
 
         kwargs = dict(
@@ -935,20 +937,15 @@ class Model(AttributeContainer):
 
         if version_attribute_value:
             version_condition = version_attribute == version_attribute_value
-            if actions:
-                actions.append(version_attribute.add(1))
-            elif pythonic(ATTRIBUTES) in serialized_attributes:
-                serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
-                    version_attribute, version_attribute_value + 1, null_check=True
-                )
         else:
             version_condition = version_attribute.does_not_exist()
-            if actions:
-                actions.append(version_attribute.set(1))
-            elif pythonic(ATTRIBUTES) in serialized_attributes:
-                serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
-                    version_attribute, 1, null_check=True
-                )
+
+        if actions:
+            actions.append(version_attribute.add(1))
+        elif pythonic(ATTRIBUTES) in serialized_attributes:
+            serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+                version_attribute, (version_attribute_value or 0) + 1, null_check=True
+            )
 
         return version_condition
 
