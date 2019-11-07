@@ -45,6 +45,7 @@ from pynamodb.constants import (
     TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE, TRANSACT_UPDATE, UPDATE_EXPRESSION,
     RETURN_VALUES_ON_CONDITION_FAILURE_VALUES, RETURN_VALUES_ON_CONDITION_FAILURE,
     AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE,  BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
+    PROVISIONED_BILLING_MODE,
     TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE
 )
 from pynamodb.exceptions import (
@@ -588,6 +589,8 @@ class Connection(object):
             raise ValueError("incorrect value for billing_mode, available modes: {}".format(AVAILABLE_BILLING_MODES))
         if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
             del operation_kwargs[PROVISIONED_THROUGHPUT]
+        elif billing_mode == PROVISIONED_BILLING_MODE:
+            del operation_kwargs[BILLING_MODE]
 
         if global_secondary_indexes:
             global_secondary_indexes_list = []
