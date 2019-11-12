@@ -1,8 +1,8 @@
-import imp
 import logging
 import os
 import warnings
 from os import getenv
+from importlib.machinery import SourceFileLoader
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default
 
 override_settings = {}
 if os.path.isfile(OVERRIDE_SETTINGS_PATH):
-    override_settings = imp.load_source('__pynamodb_override_settings__', OVERRIDE_SETTINGS_PATH)
+    override_settings = SourceFileLoader('__pynamodb_override_settings__', OVERRIDE_SETTINGS_PATH).load_module()
     if hasattr(override_settings, 'session_cls') or hasattr(override_settings, 'request_timeout_seconds'):
         warnings.warn("The `session_cls` and `request_timeout_second` options are no longer supported")
     log.info('Override settings for pynamo available {}'.format(OVERRIDE_SETTINGS_PATH))
