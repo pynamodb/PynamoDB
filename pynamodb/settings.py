@@ -20,6 +20,7 @@ OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default
 
 override_settings = {}
 if os.path.isfile(OVERRIDE_SETTINGS_PATH):
+    print("v2", six.PY2)
     override_settings = load_source(
             '__pynamodb_override_settings__', OVERRIDE_SETTINGS_PATH
         ) if six.PY2 else SourceFileLoader(
