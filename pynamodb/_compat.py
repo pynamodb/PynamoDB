@@ -11,9 +11,9 @@ def load_module(name, path):
     if sys.version_info >= (3, 3):
         from imp import load_source
         from importlib.machinery import SourceFileLoader
+        return SourceFileLoader(name, path).load_module()
     else: 
         from imp import load_source
         return load_source(name, path)
-    return SourceFileLoader(name, path).load_module()
 
 __all__ = ('getfullargspec', 'load_module')
