@@ -7,11 +7,10 @@ else:
     from inspect import getfullargspec
     from importlib.machinery import SourceFileLoader
 
-def load_source_compat(name, path):
-    """Load module using the Python version compatible function. """
+def load_module(name, path):
+    """Load module using the Python version compatible function."""
     if six.PY2:
         return load_source(name, path)
     return SourceFileLoader(name, path).load_module()
 
-__all__ = ('getfullargspec', 'load_source_compat')
-
+__all__ = ('getfullargspec', 'load_module')
