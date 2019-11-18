@@ -9,7 +9,6 @@ else:
 def load_module(name, path):
     """Load module using the Python version compatible function."""
     if sys.version_info >= (3, 3):
-        from imp import load_source
         from importlib.machinery import SourceFileLoader
         return SourceFileLoader(name, path).load_module()
     else: 
