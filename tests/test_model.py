@@ -15,7 +15,7 @@ from dateutil.tz import tzutc
 
 from .deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
-from pynamodb.exceptions import DoesNotExist, TableError
+from pynamodb.exceptions import DoesNotExist, TableError, PutError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
@@ -234,6 +234,20 @@ class UserModel(Model):
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)
     ttl = TTLAttribute(null=True)
+
+
+
+class BatchModel(Model):
+    """
+    A testing model
+    """
+
+    class Meta:
+        table_name = 'BatchModel'
+        max_retry_attempts = 0
+
+    user_name = UnicodeAttribute(hash_key=True)
+
 
 
 class HostSpecificModel(Model):
@@ -1940,6 +1954,7 @@ class ModelTestCase(TestCase):
                 for item in items:
                     batch.save(item)
 
+
     def test_batch_write_with_unprocessed(self):
         picture_blob = b'FFD8FFD8'
 
@@ -1983,6 +1998,43 @@ class ModelTestCase(TestCase):
                     batch.save(item)
 
             self.assertEqual(len(req.mock_calls), 3)
+
+    def test_batch_write_raises_put_error(self):
+        items = []
+        for idx in range(10):
+            items.append(BatchModel(
+                '{}'.format(idx)
+            ))
+
+        unprocessed_items = []
+        for idx in range(5, 10):
+            unprocessed_items.append({
+                'PutRequest': {
+                    'Item': {
+                        'user_name': {STRING_SHORT: 'daniel'},
+                    }
+                }
+            })
+
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = [
+                {
+                    UNPROCESSED_ITEMS: {
+                        BatchModel.Meta.table_name: unprocessed_items[:2],
+                    }
+                },
+                {
+                    UNPROCESSED_ITEMS: {
+                        BatchModel.Meta.table_name: unprocessed_items[2:],
+                    }
+                },
+                {}
+            ]
+            with self.assertRaises(PutError):
+                with BatchModel.batch_write() as batch:
+                    for item in items:
+                        batch.save(item)
+            self.assertEqual(len(batch.failed_operations), 3)
 
     def test_index_queries(self):
         """
