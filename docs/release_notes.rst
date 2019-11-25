@@ -1,6 +1,15 @@
 Release Notes
 =============
 
+* Implement exponential backoff for batch writes
+* Avoid passing 'PROVISIONED' BillingMode for compatibility with some AWS AZs
+* On Python >= 3.3, use importlib instead of deprecated imp
+
+Contributors to this release:
+
+* @edholland
+* @reginalin
+
 v4.2.0
 ------
 
