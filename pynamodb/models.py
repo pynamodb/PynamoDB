@@ -2,6 +2,7 @@
 DynamoDB Models for PynamoDB
 """
 import json
+import random
 import time
 import six
 import logging
@@ -11,7 +12,7 @@ from inspect import getmembers
 from six import add_metaclass
 
 from pynamodb.expressions.condition import NotExists, Comparison
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
 from pynamodb.attributes import (
     Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
 )
@@ -52,6 +53,7 @@ class ModelContextManager(object):
         self.auto_commit = auto_commit
         self.max_operations = BATCH_WRITE_PAGE_LIMIT
         self.pending_operations = []
+        self.failed_operations = []
 
     def __enter__(self):
         return self
@@ -130,8 +132,15 @@ class BatchWrite(ModelContextManager):
         )
         if data is None:
             return
+        retries = 0
         unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
         while unprocessed_items:
+            sleep_time = random.randint(0, self.model.Meta.base_backoff_ms * (2 ** retries)) / 1000
+            time.sleep(sleep_time)
+            retries += 1
+            if retries >= self.model.Meta.max_retry_attempts:
+                self.failed_operations = unprocessed_items
+                raise PutError("Failed to batch write items: max_retry_attempts exceeded")
             put_items = []
             delete_items = []
             for item in unprocessed_items:
@@ -139,7 +148,8 @@ class BatchWrite(ModelContextManager):
                     put_items.append(item.get(PUT_REQUEST).get(ITEM))
                 elif DELETE_REQUEST in item:
                     delete_items.append(item.get(DELETE_REQUEST).get(KEY))
-            log.info("Resending %s unprocessed keys for batch operation", len(unprocessed_items))
+            log.info("Resending %d unprocessed keys for batch operation after %d seconds sleep",
+                     len(unprocessed_items), sleep_time)
             data = self.model._get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items

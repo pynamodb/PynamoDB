@@ -61,6 +61,7 @@ from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
+RATE_LIMITING_ERROR_CODES = ['ProvisionedThroughputExceededException', 'ThrottlingException']
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -442,7 +443,7 @@ class Connection(object):
                     if is_last_attempt_for_exceptions:
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise
-                    elif status_code < 500 and code != 'ProvisionedThroughputExceededException':
+                    elif status_code < 500 and code not in RATE_LIMITING_ERROR_CODES:
                         # We don't retry on a ConditionalCheckFailedException or other 4xx (except for
                         # throughput related errors) because we assume they will fail in perpetuity.
                         # Retrying when there is already contention could cause other problems
