@@ -109,8 +109,8 @@ Create a new user:
     user.email = "djohn@company.org"
     user.save()
 
-Now, search your table for all users with a last name of 'John' and whose
-first name begins with 'D':
+Now, search your table for all users with a last name of 'Denver' and whose
+first name begins with 'J':
 
 .. code-block:: python
 
