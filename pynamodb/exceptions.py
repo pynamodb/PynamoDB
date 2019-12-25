@@ -5,7 +5,7 @@ import re
 import botocore.exceptions
 
 
-TRANSACTION_CANCELED_REGEX = re.compile(r'\[([A-Za-z]+,?\s?)+\]')
+TRANSACTION_CANCELED_REGEX = re.compile(r'\[(\w+)(?:,\s(\w+))*\]')
 
 
 class PynamoDBException(Exception):
@@ -110,10 +110,11 @@ class TransactError(PynamoDBException):
 
     @staticmethod
     def _get_reason_list_from_message(message):
-        reasons = TRANSACTION_CANCELED_REGEX.search(message)
-        if not reasons:
-            return None
-        return reasons.group()[1:-1].split(', ')
+        reasons = [
+            reason if reason != 'None' else None
+            for reason in TRANSACTION_CANCELED_REGEX.search(message).groups()
+        ]
+        return reasons if reasons else None
 
     def parse_cancel_reasons(self, transact_items):
         if self.cause_response_code != 'TransactionCanceledException':
@@ -126,14 +127,14 @@ class TransactWriteError(TransactError):
     """
     Raised when a TransactWrite operation fails
     """
-    pass
+    msg = "Failed to write transaction items"
 
 
 class TransactGetError(TransactError):
     """
     Raised when a TransactGet operation fails
     """
-    pass
+    msg = "Failed to get transaction items"
 
 
 class InvalidStateError(PynamoDBException):

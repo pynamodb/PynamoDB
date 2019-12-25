@@ -43,7 +43,7 @@ def test_get_cause_response_message__no_message():
 
 def test_transact_error__get_reason_list_from_message():
     message = 'Transaction cancelled, please refer cancellation reasons for specific reasons [None, None, None, ConditionalCheckFailed]'
-    assert TransactError._get_reason_list_from_message(message) == ['None', 'None', 'None', 'ConditionalCheckFailed']
+    assert TransactError._get_reason_list_from_message(message) == [None, None, None, 'ConditionalCheckFailed']
 
 
 def test_transact_error__get_reason_list_from_message__no_match():
@@ -64,7 +64,7 @@ def test_transact_error__parse_cancel_reason():
             operation_name='test'
         )
     )
-    assert error.cancel_reasons == [({'TableName': 'toot'}, 'None'), ({'TableName': 'boot'}, 'ConditionalCheckFailed')]
+    assert error.cancel_reasons == [({'TableName': 'toot'}, None), ({'TableName': 'boot'}, 'ConditionalCheckFailed')]
 
 
 def test_transact_error__parse_cancel_reason__not_canceled():
