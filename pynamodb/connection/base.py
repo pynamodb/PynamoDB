@@ -45,6 +45,7 @@ from pynamodb.constants import (
     TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE, TRANSACT_UPDATE, UPDATE_EXPRESSION,
     RETURN_VALUES_ON_CONDITION_FAILURE_VALUES, RETURN_VALUES_ON_CONDITION_FAILURE,
     AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE,  BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
+    PROVISIONED_BILLING_MODE,
     TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE
 )
 from pynamodb.exceptions import (
@@ -60,6 +61,7 @@ from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
+RATE_LIMITING_ERROR_CODES = ['ProvisionedThroughputExceededException', 'ThrottlingException']
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -441,7 +443,7 @@ class Connection(object):
                     if is_last_attempt_for_exceptions:
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
                         raise
-                    elif status_code < 500 and code != 'ProvisionedThroughputExceededException':
+                    elif status_code < 500 and code not in RATE_LIMITING_ERROR_CODES:
                         # We don't retry on a ConditionalCheckFailedException or other 4xx (except for
                         # throughput related errors) because we assume they will fail in perpetuity.
                         # Retrying when there is already contention could cause other problems
@@ -526,6 +528,7 @@ class Connection(object):
         # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
         if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
             config = botocore.client.Config(
+                parameter_validation=False,  # Disable unnecessary validation for performance
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
                 max_pool_connections=self._max_pool_connections)
@@ -544,10 +547,10 @@ class Connection(object):
                 data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
                 self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
             except BotoCoreError as e:
-                raise TableError("Unable to describe table: {}".format(e), e)
+                six.raise_from(TableError("Unable to describe table: {}".format(e), e), None)
             except ClientError as e:
                 if 'ResourceNotFound' in e.response['Error']['Code']:
-                    raise TableDoesNotExist(e.response['Error']['Message'])
+                    six.raise_from(TableDoesNotExist(e.response['Error']['Message']), None)
                 else:
                     raise
         return self._tables[table_name]
@@ -587,16 +590,21 @@ class Connection(object):
             raise ValueError("incorrect value for billing_mode, available modes: {}".format(AVAILABLE_BILLING_MODES))
         if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
             del operation_kwargs[PROVISIONED_THROUGHPUT]
+        elif billing_mode == PROVISIONED_BILLING_MODE:
+            del operation_kwargs[BILLING_MODE]
 
         if global_secondary_indexes:
             global_secondary_indexes_list = []
             for index in global_secondary_indexes:
-                global_secondary_indexes_list.append({
+                index_kwargs = {
                     INDEX_NAME: index.get(pythonic(INDEX_NAME)),
                     KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
                     PROJECTION: index.get(pythonic(PROJECTION)),
                     PROVISIONED_THROUGHPUT: index.get(pythonic(PROVISIONED_THROUGHPUT))
-                })
+                }
+                if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
+                    del index_kwargs[PROVISIONED_THROUGHPUT]
+                global_secondary_indexes_list.append(index_kwargs)
             operation_kwargs[GLOBAL_SECONDARY_INDEXES] = global_secondary_indexes_list
 
         if key_schema is None:
@@ -628,7 +636,7 @@ class Connection(object):
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to create table: {}".format(e), e)
+            six.raise_from(TableError("Failed to create table: {}".format(e), e), None)
         return data
 
     def update_time_to_live(self, table_name, ttl_attribute_name):
@@ -645,7 +653,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to update TTL on table: {}".format(e), e)
+            six.raise_from(TableError("Failed to update TTL on table: {}".format(e), e), None)
 
     def delete_table(self, table_name):
         """
@@ -657,7 +665,7 @@ class Connection(object):
         try:
             data = self.dispatch(DELETE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to delete table: {}".format(e), e)
+            six.raise_from(TableError("Failed to delete table: {}".format(e), e), None)
         return data
 
     def update_table(self,
@@ -694,7 +702,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to update table: {}".format(e), e)
+            six.raise_from(TableError("Failed to update table: {}".format(e), e), None)
 
     def list_tables(self, exclusive_start_table_name=None, limit=None):
         """
@@ -712,7 +720,7 @@ class Connection(object):
         try:
             return self.dispatch(LIST_TABLES, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Unable to list tables: {}".format(e), e)
+            six.raise_from(TableError("Unable to list tables: {}".format(e), e), None)
 
     def describe_table(self, table_name):
         """
@@ -849,7 +857,7 @@ class Connection(object):
 
         operation_kwargs[TABLE_NAME] = table_name
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=key))
-        if attributes:
+        if attributes and operation_kwargs.get(ITEM) is not None:
             attrs = self.get_item_attribute_map(table_name, attributes)
             operation_kwargs[ITEM].update(attrs[ITEM])
         if attributes_to_get is not None:
@@ -903,7 +911,7 @@ class Connection(object):
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise DeleteError("Failed to delete item: {}".format(e), e)
+            six.raise_from(DeleteError("Failed to delete item: {}".format(e), e), None)
 
     def update_item(self,
                     table_name,
@@ -933,7 +941,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise UpdateError("Failed to update item: {}".format(e), e)
+            six.raise_from(UpdateError("Failed to update item: {}".format(e), e), None)
 
     def put_item(self,
                  table_name,
@@ -961,7 +969,7 @@ class Connection(object):
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to put item: {}".format(e), e)
+            six.raise_from(PutError("Failed to put item: {}".format(e), e), None)
 
     def _get_transact_operation_kwargs(self,
                                        client_request_token=None,
@@ -1012,7 +1020,10 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TransactWriteError(transact_items=transact_items, msg="Failed to write transaction items", cause=e)
+            six.raise_from(
+                TransactWriteError(transact_items=transact_items, msg="Failed to write transaction items", cause=e),
+                None
+            )
 
     def transact_get_items(self, get_items, return_consumed_capacity=None):
         """
@@ -1027,7 +1038,10 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TransactGetError(transact_items=transact_items, msg="Failed to get transaction items", cause=e)
+            six.raise_from(
+                TransactGetError(transact_items=transact_items, msg="Failed to get transaction items", cause=e),
+                None
+            )
 
     def batch_write_item(self,
                          table_name,
@@ -1065,7 +1079,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to batch write items: {}".format(e), e)
+            six.raise_from(PutError("Failed to batch write items: {}".format(e), e), None)
 
     def batch_get_item(self,
                        table_name,
@@ -1104,7 +1118,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to batch get items: {}".format(e), e)
+            six.raise_from(GetError("Failed to batch get items: {}".format(e), e), None)
 
     def get_item(self,
                  table_name,
@@ -1125,7 +1139,7 @@ class Connection(object):
         try:
             return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to get item: {}".format(e), e)
+            six.raise_from(GetError("Failed to get item: {}".format(e), e), None)
 
     def scan(self,
              table_name,
@@ -1175,7 +1189,7 @@ class Connection(object):
         try:
             return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise ScanError("Failed to scan table: {}".format(e), e)
+            six.raise_from(ScanError("Failed to scan table: {}".format(e), e), None)
 
     def query(self,
               table_name,
@@ -1266,7 +1280,7 @@ class Connection(object):
         try:
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise QueryError("Failed to query items: {}".format(e), e)
+            six.raise_from(QueryError("Failed to query items: {}".format(e), e), None)
 
     def _check_condition(self, name, condition):
         if condition is not None:

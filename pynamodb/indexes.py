@@ -99,6 +99,7 @@ class Index(with_metaclass(IndexMeta)):
              last_evaluated_key=None,
              page_size=None,
              consistent_read=None,
+             attributes_to_get=None,
              **filters):
         """
         Scans an index
@@ -112,6 +113,7 @@ class Index(with_metaclass(IndexMeta)):
             page_size=page_size,
             consistent_read=consistent_read,
             index_name=self.Meta.index_name,
+            attributes_to_get=attributes_to_get,
             **filters
         )
 

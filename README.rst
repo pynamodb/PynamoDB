@@ -4,6 +4,8 @@ PynamoDB
 
 .. image:: https://img.shields.io/pypi/v/pynamodb.svg
     :target: https://pypi.python.org/pypi/pynamodb/
+.. image:: https://img.shields.io/conda/vn/conda-forge/pynamodb.svg
+    :target: https://anaconda.org/conda-forge/pynamodb
 .. image:: https://img.shields.io/travis/pynamodb/PynamoDB/master.svg
     :target: https://travis-ci.org/pynamodb/PynamoDB
 .. image:: https://img.shields.io/coveralls/pynamodb/PynamoDB/master.svg
@@ -30,6 +32,10 @@ From PyPi::
 From GitHub::
 
     $ pip install git+https://github.com/pynamodb/PynamoDB#egg=pynamodb
+
+From conda-forge::
+    
+    $ conda install -c conda-forge pynamodb
 
 Upgrading
 =========
@@ -103,12 +109,12 @@ Create a new user:
     user.email = "djohn@company.org"
     user.save()
 
-Now, search your table for all users with a last name of 'John' and whose
-first name begins with 'D':
+Now, search your table for all users with a last name of 'Denver' and whose
+first name begins with 'J':
 
 .. code-block:: python
 
-    for user in UserModel.query("Denver", UserModel.first_name.startswith("J"):
+    for user in UserModel.query("Denver", UserModel.first_name.startswith("J")):
         print(user.first_name)
 
 Examples of ways to query your table with filter conditions:

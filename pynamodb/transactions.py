@@ -72,6 +72,7 @@ class TransactWrite(Transaction):
         self._delete_items = []
         self._put_items = []
         self._update_items = []
+        self._models_for_version_attribute_update = []
 
     def condition_check(self, model_cls, hash_key, range_key=None, condition=None):
         if condition is None:
@@ -94,6 +95,7 @@ class TransactWrite(Transaction):
             return_values_on_condition_failure=return_values
         )
         self._put_items.append(operation_kwargs)
+        self._models_for_version_attribute_update.append(model)
 
     def update(self, model, actions, condition=None, return_values=None):
         operation_kwargs = model.get_operation_kwargs_from_instance(
@@ -102,9 +104,10 @@ class TransactWrite(Transaction):
             return_values_on_condition_failure=return_values
         )
         self._update_items.append(operation_kwargs)
+        self._models_for_version_attribute_update.append(model)
 
     def _commit(self):
-        return self._connection.transact_write_items(
+        response = self._connection.transact_write_items(
             condition_check_items=self._condition_check_items,
             delete_items=self._delete_items,
             put_items=self._put_items,
@@ -113,3 +116,6 @@ class TransactWrite(Transaction):
             return_consumed_capacity=self._return_consumed_capacity,
             return_item_collection_metrics=self._return_item_collection_metrics,
         )
+        for model in self._models_for_version_attribute_update:
+            model.update_local_version_attribute()
+        return response

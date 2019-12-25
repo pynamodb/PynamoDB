@@ -1,12 +1,70 @@
 Release Notes
 =============
 
-v4.0.0b3
+Unreleased
+----------
+
+* Implement exponential backoff for batch writes
+* Avoid passing 'PROVISIONED' BillingMode for compatibility with some AWS AZs
+* On Python >= 3.3, use importlib instead of deprecated imp
+
+Contributors to this release:
+
+* @edholland
+* @reginalin
+
+v4.2.0
+------
+
+:date: 2019-10-17
+
+This is a backwards compatible, minor release.
+
+* Add ``attributes_to_get`` parameter to ``Model.scan`` (#431)
+* Disable botocore parameter validation for performance (#711)
+
+Contributors to this release:
+
+* @ButtaKnife
+
+
+v4.1.0
+------
+
+:date: 2019-10-17
+
+This is a backwards compatible, minor release.
+
+* In the Model's Meta, you may now provide an AWS session token, which is mostly useful for assumed roles (#700)::
+
+    sts_client = boto3.client("sts")
+    role_object = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="role_name", DurationSeconds=BOTO3_CLIENT_DURATION)
+    role_credentials = role_object["Credentials"]
+
+    class MyModel(Model):
+      class Meta:
+        table_name = "table_name"
+        aws_access_key_id = role_credentials["AccessKeyId"]
+        aws_secret_access_key = role_credentials["SecretAccessKey"]
+        aws_session_token = role_credentials["SessionToken"]
+
+      hash = UnicodeAttribute(hash_key=True)
+      range = UnicodeAttribute(range_key=True)
+
+* Fix warning about `inspect.getargspec` (#701)
+* Fix provisioning GSIs when using pay-per-request billing (#690)
+* Suppress Python 3 exception chaining when "re-raising" botocore errors as PynamoDB model exceptions (#705)
+
+Contributors to this release:
+
+* @asottile
+* @julienduchesne
+
+
+v4.0.0
 --------
 
 :date: 2019-04-10
-
-NB: This is a beta release and these notes are subject to change.
 
 This is major release and contains breaking changes. Please read the notes below carefully.
 
@@ -52,7 +110,8 @@ attribute names. Also keep an eye out for kwargs like ``user_id__eq=5`` or ``ema
 
 New features in this release:
 
-* Support for Transactions (``TransactGet`` and ``TransactWrite``) (#618)
+* Support for transactions (``TransactGet`` and ``TransactWrite``) (#618)
+* Support for versioned optimistic locking (#664)
 
 Other changes in this release:
 
@@ -63,6 +122,7 @@ Other changes in this release:
 * The ``MapAttributeMeta`` class has been removed. Now ``type(MapAttribute) == AttributeContainerMeta``.
 * Removed ``LegacyBooleanAttribute`` and the read-compatibility for it in ``BooleanAttribute``.
 * `None` can now be used to bootstrap condition chaining (#653)
+* Allow specifying timedeltas in expressions involving TTLAttributes (#665)
 
 
 v3.4.1

@@ -15,7 +15,7 @@ from dateutil.tz import tzutc
 
 from .deep_eq import deep_eq
 from pynamodb.connection.util import pythonic
-from pynamodb.exceptions import DoesNotExist, TableError
+from pynamodb.exceptions import DoesNotExist, TableError, PutError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
@@ -30,7 +30,7 @@ from pynamodb.indexes import (
 from pynamodb.attributes import (
     UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
-    BooleanAttribute, ListAttribute, TTLAttribute)
+    BooleanAttribute, ListAttribute, TTLAttribute, VersionAttribute)
 from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
     DESCRIBE_TABLE_DATA_PAY_PER_REQUEST,
@@ -41,12 +41,13 @@ from .data import (
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
     GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
-    CAR_MODEL_TABLE_DATA, FULL_CAR_MODEL_ITEM_DATA, CAR_MODEL_WITH_NULL_ITEM_DATA, INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA,
+    CAR_MODEL_TABLE_DATA, FULL_CAR_MODEL_ITEM_DATA, CAR_MODEL_WITH_NULL_ITEM_DATA,
+    INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA,
     BOOLEAN_MODEL_TABLE_DATA, BOOLEAN_MODEL_FALSE_ITEM_DATA, BOOLEAN_MODEL_TRUE_ITEM_DATA,
     TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA,
     EXPLICIT_RAW_MAP_MODEL_TABLE_DATA, EXPLICIT_RAW_MAP_MODEL_ITEM_DATA,
-    EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA, EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA
-)
+    EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA, EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA,
+    VERSIONED_TABLE_DATA)
 
 if six.PY3:
     from unittest.mock import patch, MagicMock
@@ -190,6 +191,7 @@ class SimpleUserModel(Model):
     views = NumberAttribute(null=True)
     is_active = BooleanAttribute(null=True)
     signature = UnicodeAttribute(null=True)
+    ttl = TTLAttribute(null=True)
 
 
 class CustomAttrIndex(LocalSecondaryIndex):
@@ -232,6 +234,20 @@ class UserModel(Model):
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)
     ttl = TTLAttribute(null=True)
+
+
+
+class BatchModel(Model):
+    """
+    A testing model
+    """
+
+    class Meta:
+        table_name = 'BatchModel'
+        max_retry_attempts = 0
+
+    user_name = UnicodeAttribute(hash_key=True)
+
 
 
 class HostSpecificModel(Model):
@@ -439,6 +455,15 @@ class TTLModel(Model):
     my_ttl = TTLAttribute(default_for_new=timedelta(minutes=1))
 
 
+class VersionedModel(Model):
+    class Meta:
+        table_name = 'VersionedModel'
+
+    name = UnicodeAttribute(hash_key=True)
+    email = UnicodeAttribute()
+    version = VersionAttribute()
+
+
 class ModelTestCase(TestCase):
     """
     Tests for the models API
@@ -596,7 +621,6 @@ class ModelTestCase(TestCase):
                     'ReadCapacityUnits': 25, 'WriteCapacityUnits': 25
                 },
                 'TableName': 'UserModel',
-                'BillingMode': 'PROVISIONED'
             }
             actual = req.call_args_list[1][0][1]
             self.assertEqual(sorted(actual.keys()), sorted(params.keys()))
@@ -806,10 +830,12 @@ class ModelTestCase(TestCase):
                 car = CarModel('foo')
                 batch.delete(car)
 
-    def test_update(self):
+    @patch('time.time')
+    def test_update(self, mock_time):
         """
         Model.update
         """
+        mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
         self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
         item = SimpleUserModel('foo', is_active=True, email='foo@example.com', signature='foo')
 
@@ -839,7 +865,8 @@ class ModelTestCase(TestCase):
                 SimpleUserModel.is_active.set(None),
                 SimpleUserModel.signature.set(None),
                 SimpleUserModel.custom_aliases.set(['bob']),
-                SimpleUserModel.numbers.delete(0, 1)
+                SimpleUserModel.numbers.delete(0, 1),
+                SimpleUserModel.ttl.set(timedelta(seconds=60)),
             ])
 
             args = req.call_args[0][1]
@@ -851,14 +878,15 @@ class ModelTestCase(TestCase):
                         'S': 'foo'
                     }
                 },
-                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3 REMOVE #4 DELETE #5 :4',
+                'UpdateExpression': 'SET #0 = :0, #1 = :1, #2 = :2, #3 = :3, #4 = :4 REMOVE #5 DELETE #6 :5',
                 'ExpressionAttributeNames': {
                     '#0': 'email',
                     '#1': 'is_active',
                     '#2': 'signature',
                     '#3': 'aliases',
-                    '#4': 'views',
-                    '#5': 'numbers'
+                    '#4': 'ttl',
+                    '#5': 'views',
+                    '#6': 'numbers'
                 },
                 'ExpressionAttributeValues': {
                     ':0': {
@@ -874,6 +902,9 @@ class ModelTestCase(TestCase):
                         'SS': ['bob']
                     },
                     ':4': {
+                        'N': str(1559692800 + 60)
+                    },
+                    ':5': {
                         'NS': ['0', '1']
                     }
                 },
@@ -1621,6 +1652,26 @@ class ModelTestCase(TestCase):
             for item in UserModel.scan():
                 self.assertIsNotNone(item)
 
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(10):
+                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                items.append(item)
+            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
+            for item in UserModel.scan(
+                    attributes_to_get=['email']):
+                self.assertIsNotNone(item)
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ProjectionExpression': '#0',
+                'ExpressionAttributeNames': {
+                    '#0': 'email'
+                },
+                'TableName': 'UserModel'
+            }
+            self.assertEquals(params, req.call_args[0][1])
+
     def test_get(self):
         """
         Model.get
@@ -1903,6 +1954,7 @@ class ModelTestCase(TestCase):
                 for item in items:
                     batch.save(item)
 
+
     def test_batch_write_with_unprocessed(self):
         picture_blob = b'FFD8FFD8'
 
@@ -1946,6 +1998,43 @@ class ModelTestCase(TestCase):
                     batch.save(item)
 
             self.assertEqual(len(req.mock_calls), 3)
+
+    def test_batch_write_raises_put_error(self):
+        items = []
+        for idx in range(10):
+            items.append(BatchModel(
+                '{}'.format(idx)
+            ))
+
+        unprocessed_items = []
+        for idx in range(5, 10):
+            unprocessed_items.append({
+                'PutRequest': {
+                    'Item': {
+                        'user_name': {STRING_SHORT: 'daniel'},
+                    }
+                }
+            })
+
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = [
+                {
+                    UNPROCESSED_ITEMS: {
+                        BatchModel.Meta.table_name: unprocessed_items[:2],
+                    }
+                },
+                {
+                    UNPROCESSED_ITEMS: {
+                        BatchModel.Meta.table_name: unprocessed_items[2:],
+                    }
+                },
+                {}
+            ]
+            with self.assertRaises(PutError):
+                with BatchModel.batch_write() as batch:
+                    for item in items:
+                        batch.save(item)
+            self.assertEqual(len(batch.failed_operations), 3)
 
     def test_index_queries(self):
         """
@@ -2956,6 +3045,153 @@ class ModelTestCase(TestCase):
             self.assert_dict_lists_equal(actual['AttributeDefinitions'],
                                          DOG_TABLE_DATA['Table']['AttributeDefinitions'])
 
+    def test_model_version_attribute_save(self):
+        self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
+        item = VersionedModel('test_user_name', email='test_user@email.com')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item.save()
+            args = req.call_args[0][1]
+            params = {
+                'Item': {
+                    'name': {
+                        'S': 'test_user_name'
+                    },
+                    'email': {
+                        'S': 'test_user@email.com'
+                    },
+                    'version': {
+                        'N': '1'
+                    },
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'VersionedModel',
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {'#0': 'version'},
+            }
+
+            deep_eq(args, params, _assert=True)
+            item.version = 1
+            item.name = "test_new_username"
+            item.save()
+            args = req.call_args[0][1]
+
+            params = {
+                'Item': {
+                    'name': {
+                        'S': 'test_new_username'
+                    },
+                    'email': {
+                        'S': 'test_user@email.com'
+                    },
+                    'version': {
+                        'N': '2'
+                    },
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'VersionedModel',
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {'#0': 'version'},
+                'ExpressionAttributeValues': {':0': {'N': '1'}}
+            }
+
+            deep_eq(args, params, _assert=True)
+
+    def test_version_attribute_increments_on_update(self):
+        self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
+        item = VersionedModel('test_user_name', email='test_user@email.com')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    'name': {
+                        'S': 'test_user_name'
+                    },
+                    'email': {
+                        'S': 'new@email.com'
+                    },
+                    'version': {
+                        'N': '1'
+                    },
+                }
+            }
+            item.update(actions=[VersionedModel.email.set('new@email.com')])
+            args = req.call_args[0][1]
+            params = {
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'version',
+                    '#1': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'new@email.com'
+                    },
+                    ':1': {
+                        'N': '1'
+                    }
+                },
+                'Key': {
+                    'name': {
+                        'S': 'test_user_name'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ReturnValues': 'ALL_NEW',
+                'TableName': 'VersionedModel',
+                'UpdateExpression': 'SET #1 = :0, #0 = :1'
+            }
+
+            deep_eq(args, params, _assert=True)
+            assert item.version == 1
+
+            req.return_value = {
+                ATTRIBUTES: {
+                    'name': {
+                        'S': 'test_user_name'
+                    },
+                    'email': {
+                        'S': 'newer@email.com'
+                    },
+                    'version': {
+                        'N': '2'
+                    },
+                }
+            }
+
+            item.update(actions=[VersionedModel.email.set('newer@email.com')])
+            args = req.call_args[0][1]
+            params = {
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'version',
+                    '#1': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'N': '1'
+                    },
+                    ':1': {
+                        'S': 'newer@email.com'
+                    },
+                    ':2': {
+                        'N': '1'
+                    }
+                },
+                'Key': {
+                    'name': {
+                        'S': 'test_user_name'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ReturnValues': 'ALL_NEW',
+                'TableName': 'VersionedModel',
+                'UpdateExpression': 'SET #1 = :1 ADD #0 :2'
+            }
+
+            deep_eq(args, params, _assert=True)
+
 
 class ModelInitTestCase(TestCase):
 
@@ -3067,3 +3303,12 @@ class ModelInitTestCase(TestCase):
             req.return_value = SIMPLE_MODEL_TABLE_DATA
             m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}, 'my_ttl': {'N': '1546300800'}})
         assert m.my_ttl == datetime(2019, 1, 1, tzinfo=tzutc())
+
+    def test_multiple_version_attributes(self):
+        with self.assertRaises(ValueError):
+            class BadVersionedModel(Model):
+                class Meta:
+                    table_name = 'BadVersionedModel'
+
+                version = VersionAttribute()
+                another_version = VersionAttribute()

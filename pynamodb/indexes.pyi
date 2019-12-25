@@ -1,5 +1,9 @@
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, List, Optional, Text, Type, TypeVar
 
+from pynamodb.expressions.condition import Condition
+from pynamodb.pagination import ResultIterator
+
+_T = TypeVar('_T', bound='Index')
 
 class IndexMeta(type):
     def __init__(cls, name, bases, attrs) -> None: ...
@@ -11,15 +15,28 @@ class Index(metaclass=IndexMeta):
     def count(cls, hash_key, consistent_read: bool = ..., **filters) -> int: ...
     @classmethod
     def query(
-        cls,
+        cls: Type[_T],
         hash_key,
         scan_index_forward: Optional[Any] = ...,
-        consistent_read: bool = ...,
+        consistent_read: Optional[bool] = ...,
         limit: Optional[Any] = ...,
         last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
         attributes_to_get: Optional[Any] = ...,
         **filters,
-    ): ...
+    ) -> ResultIterator[_T]: ...
+    @classmethod
+    def scan(
+        cls: Type[_T],
+        filter_condition: Optional[Condition] = ...,
+        segment: Optional[int] = ...,
+        total_segments: Optional[int] = ...,
+        limit: Optional[int] = ...,
+        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
+        page_size: Optional[int] = ...,
+        consistent_read: Optional[bool] = ...,
+        attributes_to_get: Optional[List[str]] = ...,
+        **filters,
+    ) -> ResultIterator[_T]: ...
 
 class GlobalSecondaryIndex(Index): ...
 class LocalSecondaryIndex(Index): ...

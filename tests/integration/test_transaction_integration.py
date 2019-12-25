@@ -6,7 +6,10 @@ import pytest
 from pynamodb.connection import Connection
 from pynamodb.exceptions import DoesNotExist, TransactWriteError, TransactGetError, InvalidStateError
 
-from pynamodb.attributes import NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute, BooleanAttribute
+
+from pynamodb.attributes import (
+    NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute, BooleanAttribute, VersionAttribute
+)
 from pynamodb.transactions import TransactGet, TransactWrite
 
 from pynamodb.models import Model
@@ -59,11 +62,22 @@ class DifferentRegion(Model):
     entry_index = NumberAttribute(hash_key=True)
 
 
+class Foo(Model):
+    class Meta:
+        region = 'us-east-1'
+        table_name = 'foo'
+
+    bar = NumberAttribute(hash_key=True)
+    star = UnicodeAttribute(null=True)
+    version = VersionAttribute()
+
+
 TEST_MODELS = [
     BankStatement,
     DifferentRegion,
     LineItem,
     User,
+    Foo
 ]
 
 
@@ -271,3 +285,80 @@ def test_transact_write__one_of_each(connection):
     statement.refresh()
     assert not statement.active
     assert statement.balance == 0
+
+
+@pytest.mark.ddblocal
+def test_transaction_write_with_version_attribute(connection):
+    foo1 = Foo(1)
+    foo1.save()
+    foo2 = Foo(2, star='bar')
+    foo2.save()
+    foo3 = Foo(3)
+    foo3.save()
+
+    with TransactWrite(connection=connection) as transaction:
+        transaction.condition_check(Foo, 1, condition=(Foo.bar.exists()))
+        transaction.delete(foo2)
+        transaction.save(Foo(4))
+        transaction.update(
+            foo3,
+            actions=[
+                Foo.star.set('birdistheword'),
+            ]
+        )
+
+    assert Foo.get(1).version == 1
+    with pytest.raises(DoesNotExist):
+        Foo.get(2)
+    # Local object's version attribute is updated automatically.
+    assert foo3.version == 2
+    assert Foo.get(4).version == 1
+
+
+@pytest.mark.ddblocal
+def test_transaction_get_with_version_attribute(connection):
+    Foo(11).save()
+    Foo(12, star='bar').save()
+
+    with TransactGet(connection=connection) as transaction:
+        foo1_future = transaction.get(Foo, 11)
+        foo2_future = transaction.get(Foo, 12)
+
+    foo1 = foo1_future.get()
+    assert foo1.version == 1
+    foo2 = foo2_future.get()
+    assert foo2.version == 1
+    assert foo2.star == 'bar'
+
+
+@pytest.mark.ddblocal
+def test_transaction_write_with_version_attribute_condition_failure(connection):
+    foo = Foo(21)
+    foo.save()
+
+    foo2 = Foo(21)
+
+    with pytest.raises(TransactWriteError) as exc_info:
+        with TransactWrite(connection=connection) as transaction:
+            transaction.save(Foo(21))
+    assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
+    assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+
+    with pytest.raises(TransactWriteError) as exc_info:
+        with TransactWrite(connection=connection) as transaction:
+            transaction.update(
+                foo2,
+                actions=[
+                    Foo.star.set('birdistheword'),
+                ]
+            )
+    assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
+    assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+    # Version attribute is not updated on failure.
+    assert foo2.version is None
+
+    with pytest.raises(TransactWriteError) as exc_info:
+        with TransactWrite(connection=connection) as transaction:
+            transaction.delete(foo2)
+    assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
+    assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)

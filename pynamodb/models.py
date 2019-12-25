@@ -2,6 +2,7 @@
 DynamoDB Models for PynamoDB
 """
 import json
+import random
 import time
 import six
 import logging
@@ -9,8 +10,12 @@ import warnings
 from inspect import getmembers
 
 from six import add_metaclass
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError
-from pynamodb.attributes import Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute
+
+from pynamodb.expressions.condition import NotExists, Comparison
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
+from pynamodb.attributes import (
+    Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
+)
 from pynamodb.connection.table import TableConnection
 from pynamodb.connection.util import pythonic
 from pynamodb.types import HASH, RANGE
@@ -29,7 +34,7 @@ from pynamodb.constants import (
     BATCH_WRITE_PAGE_LIMIT,
     META_CLASS_NAME, REGION, HOST, NULL,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
-    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE
+    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE
 )
 
 
@@ -48,6 +53,7 @@ class ModelContextManager(object):
         self.auto_commit = auto_commit
         self.max_operations = BATCH_WRITE_PAGE_LIMIT
         self.pending_operations = []
+        self.failed_operations = []
 
     def __enter__(self):
         return self
@@ -126,8 +132,15 @@ class BatchWrite(ModelContextManager):
         )
         if data is None:
             return
+        retries = 0
         unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
         while unprocessed_items:
+            sleep_time = random.randint(0, self.model.Meta.base_backoff_ms * (2 ** retries)) / 1000
+            time.sleep(sleep_time)
+            retries += 1
+            if retries >= self.model.Meta.max_retry_attempts:
+                self.failed_operations = unprocessed_items
+                raise PutError("Failed to batch write items: max_retry_attempts exceeded")
             put_items = []
             delete_items = []
             for item in unprocessed_items:
@@ -135,7 +148,8 @@ class BatchWrite(ModelContextManager):
                     put_items.append(item.get(PUT_REQUEST).get(ITEM))
                 elif DELETE_REQUEST in item:
                     delete_items.append(item.get(DELETE_REQUEST).get(KEY))
-            log.info("Resending %s unprocessed keys for batch operation", len(unprocessed_items))
+            log.info("Resending %d unprocessed keys for batch operation after %d seconds sleep",
+                     len(unprocessed_items), sleep_time)
             data = self.model._get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items
@@ -172,6 +186,13 @@ class MetaModel(AttributeContainerMeta):
                 cls._hash_keyname = attr_name
             if attribute.is_range_key:
                 cls._range_keyname = attr_name
+            if isinstance(attribute, VersionAttribute):
+                if cls._version_attribute_name:
+                    raise ValueError(
+                        "The model has more than one Version attribute: {}, {}"
+                        .format(cls._version_attribute_name, attr_name)
+                    )
+                cls._version_attribute_name = attr_name
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
@@ -197,6 +218,8 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_access_key_id', None)
                     if not hasattr(attr_obj, 'aws_secret_access_key'):
                         setattr(attr_obj, 'aws_secret_access_key', None)
+                    if not hasattr(attr_obj, 'aws_session_token'):
+                        setattr(attr_obj, 'aws_session_token', None)
                 elif isinstance(attr_obj, Index):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -238,6 +261,7 @@ class Model(AttributeContainer):
     _connection = None
     _index_classes = None
     DoesNotExist = DoesNotExist
+    _version_attribute_name = None
 
     def __init__(self, hash_key=None, range_key=None, _user_instantiated=True, **attributes):
         """
@@ -334,6 +358,10 @@ class Model(AttributeContainer):
         Deletes this object from dynamodb
         """
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
+        version_condition = self._handle_version_attribute(kwargs)
+        if version_condition is not None:
+            condition &= version_condition
+
         kwargs.update(condition=condition)
         return self._get_connection().delete_item(*args, **kwargs)
 
@@ -348,6 +376,9 @@ class Model(AttributeContainer):
             raise TypeError("the value of `actions` is expected to be a non-empty list")
 
         args, save_kwargs = self._get_save_args(null_check=False)
+        version_condition = self._handle_version_attribute(save_kwargs, actions=actions)
+        if version_condition is not None:
+            condition &= version_condition
         kwargs = {
             pythonic(RETURN_VALUES):  ALL_NEW,
         }
@@ -371,8 +402,13 @@ class Model(AttributeContainer):
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args()
+        version_condition = self._handle_version_attribute(serialized_attributes=kwargs)
+        if version_condition is not None:
+            condition &= version_condition
         kwargs.update(condition=condition)
-        return self._get_connection().put_item(*args, **kwargs)
+        data = self._get_connection().put_item(*args, **kwargs)
+        self.update_local_version_attribute()
+        return data
 
     def refresh(self, consistent_read=False):
         """
@@ -394,7 +430,16 @@ class Model(AttributeContainer):
                                            condition=None,
                                            return_values_on_condition_failure=None):
         is_update = actions is not None
+        is_delete = actions is None and key is KEY
         args, save_kwargs = self._get_save_args(null_check=not is_update)
+
+        version_condition = self._handle_version_attribute(
+            serialized_attributes={} if is_delete else save_kwargs,
+            actions=actions
+        )
+        if version_condition is not None:
+            condition &= version_condition
+
         kwargs = dict(
             key=key,
             actions=actions,
@@ -588,7 +633,8 @@ class Model(AttributeContainer):
              page_size=None,
              consistent_read=None,
              index_name=None,
-             rate_limit=None):
+             rate_limit=None,
+             attributes_to_get=None):
         """
         Iterates through all items in the table
 
@@ -601,6 +647,7 @@ class Model(AttributeContainer):
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
         :param rate_limit: If set then consumed capacity will be limited to this amount per second
+        :param attributes_to_get: If set, specifies the properties to include in the projection expression
         """
         if page_size is None:
             page_size = limit
@@ -613,7 +660,8 @@ class Model(AttributeContainer):
             limit=page_size,
             total_segments=total_segments,
             consistent_read=consistent_read,
-            index_name=index_name
+            index_name=index_name,
+            attributes_to_get=attributes_to_get
         )
 
         return ResultIterator(
@@ -835,10 +883,11 @@ class Model(AttributeContainer):
 
                 }
                 if isinstance(index, GlobalSecondaryIndex):
-                    idx[pythonic(PROVISIONED_THROUGHPUT)] = {
-                        READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
-                        WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
-                    }
+                    if getattr(cls.Meta, 'billing_mode', None) != PAY_PER_REQUEST_BILLING_MODE:
+                        idx[pythonic(PROVISIONED_THROUGHPUT)] = {
+                            READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
+                            WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
+                        }
                 cls._indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
                 if index.Meta.projection.non_key_attributes:
                     idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
@@ -880,6 +929,43 @@ class Model(AttributeContainer):
         if attributes:
             kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
         return args, kwargs
+
+    def _handle_version_attribute(self, serialized_attributes, actions=None):
+        """
+        Handles modifying the request to set or increment the version attribute.
+
+        :param serialized_attributes: A dictionary mapping attribute names to serialized values.
+        :param actions: A non-empty list when performing an update, otherwise None.
+        """
+        if self._version_attribute_name is None:
+            return
+
+        version_attribute = self.get_attributes()[self._version_attribute_name]
+        version_attribute_value = getattr(self, self._version_attribute_name)
+
+        if version_attribute_value:
+            version_condition = version_attribute == version_attribute_value
+            if actions:
+                actions.append(version_attribute.add(1))
+            elif pythonic(ATTRIBUTES) in serialized_attributes:
+                serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+                    version_attribute, version_attribute_value + 1, null_check=True
+                )
+        else:
+            version_condition = version_attribute.does_not_exist()
+            if actions:
+                actions.append(version_attribute.set(1))
+            elif pythonic(ATTRIBUTES) in serialized_attributes:
+                serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+                    version_attribute, 1, null_check=True
+                )
+
+        return version_condition
+
+    def update_local_version_attribute(self):
+        if self._version_attribute_name:
+            value = getattr(self, self._version_attribute_name, None) or 0
+            setattr(self, self._version_attribute_name, value + 1)
 
     @classmethod
     def _hash_key_attribute(cls):
@@ -971,7 +1057,8 @@ class Model(AttributeContainer):
                                               max_pool_connections=cls.Meta.max_pool_connections,
                                               extra_headers=cls.Meta.extra_headers,
                                               aws_access_key_id=cls.Meta.aws_access_key_id,
-                                              aws_secret_access_key=cls.Meta.aws_secret_access_key)
+                                              aws_secret_access_key=cls.Meta.aws_secret_access_key,
+                                              aws_session_token=cls.Meta.aws_session_token)
         return cls._connection
 
     def _deserialize(self, attrs):

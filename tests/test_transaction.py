@@ -1,6 +1,6 @@
 import pytest
 import six
-from pynamodb.attributes import NumberAttribute, UnicodeAttribute
+from pynamodb.attributes import NumberAttribute, UnicodeAttribute, VersionAttribute
 
 from pynamodb.connection import Connection
 from pynamodb.transactions import Transaction, TransactGet, TransactWrite
@@ -20,6 +20,7 @@ class MockModel(Model):
     mock_hash = NumberAttribute(hash_key=True)
     mock_range = NumberAttribute(range_key=True)
     mock_toot = UnicodeAttribute(null=True)
+    mock_version = VersionAttribute()
 
 
 MOCK_TABLE_DESCRIPTOR = {
@@ -99,22 +100,26 @@ class TestTransactWrite:
             'TableName': 'mock'}
         ]
         expected_deletes = [{
+            'ConditionExpression': 'attribute_not_exists (#0)',
+            'ExpressionAttributeNames': {'#0': 'mock_version'},
             'Key': {'MockHash': {'N': '2'}, 'MockRange': {'N': '4'}},
             'TableName': 'mock'
         }]
         expected_puts = [{
-            'Item': {'MockHash': {'N': '3'}, 'MockRange': {'N': '5'}},
+            'ConditionExpression': 'attribute_not_exists (#0)',
+            'ExpressionAttributeNames': {'#0': 'mock_version'},
+            'Item': {'MockHash': {'N': '3'}, 'MockRange': {'N': '5'}, 'mock_version': {'N': '1'}},
             'TableName': 'mock'
         }]
         expected_updates = [{
+            'ConditionExpression': 'attribute_not_exists (#0)',
             'TableName': 'mock',
             'Key': {'MockHash': {'N': '4'}, 'MockRange': {'N': '6'}},
             'ReturnValuesOnConditionCheckFailure': 'ALL_OLD',
-            'UpdateExpression': 'SET #0 = :0',
-            'ExpressionAttributeNames': {'#0': 'mock_toot'},
-            'ExpressionAttributeValues': {':0': {'S': 'hello'}}
+            'UpdateExpression': 'SET #1 = :0, #0 = :1',
+            'ExpressionAttributeNames': {'#0': 'mock_version', '#1': 'mock_toot'},
+            'ExpressionAttributeValues': {':0': {'S': 'hello'}, ':1': {'N': '1'}}
         }]
-
         mock_connection_transact_write.assert_called_once_with(
             condition_check_items=expected_condition_checks,
             delete_items=expected_deletes,

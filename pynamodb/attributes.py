@@ -12,12 +12,13 @@ from datetime import datetime, timedelta
 import warnings
 from dateutil.parser import parse
 from dateutil.tz import tzutc
-from inspect import getargspec, getmembers
+from inspect import getmembers
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
 )
 from pynamodb.expressions.operand import Path
+from pynamodb._compat import getfullargspec
 import collections
 
 
@@ -494,6 +495,38 @@ class NumberAttribute(Attribute):
         return json.loads(value)
 
 
+class VersionAttribute(NumberAttribute):
+    """
+    A version attribute
+    """
+    null = True
+
+    def __set__(self, instance, value):
+        """
+        Cast assigned value to int.
+        """
+        super(VersionAttribute, self).__set__(instance, int(value))
+
+    def __get__(self, instance, owner):
+        """
+        Cast retrieved value to int.
+        """
+        val = super(VersionAttribute, self).__get__(instance, owner)
+        return int(val) if isinstance(val, float) else val
+
+    def serialize(self, value):
+        """
+        Cast value to int then encode as JSON
+        """
+        return super(VersionAttribute, self).serialize(int(value))
+
+    def deserialize(self, value):
+        """
+        Decode numbers from JSON and cast to int.
+        """
+        return int(super(VersionAttribute, self).deserialize(value))
+
+
 class TTLAttribute(Attribute):
     """
     A time-to-live attribute that signifies when the item expires and can be automatically deleted.
@@ -503,22 +536,27 @@ class TTLAttribute(Attribute):
     """
     attr_type = NUMBER
 
-    def __set__(self, instance, value):
+    def _normalize(self, value):
         """
-        Converts assigned values to a UTC datetime
+        Converts value to a UTC datetime
         """
+        if value is None:
+            return
         if isinstance(value, timedelta):
             value = int(time.time() + value.total_seconds())
         elif isinstance(value, datetime):
             if value.tzinfo is None:
                 raise ValueError("datetime must be timezone-aware")
             value = calendar.timegm(value.utctimetuple())
-        elif value is not None:
+        else:
             raise ValueError("TTLAttribute value must be a timedelta or datetime")
-        attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
-        if value is not None:
-            value = datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
-        instance.attribute_values[attr_name] = value
+        return datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
+
+    def __set__(self, instance, value):
+        """
+        Converts assigned values to a UTC datetime
+        """
+        super(TTLAttribute, self).__set__(instance, self._normalize(value))
 
     def serialize(self, value):
         """
@@ -526,7 +564,7 @@ class TTLAttribute(Attribute):
         """
         if value is None:
             return None
-        return json.dumps(calendar.timegm(value.utctimetuple()))
+        return json.dumps(calendar.timegm(self._normalize(value).utctimetuple()))
 
     def deserialize(self, value):
         """
@@ -636,7 +674,7 @@ class MapAttribute(Attribute, AttributeContainer):
     """
     attr_type = MAP
 
-    attribute_args = getargspec(Attribute.__init__).args[1:]
+    attribute_args = getfullargspec(Attribute.__init__).args[1:]
 
     def __init__(self, **attributes):
         # Store the kwargs used by Attribute.__init__ in case `_make_attribute` is called.

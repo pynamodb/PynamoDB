@@ -18,7 +18,7 @@ from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute,
     ListAttribute, JSONAttribute, TTLAttribute, _get_value_for_deserialize, _fast_parse_utc_datestring,
-)
+    VersionAttribute)
 from pynamodb.constants import (
     DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, BOOLEAN,
@@ -517,6 +517,11 @@ class TestTTLAttribute:
             model = AttributeTestModel()
             model.ttl_attr = 'wrong type'
 
+    @patch('time.time')
+    def test_serialize_timedelta(self, mock_time):
+        mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
+        assert TTLAttribute().serialize(timedelta(seconds=60)) == str(1559692800 + 60)
+
     def test_serialize_none(self):
         model = AttributeTestModel()
         model.ttl_attr = None
@@ -739,7 +744,7 @@ class TestMapAttribute:
         }
         attr = MapAttribute(**raw)
 
-        assert list(iter(raw)) == list(iter(attr))
+        assert sorted(iter(raw)) == sorted(iter(attr))
 
     def test_raw_map_json_serialize(self):
         raw = {
@@ -999,3 +1004,18 @@ class TestMapAndListAttribute:
         assert deserialized == inp
         assert serialize_mock.call_args_list == [call(1), call(2)]
         assert deserialize_mock.call_args_list == [call('1'), call('2')]
+
+
+class TestVersionAttribute:
+    def test_serialize(self):
+        attr = VersionAttribute()
+        assert attr.attr_type == NUMBER
+        assert attr.serialize(3.141) == '3'
+        assert attr.serialize(1) == '1'
+        assert attr.serialize(12345678909876543211234234324234) == '12345678909876543211234234324234'
+
+    def test_deserialize(self):
+        attr = VersionAttribute()
+        assert attr.deserialize('1') == 1
+        assert attr.deserialize('3.141') == 3
+        assert attr.deserialize('12345678909876543211234234324234') == 12345678909876543211234234324234
