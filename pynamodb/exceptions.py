@@ -100,7 +100,7 @@ class TableDoesNotExist(PynamoDBException):
 
 class TransactError(PynamoDBException):
 
-    def __init__(self, transact_items, *args, **kwargs):
+    def __init__(self, transact_items=None, *args, **kwargs):
         super(TransactError, self).__init__(*args, **kwargs)
         self._cancel_reasons = self.parse_cancel_reasons(transact_items=transact_items)
 
@@ -110,7 +110,7 @@ class TransactError(PynamoDBException):
 
     @staticmethod
     def _get_reason_list_from_message(message):
-        reasons = TRANSACTION_CANCELED_REGEX.search(message)
+        reasons = TRANSACTION_CANCELED_REGEX.search(message) if message else None
         if not reasons:
             return None
         return [
