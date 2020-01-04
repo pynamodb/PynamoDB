@@ -598,7 +598,7 @@ class UTCDateTimeAttribute(Attribute):
         except (ValueError, IndexError):
             try:
                 # Attempt to parse the datetime with the datetime format used
-                # by default when storing UTCDateTimeAttributes.  This is signifantly
+                # by default when storing UTCDateTimeAttributes.  This is significantly
                 # faster than always going through dateutil.
                 return datetime.strptime(value, DATETIME_FORMAT)
             except ValueError:
