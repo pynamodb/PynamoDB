@@ -390,11 +390,7 @@ class Model(AttributeContainer):
         kwargs.update(actions=actions)
 
         data = self._get_connection().update_item(*args, **kwargs)
-        for name, value in data[ATTRIBUTES].items():
-            attr_name = self._dynamo_to_python_attr(name)
-            attr = self.get_attributes().get(attr_name)
-            if attr:
-                setattr(self, attr_name, attr.deserialize(attr.get_value(value)))
+        self._deserialize(data[ATTRIBUTES])
         return data
 
     def save(self, condition=None):
