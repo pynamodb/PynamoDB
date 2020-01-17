@@ -5,24 +5,37 @@ from pynamodb.pagination import ResultIterator
 
 _T = TypeVar('_T', bound='Index')
 
+
 class IndexMeta(type):
     def __init__(cls, name, bases, attrs) -> None: ...
+
 
 class Index(metaclass=IndexMeta):
     Meta: Any
     def __init__(self) -> None: ...
     @classmethod
-    def count(cls, hash_key, consistent_read: bool = ..., **filters) -> int: ...
+    def count(
+        cls,
+        hash_key,
+        range_key_condition: Optional[Condition] = ...,
+        filter_condition: Optional[Condition] = ...,
+        consistent_read: bool = ...,
+        limit: Optional[int] = ...,
+        rate_limit: Optional[float] = ...,
+    ) -> int: ...
     @classmethod
     def query(
         cls: Type[_T],
         hash_key,
+        range_key_condition: Optional[Condition] = ...,
+        filter_condition: Optional[Condition] = ...,
         scan_index_forward: Optional[Any] = ...,
         consistent_read: Optional[bool] = ...,
-        limit: Optional[Any] = ...,
+        limit: Optional[int] = ...,
         last_evaluated_key: Optional[Dict[Text, Dict[Text, Any]]] = ...,
         attributes_to_get: Optional[Any] = ...,
-        **filters,
+        page_size: Optional[int] = ...,
+        rate_limit: Optional[float] = ...,
     ) -> ResultIterator[_T]: ...
     @classmethod
     def scan(
@@ -34,8 +47,8 @@ class Index(metaclass=IndexMeta):
         last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
         page_size: Optional[int] = ...,
         consistent_read: Optional[bool] = ...,
+        rate_limit: Optional[float] = ...,
         attributes_to_get: Optional[List[str]] = ...,
-        **filters,
     ) -> ResultIterator[_T]: ...
 
 class GlobalSecondaryIndex(Index): ...
