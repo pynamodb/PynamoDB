@@ -50,7 +50,8 @@ class Index(with_metaclass(IndexMeta)):
               range_key_condition=None,
               filter_condition=None,
               consistent_read=False,
-              **filters):
+              limit=None,
+              rate_limit=None):
         """
         Count on an index
         """
@@ -60,7 +61,8 @@ class Index(with_metaclass(IndexMeta)):
             filter_condition=filter_condition,
             index_name=cls.Meta.index_name,
             consistent_read=consistent_read,
-            **filters
+            limit=limit,
+            rate_limit=rate_limit,
         )
 
     @classmethod
@@ -68,12 +70,13 @@ class Index(with_metaclass(IndexMeta)):
               hash_key,
               range_key_condition=None,
               filter_condition=None,
-              scan_index_forward=None,
               consistent_read=False,
+              scan_index_forward=None,
               limit=None,
               last_evaluated_key=None,
               attributes_to_get=None,
-              **filters):
+              page_size=None,
+              rate_limit=None):
         """
         Queries an index
         """
@@ -81,13 +84,14 @@ class Index(with_metaclass(IndexMeta)):
             hash_key,
             range_key_condition=range_key_condition,
             filter_condition=filter_condition,
+            consistent_read=consistent_read,
             index_name=self.Meta.index_name,
             scan_index_forward=scan_index_forward,
-            consistent_read=consistent_read,
             limit=limit,
             last_evaluated_key=last_evaluated_key,
             attributes_to_get=attributes_to_get,
-            **filters
+            page_size=page_size,
+            rate_limit=rate_limit,
         )
 
     @classmethod
@@ -99,8 +103,8 @@ class Index(with_metaclass(IndexMeta)):
              last_evaluated_key=None,
              page_size=None,
              consistent_read=None,
-             attributes_to_get=None,
-             **filters):
+             rate_limit=None,
+             attributes_to_get=None):
         """
         Scans an index
         """
@@ -113,8 +117,8 @@ class Index(with_metaclass(IndexMeta)):
             page_size=page_size,
             consistent_read=consistent_read,
             index_name=self.Meta.index_name,
+            rate_limit=rate_limit,
             attributes_to_get=attributes_to_get,
-            **filters
         )
 
     @classmethod
