@@ -87,7 +87,7 @@ Scan filters have the same syntax as Query filters, but support all condition ex
 
 .. code-block:: python
 
-    >>> for item in Thread.scan(Thread.forum_name.startswith('Prefix') & (Thread.views > 10)):
+    >>> for item in Thread.scan(Thread.forum_name.startswith('Prefix') and (Thread.views > 10)):
             print(item)
 
 Limiting results
