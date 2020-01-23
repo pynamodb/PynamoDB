@@ -1,17 +1,25 @@
 Release Notes
 =============
 
-Unreleased
+v4.3.0
 ----------
 
-* Implement exponential backoff for batch writes
-* Avoid passing 'PROVISIONED' BillingMode for compatibility with some AWS AZs
-* On Python >= 3.3, use importlib instead of deprecated imp
+* Implement exponential backoff for batch writes (#728)
+* Avoid passing 'PROVISIONED' BillingMode for compatibility with some AWS AZs (#721)
+* On Python >= 3.3, use importlib instead of deprecated imp (#723)
+* Update in-memory object correctly on ``REMOVE`` update expressions (#741)
 
 Contributors to this release:
 
+* @hallie
+* @bit-bot-bit
 * @edholland
 * @reginalin
+* @MichelML
+* @timgates42
+* @sunaoka
+* @conjmurph
+
 
 v4.2.0
 ------
