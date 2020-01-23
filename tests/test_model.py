@@ -837,7 +837,7 @@ class ModelTestCase(TestCase):
         """
         mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
         self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
-        item = SimpleUserModel('foo', is_active=True, email='foo@example.com', signature='foo')
+        item = SimpleUserModel(user_name='foo', is_active=True, email='foo@example.com', signature='foo', views=100)
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -848,10 +848,16 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = {
                 ATTRIBUTES: {
+                    "user_name": {
+                        "S": "foo",
+                    },
                     "email": {
                         "S": "foo@example.com",
                     },
                     "is_active": {
+                        "NULL": None,
+                    },
+                    "signature": {
                         "NULL": None,
                     },
                     "aliases": {
