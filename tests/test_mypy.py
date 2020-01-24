@@ -35,7 +35,7 @@ def test_model_query():
     MyModel.query(12.3)
     MyModel.query(b'123')
     MyModel.query((1, 2, 3))
-    MyModel.query({'1': '2'})  # E: Argument 1 to "query" of "Model" has incompatible type "Dict[str, str]"; expected "Union[str, bytes, float, Tuple[Any, ...]]"
+    MyModel.query({'1': '2'})  # E: Argument 1 to "query" of "Model" has incompatible type "Dict[str, str]"; expected "Union[str, bytes, float, int, Tuple[Any, ...]]"
 
     # test conditions
     MyModel.query(123, range_key_condition=(MyModel.my_attr == 5), filter_condition=(MyModel.my_attr == 5))
@@ -150,10 +150,52 @@ def test_list_attribute():
 
     reveal_type(MyModel.my_list)  # E: Revealed type is 'pynamodb.attributes.ListAttribute[__main__.MyMap]'
     reveal_type(MyModel().my_list)  # E: Revealed type is 'builtins.list[__main__.MyMap*]'
-    reveal_type(MyModel.my_list[0])  # E: Revealed type is 'Any'  # E: Value of type "ListAttribute[MyMap]" is not indexable
+    reveal_type(MyModel.my_list[0])  # E: Value of type "ListAttribute[MyMap]" is not indexable  # E: Revealed type is 'Any'
     reveal_type(MyModel().my_list[0].my_sub_attr)  # E: Revealed type is 'builtins.str'
 
     # Untyped lists are not well supported yet
-    reveal_type(MyModel.my_untyped_list[0])  # E: Revealed type is 'Any'  # E: Cannot determine type of 'my_untyped_list'
+    reveal_type(MyModel.my_untyped_list[0])  # E: Value of type "ListAttribute[Any]" is not indexable  # E: Revealed type is 'Any'
     reveal_type(MyModel().my_untyped_list[0].my_sub_attr)  # E: Revealed type is 'Any'
+    """)
+
+
+def test_index_query_scan():
+    assert_mypy_output("""
+    from pynamodb.attributes import NumberAttribute
+    from pynamodb.models import Model
+    from pynamodb.indexes import GlobalSecondaryIndex
+    from pynamodb.pagination import ResultIterator
+
+    class UntypedIndex(GlobalSecondaryIndex):
+        bar = NumberAttribute(hash_key=True)
+
+    class TypedIndex(GlobalSecondaryIndex[MyModel]):
+        bar = NumberAttribute(hash_key=True)
+
+    class MyModel(Model):
+        foo = NumberAttribute(hash_key=True)
+        bar = NumberAttribute()
+
+        untyped_index = UntypedIndex()
+        typed_index = TypedIndex()
+
+    # Ensure old code keeps working
+    untyped_result: ResultIterator = MyModel.untyped_index.query(123)
+    model: MyModel = next(untyped_result)
+    not_model: int = next(untyped_result)  # this is legacy behavior so it's "fine"
+
+    # Allow users to specify which model their indices return
+    typed_result: ResultIterator[MyModel] = MyModel.typed_index.query(123)
+    my_model = next(typed_result)
+    not_model = next(typed_result)  # E: Incompatible types in assignment (expression has type "MyModel", variable has type "int")
+
+    # Ensure old code keeps working
+    untyped_result = MyModel.untyped_index.scan()
+    model = next(untyped_result)
+    not_model = next(untyped_result)  # this is legacy behavior so it's "fine"
+
+    # Allow users to specify which model their indices return
+    untyped_result = MyModel.typed_index.scan()
+    model = next(untyped_result)
+    not_model = next(untyped_result)  # E: Incompatible types in assignment (expression has type "MyModel", variable has type "int")
     """)

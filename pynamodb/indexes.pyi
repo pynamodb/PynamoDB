@@ -1,16 +1,17 @@
-from typing import Any, Dict, List, Optional, Text, Type, TypeVar
+from typing import Any, Dict, List, Optional, Text, TypeVar, Generic
 
 from pynamodb.expressions.condition import Condition
+from pynamodb.models import Model
 from pynamodb.pagination import ResultIterator
 
-_T = TypeVar('_T', bound='Index')
+_M = TypeVar('_M', bound=Model)
 
 
 class IndexMeta(type):
     def __init__(cls, name, bases, attrs) -> None: ...
 
 
-class Index(metaclass=IndexMeta):
+class Index(Generic[_M], metaclass=IndexMeta):
     Meta: Any
     def __init__(self) -> None: ...
     @classmethod
@@ -25,7 +26,7 @@ class Index(metaclass=IndexMeta):
     ) -> int: ...
     @classmethod
     def query(
-        cls: Type[_T],
+        cls,
         hash_key,
         range_key_condition: Optional[Condition] = ...,
         filter_condition: Optional[Condition] = ...,
@@ -36,10 +37,10 @@ class Index(metaclass=IndexMeta):
         attributes_to_get: Optional[Any] = ...,
         page_size: Optional[int] = ...,
         rate_limit: Optional[float] = ...,
-    ) -> ResultIterator[_T]: ...
+    ) -> ResultIterator[_M]: ...
     @classmethod
     def scan(
-        cls: Type[_T],
+        cls,
         filter_condition: Optional[Condition] = ...,
         segment: Optional[int] = ...,
         total_segments: Optional[int] = ...,
@@ -49,10 +50,10 @@ class Index(metaclass=IndexMeta):
         consistent_read: Optional[bool] = ...,
         rate_limit: Optional[float] = ...,
         attributes_to_get: Optional[List[str]] = ...,
-    ) -> ResultIterator[_T]: ...
+    ) -> ResultIterator[_M]: ...
 
-class GlobalSecondaryIndex(Index): ...
-class LocalSecondaryIndex(Index): ...
+class GlobalSecondaryIndex(Index[_M]): ...
+class LocalSecondaryIndex(Index[_M]): ...
 
 class Projection(object):
     projection_type: Any
