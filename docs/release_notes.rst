@@ -1,6 +1,13 @@
 Release Notes
 =============
 
+v4.3.1
+----------
+
+* Fix Index.query and Index.scan typing regressions introduced in 4.2.0, which were causing false errors
+  in type checkers
+
+
 v4.3.0
 ----------
 

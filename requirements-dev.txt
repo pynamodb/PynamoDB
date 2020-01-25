@@ -7,5 +7,5 @@ python-dateutil==2.8.0
 
 # only used in .travis.yml
 coveralls
-mypy==0.740;python_version>="3.7"
+mypy==0.761;python_version>="3.7"
 pytest-cov
