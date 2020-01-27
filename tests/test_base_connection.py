@@ -17,6 +17,7 @@ from pynamodb.connection import Connection
 from pynamodb.connection.base import MetaTable
 from pynamodb.exceptions import (
     TableError, DeleteError, PutError, ScanError, GetError, UpdateError, TableDoesNotExist)
+from pynamodb.types import HASH, RANGE
 from pynamodb.constants import (
     DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING, TABLE_KEY,
     PROVISIONED_BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE)
@@ -1697,3 +1698,43 @@ class ConnectionTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.side_effect = BotoCoreError
             self.assertRaises(TableError, conn.update_time_to_live, 'test table', 'my_ttl')
+
+    def test_get_identifier_map(self):
+        schema = {'attribute_definitions': [{'attribute_name': 'UserName',
+                                             'attribute_type': 'S'},
+                                            {'attribute_name': 'UserRange',
+                                             'attribute_type': 'S'}],
+                  'key_schema': [{'attribute_name': 'UserName',
+                                  'key_type': HASH},
+                                 {'attribute_name': 'UserRange',
+                                  'key_type': RANGE}],
+                  'global_secondary_indexes': [],
+                  'local_secondary_indexes': []}
+        table_name_with_schema = 'table_with_schema'
+        table_name_without_schema = 'table_without_schema'
+        conn = Connection()
+        conn.predefine_table_schema(table_name_with_schema, **schema)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = DESCRIBE_TABLE_DATA
+            conn.describe_table(table_name_without_schema)
+
+        with patch(PATCH_METHOD) as mocked_api_call:
+            assert ({'Key': {'ForumName': {'S': 'hash-key'}}}
+                    == conn.get_identifier_map(table_name_without_schema, 'hash-key'))
+            mocked_api_call.assert_not_called()
+
+        with patch(PATCH_METHOD) as mocked_api_call:
+            assert ({'Key': {'ForumName': {'S': 'hash-key'}, 'Subject': {'S': 'range-key'}}}
+                    == conn.get_identifier_map(table_name_without_schema, 'hash-key', 'range-key'))
+            mocked_api_call.assert_not_called()
+
+        with patch(PATCH_METHOD) as mocked_api_call:
+            assert ({'Key': {'UserName': {'S': 'hash-key'}}}
+                    == conn.get_identifier_map(table_name_with_schema, 'hash-key'))
+            mocked_api_call.assert_not_called()
+
+        with patch(PATCH_METHOD) as mocked_api_call:
+            assert ({'Key': {'UserName': {'S': 'hash-key'}, 'UserRange': {'S': 'range-key'}}}
+                    == conn.get_identifier_map(table_name_with_schema, 'hash-key', 'range-key'))
+            mocked_api_call.assert_not_called()
