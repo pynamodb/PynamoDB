@@ -371,8 +371,23 @@ class Connection(object):
                 {ATTR_NAME: attr.get(pythonic(ATTR_NAME)), KEY_TYPE: attr.get(pythonic(KEY_TYPE))}
                 for attr in key_schema
             ],
-            GLOBAL_SECONDARY_INDEX_UPDATES: global_secondary_indexes,
-            LOCAL_SECONDARY_INDEXES: local_secondary_indexes
+            GLOBAL_SECONDARY_INDEXES: [
+                {
+                    INDEX_NAME: index.get(pythonic(INDEX_NAME)),
+                    KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
+                    PROJECTION: index.get(pythonic(PROJECTION)),
+                    PROVISIONED_THROUGHPUT: index.get(pythonic(PROVISIONED_THROUGHPUT))
+                }
+                for index in global_secondary_indexes
+            ],
+            LOCAL_SECONDARY_INDEXES: [
+                {
+                    INDEX_NAME: index.get(pythonic(INDEX_NAME)),
+                    KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
+                    PROJECTION: index.get(pythonic(PROJECTION))
+                }
+                for index in local_secondary_indexes
+            ]
         })
 
     def send_post_boto_callback(self, operation_name, req_uuid, table_name):

@@ -23,7 +23,8 @@ class TableConnection(object):
                  extra_headers=None,
                  aws_access_key_id=None,
                  aws_secret_access_key=None,
-                 aws_session_token=None):
+                 aws_session_token=None,
+                 predefined_schema=None):
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
@@ -35,6 +36,8 @@ class TableConnection(object):
                                      base_backoff_ms=base_backoff_ms,
                                      max_pool_connections=max_pool_connections,
                                      extra_headers=extra_headers)
+        if predefined_schema:
+            self.connection.predefine_table_schema(table_name, **predefined_schema)
 
         if aws_access_key_id and aws_secret_access_key:
             self.connection.session.set_credentials(aws_access_key_id,
