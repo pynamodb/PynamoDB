@@ -149,67 +149,66 @@ class ConnectionTestCase(TestCase):
         """
         for conn in self._prepare_connections():
             table_name = conn.table_name
-            with self.subTest(table_name=table_name):
-                kwargs = {
-                    'read_capacity_units': 1,
-                    'write_capacity_units': 1,
+            kwargs = {
+                'read_capacity_units': 1,
+                'write_capacity_units': 1,
+            }
+            self.assertRaises(ValueError, conn.create_table, **kwargs)
+            kwargs['attribute_definitions'] = [
+                {
+                    'attribute_name': 'key1',
+                    'attribute_type': 'S'
+                },
+                {
+                    'attribute_name': 'key2',
+                    'attribute_type': 'S'
                 }
-                self.assertRaises(ValueError, conn.create_table, **kwargs)
-                kwargs['attribute_definitions'] = [
+            ]
+            self.assertRaises(ValueError, conn.create_table, **kwargs)
+            kwargs['key_schema'] = [
+                {
+                    'attribute_name': 'key1',
+                    'key_type': 'hash'
+                },
+                {
+                    'attribute_name': 'key2',
+                    'key_type': 'range'
+                }
+            ]
+            params = {
+                'TableName': table_name,
+                'ProvisionedThroughput': {
+                    'WriteCapacityUnits': 1,
+                    'ReadCapacityUnits': 1
+                },
+                'AttributeDefinitions': [
                     {
-                        'attribute_name': 'key1',
-                        'attribute_type': 'S'
+                        'AttributeType': 'S',
+                        'AttributeName': 'key1'
                     },
                     {
-                        'attribute_name': 'key2',
-                        'attribute_type': 'S'
+                        'AttributeType': 'S',
+                        'AttributeName': 'key2'
+                    }
+                ],
+                'KeySchema': [
+                    {
+                        'KeyType': 'HASH',
+                        'AttributeName': 'key1'
+                    },
+                    {
+                        'KeyType': 'RANGE',
+                        'AttributeName': 'key2'
                     }
                 ]
-                self.assertRaises(ValueError, conn.create_table, **kwargs)
-                kwargs['key_schema'] = [
-                    {
-                        'attribute_name': 'key1',
-                        'key_type': 'hash'
-                    },
-                    {
-                        'attribute_name': 'key2',
-                        'key_type': 'range'
-                    }
-                ]
-                params = {
-                    'TableName': table_name,
-                    'ProvisionedThroughput': {
-                        'WriteCapacityUnits': 1,
-                        'ReadCapacityUnits': 1
-                    },
-                    'AttributeDefinitions': [
-                        {
-                            'AttributeType': 'S',
-                            'AttributeName': 'key1'
-                        },
-                        {
-                            'AttributeType': 'S',
-                            'AttributeName': 'key2'
-                        }
-                    ],
-                    'KeySchema': [
-                        {
-                            'KeyType': 'HASH',
-                            'AttributeName': 'key1'
-                        },
-                        {
-                            'KeyType': 'RANGE',
-                            'AttributeName': 'key2'
-                        }
-                    ]
-                }
-                with patch(PATCH_METHOD) as req:
-                    req.return_value = {}
-                    conn.create_table(
-                        **kwargs
-                    )
-                    kwargs = req.call_args[0][1]
-                    self.assertEqual(kwargs, params)
+            }
+            with patch(PATCH_METHOD) as req:
+                req.return_value = {}
+                conn.create_table(
+                    **kwargs
+                )
+                kwargs = req.call_args[0][1]
+                self.assertEqual(kwargs, params)
 
     def test_update_time_to_live(self):
         """
@@ -235,12 +234,11 @@ class ConnectionTestCase(TestCase):
         """
         for conn in self._prepare_connections():
             table_name = conn.table_name
-            with self.subTest(table_name=table_name):
-                with patch(PATCH_METHOD) as req:
-                    req.return_value = HttpOK(), None
-                    conn.delete_table()
-                    kwargs = req.call_args[0][1]
-                    self.assertEqual(kwargs, {'TableName': table_name})
+            with patch(PATCH_METHOD) as req:
+                req.return_value = HttpOK(), None
+                conn.delete_table()
+                kwargs = req.call_args[0][1]
+                self.assertEqual(kwargs, {'TableName': table_name})
 
     def test_update_table(self):
         """
@@ -248,60 +246,58 @@ class ConnectionTestCase(TestCase):
         """
         for conn in self._prepare_connections():
             table_name = conn.table_name
-            with self.subTest(table_name=table_name, note='update throughput'):
-                with patch(PATCH_METHOD) as req:
-                    req.return_value = HttpOK(), None
-                    params = {
-                        'ProvisionedThroughput': {
-                            'WriteCapacityUnits': 2,
-                            'ReadCapacityUnits': 2
-                        },
-                        'TableName': table_name
-                    }
-                    conn.update_table(
-                        read_capacity_units=2,
-                        write_capacity_units=2
-                    )
-                    self.assertEqual(req.call_args[0][1], params)
+            with patch(PATCH_METHOD) as req:
+                req.return_value = HttpOK(), None
+                params = {
+                    'ProvisionedThroughput': {
+                        'WriteCapacityUnits': 2,
+                        'ReadCapacityUnits': 2
+                    },
+                    'TableName': table_name
+                }
+                conn.update_table(
+                    read_capacity_units=2,
+                    write_capacity_units=2
+                )
+                self.assertEqual(req.call_args[0][1], params)
 
         for conn in self._prepare_connections():
             table_name = conn.table_name
-            with self.subTest(table_name=table_name, note='update throughput and index'):
-                with patch(PATCH_METHOD) as req:
-                    req.return_value = HttpOK(), None
+            with patch(PATCH_METHOD) as req:
+                req.return_value = HttpOK(), None
 
-                    global_secondary_index_updates = [
+                global_secondary_index_updates = [
+                    {
+                        "index_name": "foo-index",
+                        "read_capacity_units": 2,
+                        "write_capacity_units": 2
+                    }
+                ]
+                params = {
+                    'TableName': table_name,
+                    'ProvisionedThroughput': {
+                        'ReadCapacityUnits': 2,
+                        'WriteCapacityUnits': 2,
+                    },
+                    'GlobalSecondaryIndexUpdates': [
                         {
-                            "index_name": "foo-index",
-                            "read_capacity_units": 2,
-                            "write_capacity_units": 2
-                        }
-                    ]
-                    params = {
-                        'TableName': table_name,
-                        'ProvisionedThroughput': {
-                            'ReadCapacityUnits': 2,
-                            'WriteCapacityUnits': 2,
-                        },
-                        'GlobalSecondaryIndexUpdates': [
-                            {
-                                'Update': {
-                                    'IndexName': 'foo-index',
-                                    'ProvisionedThroughput': {
-                                        'ReadCapacityUnits': 2,
-                                        'WriteCapacityUnits': 2,
-                                    }
+                            'Update': {
+                                'IndexName': 'foo-index',
+                                'ProvisionedThroughput': {
+                                    'ReadCapacityUnits': 2,
+                                    'WriteCapacityUnits': 2,
                                 }
                             }
+                        }
 
-                        ]
-                    }
-                    conn.update_table(
-                        read_capacity_units=2,
-                        write_capacity_units=2,
-                        global_secondary_index_updates=global_secondary_index_updates
-                    )
-                    self.assertEqual(req.call_args[0][1], params)
+                    ]
+                }
+                conn.update_table(
+                    read_capacity_units=2,
+                    write_capacity_units=2,
+                    global_secondary_index_updates=global_secondary_index_updates
+                )
+                self.assertEqual(req.call_args[0][1], params)
 
     def test_describe_table(self):
         """
@@ -309,13 +305,12 @@ class ConnectionTestCase(TestCase):
         """
         for conn in self._prepare_connections():
             table_name = conn.table_name
-            with self.subTest(table_name=table_name):
-                with patch(PATCH_METHOD) as req:
-                    req.return_value = DESCRIBE_TABLE_DATA
-                    conn.describe_table()
-                    conn.describe_table()
-                    self.assertEqual(req.call_args[0][1], {'TableName': table_name})
-                    assert len(req.mock_calls) == 2, 'The request is not supposed to be cached'
+            with patch(PATCH_METHOD) as req:
+                req.return_value = DESCRIBE_TABLE_DATA
+                conn.describe_table()
+                conn.describe_table()
+                self.assertEqual(req.call_args[0][1], {'TableName': table_name})
+                assert len(req.mock_calls) == 2, 'The request is not supposed to be cached'
 
     def test_delete_item(self):
         """
@@ -333,27 +328,25 @@ class ConnectionTestCase(TestCase):
             }
         }
         conn, conn_w_schema = self._prepare_connections()
-        with self.subTest(table_name=conn.table_name):
-            params['TableName'] = conn.table_name
-            self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
+        params['TableName'] = conn.table_name
+        self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
 
-            with patch(PATCH_METHOD) as req:
-                req.return_value = {}
-                conn.delete_item(
-                    "Amazon DynamoDB",
-                    "How do I update multiple items?")
-                self.assertEqual(req.call_args[0][1], params)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.delete_item(
+                "Amazon DynamoDB",
+                "How do I update multiple items?")
+            self.assertEqual(req.call_args[0][1], params)
 
-        with self.subTest(table_name=conn_w_schema.table_name):
-            params['TableName'] = conn_w_schema.table_name
-            with patch(PATCH_METHOD) as req:
-                req.return_value = {}
-                conn_w_schema.delete_item(
-                    "Amazon DynamoDB",
-                    "How do I update multiple items?")
-                self.assertEqual(req.call_args[0][1], params)
-                assert len(req.mock_calls) == 1, ('Only one api call is expected,'
-                                                  ' because describe table request is not needed')
+        params['TableName'] = conn_w_schema.table_name
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn_w_schema.delete_item(
+                "Amazon DynamoDB",
+                "How do I update multiple items?")
+            self.assertEqual(req.call_args[0][1], params)
+            assert len(req.mock_calls) == 1, ('Only one api call is expected,'
+                                              ' because describe table request is not needed')
 
     def test_update_item(self):
         """
@@ -386,52 +379,48 @@ class ConnectionTestCase(TestCase):
             'ReturnConsumedCapacity': 'TOTAL'
         }
         conn, conn_w_schema = self._prepare_connections()
-        with self.subTest(table_name=conn.table_name):
-            params['TableName'] = conn.table_name
-            self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
+        params['TableName'] = conn.table_name
+        self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
 
-            with patch(PATCH_METHOD) as req:
-                req.return_value = HttpOK(), {}
-                conn.update_item(
-                    'foo-key',
-                    actions=[Path('Subject').set('foo-subject')],
-                    range_key='foo-range-key',
-                )
-                self.assertEqual(req.call_args[0][1], params)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.update_item(
+                'foo-key',
+                actions=[Path('Subject').set('foo-subject')],
+                range_key='foo-range-key',
+            )
+            self.assertEqual(req.call_args[0][1], params)
 
-        with self.subTest(table_name=conn_w_schema.table_name):
-            params['TableName'] = conn_w_schema.table_name
-            with patch(PATCH_METHOD) as req:
-                req.return_value = HttpOK(), {}
-                conn_w_schema.update_item(
-                    'foo-key',
-                    actions=[Path('Subject').set('foo-subject')],
-                    range_key='foo-range-key',
-                )
-                self.assertEqual(req.call_args[0][1], params)
-                assert len(req.mock_calls) == 1, ('Only one api call is expected,'
-                                                  ' because describe table request is not needed')
+        params['TableName'] = conn_w_schema.table_name
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn_w_schema.update_item(
+                'foo-key',
+                actions=[Path('Subject').set('foo-subject')],
+                range_key='foo-range-key',
+            )
+            self.assertEqual(req.call_args[0][1], params)
+            assert len(req.mock_calls) == 1, ('Only one api call is expected,'
+                                              ' because describe table request is not needed')
 
     def test_get_item(self):
         """
         TableConnection.get_item
         """
         conn, conn_w_schema = self._prepare_connections()
-        with self.subTest(table_name=conn.table_name):
-            self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
+        self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
 
-            with patch(PATCH_METHOD) as req:
-                req.return_value = GET_ITEM_DATA
-                item = conn.get_item("Amazon DynamoDB", "How do I update multiple items?")
-                self.assertEqual(item, GET_ITEM_DATA)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = GET_ITEM_DATA
+            item = conn.get_item("Amazon DynamoDB", "How do I update multiple items?")
+            self.assertEqual(item, GET_ITEM_DATA)
 
-        with self.subTest(table_name=conn_w_schema.table_name):
-            with patch(PATCH_METHOD) as req:
-                req.return_value = GET_ITEM_DATA
-                item = conn_w_schema.get_item("Amazon DynamoDB", "How do I update multiple items?")
-                self.assertEqual(item, GET_ITEM_DATA)
-                assert len(req.mock_calls) == 1, ('Only one api call is expected,'
-                                                  ' because describe table request is not needed')
+        with patch(PATCH_METHOD) as req:
+            req.return_value = GET_ITEM_DATA
+            item = conn_w_schema.get_item("Amazon DynamoDB", "How do I update multiple items?")
+            self.assertEqual(item, GET_ITEM_DATA)
+            assert len(req.mock_calls) == 1, ('Only one api call is expected,'
+                                              ' because describe table request is not needed')
 
     def test_put_item(self):
         """
@@ -439,83 +428,81 @@ class ConnectionTestCase(TestCase):
         """
         conn, conn_w_schema = self._prepare_connections()
 
-        with self.subTest(table_name=conn.table_name):
-            self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
-            with patch(PATCH_METHOD) as req:
-                req.return_value = {}
-                conn.put_item(
-                    'foo-key',
-                    range_key='foo-range-key',
-                    attributes={'ForumName': 'foo-value'}
-                )
-                params = {
-                    'ReturnConsumedCapacity': 'TOTAL',
-                    'TableName': conn.table_name,
-                    'Item': {
-                        'ForumName': {
-                            'S': 'foo-value'
-                        },
-                        'Subject': {
-                            'S': 'foo-range-key'
-                        }
-                    }
-                }
-                self.assertEqual(req.call_args[0][1], params)
-
-            with patch(PATCH_METHOD) as req:
-                req.return_value = HttpOK(), {}
-                conn.put_item(
-                    'foo-key',
-                    range_key='foo-range-key',
-                    attributes={'ForumName': 'foo-value'},
-                    condition=Path('ForumName').does_not_exist()
-                )
-                params = {
-                    'ReturnConsumedCapacity': 'TOTAL',
-                    'Item': {
-                        'ForumName': {
-                            'S': 'foo-value'
-                        },
-                        'Subject': {
-                            'S': 'foo-range-key'
-                        }
+        self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.put_item(
+                'foo-key',
+                range_key='foo-range-key',
+                attributes={'ForumName': 'foo-value'}
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': conn.table_name,
+                'Item': {
+                    'ForumName': {
+                        'S': 'foo-value'
                     },
-                    'TableName': conn.table_name,
-                    'ConditionExpression': 'attribute_not_exists (#0)',
-                    'ExpressionAttributeNames': {
-                        '#0': 'ForumName'
+                    'Subject': {
+                        'S': 'foo-range-key'
                     }
                 }
-                self.assertEqual(req.call_args[0][1], params)
+            }
+            self.assertEqual(req.call_args[0][1], params)
 
-        with self.subTest(table_name=conn_w_schema.table_name):
-            with patch(PATCH_METHOD) as req:
-                req.return_value = HttpOK(), {}
-                conn_w_schema.put_item(
-                    'foo-key',
-                    range_key='foo-range-key',
-                    attributes={'ForumName': 'foo-value'},
-                    condition=Path('ForumName').does_not_exist()
-                )
-                params = {
-                    'ReturnConsumedCapacity': 'TOTAL',
-                    'Item': {
-                        'ForumName': {
-                            'S': 'foo-value'
-                        },
-                        'Subject': {
-                            'S': 'foo-range-key'
-                        }
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.put_item(
+                'foo-key',
+                range_key='foo-range-key',
+                attributes={'ForumName': 'foo-value'},
+                condition=Path('ForumName').does_not_exist()
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Item': {
+                    'ForumName': {
+                        'S': 'foo-value'
                     },
-                    'TableName': conn_w_schema.table_name,
-                    'ConditionExpression': 'attribute_not_exists (#0)',
-                    'ExpressionAttributeNames': {
-                        '#0': 'ForumName'
+                    'Subject': {
+                        'S': 'foo-range-key'
                     }
+                },
+                'TableName': conn.table_name,
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
                 }
-                self.assertEqual(req.call_args[0][1], params)
-                assert len(req.mock_calls) == 1, ('Only one api call is expected,'
-                                                  ' because describe table request is not needed')
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn_w_schema.put_item(
+                'foo-key',
+                range_key='foo-range-key',
+                attributes={'ForumName': 'foo-value'},
+                condition=Path('ForumName').does_not_exist()
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Item': {
+                    'ForumName': {
+                        'S': 'foo-value'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'TableName': conn_w_schema.table_name,
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName'
+                }
+            }
+            self.assertEqual(req.call_args[0][1], params)
+            assert len(req.mock_calls) == 1, ('Only one api call is expected,'
+                                              ' because describe table request is not needed')
 
     def test_batch_write_item(self):
         """
@@ -529,32 +516,30 @@ class ConnectionTestCase(TestCase):
 
         conn, conn_w_schema = self._prepare_connections()
 
-        with self.subTest(table_name=conn.table_name):
-            self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
-            with patch(PATCH_METHOD) as req:
-                req.return_value = {}
-                conn.batch_write_item(put_items=items)
-                params = {
-                    'ReturnConsumedCapacity': 'TOTAL',
-                    'RequestItems': {
-                        conn.table_name: param_items
-                    }
+        self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.batch_write_item(put_items=items)
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'RequestItems': {
+                    conn.table_name: param_items
                 }
-                self.assertEqual(req.call_args[0][1], params)
+            }
+            self.assertEqual(req.call_args[0][1], params)
 
-        with self.subTest(table_name=conn_w_schema.table_name):
-            with patch(PATCH_METHOD) as req:
-                req.return_value = {}
-                conn_w_schema.batch_write_item(put_items=items)
-                params = {
-                    'ReturnConsumedCapacity': 'TOTAL',
-                    'RequestItems': {
-                        conn_w_schema.table_name: param_items
-                    }
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn_w_schema.batch_write_item(put_items=items)
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'RequestItems': {
+                    conn_w_schema.table_name: param_items
                 }
-                self.assertEqual(req.call_args[0][1], params)
-                assert len(req.mock_calls) == 1, ('Only one api call is expected,'
-                                                  ' because describe table request is not needed')
+            }
+            self.assertEqual(req.call_args[0][1], params)
+            assert len(req.mock_calls) == 1, ('Only one api call is expected,'
+                                              ' because describe table request is not needed')
 
     def test_batch_get_item(self):
         """
@@ -567,32 +552,30 @@ class ConnectionTestCase(TestCase):
 
         conn, conn_w_schema = self._prepare_connections()
 
-        with self.subTest(table_name=conn.table_name):
-            self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
-            with patch(PATCH_METHOD) as req:
-                req.return_value = {}
-                conn.batch_get_item(items)
-                params = {
-                    'ReturnConsumedCapacity': 'TOTAL',
-                    'RequestItems': {
-                        conn.table_name: {'Keys': param_items}
-                    }
+        self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.batch_get_item(items)
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'RequestItems': {
+                    conn.table_name: {'Keys': param_items}
                 }
-                self.assertEqual(req.call_args[0][1], params)
+            }
+            self.assertEqual(req.call_args[0][1], params)
 
-        with self.subTest(table_name=conn_w_schema.table_name):
-            with patch(PATCH_METHOD) as req:
-                req.return_value = {}
-                conn_w_schema.batch_get_item(items)
-                params = {
-                    'ReturnConsumedCapacity': 'TOTAL',
-                    'RequestItems': {
-                        conn_w_schema.table_name: {'Keys': param_items}
-                    }
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn_w_schema.batch_get_item(items)
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'RequestItems': {
+                    conn_w_schema.table_name: {'Keys': param_items}
                 }
-                self.assertEqual(req.call_args[0][1], params)
-                assert len(req.mock_calls) == 1, ('Only one api call is expected,'
-                                                  ' because describe table request is not needed')
+            }
+            self.assertEqual(req.call_args[0][1], params)
+            assert len(req.mock_calls) == 1, ('Only one api call is expected,'
+                                              ' because describe table request is not needed')
 
     def test_query(self):
         """
@@ -617,30 +600,28 @@ class ConnectionTestCase(TestCase):
 
         conn, conn_w_schema = self._prepare_connections()
 
-        with self.subTest(table_name=conn.table_name):
-            self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
-            params['TableName'] = conn.table_name
+        self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
+        params['TableName'] = conn.table_name
 
-            with patch(PATCH_METHOD) as req:
-                req.return_value = {}
-                conn.query(
-                    "FooForum",
-                    Path('Subject').startswith('thread')
-                )
-                self.assertEqual(req.call_args[0][1], params)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.query(
+                "FooForum",
+                Path('Subject').startswith('thread')
+            )
+            self.assertEqual(req.call_args[0][1], params)
 
-        with self.subTest(table_name=conn_w_schema.table_name):
-            params['TableName'] = conn_w_schema.table_name
+        params['TableName'] = conn_w_schema.table_name
 
-            with patch(PATCH_METHOD) as req:
-                req.return_value = {}
-                conn_w_schema.query(
-                    "FooForum",
-                    Path('Subject').startswith('thread')
-                )
-                self.assertEqual(req.call_args[0][1], params)
-                assert len(req.mock_calls) == 1, ('Only one api call is expected,'
-                                                  ' because describe table request is not needed')
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn_w_schema.query(
+                "FooForum",
+                Path('Subject').startswith('thread')
+            )
+            self.assertEqual(req.call_args[0][1], params)
+            assert len(req.mock_calls) == 1, ('Only one api call is expected,'
+                                              ' because describe table request is not needed')
 
     def test_scan(self):
         """
@@ -648,26 +629,24 @@ class ConnectionTestCase(TestCase):
         """
         conn, conn_w_schema = self._prepare_connections()
 
-        with self.subTest(table_name=conn.table_name):
-            self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
-            with patch(PATCH_METHOD) as req:
-                req.return_value = HttpOK(), {}
-                conn.scan()
-                params = {
-                    'ReturnConsumedCapacity': 'TOTAL',
-                    'TableName': conn.table_name
-                }
-                self.assertEqual(req.call_args[0][1], params)
+        self._run_describe_table_for_connection(conn, DESCRIBE_TABLE_DATA)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.scan()
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': conn.table_name
+            }
+            self.assertEqual(req.call_args[0][1], params)
 
-        with self.subTest(table_name=conn_w_schema.table_name):
-            self._run_describe_table_for_connection(conn_w_schema, DESCRIBE_TABLE_DATA)
-            with patch(PATCH_METHOD) as req:
-                req.return_value = HttpOK(), {}
-                conn_w_schema.scan()
-                params = {
-                    'ReturnConsumedCapacity': 'TOTAL',
-                    'TableName': conn_w_schema.table_name
-                }
-                self.assertEqual(req.call_args[0][1], params)
-                assert len(req.mock_calls) == 1, ('Only one api call is expected,'
-                                                  ' because describe table request is not needed')
+        self._run_describe_table_for_connection(conn_w_schema, DESCRIBE_TABLE_DATA)
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn_w_schema.scan()
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': conn_w_schema.table_name
+            }
+            self.assertEqual(req.call_args[0][1], params)
+            assert len(req.mock_calls) == 1, ('Only one api call is expected,'
+                                              ' because describe table request is not needed')
