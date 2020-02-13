@@ -9,7 +9,7 @@ from pynamodb.expressions.operand import (
     _Decrement, _IfNotExists, _Increment, _ListAppend
 )
 from pynamodb.expressions.update import (
-    AddAction, DeleteAction, RemoveAction, SetAction
+    AddAction, DeleteAction, RemoveAction, SetAction, ListRemoveAction
 )
 
 
@@ -168,6 +168,8 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
     def __get__(self: _A, instance: None, owner: Any) -> _A: ...
     @overload
     def __get__(self, instance: Any, owner: Any) -> List[_T]: ...
+    def remove(self, indexes: Union[None, List[int]] = None) -> Union[RemoveAction, ListRemoveAction]: ...
+
 
 DESERIALIZE_CLASS_MAP: Dict[Text, Attribute]
 SERIALIZE_CLASS_MAP: Dict[Type, Attribute]

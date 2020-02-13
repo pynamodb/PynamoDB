@@ -15,6 +15,10 @@ class RemoveAction(Action):
     def __init__(self, path: Path) -> None: ...
 
 
+class ListRemoveAction(Action):
+    def __init__(self, path: Path, indexes: List[int]) -> None: ...
+
+
 class AddAction(Action):
     def __init__(self, path: Path, subset: Path) -> None: ...
 
@@ -26,6 +30,7 @@ class DeleteAction(Action):
 class Update(object):
     set_actions: List[SetAction]
     remove_actions: List[RemoveAction]
+    list_remove_actions: List[ListRemoveAction]
     add_actions: List[AddAction]
     delete_actions: List[DeleteAction]
     def __init__(self, *actions: Action) -> None: ...
