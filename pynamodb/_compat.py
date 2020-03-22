@@ -6,12 +6,19 @@ if six.PY2:
 else:
     from inspect import getfullargspec
 
+
 def load_module(name, path):
     """Load module using the Python version compatible function."""
     if sys.version_info >= (3, 3):
         from importlib.machinery import SourceFileLoader
-        return SourceFileLoader(name, path).load_module()
-    else: 
+
+        # Typeshed is incorrect in requiring a string arg to `load_module`,
+        # as this works with no args or a None arg.
+        # Even `load_module` is now deprecated, so we should update to just
+        # using the following approach in >= python 3.5:
+        # https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
+        return SourceFileLoader(name, path).load_module()  # type: ignore
+    else:
         from imp import load_source
         return load_source(name, path)
 
