@@ -17,7 +17,8 @@ def load_module(name, path):
         # Even `load_module` is now deprecated, so we should update to just
         # using the following approach in >= python 3.5:
         # https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
-        return SourceFileLoader(name, path).load_module()  # type: ignore
+        loader = SourceFileLoader(name, path)
+        return loader.load_module()  # type: ignore
     else:
         from imp import load_source
         return load_source(name, path)
