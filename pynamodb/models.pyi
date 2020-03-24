@@ -21,7 +21,7 @@ class MetaModel(type):
     def __init__(self, name: Text, bases: Tuple[type, ...], attrs: Dict[Any, Any]) -> None: ...
 
 _T = TypeVar('_T', bound='Model')
-KeyType = Union[Text, bytes, float, int, Tuple]
+KeyType = Any
 
 class Model(metaclass=MetaModel):
     DoesNotExist = DoesNotExist
