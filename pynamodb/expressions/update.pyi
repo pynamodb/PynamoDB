@@ -16,7 +16,7 @@ class RemoveAction(Action):
 
 
 class ListRemoveAction(Action):
-    def __init__(self, path: Path, indexes: List[int]) -> None: ...
+    def __init__(self, path: Path, *indexes: int) -> None: ...
 
 
 class AddAction(Action):

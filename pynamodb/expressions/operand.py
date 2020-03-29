@@ -277,8 +277,8 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         # Returns an update action that removes this attribute from the item
         return RemoveAction(self)
 
-    def remove_list_elements(self, indexes):
-        return ListRemoveAction(self, indexes)
+    def remove_list_elements(self, *indexes):
+        return ListRemoveAction(self, *indexes)
 
     def add(self, *values):
         # Returns an update action that appends the given values to a set or mathematically adds a value to a number

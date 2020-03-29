@@ -42,7 +42,7 @@ class ListRemoveAction(Action):
     """
     format_string = None
 
-    def __init__(self, path, indexes):
+    def __init__(self, path, *indexes):
         self.format_string = ", ".join("{{0}}[{}]".format(index) for index in indexes)
         super(ListRemoveAction, self).__init__(path)
 

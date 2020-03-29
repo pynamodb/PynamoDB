@@ -593,7 +593,7 @@ class UpdateExpressionTestCase(TestCase):
 
     def test_list_update_remove_by_index(self):
         update = Update(
-            self.list_attribute.remove(indexes=[0]),
+            self.list_attribute.remove_indexes(0),
         )
         placeholder_names, expression_attribute_values = {}, {}
         expression = update.serialize(placeholder_names, expression_attribute_values)
@@ -602,7 +602,7 @@ class UpdateExpressionTestCase(TestCase):
         assert expression_attribute_values == {}
 
         update = Update(
-            self.list_attribute.remove(indexes=[0, 10]),
+            self.list_attribute.remove_indexes(0, 10),
         )
         placeholder_names, expression_attribute_values = {}, {}
         expression = update.serialize(placeholder_names, expression_attribute_values)
@@ -610,5 +610,6 @@ class UpdateExpressionTestCase(TestCase):
         assert placeholder_names == {'foo_list': '#0'}
         assert expression_attribute_values == {}
 
-        with self.assertRaises(ValueError):
-            Update(self.list_attribute.remove(indexes=[0, "a"]))
+        with self.assertRaises(ValueError) as e:
+            Update(self.list_attribute.remove_indexes(0, "a"))
+        assert str(e.exception) == "Method 'remove_indexes' arguments must be 'int'"
