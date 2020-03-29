@@ -173,7 +173,8 @@ class Attribute(object):
     def set(self, value):
         return Path(self).set(value)
 
-    def remove(self):
+    def remove(self, indexes=None):
+        # Indexes argument used in the ListAttribute class
         return Path(self).remove()
 
     def add(self, *values):
