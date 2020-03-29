@@ -2,6 +2,8 @@
 PynamoDB Indexes
 """
 from inspect import getmembers
+from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import TYPE_CHECKING
 
 from pynamodb._compat import FakeGenericMeta
 from pynamodb.constants import (
@@ -9,9 +11,15 @@ from pynamodb.constants import (
     ATTR_DEFINITIONS, META_CLASS_NAME
 )
 from pynamodb.attributes import Attribute
-from pynamodb.types import HASH, RANGE
 from pynamodb.connection.util import pythonic
-from six import with_metaclass
+from pynamodb.expressions.condition import Condition
+from pynamodb.pagination import ResultIterator
+from pynamodb.types import HASH, RANGE
+
+if TYPE_CHECKING:
+    from pynamodb.models import Model, KeyType
+
+_M = TypeVar('_M', bound='Model')
 
 
 class IndexMeta(FakeGenericMeta):
@@ -33,26 +41,28 @@ class IndexMeta(FakeGenericMeta):
                         attr_obj.attr_name = attr_name
 
 
-class Index(with_metaclass(IndexMeta)):
+class Index(Generic[_M], metaclass=IndexMeta):
     """
     Base class for secondary indexes
     """
-    Meta = None
+    Meta = None  # type: Any
 
-    def __init__(self):
+    def __init__(self) -> None:
         if self.Meta is None:
             raise ValueError("Indexes require a Meta class for settings")
         if not hasattr(self.Meta, "projection"):
             raise ValueError("No projection defined, define a projection for this class")
 
     @classmethod
-    def count(cls,
-              hash_key,
-              range_key_condition=None,
-              filter_condition=None,
-              consistent_read=False,
-              limit=None,
-              rate_limit=None):
+    def count(
+        cls,
+        hash_key: KeyType,
+        range_key_condition: Optional[Condition] = None,
+        filter_condition: Optional[Condition] = None,
+        consistent_read: bool = False,
+        limit: Optional[int] = None,
+        rate_limit: Optional[float] = None,
+    ) -> int:
         """
         Count on an index
         """
@@ -67,17 +77,19 @@ class Index(with_metaclass(IndexMeta)):
         )
 
     @classmethod
-    def query(self,
-              hash_key,
-              range_key_condition=None,
-              filter_condition=None,
-              consistent_read=False,
-              scan_index_forward=None,
-              limit=None,
-              last_evaluated_key=None,
-              attributes_to_get=None,
-              page_size=None,
-              rate_limit=None):
+    def query(
+        self,
+        hash_key: str,
+        range_key_condition: Optional[Condition] = None,
+        filter_condition: Optional[Condition] = None,
+        consistent_read: Optional[bool] = False,
+        scan_index_forward: Optional[bool] = None,
+        limit: Optional[int] = None,
+        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = None,
+        attributes_to_get: Optional[List[str]] = None,
+        page_size: Optional[int] = None,
+        rate_limit: Optional[float] = None,
+    ) -> ResultIterator[_M]:
         """
         Queries an index
         """
@@ -96,16 +108,18 @@ class Index(with_metaclass(IndexMeta)):
         )
 
     @classmethod
-    def scan(self,
-             filter_condition=None,
-             segment=None,
-             total_segments=None,
-             limit=None,
-             last_evaluated_key=None,
-             page_size=None,
-             consistent_read=None,
-             rate_limit=None,
-             attributes_to_get=None):
+    def scan(
+        self,
+        filter_condition: Optional[Condition] = None,
+        segment: Optional[int] = None,
+        total_segments: Optional[int] = None,
+        limit: Optional[int] = None,
+        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = None,
+        page_size: Optional[int] = None,
+        consistent_read: Optional[bool] = None,
+        rate_limit: Optional[float] = None,
+        attributes_to_get: Optional[List[str]] = None,
+    ):
         """
         Scans an index
         """
@@ -132,7 +146,7 @@ class Index(with_metaclass(IndexMeta)):
                 return attr_cls
 
     @classmethod
-    def _get_schema(cls):
+    def _get_schema(cls) -> Dict:
         """
         Returns the schema for this index
         """
@@ -170,14 +184,14 @@ class Index(with_metaclass(IndexMeta)):
         return cls.Meta.attributes
 
 
-class GlobalSecondaryIndex(Index):
+class GlobalSecondaryIndex(Index[_M]):
     """
     A global secondary index
     """
     pass
 
 
-class LocalSecondaryIndex(Index):
+class LocalSecondaryIndex(Index[_M]):
     """
     A local secondary index
     """
@@ -188,8 +202,8 @@ class Projection(object):
     """
     A class for presenting projections
     """
-    projection_type = None
-    non_key_attributes = None
+    projection_type: Any = None
+    non_key_attributes: Any = None
 
 
 class KeysOnlyProjection(Projection):
@@ -205,7 +219,7 @@ class IncludeProjection(Projection):
     """
     projection_type = INCLUDE
 
-    def __init__(self, non_attr_keys=None):
+    def __init__(self, non_attr_keys: Optional[List[str]] = None) -> None:
         if not non_attr_keys:
             raise ValueError("The INCLUDE type projection requires a list of string attribute names")
         self.non_key_attributes = non_attr_keys

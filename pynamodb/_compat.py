@@ -1,10 +1,6 @@
-import six
 import sys
 
-if six.PY2:
-    from inspect import getargspec as getfullargspec
-else:
-    from inspect import getfullargspec
+from inspect import getfullargspec
 
 
 class FakeGenericMeta(type):

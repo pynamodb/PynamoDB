@@ -1,3 +1,6 @@
+from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING
+
 from pynamodb.constants import (
     ATTR_TYPE_MAP, BINARY_SET, LIST, LIST_SHORT, MAP, MAP_SHORT,
     NUMBER_SET, NUMBER_SHORT, SHORT_ATTR_TYPES, STRING_SET, STRING_SHORT
@@ -9,30 +12,34 @@ from pynamodb.expressions.update import (
     AddAction, DeleteAction, RemoveAction, SetAction, ListRemoveAction
 )
 from pynamodb.expressions.util import get_path_segments, get_value_placeholder, substitute_names
-from six import string_types
+
+if TYPE_CHECKING:
+    from pynamodb.attributes import Attribute
+
+_PathOrAttribute = Union['Path', 'Attribute', List[str]]
 
 
-class _Operand(object):
+class _Operand:
     """
     Operand is the base class for objects that can be operands in Condition and Update Expressions.
     """
     format_string = ''
-    short_attr_type = None
+    short_attr_type: Any = None
 
-    def __init__(self, *values):
+    def __init__(self, *values: Any) -> None:
         self.values = values
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.format_string.format(*self.values)
 
-    def serialize(self, placeholder_names, expression_attribute_values):
+    def serialize(self, placeholder_names: Dict[str, str], expression_attribute_values: Dict[str, str]) -> str:
         values = [self._serialize_value(value, placeholder_names, expression_attribute_values) for value in self.values]
         return self.format_string.format(*values)
 
     def _serialize_value(self, value, placeholder_names, expression_attribute_values):
         return value.serialize(placeholder_names, expression_attribute_values)
 
-    def _to_operand(self, value):
+    def _to_operand(self, value: Union['_Operand', 'Attribute', Any]):
         if isinstance(value, _Operand):
             return value
         from pynamodb.attributes import Attribute, MapAttribute  # prevent circular import -- Attribute imports Path
@@ -53,30 +60,30 @@ class _ConditionOperand(_Operand):
     A base class for Operands that can be used in Condition Expression comparisons.
     """
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> Comparison:  # type: ignore
         return Comparison('=', self, self._to_operand(other))
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> Comparison:  # type: ignore
         return Comparison('<>', self, self._to_operand(other))
 
-    def __lt__(self, other):
+    def __lt__(self, other: Any) -> Comparison:
         return Comparison('<', self, self._to_operand(other))
 
-    def __le__(self, other):
+    def __le__(self, other: Any) -> Comparison:
         return Comparison('<=', self, self._to_operand(other))
 
-    def __gt__(self, other):
+    def __gt__(self, other: Any) -> Comparison:
         return Comparison('>', self, self._to_operand(other))
 
-    def __ge__(self, other):
+    def __ge__(self, other: Any) -> Comparison:
         return Comparison('>=', self, self._to_operand(other))
 
-    def between(self, lower, upper):
+    def between(self, lower: Any, upper: Any) -> Between:
         return Between(self, self._to_operand(lower), self._to_operand(upper))
 
-    def is_in(self, *values):
-        values = [self._to_operand(value) for value in values]
-        return In(self, *values)
+    def is_in(self, *values: Any) -> In:
+        op_values = [self._to_operand(value) for value in values]
+        return In(self, *op_values)
 
 
 class _NumericOperand(_Operand):
@@ -102,10 +109,10 @@ class _ListAppendOperand(_Operand):
     A base class for Operands that can be used in the list_append function for the SET update action.
     """
 
-    def append(self, other):
+    def append(self, other: Any) -> '_ListAppend':
         return _ListAppend(self, self._to_operand(other))
 
-    def prepend(self, other):
+    def prepend(self, other: Any) -> '_ListAppend':
         return _ListAppend(self._to_operand(other), self)
 
 
@@ -116,7 +123,7 @@ class _Size(_ConditionOperand):
     format_string = 'size ({0})'
     short_attr_type = NUMBER_SHORT
 
-    def __init__(self, path):
+    def __init__(self, path: _PathOrAttribute) -> None:
         if not isinstance(path, Path):
             path = Path(path)
         super(_Size, self).__init__(path)
@@ -134,7 +141,7 @@ class _Increment(_Operand):
     format_string = '{0} + {1}'
     short_attr_type = NUMBER_SHORT
 
-    def __init__(self, lhs, rhs):
+    def __init__(self, lhs: '_Operand', rhs: '_Operand') -> None:
         lhs._type_check(NUMBER_SHORT)
         rhs._type_check(NUMBER_SHORT)
         super(_Increment, self).__init__(lhs, rhs)
@@ -147,7 +154,7 @@ class _Decrement(_Operand):
     format_string = '{0} - {1}'
     short_attr_type = NUMBER_SHORT
 
-    def __init__(self, lhs, rhs):
+    def __init__(self, lhs: _Operand, rhs: _Operand) -> None:
         lhs._type_check(NUMBER_SHORT)
         rhs._type_check(NUMBER_SHORT)
         super(_Decrement, self).__init__(lhs, rhs)
@@ -160,7 +167,7 @@ class _ListAppend(_Operand):
     format_string = 'list_append ({0}, {1})'
     short_attr_type = LIST_SHORT
 
-    def __init__(self, list1, list2):
+    def __init__(self, list1: _Operand, list2: _Operand):
         list1._type_check(LIST_SHORT)
         list2._type_check(LIST_SHORT)
         super(_ListAppend, self).__init__(list1, list2)
@@ -172,7 +179,7 @@ class _IfNotExists(_NumericOperand, _ListAppendOperand):
     """
     format_string = 'if_not_exists ({0}, {1})'
 
-    def __init__(self, path, value):
+    def __init__(self, path: _Operand, value: Any) -> None:
         self.short_attr_type = path.short_attr_type or value.short_attr_type
         if self.short_attr_type != value.short_attr_type:
             # path and value have conflicting types -- defer any type checks to DynamoDB
@@ -186,7 +193,7 @@ class Value(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     """
     format_string = '{0}'
 
-    def __init__(self, value, attribute=None):
+    def __init__(self, value: Any, attribute: Optional['Attribute'] = None) -> None:
         # Check to see if value is already serialized
         if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in SHORT_ATTR_TYPES:
             (self.short_attr_type, value), = value.items()
@@ -229,39 +236,44 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     """
     format_string = '{0}'
 
-    def __init__(self, attribute_or_path):
+    def __init__(self, attribute_or_path: _PathOrAttribute) -> None:
         from pynamodb.attributes import Attribute  # prevent circular import -- Attribute imports Path
-        is_attribute = isinstance(attribute_or_path, Attribute)
-        self.attribute = attribute_or_path if is_attribute else None
-        self.short_attr_type = ATTR_TYPE_MAP[attribute_or_path.attr_type] if is_attribute else None
-        path = attribute_or_path.attr_path if is_attribute else attribute_or_path
+        path: _PathOrAttribute
+        if isinstance(attribute_or_path, Attribute):
+            self.attribute = attribute_or_path
+            self.short_attr_type = ATTR_TYPE_MAP[attribute_or_path.attr_type]
+            path = attribute_or_path.attr_path
+        else:
+            self.attribute = None
+            self.short_attr_type = None
+            path = attribute_or_path
         if not path:
             raise ValueError("path cannot be empty")
         super(Path, self).__init__(get_path_segments(path))
 
     @property
-    def path(self):
+    def path(self) -> Any:
         return self.values[0]
 
     def __iter__(self):
         # Because we define __getitem__ Path is considered an iterable
         raise TypeError("'{}' object is not iterable".format(self.__class__.__name__))
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: Union[int, str]) -> 'Path':
         # The __getitem__ call returns a new Path instance without any attribute set.
         # This is intended since the nested element is not the same attribute as ``self``.
         if self.attribute and self.attribute.attr_type not in [LIST, MAP]:
             raise TypeError("'{}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
         if self.short_attr_type == LIST_SHORT and not isinstance(item, int):
             raise TypeError("list indices must be integers, not {}".format(type(item).__name__))
-        if self.short_attr_type == MAP_SHORT and not isinstance(item, string_types):
+        if self.short_attr_type == MAP_SHORT and not isinstance(item, str):
             raise TypeError("map attributes must be strings, not {}".format(type(item).__name__))
         if isinstance(item, int):
             # list dereference operator
             element_path = Path(self.path)  # copy the document path before indexing last element
             element_path.path[-1] = '{}[{}]'.format(self.path[-1], item)
             return element_path
-        if isinstance(item, string_types):
+        if isinstance(item, str):
             # map dereference operator
             return Path(self.path + [item])
         raise TypeError("item must be an integer or string, not {}".format(type(item).__name__))
@@ -269,46 +281,46 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     def __or__(self, other):
         return _IfNotExists(self, self._to_operand(other))
 
-    def set(self, value):
+    def set(self, value: Any) -> SetAction:
         # Returns an update action that sets this attribute to the given value
         return SetAction(self, self._to_operand(value))
 
-    def remove(self):
+    def remove(self) -> RemoveAction:
         # Returns an update action that removes this attribute from the item
         return RemoveAction(self)
 
-    def remove_list_elements(self, *indexes):
+    def remove_list_elements(self, *indexes: int) -> ListRemoveAction:
         return ListRemoveAction(self, *indexes)
 
-    def add(self, *values):
+    def add(self, *values: Any) -> AddAction:
         # Returns an update action that appends the given values to a set or mathematically adds a value to a number
         value = values[0] if len(values) == 1 else values
         return AddAction(self, self._to_operand(value))
 
-    def delete(self, *values):
+    def delete(self, *values: Any) -> DeleteAction:
         # Returns an update action that removes the given values from a set attribute
         value = values[0] if len(values) == 1 else values
         return DeleteAction(self, self._to_operand(value))
 
-    def exists(self):
+    def exists(self) -> Exists:
         return Exists(self)
 
-    def does_not_exist(self):
+    def does_not_exist(self) -> NotExists:
         return NotExists(self)
 
-    def is_type(self, attr_type):
+    def is_type(self, attr_type: str) -> IsType:
         if attr_type not in SHORT_ATTR_TYPES:
             raise ValueError("{} is not a valid attribute type. Must be one of {}".format(
                 attr_type, SHORT_ATTR_TYPES))
         return IsType(self, Value(attr_type))
 
-    def startswith(self, prefix):
+    def startswith(self, prefix: str) -> BeginsWith:
         # A 'pythonic' replacement for begins_with to match string behavior (e.g. "foo".startswith("f"))
         operand = self._to_operand(prefix)
         operand._type_check(STRING_SHORT)
         return BeginsWith(self, operand)
 
-    def contains(self, item):
+    def contains(self, item: Any) -> Contains:
         if self.attribute and self.attribute.attr_type in [BINARY_SET, NUMBER_SET, STRING_SET]:
             # Set attributes assume the values to be serialized are sets.
             (attr_type, attr_value), = self._to_value([item]).value.items()
@@ -318,15 +330,15 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     def _serialize_value(self, value, placeholder_names, expression_attribute_values):
         return substitute_names(value, placeholder_names)
 
-    def _to_value(self, value):
+    def _to_value(self, value: Any) -> Value:
         return Value(value, attribute=self.attribute)
 
-    def __str__(self):
+    def __str__(self) -> str:
         # Quote the path to illustrate that any dot characters are not dereference operators.
         quoted_path = [self._quote_path(segment) if '.' in segment else segment for segment in self.path]
         return '.'.join(quoted_path)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Path({})".format(self.path)
 
     @staticmethod

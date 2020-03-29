@@ -2,45 +2,68 @@
 PynamoDB attributes
 """
 import calendar
+import collections
 import six
-from six import add_metaclass
 import json
 import time
+import warnings
 from base64 import b64encode, b64decode
 from copy import deepcopy
+from collections.abc import Mapping
 from datetime import datetime, timedelta
-import warnings
 from dateutil.parser import parse
 from dateutil.tz import tzutc
 from inspect import getmembers
+from six import add_metaclass
+from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, Text, TypeVar, Union, Set, overload
+from typing import TYPE_CHECKING
+
+
 from pynamodb.constants import (
-    STRING, STRING_SHORT, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL, SHORT_ATTR_TYPES
+    STRING, STRING_SHORT, NUMBER, BINARY, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
+    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL,
 )
 from pynamodb.expressions.operand import Path
 from pynamodb._compat import getfullargspec
 
-try:
-    from collections.abc import Mapping  # noqa
-except ImportError:
-    from collections import Mapping  # noqa
 
 
-class Attribute(object):
+if TYPE_CHECKING:
+    from pynamodb.expressions.condition import (
+        BeginsWith, Between, Comparison, Contains, NotExists, Exists, In
+    )
+    from pynamodb.expressions.operand import (
+        _Decrement, _IfNotExists, _Increment, _ListAppend
+    )
+    from pynamodb.expressions.update import (
+        AddAction, DeleteAction, RemoveAction, SetAction
+    )
+
+
+_T = TypeVar('_T')
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
+_MT = TypeVar('_MT', bound='MapAttribute')
+
+_A = TypeVar('_A', bound='Attribute')
+
+
+class Attribute(Generic[_T]):
     """
     An attribute of a model
     """
-    attr_type = None
+    attr_type = None  # type: str
     null = False
 
-    def __init__(self,
-                 hash_key=False,
-                 range_key=False,
-                 null=None,
-                 default=None,
-                 default_for_new=None,
-                 attr_name=None
-                 ):
+    def __init__(
+        self,
+        hash_key: bool = False,
+        range_key: bool = False,
+        null: Optional[bool] = None,
+        default: Optional[Union[_T, Callable[..., _T]]] = None,
+        default_for_new: Optional[Union[Any, Callable[..., _T]]] = None,
+        attr_name: Optional[str] = None,
+    ) -> None:
         if default and default_for_new:
             raise ValueError("An attribute cannot have both default and default_for_new parameters")
         self.default = default
@@ -51,22 +74,31 @@ class Attribute(object):
             self.null = null
         self.is_hash_key = hash_key
         self.is_range_key = range_key
-        self.attr_path = [attr_name]
+
+        # AttributeContainerMeta._initialize_attributes will ensure this is a
+        # string
+        self.attr_path: List[str] = [attr_name]  # type: ignore
 
     @property
-    def attr_name(self):
+    def attr_name(self) -> Optional[str]:
         return self.attr_path[-1]
 
     @attr_name.setter
-    def attr_name(self, value):
+    def attr_name(self, value: str) -> None:
         self.attr_path[-1] = value
 
-    def __set__(self, instance, value):
+    def __set__(self, instance: Any, value: Optional[_T]) -> None:
         if instance and not self._is_map_attribute_class_object(instance):
             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
             instance.attribute_values[attr_name] = value
 
-    def __get__(self, instance, owner):
+    @overload
+    def __get__(self: _A, instance: None, owner: Any) -> _A: ...
+
+    @overload
+    def __get__(self: _A, instance: Any, owner: Any) -> _T: ...
+
+    def __get__(self: _A, instance: Any, owner: Any) -> Any:  # Union[_A, _T]:
         if self._is_map_attribute_class_object(instance):
             # MapAttribute class objects store a local copy of the attribute with `attr_path` set to the document path.
             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
@@ -77,22 +109,22 @@ class Attribute(object):
         else:
             return self
 
-    def _is_map_attribute_class_object(self, instance):
+    def _is_map_attribute_class_object(self, instance: 'Attribute') -> bool:
         return isinstance(instance, MapAttribute) and not instance._is_attribute_container()
 
-    def serialize(self, value):
+    def serialize(self, value: Any) -> Any:
         """
         This method should return a dynamodb compatible value
         """
         return value
 
-    def deserialize(self, value):
+    def deserialize(self, value: Any) -> Any:
         """
         Performs any needed deserialization on the value
         """
         return value
 
-    def get_value(self, value):
+    def get_value(self, value: Any) -> Any:
         serialized_dynamo_type = ATTR_TYPE_MAP[self.attr_type]
         return value.get(serialized_dynamo_type)
 
@@ -101,89 +133,89 @@ class Attribute(object):
         raise TypeError("'{}' object is not iterable".format(self.__class__.__name__))
 
     # Condition Expression Support
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> 'Comparison':  # type: ignore
         if isinstance(other, MapAttribute) and other._is_attribute_container():
             return Path(self).__eq__(other)
         if other is None or isinstance(other, Attribute):  # handle object identity comparison
-            return self is other
+            return self is other  # type: ignore
         return Path(self).__eq__(other)
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> 'Comparison':  # type: ignore
         if isinstance(other, MapAttribute) and other._is_attribute_container():
             return Path(self).__ne__(other)
         if other is None or isinstance(other, Attribute):  # handle object identity comparison
-            return self is not other
+            return self is not other  # type: ignore
         return Path(self).__ne__(other)
 
-    def __lt__(self, other):
+    def __lt__(self, other: Any) -> 'Comparison':
         return Path(self).__lt__(other)
 
-    def __le__(self, other):
+    def __le__(self, other: Any) -> 'Comparison':
         return Path(self).__le__(other)
 
-    def __gt__(self, other):
+    def __gt__(self, other: Any) -> 'Comparison':
         return Path(self).__gt__(other)
 
-    def __ge__(self, other):
+    def __ge__(self, other: Any) -> 'Comparison':
         return Path(self).__ge__(other)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Any:
         return Path(self).__getitem__(idx)
 
-    def between(self, lower, upper):
+    def between(self, lower: Any, upper: Any) -> 'Between':
         return Path(self).between(lower, upper)
 
-    def is_in(self, *values):
+    def is_in(self, *values: Any) -> 'In':
         return Path(self).is_in(*values)
 
-    def exists(self):
+    def exists(self) -> 'Exists':
         return Path(self).exists()
 
-    def does_not_exist(self):
+    def does_not_exist(self) -> 'NotExists':
         return Path(self).does_not_exist()
 
     def is_type(self):
         # What makes sense here? Are we using this to check if deserialization will be successful?
         return Path(self).is_type(ATTR_TYPE_MAP[self.attr_type])
 
-    def startswith(self, prefix):
+    def startswith(self, prefix: str) -> 'BeginsWith':
         return Path(self).startswith(prefix)
 
-    def contains(self, item):
+    def contains(self, item: Any) -> 'Contains':
         return Path(self).contains(item)
 
     # Update Expression Support
-    def __add__(self, other):
+    def __add__(self, other: Any) -> '_Increment':
         return Path(self).__add__(other)
 
-    def __radd__(self, other):
+    def __radd__(self, other: Any) -> '_Increment':
         return Path(self).__radd__(other)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Any) -> '_Decrement':
         return Path(self).__sub__(other)
 
-    def __rsub__(self, other):
+    def __rsub__(self, other: Any) -> '_Decrement':
         return Path(self).__rsub__(other)
 
-    def __or__(self, other):
+    def __or__(self, other: Any) -> '_IfNotExists':
         return Path(self).__or__(other)
 
-    def append(self, other):
+    def append(self, other: Any) -> '_ListAppend':
         return Path(self).append(other)
 
-    def prepend(self, other):
+    def prepend(self, other: Any) -> '_ListAppend':
         return Path(self).prepend(other)
 
-    def set(self, value):
+    def set(self, value: Any) -> 'SetAction':
         return Path(self).set(value)
 
-    def remove(self):
+    def remove(self) -> 'RemoveAction':
         return Path(self).remove()
 
-    def add(self, *values):
+    def add(self, *values: Any) -> 'AddAction':
         return Path(self).add(*values)
 
-    def delete(self, *values):
+    def delete(self, *values: Any) -> 'DeleteAction':
         return Path(self).delete(*values)
 
 
@@ -224,45 +256,43 @@ class AttributeContainerMeta(type):
 @add_metaclass(AttributeContainerMeta)
 class AttributeContainer(object):
 
-    def __init__(self, _user_instantiated=True, **attributes):
+    def __init__(self, _user_instantiated: bool = True, **attributes: Attribute) -> None:
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
         # to store the values that are bound to this instance. Attributes store values in the dictionary
         # using the `python_attr_name` as the dictionary key. "Raw" (i.e. non-subclassed) MapAttribute
         # instances do not have any Attributes defined and instead use this dictionary to store their
         # collection of name-value pairs.
-        self.attribute_values = {}
+        self.attribute_values: Dict[str, Any] = {}
         self._set_defaults(_user_instantiated=_user_instantiated)
         self._set_attributes(**attributes)
 
     @classmethod
-    def _get_attributes(cls):
+    def _get_attributes(cls) -> Dict[str, Attribute]:
         """
         Returns the attributes of this class as a mapping from `python_attr_name` => `attribute`.
-
-        :rtype: dict[str, Attribute]
         """
         warnings.warn("`Model._get_attributes` is deprecated in favor of `Model.get_attributes` now")
         return cls.get_attributes()
 
     @classmethod
-    def get_attributes(cls):
+    def get_attributes(cls) -> Dict[str, Attribute]:
         """
         Returns the attributes of this class as a mapping from `python_attr_name` => `attribute`.
 
         :rtype: dict[str, Attribute]
         """
-        return cls._attributes
+        return cls._attributes  # type: ignore
 
     @classmethod
-    def _dynamo_to_python_attr(cls, dynamo_key):
+    def _dynamo_to_python_attr(cls, dynamo_key: str) -> Optional[str]:
         """
         Convert a DynamoDB attribute name to the internal Python name.
 
         This covers cases where an attribute name has been overridden via "attr_name".
         """
-        return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)
+        return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)  # type: ignore
 
-    def _set_defaults(self, _user_instantiated=True):
+    def _set_defaults(self, _user_instantiated: bool = True) -> None:
         """
         Sets and fields that provide a default value
         """
@@ -278,20 +308,20 @@ class AttributeContainer(object):
             if value is not None:
                 setattr(self, name, value)
 
-    def _set_attributes(self, **attributes):
+    def _set_attributes(self, **attributes: Attribute) -> None:
         """
         Sets the attributes for this object
         """
-        for attr_name, attr_value in six.iteritems(attributes):
+        for attr_name, attr_value in attributes.items():
             if attr_name not in self.get_attributes():
                 raise ValueError("Attribute {} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         # This is required for python 2 support so that MapAttribute can call this method.
         return self is other
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         # This is required for python 2 support so that MapAttribute can call this method.
         return self is not other
 
@@ -324,7 +354,7 @@ class SetMixin(object):
             return {json.loads(val) for val in value}
 
 
-class BinaryAttribute(Attribute):
+class BinaryAttribute(Attribute[bytes]):
     """
     A binary attribute
     """
@@ -346,7 +376,7 @@ class BinaryAttribute(Attribute):
             return b64decode(value)
 
 
-class BinarySetAttribute(SetMixin, Attribute):
+class BinarySetAttribute(SetMixin, Attribute[Set[bytes]]):
     """
     A binary set
     """
@@ -373,7 +403,7 @@ class BinarySetAttribute(SetMixin, Attribute):
             return {b64decode(val) for val in value}
 
 
-class UnicodeSetAttribute(SetMixin, Attribute):
+class UnicodeSetAttribute(SetMixin, Attribute[Set[Text]]):
     """
     A unicode set
     """
@@ -409,7 +439,7 @@ class UnicodeSetAttribute(SetMixin, Attribute):
             return {self.element_deserialize(val) for val in value}
 
 
-class UnicodeAttribute(Attribute):
+class UnicodeAttribute(Attribute[str]):
     """
     A unicode attribute
     """
@@ -421,13 +451,11 @@ class UnicodeAttribute(Attribute):
         """
         if value is None or not len(value):
             return None
-        elif isinstance(value, six.text_type):
-            return value
         else:
-            return six.u(value)
+            return value
 
 
-class JSONAttribute(Attribute):
+class JSONAttribute(Attribute[Any]):
     """
     A JSON Attribute
 
@@ -435,17 +463,14 @@ class JSONAttribute(Attribute):
     """
     attr_type = STRING
 
-    def serialize(self, value):
+    def serialize(self, value) -> Optional[str]:
         """
         Serializes JSON to unicode
         """
         if value is None:
             return None
         encoded = json.dumps(value)
-        try:
-            return unicode(encoded)
-        except NameError:
-            return encoded
+        return encoded
 
     def deserialize(self, value):
         """
@@ -454,7 +479,7 @@ class JSONAttribute(Attribute):
         return json.loads(value, strict=False)
 
 
-class BooleanAttribute(Attribute):
+class BooleanAttribute(Attribute[bool]):
     """
     A class for boolean attributes
     """
@@ -472,7 +497,7 @@ class BooleanAttribute(Attribute):
         return bool(value)
 
 
-class NumberSetAttribute(SetMixin, Attribute):
+class NumberSetAttribute(SetMixin, Attribute[Set[float]]):
     """
     A number set attribute
     """
@@ -480,7 +505,7 @@ class NumberSetAttribute(SetMixin, Attribute):
     null = True
 
 
-class NumberAttribute(Attribute):
+class NumberAttribute(Attribute[float]):
     """
     A number attribute
     """
@@ -509,29 +534,29 @@ class VersionAttribute(NumberAttribute):
         """
         Cast assigned value to int.
         """
-        super(VersionAttribute, self).__set__(instance, int(value))
+        super().__set__(instance, int(value))
 
     def __get__(self, instance, owner):
         """
         Cast retrieved value to int.
         """
-        val = super(VersionAttribute, self).__get__(instance, owner)
+        val = super().__get__(instance, owner)
         return int(val) if isinstance(val, float) else val
 
     def serialize(self, value):
         """
         Cast value to int then encode as JSON
         """
-        return super(VersionAttribute, self).serialize(int(value))
+        return super().serialize(int(value))
 
     def deserialize(self, value):
         """
         Decode numbers from JSON and cast to int.
         """
-        return int(super(VersionAttribute, self).deserialize(value))
+        return int(super().deserialize(value))
 
 
-class TTLAttribute(Attribute):
+class TTLAttribute(Attribute[datetime]):
     """
     A time-to-live attribute that signifies when the item expires and can be automatically deleted.
     It can be assigned with a timezone-aware datetime value (for absolute expiry time)
@@ -560,7 +585,7 @@ class TTLAttribute(Attribute):
         """
         Converts assigned values to a UTC datetime
         """
-        super(TTLAttribute, self).__set__(instance, self._normalize(value))
+        super().__set__(instance, self._normalize(value))
 
     def serialize(self, value):
         """
@@ -578,7 +603,7 @@ class TTLAttribute(Attribute):
         return datetime.utcfromtimestamp(timestamp).replace(tzinfo=tzutc())
 
 
-class UTCDateTimeAttribute(Attribute):
+class UTCDateTimeAttribute(Attribute[datetime]):
     """
     An attribute for storing a UTC Datetime
     """
@@ -609,7 +634,7 @@ class UTCDateTimeAttribute(Attribute):
                 return parse(value)
 
 
-class NullAttribute(Attribute):
+class NullAttribute(Attribute[None]):
     attr_type = NULL
 
     def serialize(self, value):
@@ -619,7 +644,7 @@ class NullAttribute(Attribute):
         return None
 
 
-class MapAttribute(Attribute, AttributeContainer):
+class MapAttribute(Generic[_KT, _VT], Attribute[Mapping[_KT, _VT]], AttributeContainer):
     """
     A Map Attribute
 
@@ -746,7 +771,7 @@ class MapAttribute(Attribute, AttributeContainer):
     def __iter__(self):
         if self._is_attribute_container():
             return iter(self.attribute_values)
-        return super(MapAttribute, self).__iter__()
+        return super().__iter__()
 
     def __getitem__(self, item):
         if self._is_attribute_container():
@@ -792,7 +817,7 @@ class MapAttribute(Attribute, AttributeContainer):
     def __set__(self, instance, value):
         if isinstance(value, Mapping):
             value = type(self)(**value)
-        return super(MapAttribute, self).__set__(instance, value)
+        return super().__set__(instance, value)
 
     def _set_attributes(self, **attrs):
         """
@@ -802,7 +827,7 @@ class MapAttribute(Attribute, AttributeContainer):
             for name, value in six.iteritems(attrs):
                 setattr(self, name, value)
         else:
-            super(MapAttribute, self)._set_attributes(**attrs)
+            super()._set_attributes(**attrs)
 
     def is_correctly_typed(self, key, attr):
         can_be_null = attr.null
@@ -847,13 +872,13 @@ class MapAttribute(Attribute, AttributeContainer):
         """
         Decode as a dict.
         """
-        deserialized_dict = dict()
+        deserialized_dict: Dict[str, Any] = dict()
         for k in values:
             v = values[k]
             attr_value = _get_value_for_deserialize(v)
             key = self._dynamo_to_python_attr(k)
             attr_class = self._get_deserialize_class(key, v)
-            if attr_class is None:
+            if key is None or attr_class is None:
                 continue
             deserialized_value = None
             if attr_value is not None:
@@ -950,12 +975,12 @@ def _fast_parse_utc_datestring(datestring):
                          "'%Y-%m-%dT%H:%M:%S.%f+0000'".format(datestring))
 
 
-class ListAttribute(Attribute):
+class ListAttribute(Generic[_T], Attribute[List[_T]]):
     attr_type = LIST
     element_type = None
 
     def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, of=None):
-        super(ListAttribute, self).__init__(hash_key=hash_key,
+        super().__init__(hash_key=hash_key,
                                             range_key=range_key,
                                             null=null,
                                             default=default,
@@ -997,7 +1022,10 @@ class ListAttribute(Attribute):
             deserialized_lst.append(class_for_deserialize.deserialize(attr_value))
         return deserialized_lst
 
-DESERIALIZE_CLASS_MAP = {
+    def __getitem__(self, idx: int) -> Path: ...
+
+
+DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {
     LIST_SHORT: ListAttribute(),
     NUMBER_SHORT: NumberAttribute(),
     STRING_SHORT: UnicodeAttribute(),
@@ -1026,10 +1054,3 @@ SERIALIZE_KEY_MAP = {
     int: NUMBER_SHORT,
     str: STRING_SHORT,
 }
-
-
-if six.PY2:
-    SERIALIZE_CLASS_MAP[unicode] = UnicodeAttribute()
-    SERIALIZE_CLASS_MAP[long] = NumberAttribute()
-    SERIALIZE_KEY_MAP[unicode] = STRING_SHORT
-    SERIALIZE_KEY_MAP[long] = NUMBER_SHORT

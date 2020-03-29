@@ -4,6 +4,8 @@ import warnings
 from os import getenv
 from pynamodb._compat import load_module
 
+from typing import Any
+
 log = logging.getLogger(__name__)
 
 default_settings_dict = {
@@ -29,7 +31,7 @@ else:
     log.info('Using Default settings value')
 
 
-def get_settings_value(key):
+def get_settings_value(key: str) -> Any:
     """
     Fetches the value from the override file.
     If the value is not present, then tries to fetch the values from constants.py

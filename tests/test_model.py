@@ -1676,7 +1676,7 @@ class ModelTestCase(TestCase):
                 },
                 'TableName': 'UserModel'
             }
-            self.assertEquals(params, req.call_args[0][1])
+            self.assertEqual(params, req.call_args[0][1])
 
     def test_get(self):
         """

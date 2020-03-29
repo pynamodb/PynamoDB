@@ -2,28 +2,35 @@
 PynamoDB Connection classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
+
+from typing import Any, Dict, Mapping, Optional, Sequence
+
 from pynamodb.connection.base import Connection
 from pynamodb.constants import DEFAULT_BILLING_MODE, KEY
+from pynamodb.expressions.condition import Condition
+from pynamodb.expressions.update import Action
 
 
-class TableConnection(object):
+class TableConnection:
     """
     A higher level abstraction over botocore
     """
 
-    def __init__(self,
-                 table_name,
-                 region=None,
-                 host=None,
-                 connect_timeout_seconds=None,
-                 read_timeout_seconds=None,
-                 max_retry_attempts=None,
-                 base_backoff_ms=None,
-                 max_pool_connections=None,
-                 extra_headers=None,
-                 aws_access_key_id=None,
-                 aws_secret_access_key=None,
-                 aws_session_token=None):
+    def __init__(
+        self,
+        table_name: str,
+        region: Optional[str] = None,
+        host: Optional[str] = None,
+        connect_timeout_seconds: Optional[float] = None,
+        read_timeout_seconds: Optional[float] = None,
+        max_retry_attempts: Optional[int] = None,
+        base_backoff_ms: Optional[int] = None,
+        max_pool_connections: Optional[int] = None,
+        extra_headers: Optional[Mapping[str, str]] = None,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+        aws_session_token: Optional[str] = None,
+    ) -> None:
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
@@ -41,25 +48,27 @@ class TableConnection(object):
                                                     aws_secret_access_key,
                                                     aws_session_token)
 
-    def get_meta_table(self, refresh=False):
+    def get_meta_table(self, refresh: bool = False):
         """
         Returns a MetaTable
         """
         return self.connection.get_meta_table(self.table_name, refresh=refresh)
 
-    def get_operation_kwargs(self,
-                             hash_key,
-                             range_key=None,
-                             key=KEY,
-                             attributes=None,
-                             attributes_to_get=None,
-                             actions=None,
-                             condition=None,
-                             consistent_read=None,
-                             return_values=None,
-                             return_consumed_capacity=None,
-                             return_item_collection_metrics=None,
-                             return_values_on_condition_failure=None):
+    def get_operation_kwargs(
+        self,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        key: str = KEY,
+        attributes: Optional[Any] = None,
+        attributes_to_get: Optional[Any] = None,
+        actions: Optional[Sequence[Action]] = None,
+        condition: Optional[Condition] = None,
+        consistent_read: Optional[bool] = None,
+        return_values: Optional[str] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None,
+        return_values_on_condition_failure: Optional[str] = None,
+    ) -> Dict:
         return self.connection.get_operation_kwargs(
             self.table_name,
             hash_key,
@@ -76,13 +85,15 @@ class TableConnection(object):
             return_values_on_condition_failure=return_values_on_condition_failure
         )
 
-    def delete_item(self,
-                    hash_key,
-                    range_key=None,
-                    condition=None,
-                    return_values=None,
-                    return_consumed_capacity=None,
-                    return_item_collection_metrics=None):
+    def delete_item(
+        self,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        condition: Optional[Condition] = None,
+        return_values: Optional[str] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the DeleteItem operation and returns the result
         """
@@ -95,15 +106,16 @@ class TableConnection(object):
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics)
 
-    def update_item(self,
-                    hash_key,
-                    range_key=None,
-                    actions=None,
-                    condition=None,
-                    return_consumed_capacity=None,
-                    return_item_collection_metrics=None,
-                    return_values=None
-                    ):
+    def update_item(
+        self,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        actions: Optional[Sequence[Action]] = None,
+        condition: Optional[Condition] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None,
+        return_values: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the UpdateItem operation
         """
@@ -117,14 +129,16 @@ class TableConnection(object):
             return_item_collection_metrics=return_item_collection_metrics,
             return_values=return_values)
 
-    def put_item(self,
-                 hash_key,
-                 range_key=None,
-                 attributes=None,
-                 condition=None,
-                 return_values=None,
-                 return_consumed_capacity=None,
-                 return_item_collection_metrics=None):
+    def put_item(
+        self,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        attributes: Optional[Any] = None,
+        condition: Optional[Condition] = None,
+        return_values: Optional[str] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the PutItem operation and returns the result
         """
@@ -138,11 +152,13 @@ class TableConnection(object):
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics)
 
-    def batch_write_item(self,
-                         put_items=None,
-                         delete_items=None,
-                         return_consumed_capacity=None,
-                         return_item_collection_metrics=None):
+    def batch_write_item(
+        self,
+        put_items: Optional[Any] = None,
+        delete_items: Optional[Any] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the batch_write_item operation
         """
@@ -153,7 +169,13 @@ class TableConnection(object):
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics)
 
-    def batch_get_item(self, keys, consistent_read=None, return_consumed_capacity=None, attributes_to_get=None):
+    def batch_get_item(
+        self,
+        keys: Sequence[str],
+        consistent_read: Optional[bool] = None,
+        return_consumed_capacity: Optional[str] = None,
+        attributes_to_get: Optional[Any] = None,
+    ) -> Dict:
         """
         Performs the batch get item operation
         """
@@ -164,7 +186,13 @@ class TableConnection(object):
             return_consumed_capacity=return_consumed_capacity,
             attributes_to_get=attributes_to_get)
 
-    def get_item(self, hash_key, range_key=None, consistent_read=False, attributes_to_get=None):
+    def get_item(
+        self,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        consistent_read: bool = False,
+        attributes_to_get: Optional[Any] = None,
+    ) -> Dict:
         """
         Performs the GetItem operation and returns the result
         """
@@ -175,16 +203,18 @@ class TableConnection(object):
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get)
 
-    def scan(self,
-             filter_condition=None,
-             attributes_to_get=None,
-             limit=None,
-             return_consumed_capacity=None,
-             segment=None,
-             total_segments=None,
-             exclusive_start_key=None,
-             consistent_read=None,
-             index_name=None):
+    def scan(
+        self,
+        filter_condition: Optional[Any] = None,
+        attributes_to_get: Optional[Any] = None,
+        limit: Optional[int] = None,
+        return_consumed_capacity: Optional[str] = None,
+        segment: Optional[int] = None,
+        total_segments: Optional[int] = None,
+        exclusive_start_key: Optional[str] = None,
+        consistent_read: Optional[bool] = None,
+        index_name: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the scan operation
         """
@@ -200,19 +230,20 @@ class TableConnection(object):
             consistent_read=consistent_read,
             index_name=index_name)
 
-    def query(self,
-              hash_key,
-              range_key_condition=None,
-              filter_condition=None,
-              attributes_to_get=None,
-              consistent_read=False,
-              exclusive_start_key=None,
-              index_name=None,
-              limit=None,
-              return_consumed_capacity=None,
-              scan_index_forward=None,
-              select=None
-              ):
+    def query(
+        self,
+        hash_key: str,
+        range_key_condition: Optional[Condition] = None,
+        filter_condition: Optional[Any] = None,
+        attributes_to_get: Optional[Any] = None,
+        consistent_read: bool = False,
+        exclusive_start_key: Optional[Any] = None,
+        index_name: Optional[str] = None,
+        limit: Optional[int] = None,
+        return_consumed_capacity: Optional[str] = None,
+        scan_index_forward: Optional[bool] = None,
+        select: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the Query operation and returns the result
         """
@@ -230,28 +261,30 @@ class TableConnection(object):
             scan_index_forward=scan_index_forward,
             select=select)
 
-    def describe_table(self):
+    def describe_table(self) -> Dict:
         """
         Performs the DescribeTable operation and returns the result
         """
         return self.connection.describe_table(self.table_name)
 
-    def delete_table(self):
+    def delete_table(self) -> Dict:
         """
         Performs the DeleteTable operation and returns the result
         """
         return self.connection.delete_table(self.table_name)
 
-    def update_time_to_live(self, ttl_attr_name):
+    def update_time_to_live(self, ttl_attr_name: str) -> Dict:
         """
         Performs the UpdateTimeToLive operation and returns the result
         """
         return self.connection.update_time_to_live(self.table_name, ttl_attr_name)
 
-    def update_table(self,
-                     read_capacity_units=None,
-                     write_capacity_units=None,
-                     global_secondary_index_updates=None):
+    def update_table(
+        self,
+        read_capacity_units: Optional[int] = None,
+        write_capacity_units: Optional[int] = None,
+        global_secondary_index_updates: Optional[Any] = None,
+    ) -> Dict:
         """
         Performs the UpdateTable operation and returns the result
         """
@@ -261,15 +294,17 @@ class TableConnection(object):
             write_capacity_units=write_capacity_units,
             global_secondary_index_updates=global_secondary_index_updates)
 
-    def create_table(self,
-                     attribute_definitions=None,
-                     key_schema=None,
-                     read_capacity_units=None,
-                     write_capacity_units=None,
-                     global_secondary_indexes=None,
-                     local_secondary_indexes=None,
-                     stream_specification=None,
-                     billing_mode=DEFAULT_BILLING_MODE):
+    def create_table(
+        self,
+        attribute_definitions: Optional[Any] = None,
+        key_schema: Optional[Any] = None,
+        read_capacity_units: Optional[int] = None,
+        write_capacity_units: Optional[int] = None,
+        global_secondary_indexes: Optional[Any] = None,
+        local_secondary_indexes: Optional[Any] = None,
+        stream_specification: Optional[Dict] = None,
+        billing_mode: str = DEFAULT_BILLING_MODE,
+    ) -> Dict:
         """
         Performs the CreateTable operation and returns the result
         """
