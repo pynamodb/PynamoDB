@@ -82,6 +82,8 @@ class Model(metaclass=MetaModel):
         limit: Optional[int] = ...,
         last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = ...,
         page_size: Optional[int] = ...,
+        consistent_read: bool = ...,
+        index_name: Optional[Text] = ...,
         rate_limit: Optional[float] = ...,
         attributes_to_get: Optional[List[str]] = ...,
     ) -> ResultIterator[_T]: ...
