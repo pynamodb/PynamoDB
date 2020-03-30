@@ -44,4 +44,5 @@ Any value provided will be serialized using the serializer defined for that attr
     `attr_or_value_1` \- `attr_or_value_2`, `attr_or_value_1` \- `attr_or_value_2`, 5 - Thread.views
     "list_append( `attr` , `value` )", append( `value` ), Thread.notes.append(['my last note'])
     "list_append( `value` , `attr` )", prepend( `value` ), Thread.notes.prepend(['my first note'])
+    "REMOVE list[index1], list[index2]", "remove_indexes(`index1`, `index2`)", "Thread.notes.remove_indexes(0, 1)"
     "if_not_exists( `attr`, `value` )", `attr` | `value`, Thread.forum_name | 'Default Forum Name'

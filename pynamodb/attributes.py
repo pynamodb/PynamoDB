@@ -961,6 +961,11 @@ class ListAttribute(Attribute):
                 raise ValueError("'of' must be subclass of MapAttribute")
             self.element_type = of
 
+    def remove_indexes(self, *indexes):
+        if not all([isinstance(i, int) for i in indexes]):
+            raise ValueError("Method 'remove_indexes' arguments must be 'int'")
+        return Path(self).remove_list_elements(*indexes)
+
     def serialize(self, values):
         """
         Encode the given list of objects into a list of AttributeValue types.

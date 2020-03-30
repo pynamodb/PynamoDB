@@ -5,7 +5,7 @@ from pynamodb.expressions.condition import (
     BeginsWith, Between, Comparison, Contains, Exists, In, IsType, NotExists
 )
 from pynamodb.expressions.update import (
-    AddAction, DeleteAction, RemoveAction, SetAction
+    AddAction, DeleteAction, RemoveAction, SetAction, ListRemoveAction
 )
 
 
@@ -78,3 +78,4 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     def contains(self, item: Any) -> Contains: ...
     def set(self, value: Any) -> SetAction: ...
     def remove(self) -> RemoveAction: ...
+    def remove_list_elements(self, *indexes: int) -> ListRemoveAction: ...
