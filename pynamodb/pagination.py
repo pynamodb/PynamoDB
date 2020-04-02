@@ -148,6 +148,8 @@ class ResultIterator(object):
     http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Pagination
     """
     def __init__(self, operation, args, kwargs, map_fn=None, limit=None, rate_limit = None):
+        if 'limit' not in kwargs:
+            kwargs['limit'] = limit
         self.page_iter = PageIterator(operation, args, kwargs, rate_limit)
         self._first_iteration = True
         self._map_fn = map_fn
