@@ -6,6 +6,7 @@ from __future__ import division
 import json
 import logging
 import random
+import re
 import sys
 import time
 import uuid
@@ -1240,11 +1241,12 @@ class Connection(object):
             # FilterExpression does not allow key attributes. Check for hash and range key name placeholders
             hash_key_placeholder = name_placeholders.get(hash_keyname)
             range_key_placeholder = range_keyname and name_placeholders.get(range_keyname)
-            if (
-                hash_key_placeholder in filter_expression or
-                (range_key_placeholder and range_key_placeholder in filter_expression)
-            ):
-                raise ValueError("'filter_condition' cannot contain key attributes")
+            if re.search(hash_key_placeholder + r"\D", filter_expression):
+                raise ValueError("'filter_condition' cannot contain hash key. {} found in {}"
+                                 .format(hash_key_placeholder, filter_expression))
+            if range_key_placeholder and re.search(range_key_placeholder + r"\D", filter_expression):
+                raise ValueError("'filter_condition' cannot contain range key. {} found in {}"
+                                 .format(range_key_placeholder, filter_expression))
             operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if attributes_to_get:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
