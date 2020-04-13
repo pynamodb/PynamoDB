@@ -1,3 +1,5 @@
+.. _low-level:
+
 Low Level API
 =============
 
