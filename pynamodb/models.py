@@ -687,9 +687,9 @@ class Model(AttributeContainer):
         """
         try:
             if range_key is None:
-                cls.query(hash_key).next()
+                next(cls.query(hash_key, page_size=1))
             else:
-                cls.query(hash_key, cls._range_key_attribute() == range_key).next()
+                next(cls.query(hash_key, cls._range_key_attribute() == range_key, page_size=1))
         except StopIteration:
             return False
 
