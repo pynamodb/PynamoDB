@@ -67,6 +67,11 @@ def test_model_integration(ddb_url):
     obj3.save()
     obj3.refresh()
 
+    print("Can check key exists correctly")
+    assert TestModel.record_exists('foo') is True
+    assert TestModel.record_exists('foo', 'bar') is True
+    assert TestModel.record_exists('foo', 'biz') is False
+
     with TestModel.batch_write() as batch:
         items = [TestModel('hash-{}'.format(x), '{}'.format(x)) for x in range(10)]
         for item in items:

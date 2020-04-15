@@ -1206,6 +1206,23 @@ class ModelTestCase(TestCase):
             deep_eq(args_one, params_one, _assert=True)
             deep_eq(args_two, params_two, _assert=True)
 
+    def test_record_exists(self):
+        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
+        UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+
+            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
+            self.assertFalse(UserModel.record_exists('foo'))
+
+            item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
+            item['user_id'] = {STRING_SHORT: "test_user_id"}
+            items.append(item)
+
+            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
+            self.assertTrue(UserModel.record_exists('foo', range_key="test_user_id"))
+
     def test_query_limit_greater_than_available_items_single_page(self):
         self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         UserModel('foo', 'bar')

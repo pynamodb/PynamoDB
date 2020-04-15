@@ -676,6 +676,26 @@ class Model(AttributeContainer):
         )
 
     @classmethod
+    def record_exists(cls, hash_key, range_key=None):
+        """
+        Checks if the given hash_key and optional range_key pair exists in the table.
+
+        This will return true if at least one record matching hash_key and range_key exists
+
+        :param hash_key: The hash key to look up
+        :param range_key: If set, include in lookup
+        """
+        try:
+            if range_key is None:
+                cls.query(hash_key).next()
+            else:
+                cls.query(hash_key, cls._range_key_attribute() == range_key).next()
+        except StopIteration:
+            return False
+
+        return True
+
+    @classmethod
     def exists(cls):
         """
         Returns True if this table exists, False otherwise
