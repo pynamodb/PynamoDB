@@ -1221,7 +1221,8 @@ class ModelTestCase(TestCase):
             items.append(item)
 
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            self.assertTrue(UserModel.record_exists('foo', range_key="test_user_id"))
+            self.assertTrue(UserModel.record_exists('foo', range_key_condition=UserModel.user_id == 'test_user_id'))
+            self.assertTrue(UserModel.record_exists('foo', range_key='test_user_id'))
 
     def test_query_limit_greater_than_available_items_single_page(self):
         self.init_table_meta(UserModel, MODEL_TABLE_DATA)

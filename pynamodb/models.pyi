@@ -89,6 +89,13 @@ class Model(metaclass=MetaModel):
     ) -> ResultIterator[_T]: ...
 
     @classmethod
+    def record_exists(
+        cls: Type[_T],
+        hash_key: KeyType,
+        range_key_condition: Optional[Condition] = ...,
+        range_key: Optional[KeyType] = ...,
+    ) -> bool: ...
+    @classmethod
     def exists(cls: Type[_T]) -> bool: ...
     @classmethod
     def delete_table(cls): ...
