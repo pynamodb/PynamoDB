@@ -69,10 +69,12 @@ def test_model_integration(ddb_url):
 
     print("Can check key exists correctly")
     assert TestModel.record_exists('foo') is True
-    assert TestModel.record_exists('foo', range_key_condition=TestModel.thread == 'biz') is True
-    assert TestModel.record_exists('foo', range_key='biz') is True
+    assert TestModel.record_exists('foo', range_key_condition=TestModel.thread == 'bar') is True
+    assert TestModel.record_exists('foo', range_key='bar') is True
     assert TestModel.record_exists('foo', range_key_condition=TestModel.thread == 'not_real') is False
     assert TestModel.record_exists('foo', range_key='not_real') is False
+    # range_key should have priority over range_key_condition
+    assert TestModel.record_exists('foo', range_key='bar', range_key_condition=TestModel.thread == 'not_real') is True
 
     with TestModel.batch_write() as batch:
         items = [TestModel('hash-{}'.format(x), '{}'.format(x)) for x in range(10)]
