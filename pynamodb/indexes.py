@@ -41,7 +41,7 @@ class IndexMeta(type):
                         attr_obj.attr_name = attr_name
 
 
-class Index(with_metaclass(IndexMeta), _Generic[_M] if _Generic else object):
+class Index(with_metaclass(IndexMeta, *([_Generic[_M]] if _Generic else []))):
     """
     Base class for secondary indexes
     """
