@@ -13,6 +13,15 @@ from pynamodb.connection.util import pythonic
 from six import with_metaclass
 
 
+try:
+    import typing
+    from typing import Generic as _Generic
+except ImportError:  # keep 'typing' optional
+    _Generic = None
+else:
+    _M = typing.TypeVar('_M')
+
+
 class IndexMeta(type):
     """
     Index meta class
@@ -32,7 +41,7 @@ class IndexMeta(type):
                         attr_obj.attr_name = attr_name
 
 
-class Index(with_metaclass(IndexMeta)):
+class Index(with_metaclass(IndexMeta), _Generic[_M] if _Generic else object):
     """
     Base class for secondary indexes
     """
@@ -169,14 +178,14 @@ class Index(with_metaclass(IndexMeta)):
         return cls.Meta.attributes
 
 
-class GlobalSecondaryIndex(Index):
+class GlobalSecondaryIndex(Index[_M] if _Generic else Index):
     """
     A global secondary index
     """
     pass
 
 
-class LocalSecondaryIndex(Index):
+class LocalSecondaryIndex(Index[_M] if _Generic else Index):
     """
     A local secondary index
     """
