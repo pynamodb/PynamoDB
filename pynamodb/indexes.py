@@ -3,6 +3,7 @@ PynamoDB Indexes
 """
 from inspect import getmembers
 
+from pynamodb._compat import FakeGenericMeta
 from pynamodb.constants import (
     INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, ATTR_TYPE_MAP, KEY_SCHEMA,
     ATTR_DEFINITIONS, META_CLASS_NAME
@@ -13,7 +14,7 @@ from pynamodb.connection.util import pythonic
 from six import with_metaclass
 
 
-class IndexMeta(type):
+class IndexMeta(FakeGenericMeta):
     """
     Index meta class
 
