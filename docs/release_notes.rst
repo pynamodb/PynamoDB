@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+v4.3.2
+----------
+
+* Fix discrepancy between runtime and type-checker's perspective of Index and derived types
+
 v4.3.1
 ----------
 
