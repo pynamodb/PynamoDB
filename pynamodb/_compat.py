@@ -7,6 +7,12 @@ else:
     from inspect import getfullargspec
 
 
+class FakeGenericMeta(type):
+    """Poor man's Generic[T] that doesn't depend on typing. The real generics are in the type stubs."""
+    def __getitem__(self, item):
+        return self
+
+
 def load_module(name, path):
     """Load module using the Python version compatible function."""
     if sys.version_info >= (3, 3):
@@ -23,4 +29,5 @@ def load_module(name, path):
         from imp import load_source
         return load_source(name, path)
 
-__all__ = ('getfullargspec', 'load_module')
+
+__all__ = ('getfullargspec', 'FakeGenericMeta', 'load_module')

@@ -3,6 +3,7 @@ PynamoDB Indexes
 """
 from inspect import getmembers
 
+from pynamodb._compat import FakeGenericMeta
 from pynamodb.constants import (
     INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, ATTR_TYPE_MAP, KEY_SCHEMA,
     ATTR_DEFINITIONS, META_CLASS_NAME
@@ -13,16 +14,7 @@ from pynamodb.connection.util import pythonic
 from six import with_metaclass
 
 
-try:
-    import typing
-    from typing import Generic as _Generic
-except ImportError:  # keep 'typing' optional
-    _Generic = None
-else:
-    _M = typing.TypeVar('_M')
-
-
-class IndexMeta(type):
+class IndexMeta(FakeGenericMeta):
     """
     Index meta class
 
@@ -41,7 +33,7 @@ class IndexMeta(type):
                         attr_obj.attr_name = attr_name
 
 
-class Index(with_metaclass(IndexMeta, *([_Generic[_M]] if _Generic else []))):
+class Index(with_metaclass(IndexMeta)):
     """
     Base class for secondary indexes
     """
@@ -178,14 +170,14 @@ class Index(with_metaclass(IndexMeta, *([_Generic[_M]] if _Generic else []))):
         return cls.Meta.attributes
 
 
-class GlobalSecondaryIndex(Index[_M] if _Generic else Index):
+class GlobalSecondaryIndex(Index):
     """
     A global secondary index
     """
     pass
 
 
-class LocalSecondaryIndex(Index[_M] if _Generic else Index):
+class LocalSecondaryIndex(Index):
     """
     A local secondary index
     """
