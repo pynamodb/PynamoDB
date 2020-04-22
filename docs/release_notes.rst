@@ -5,6 +5,21 @@ v4.3.2
 ----------
 
 * Fix discrepancy between runtime and type-checker's perspective of Index and derived types
+* Add ListAttribute.remove_indexes action for removing specific indexes from a ListAttribute
+* Type stub fixes:
+  * Add missing parameters of Model.scan
+  * Change hash_key parameter to be typed Any
+* Prevent integration tests from being packaged
+* Various documentation fixes
+
+Contributors to this release:
+
+* @mxr
+* @sodre
+* @biniow
+* @MartinAltmayer
+* @dotpmrcunha
+* @meawoppl
 
 v4.3.1
 ----------
