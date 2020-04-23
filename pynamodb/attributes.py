@@ -20,6 +20,7 @@ from pynamodb.constants import (
 from pynamodb.expressions.operand import Path
 from pynamodb._compat import getfullargspec
 import collections
+import copy
 
 
 class Attribute(object):
@@ -422,6 +423,87 @@ class UnicodeAttribute(Attribute):
         else:
             return six.u(value)
 
+
+class MultiKeyMap(object):
+    def __init__(self):
+        self.key = None
+        self.value = None
+        self.keymap = {}
+
+    def translate_key(self, key):
+        return self.keymap.get(key, key)
+
+    def add_keys(self, actual_key, keys):
+        self.keymap[actual_key]=actual_key
+        for key in keys:
+            self.keymap[key] = actual_key
+
+    def __getitem__(self, key):
+        if self.key != self.translate_key(key):
+            return None
+        return self.value
+
+    def __setitem__(self, key, value):
+        self.key = self.translate_key(key)
+        self.value = value
+
+    def __get__(self, instance, owner):
+        if instance:
+            return self.value
+        else:
+            return self
+
+    def get_key_value(self):
+        return (self.key, self.value)
+
+    def get_value(self):
+        return self.value
+
+class EnumAttribute(Attribute):
+    attr_type = STRING
+
+    def __init__(self, type_set={}, *args, **kwargs):
+        self.type_set = {(ATTR_TYPE_MAP[x.attr_type]): x for x in type_set}
+        self.multikey_map = MultiKeyMap()
+        for t in type_set:
+            self.multikey_map.add_keys(ATTR_TYPE_MAP[t.attr_type], [t.attr_type, t.__class__, t.__class__.__name__ ])
+        Attribute.__init__(self, default=copy.deepcopy(self.multikey_map), *args, **kwargs)
+
+    def default(self):
+        return copy.deepcopy(self.multikey_map)
+
+    def serialize(self, value):
+        key, value = value.get_key_value()
+        if value is None:
+            return json.dumps(None)
+        return json.dumps({key: self.type_set[key].serialize(value)})
+
+    def deserialize(self, value):
+        value=json.loads(value)
+        ret = copy.deepcopy(self.multikey_map)
+        if value is None:
+            return ret
+        key = value.keys()[0]
+        value = value[key]
+
+        ret[key] = self.type_set[key].deserialize(value)
+        return ret
+
+    def __get__(self, instance, owner):
+         if instance:
+             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
+             return instance.attribute_values.get(attr_name, None)
+         else:
+             return self
+
+    def __eq__(self, other):
+        if other is None or isinstance(other, Attribute):  # handle object identity comparison
+            return self is other
+        key = other[0]
+        value = other[1]
+        ret = copy.deepcopy(self.multikey_map)
+        ret[key]=value
+        return Path(self).__eq__(ret)
 
 class JSONAttribute(Attribute):
     """
