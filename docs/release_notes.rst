@@ -4,7 +4,24 @@ Release Notes
 v4.3.2
 ----------
 
-* Fix discrepancy between runtime and type-checker's perspective of Index and derived types
+* Fix discrepancy between runtime and type-checker's perspective of ``Index`` and derived types (#769)
+* Add ``ListAttribute.remove_indexes`` action for removing specific indexes from a ``ListAttribute`` (#754)
+* Type stub fixes:
+
+  * Add missing parameters of ``Model.scan`` (#750)
+  * Change ``Model.get``'s ``hash_key`` parameter to be typed ``Any`` (#756)
+
+* Prevent integration tests from being packaged (#758)
+* Various documentation fixes (#762, #765, #766)
+
+Contributors to this release:
+
+* @mxr
+* @sodre
+* @biniow
+* @MartinAltmayer
+* @dotpmrcunha
+* @meawoppl
 
 v4.3.1
 ----------
@@ -1025,4 +1042,3 @@ v0.1.11
 * Better PEP8 Compliance
 * More tests
 * Removed session and endpoint caching to avoid using stale IAM role credentials
-
