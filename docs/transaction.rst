@@ -30,7 +30,7 @@ Transact Writes
 
 A :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` can be initialized with the following parameters:
 
-* ``connection`` (required) - the :py:class:`Connection <pynamodb.connection.base.Connection>` used to make the request (see :ref:`low_level`)
+* ``connection`` (required) - the :py:class:`Connection <pynamodb.connection.base.Connection>` used to make the request (see :ref:`low-level`)
 * ``client_request_token`` - an idempotency key for the request (see `ClientRequestToken <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ClientRequestToken>`_ in the DynamoDB API reference)
 * ``return_consumed_capacity`` - determines the level of detail about provisioned throughput consumption that is returned in the response (see `ReturnConsumedCapacity <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ReturnConsumedCapacity>`_ in the DynamoDB API reference)
 * ``return_item_collection_metrics`` - determines whether item collection metrics are returned (see `ReturnItemCollectionMetrics <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ReturnItemCollectionMetrics>`_ in the DynamoDB API reference)
@@ -118,12 +118,12 @@ Condition Check
 
 The ``ConditionCheck`` operation is used on a :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` to check if the current state of a record you
 aren't modifying within the overall transaction fits some criteria that, if it fails, would cause the entire
-transaction to fail. The ``condition`` argument is of type :ref:`conditional`.
+transaction to fail. The ``condition`` argument is of type :ref:`conditional_operations`.
 
 * ``model_cls`` (required)
 * ``hash_key``  (required)
 * ``range_key`` (optional)
-* ``condition`` (required) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional`)
+* ``condition`` (required) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional_operations`)
 
 .. code-block:: python
 
@@ -137,7 +137,7 @@ Delete
 The ``Delete`` operation functions similarly to ``Model.delete``.
 
 * ``model`` (required)
-* ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional`)
+* ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional_operations`)
 
 .. code-block:: python
 
@@ -154,8 +154,8 @@ Save
 The ``Put`` operation functions similarly to ``Model.save``.
 
 * ``model`` (required)
-* ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional`)
-* ``return_values`` (optional) - the values that should be returned if the condition fails ((see `ReturnValuesOnConditionCheckFailure <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Put.html#DDB-Type-Put-ReturnValuesOnConditionCheckFailure>`_ in the DynamoDB API reference)
+* ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional_operations`)
+* ``return_values`` (optional) - the values that should be returned if the condition fails ((see `Put ReturnValuesOnConditionCheckFailure`_ in the DynamoDB API reference)
 
 .. code-block:: python
 
@@ -172,8 +172,8 @@ The ``Update`` operation functions similarly to ``Model.update``.
 
 * ``model`` (required)
 * ``actions`` (required) - a list of type :py:class:`Action <pynamodb.expressions.update.Action>` (see :ref:`updates`)
-* ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional`)
-* ``return_values`` (optional) - the values that should be returned if the condition fails (see `ReturnValuesOnConditionCheckFailure <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Update.html#DDB-Type-Update-ReturnValuesOnConditionCheckFailure>`_ in the DynamoDB API reference)
+* ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional_operations`)
+* ``return_values`` (optional) - the values that should be returned if the condition fails (see `Update ReturnValuesOnConditionCheckFailure`_ in the DynamoDB API reference)
 
 
 .. code-block:: python
@@ -215,6 +215,11 @@ Error Types
 
 You can expect some new error types with transactions, such as:
 
-* :py:exc:`TransactWriteError <pynamodb.exceptions.TransactWriteError>` - thrown when a :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` request returns a bad response (see the `Errors <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#API_TransactWriteItems_Errors>`_ section in the DynamoDB API reference).
-* :py:exc:`TransactGetError <pynamodb.exceptions.TransactGetError>` - thrown when a :py:class:`TransactGet <pynamodb.transactions.TransactGet>` request returns a bad response (see the `Errors <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactGetItems.html#API_TransactGetItems_Errors>`_ section in the DynamoDB API reference).
+* :py:exc:`TransactWriteError <pynamodb.exceptions.TransactWriteError>` - thrown when a :py:class:`TransactWrite <pynamodb.transactions.TransactWrite>` request returns a bad response (see the `TransactWriteItems Errors`_ section in the DynamoDB API reference).
+* :py:exc:`TransactGetError <pynamodb.exceptions.TransactGetError>` - thrown when a :py:class:`TransactGet <pynamodb.transactions.TransactGet>` request returns a bad response (see the `TransactGetItems Errors`_ section in the DynamoDB API reference).
 * :py:exc:`InvalidStateError <pynamodb.exceptions.InvalidStateError>` - thrown when an attempt is made to access data on a :py:class:`_ModelFuture <pynamodb.models._ModelFuture>` before the `TransactGet` request is completed.
+
+.. _Update ReturnValuesOnConditionCheckFailure: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Update.html#DDB-Type-Update-ReturnValuesOnConditionCheckFailure>
+.. _Put ReturnValuesOnConditionCheckFailure: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Put.html#DDB-Type-Put-ReturnValuesOnConditionCheckFailure
+.. _TransactWriteItems Errors: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#API_TransactWriteItems_Errors
+.. _TransactGetItems Errors: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactGetItems.html#API_TransactGetItems_Errors

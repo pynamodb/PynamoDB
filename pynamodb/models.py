@@ -476,8 +476,8 @@ class Model(AttributeContainer):
 
         :param hash_key: The hash key of the desired item
         :param range_key: The range key of the desired item, only used when appropriate.
-        :param consistent_read
-        :param attributes_to_get
+        :param consistent_read:
+        :param attributes_to_get:
         :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         """
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)

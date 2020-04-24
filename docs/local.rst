@@ -34,7 +34,7 @@ that your server is listening on.
 Running dynalite
 ^^^^^^^^^^^^^^^^
 
-Make sure you have the Node Package Manager installed, instructions `here <https://www.npmjs.org/doc/README.html>`_.
+Make sure you have the Node Package Manager installed (see `npm instructions <https://www.npmjs.org/doc/README.html>`_).
 
 Install dynalite::
 
@@ -55,7 +55,7 @@ store your data. You can use DynamoDB local with PynamoDB for testing, debugging
 For more information, you can read `Amazon's Announcement <http://aws.amazon.com/about-aws/whats-new/2013/09/12/amazon-dynamodb-local/>`_ and
 `Jeff Barr's blog post <http://aws.typepad.com/aws/2013/09/dynamodb-local-for-desktop-development.html>`_ about it.
 
-* Download the latest version of DynamoDB local `here <http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest>`_.
+* Download the `latest version of DynamoDB local <http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest>`_.
 * Unpack the contents of the archive into a directory of your choice.
 
 DynamoDB local requires the `Java Runtime Environment <http://java.com/en/>`_ version 7. Make sure the JRE is installed before continuing.
