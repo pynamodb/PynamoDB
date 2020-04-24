@@ -453,7 +453,7 @@ re-serialize any data that was written with v1.5.4 and below.
 Temporary feature in this release:
 
 * Model.fix_unicode_set_attributes() migration helper
-# Model.needs_unicode_set_fix() migration helper
+* Model.needs_unicode_set_fix() migration helper
 
 
 v2.1.6

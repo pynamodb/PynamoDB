@@ -39,8 +39,3 @@ Exceptions
 .. autoexception:: pynamodb.exceptions.TableDoesNotExist
 .. autoexception:: pynamodb.exceptions.DoesNotExist
 
-Migration API
--------------
-
-.. automodule:: pynamodb.migration
-    :members:

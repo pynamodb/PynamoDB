@@ -9,3 +9,5 @@ python-dateutil==2.8.0
 coveralls
 mypy==0.761;python_version>="3.7"
 pytest-cov
+sphinx
+sphinx-rtd-theme

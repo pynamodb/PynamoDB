@@ -29,6 +29,7 @@ before_script:
 script:
   - pytest --cov-report term-missing --cov=pynamodb tests
   - if [[ "$TRAVIS_PYTHON_VERSION" == "3.7" ]]; then mypy .; fi
+  - sphinx-build -W docs /tmp/docs-build
 
 after_success:
   - coveralls
