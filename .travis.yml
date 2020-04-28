@@ -34,16 +34,13 @@ script:
 after_success:
   - coveralls
 
-jobs:
-  include:
-    - stage: deploy
-      python: '3.6'
-      deploy:
-        provider: pypi
-        user: lyft-pynamodb
-        password:
-          secure: "B2AAd62kRYOiCcLjhfIJsICS9laH9J9c5H4tU2C2Vojnb+3W/qj9xP+/GnEZ6Tc2h4SNMQ81Wtzn1CjD3Ut8CCudoBKSZnJmip+EACgpNXjZiU+g0PlEgVbDfJV15OrmFGUeDexxLF3DEQKp8YiMpAhJAH6+SV5W17Er1M6mwBs="
-        distributions: "sdist bdist_wheel"
-        on:
-          tags: true
-          repo: pynamodb/PynamoDB
+deploy:
+  provider: pypi
+  user: lyft-pynamodb
+  edge: true
+  password:
+    secure: "B2AAd62kRYOiCcLjhfIJsICS9laH9J9c5H4tU2C2Vojnb+3W/qj9xP+/GnEZ6Tc2h4SNMQ81Wtzn1CjD3Ut8CCudoBKSZnJmip+EACgpNXjZiU+g0PlEgVbDfJV15OrmFGUeDexxLF3DEQKp8YiMpAhJAH6+SV5W17Er1M6mwBs="
+  distributions: "sdist bdist_wheel"
+  on:
+    tags: true
+    condition: $TRAVIS_PYTHON_VERSION = 3.7
