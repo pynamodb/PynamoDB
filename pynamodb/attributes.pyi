@@ -6,7 +6,7 @@ from pynamodb.expressions.condition import (
     BeginsWith, Between, Comparison, Contains, NotExists, Exists, In
 )
 from pynamodb.expressions.operand import (
-    _Decrement, _IfNotExists, _Increment, _ListAppend
+    Path, _Decrement, _IfNotExists, _Increment, _ListAppend
 )
 from pynamodb.expressions.update import (
     AddAction, DeleteAction, RemoveAction, SetAction, ListRemoveAction
@@ -168,6 +168,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
     def __get__(self: _A, instance: None, owner: Any) -> _A: ...
     @overload
     def __get__(self, instance: Any, owner: Any) -> List[_T]: ...
+    def __getitem__(self, idx: int) -> Path: ...
     def remove_indexes(self, *indexes: int) -> Union[ListRemoveAction]: ...
 
 

@@ -142,12 +142,29 @@ def test_list_attribute():
 
     reveal_type(MyModel.my_list)  # E: Revealed type is 'pynamodb.attributes.ListAttribute[__main__.MyMap]'
     reveal_type(MyModel().my_list)  # E: Revealed type is 'builtins.list[__main__.MyMap*]'
-    reveal_type(MyModel.my_list[0])  # E: Value of type "ListAttribute[MyMap]" is not indexable  # E: Revealed type is 'Any'
     reveal_type(MyModel().my_list[0].my_sub_attr)  # E: Revealed type is 'builtins.str'
 
     # Untyped lists are not well supported yet
-    reveal_type(MyModel.my_untyped_list[0])  # E: Value of type "ListAttribute[Any]" is not indexable  # E: Revealed type is 'Any'
     reveal_type(MyModel().my_untyped_list[0].my_sub_attr)  # E: Revealed type is 'Any'
+    """)
+
+
+def test_paths():
+    assert_mypy_output("""
+    from pynamodb.attributes import ListAttribute, MapAttribute, UnicodeAttribute
+    from pynamodb.models import Model
+
+    class MyMap(MapAttribute):
+        my_sub_attr = UnicodeAttribute()
+
+    class MyModel(Model):
+        my_list = ListAttribute(of=MyMap)
+        my_map = MyMap()
+
+    reveal_type(MyModel.my_list[0])  # E: Revealed type is 'pynamodb.expressions.operand.Path'
+    reveal_type(MyModel.my_list[0] == MyModel())  # E: Revealed type is 'pynamodb.expressions.condition.Comparison'
+    # the following string indexing is not type checked - not by mypy nor in runtime
+    reveal_type(MyModel.my_list[0]['my_sub_attr'] == 'foobar')  # E: Revealed type is 'pynamodb.expressions.condition.Comparison'
     """)
 
 
