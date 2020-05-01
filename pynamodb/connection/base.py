@@ -1182,7 +1182,7 @@ class Connection(object):
         try:
             return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(ScanError("Failed to scan table: {}".format(e), e), None)
+            six.raise_from(ScanError("Failed to scan table: {} [on region {}]".format(e, self.region), e), None)
 
     def query(self,
               table_name,
