@@ -48,10 +48,10 @@ class ModelContextManager(object):
 
     """
 
-    def __init__(self, model, auto_commit=True):
+    def __init__(self, model, auto_commit=True, max_operations=BATCH_WRITE_PAGE_LIMIT):
         self.model = model
         self.auto_commit = auto_commit
-        self.max_operations = BATCH_WRITE_PAGE_LIMIT
+        self.max_operations = max_operations
         self.pending_operations = []
         self.failed_operations = []
 
@@ -342,7 +342,7 @@ class Model(AttributeContainer):
                             passed here, changes automatically commit on context exit
                             (whether successful or not).
         """
-        return BatchWrite(cls, auto_commit=auto_commit)
+        return BatchWrite(cls, auto_commit=auto_commit, max_operations=getattr(cls.Meta, 'max_write_operations', BATCH_WRITE_PAGE_LIMIT))
 
     def __repr__(self):
         if self.Meta.table_name:

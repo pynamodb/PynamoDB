@@ -9,7 +9,7 @@ pagination for you automatically.
 .. note::
 
     DynamoDB limits batch write operations to 25 `PutRequests` and `DeleteRequests` combined. `PynamoDB` automatically
-    groups your writes 25 at a time for you.
+    groups your writes 25 at a time for you. You can override this value, setting `max_write_operations` in `Meta` class
 
 Suppose that you have defined a `Thread` Model for the examples below.
 
@@ -24,6 +24,7 @@ Suppose that you have defined a `Thread` Model for the examples below.
     class Thread(Model):
         class Meta:
             table_name = 'Thread'
+            max_write_operations = 25
 
         forum_name = UnicodeAttribute(hash_key=True)
         subject = UnicodeAttribute(range_key=True)
