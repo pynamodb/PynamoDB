@@ -24,9 +24,8 @@ OP_NAME_TO_METHOD.update(OP_READ)
 
 class DaxClient(object):
 
-    def __init__(self, session, endpoints, region_name):
+    def __init__(self, endpoints, region_name):
         self.connection = AmazonDaxClient(
-            session=session,
             endpoints=endpoints,
             region_name=region_name
         )
