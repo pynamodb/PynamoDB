@@ -52,6 +52,7 @@ from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError,
     TransactGetError, TransactWriteError)
+from amazondax.DaxError import DaxClientError
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
@@ -59,6 +60,7 @@ from pynamodb.expressions.update import Update
 from pynamodb.settings import get_settings_value
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
+from pynamodb.connection.dax import OP_READ, OP_WRITE, DaxClient
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 RATE_LIMITING_ERROR_CODES = ['ProvisionedThroughputExceededException', 'ThrottlingException']
@@ -243,7 +245,8 @@ class Connection(object):
     def __init__(self, region=None, host=None,
                  read_timeout_seconds=None, connect_timeout_seconds=None,
                  max_retry_attempts=None, base_backoff_ms=None,
-                 max_pool_connections=None, extra_headers=None):
+                 max_pool_connections=None, extra_headers=None,
+                 dax_write_endpoints=None, dax_read_endpoints=None, fall_back_to_dynamodb=False):
         self._tables = {}
         self.host = host
         self._local = local()
@@ -282,6 +285,11 @@ class Connection(object):
             self._extra_headers = extra_headers
         else:
             self._extra_headers = get_settings_value('extra_headers')
+        self.dax_write_endpoints = dax_write_endpoints or []
+        self.dax_read_endpoints = dax_read_endpoints or []
+        self._dax_write_client = None
+        self._dax_read_client = None
+        self.__fall_back_to_dynamodb = fall_back_to_dynamodb
 
     def __repr__(self):
         return six.u("Connection<{}>".format(self.client.meta.endpoint_url))
@@ -363,6 +371,14 @@ class Connection(object):
         1. It's faster to avoid using botocore's response parsing
         2. It provides a place to monkey patch HTTP requests for unit testing
         """
+        try:
+            if operation_name in OP_WRITE and self.dax_write_endpoints:
+                return self.dax_write_client.dispatch(operation_name, operation_kwargs)
+            elif operation_name in OP_READ and self.dax_read_endpoints:
+                return self.dax_read_client.dispatch(operation_name, operation_kwargs)
+        except DaxClientError as err:
+            if not self._fall_back_to_dynamodb:
+                raise
         operation_model = self.client._service_model.operation_model(operation_name)
         request_dict = self.client._convert_to_request_dict(
             operation_kwargs,
@@ -534,6 +550,24 @@ class Connection(object):
                 max_pool_connections=self._max_pool_connections)
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
         return self._client
+
+    @property
+    def dax_write_client(self):
+        if self._dax_write_client is None:
+            self._dax_write_client = DaxClient(
+                endpoints=self.dax_write_endpoints,
+                region_name=self.region
+            )
+        return self._dax_write_client
+
+    @property
+    def dax_read_client(self):
+        if self._dax_read_client is None:
+            self._dax_read_client = DaxClient(
+                endpoints=self.dax_read_endpoints,
+                region_name=self.region
+            )
+        return self._dax_read_client
 
     def get_meta_table(self, table_name, refresh=False):
         """
