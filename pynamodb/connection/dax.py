@@ -1,5 +1,9 @@
 from amazondax import AmazonDaxClient
 
+import logging
+
+logger = logging.getLogger("debug")
+
 
 OP_WRITE = {
     'PutItem': 'put_item',
@@ -31,5 +35,7 @@ class DaxClient(object):
         )
 
     def dispatch(self, operation_name, kwargs):
+        logger.info(operation_name)
+        logger.info(kwargs)
         method = getattr(self.connection, OP_NAME_TO_METHOD[operation_name])
         return method(**kwargs)
