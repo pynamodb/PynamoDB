@@ -23,10 +23,18 @@ class TableConnection(object):
                  extra_headers=None,
                  aws_access_key_id=None,
                  aws_secret_access_key=None,
-                 aws_session_token=None):
+                 aws_session_token=None,
+                 dax_write_endpoints=None,
+                 dax_read_endpoints=None,
+                 fall_back_to_dynamodb=False):
+
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
+        if not dax_read_endpoints:
+            dax_read_endpoints = []
+        if not dax_write_endpoints:
+            dax_write_endpoints = []
         self.connection = Connection(region=region,
                                      host=host,
                                      connect_timeout_seconds=connect_timeout_seconds,
@@ -34,7 +42,10 @@ class TableConnection(object):
                                      max_retry_attempts=max_retry_attempts,
                                      base_backoff_ms=base_backoff_ms,
                                      max_pool_connections=max_pool_connections,
-                                     extra_headers=extra_headers)
+                                     extra_headers=extra_headers,
+                                     dax_write_endpoints=dax_write_endpoints,
+                                     dax_read_endpoints=dax_read_endpoints,
+                                     fall_back_to_dynamodb=fall_back_to_dynamodb)
 
         if aws_access_key_id and aws_secret_access_key:
             self.connection.session.set_credentials(aws_access_key_id,
