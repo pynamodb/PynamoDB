@@ -18,7 +18,7 @@ OP_READ = {
     'GetItem': 'get_item',
     'Scan': 'scan',
     'BatchGetItem': 'batch_get_item',
-    'Query': 'query',
+    # 'Query': 'query',
     'TransactGetItems': 'transact_get_items',
 }
 
