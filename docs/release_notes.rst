@@ -1,6 +1,19 @@
 Release Notes
 =============
 
+v4.3.3
+----------
+
+* Add type stubs for indexing into a ``ListAttribute`` for forming conditional expressions (#774)
+
+  ::
+
+    class MyModel(Model):
+      ...
+      my_list = ListAttribute()
+
+    MyModel.query(..., condition=MyModel.my_list[0] == 42)
+
 v4.3.2
 ----------
 
