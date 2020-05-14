@@ -19,7 +19,11 @@ from pynamodb.constants import (
 )
 from pynamodb.expressions.operand import Path
 from pynamodb._compat import getfullargspec
-import collections
+
+try:
+    from collections.abc import Mapping  # noqa
+except ImportError:
+    from collections import Mapping  # noqa
 
 
 class Attribute(object):
@@ -786,7 +790,7 @@ class MapAttribute(Attribute, AttributeContainer):
             object.__setattr__(self, name, value)
 
     def __set__(self, instance, value):
-        if isinstance(value, collections.Mapping):
+        if isinstance(value, Mapping):
             value = type(self)(**value)
         return super(MapAttribute, self).__set__(instance, value)
 
