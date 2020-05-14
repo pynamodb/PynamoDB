@@ -24,7 +24,7 @@ The callback must taking the following arguments:
 Arguments         Description
 ================  ===========
 *sender*          The object that fired that method.
-*operation_name*  The string name of the `DynamoDB action`_
+*operation_name*  The string name of the DynamoDB action
 *table_name*      The name of the table the operation is called upon.
 *req_uuid*        A unique identifer so subscribers can correlate the before and after events.
 ================  ===========

@@ -20,7 +20,7 @@ PynamoDB presents you with a simple, elegant API.
 Useful links:
 
 * See the full documentation at https://pynamodb.readthedocs.io/
-* Ask questions at `Google group <https://groups.google.com/forum/#!forum/pynamodb>`_
+* Ask questions in the `GitHub issues <https://github.com/pynamodb/PynamoDB/issues>`_
 * See release notes at https://pynamodb.readthedocs.io/en/latest/release_notes.html
 
 Installation

@@ -1,5 +1,5 @@
 Rate-Limited Operation
-================
+======================
 
 `Scan`, `Query` and `Count` operations can be rate-limited based on the consumed capacities returned from DynamoDB.
 Simply specify the `rate_limit` argument when calling these methods. Rate limited batch writes are not currently supported,

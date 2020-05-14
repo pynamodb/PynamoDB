@@ -356,6 +356,8 @@ class Model(AttributeContainer):
     def delete(self, condition=None):
         """
         Deletes this object from dynamodb
+
+        :raises pynamodb.exceptions.DeleteError: If the record can not be deleted
         """
         args, kwargs = self._get_save_args(attributes=False, null_check=False)
         version_condition = self._handle_version_attribute(kwargs)
@@ -371,6 +373,8 @@ class Model(AttributeContainer):
 
         :param actions: a list of Action updates to apply
         :param condition: an optional Condition on which to update
+        :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
+        :raises pynamodb.exceptions.UpdateError: if the `condition` is not met
         """
         if not isinstance(actions, list) or len(actions) == 0:
             raise TypeError("the value of `actions` is expected to be a non-empty list")
@@ -411,6 +415,7 @@ class Model(AttributeContainer):
         Retrieves this object's data from dynamodb and syncs this local object
 
         :param consistent_read: If True, then a consistent read is performed.
+        :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         """
         args, kwargs = self._get_save_args(attributes=False)
         kwargs.setdefault('consistent_read', consistent_read)
@@ -471,8 +476,9 @@ class Model(AttributeContainer):
 
         :param hash_key: The hash key of the desired item
         :param range_key: The range key of the desired item, only used when appropriate.
-        :param consistent_read
-        :param attributes_to_get
+        :param consistent_read:
+        :param attributes_to_get:
+        :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         """
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
 

@@ -181,7 +181,7 @@ When defining your model use the ``of=`` kwarg and pass in a class. PynamoDB wil
 Map Attributes
 --------------
 
-DynamoDB map attributes are objects embedded inside of top level models. See the examples `here <https://github.com/pynamodb/PynamoDB/tree/devel/examples/office_model.py>`_.
+DynamoDB map attributes are objects embedded inside of top level models. See the examples `here <https://github.com/pynamodb/PynamoDB/blob/master/examples/office_model.py>`_.
 When implementing your own MapAttribute you can simply extend ``MapAttribute`` and ignore writing serialization code.
 These attributes can then be used inside of Model classes just like any other attribute.
 

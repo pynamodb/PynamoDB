@@ -1,6 +1,41 @@
 Release Notes
 =============
 
+v4.3.3
+----------
+
+* Add type stubs for indexing into a ``ListAttribute`` for forming conditional expressions (#774)
+
+  ::
+
+    class MyModel(Model):
+      ...
+      my_list = ListAttribute()
+
+    MyModel.query(..., condition=MyModel.my_list[0] == 42)
+
+v4.3.2
+----------
+
+* Fix discrepancy between runtime and type-checker's perspective of ``Index`` and derived types (#769)
+* Add ``ListAttribute.remove_indexes`` action for removing specific indexes from a ``ListAttribute`` (#754)
+* Type stub fixes:
+
+  * Add missing parameters of ``Model.scan`` (#750)
+  * Change ``Model.get``'s ``hash_key`` parameter to be typed ``Any`` (#756)
+
+* Prevent integration tests from being packaged (#758)
+* Various documentation fixes (#762, #765, #766)
+
+Contributors to this release:
+
+* @mxr
+* @sodre
+* @biniow
+* @MartinAltmayer
+* @dotpmrcunha
+* @meawoppl
+
 v4.3.1
 ----------
 
@@ -431,7 +466,7 @@ re-serialize any data that was written with v1.5.4 and below.
 Temporary feature in this release:
 
 * Model.fix_unicode_set_attributes() migration helper
-# Model.needs_unicode_set_fix() migration helper
+* Model.needs_unicode_set_fix() migration helper
 
 
 v2.1.6
@@ -1020,4 +1055,3 @@ v0.1.11
 * Better PEP8 Compliance
 * More tests
 * Removed session and endpoint caching to avoid using stale IAM role credentials
-
