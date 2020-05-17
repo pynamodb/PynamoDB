@@ -735,16 +735,6 @@ class Model(AttributeContainer):
                 schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
             if billing_mode is not None:
                 schema[pythonic(BILLING_MODE)] = billing_mode
-            index_data = cls._get_indexes()
-            schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
-            schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
-            index_attrs = index_data.get(pythonic(ATTR_DEFINITIONS))
-            attr_keys = [attr.get(pythonic(ATTR_NAME)) for attr in schema.get(pythonic(ATTR_DEFINITIONS))]
-            for attr in index_attrs:
-                attr_name = attr.get(pythonic(ATTR_NAME))
-                if attr_name not in attr_keys:
-                    schema[pythonic(ATTR_DEFINITIONS)].append(attr)
-                    attr_keys.append(attr_name)
             cls._get_connection().create_table(
                 **schema
             )
@@ -859,6 +849,16 @@ class Model(AttributeContainer):
                     pythonic(KEY_TYPE): RANGE,
                     pythonic(ATTR_NAME): attr_cls.attr_name
                 })
+        index_data = cls._get_indexes()
+        schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
+        schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
+        index_attrs = index_data.get(pythonic(ATTR_DEFINITIONS))
+        attr_keys = [attr.get(pythonic(ATTR_NAME)) for attr in schema.get(pythonic(ATTR_DEFINITIONS))]
+        for attr in index_attrs:
+            attr_name = attr.get(pythonic(ATTR_NAME))
+            if attr_name not in attr_keys:
+                schema[pythonic(ATTR_DEFINITIONS)].append(attr)
+                attr_keys.append(attr_name)
         return schema
 
     @classmethod
@@ -1060,7 +1060,8 @@ class Model(AttributeContainer):
                                               extra_headers=cls.Meta.extra_headers,
                                               aws_access_key_id=cls.Meta.aws_access_key_id,
                                               aws_secret_access_key=cls.Meta.aws_secret_access_key,
-                                              aws_session_token=cls.Meta.aws_session_token)
+                                              aws_session_token=cls.Meta.aws_session_token,
+                                              predefined_schema=cls._get_schema())
         return cls._connection
 
     def _deserialize(self, attrs):

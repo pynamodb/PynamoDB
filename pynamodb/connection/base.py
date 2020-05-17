@@ -345,6 +345,51 @@ class Connection(object):
             log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
 
+    def predefine_table_schema(self,
+                               table_name,
+                               attribute_definitions,
+                               key_schema,
+                               global_secondary_indexes,
+                               local_secondary_indexes):
+        """
+        Saves attribute definitions and a key schema for the given table
+        to avoid additional DescribeTable requests for cases when key schema is known,
+        for instance from Madel._get_schema
+        :param table_name:
+        :param attribute_definitions: dictionary with pythonic keys
+        :param key_schema: dictionary with pythonic keys
+        :param global_secondary_indexes: list of dictionaries with pythonic keys
+        :param local_secondary_indexes: list of dictionaries with pythonic keys
+        :return: None
+        """
+        self._tables[table_name] = MetaTable({
+            ATTR_DEFINITIONS: [
+                {ATTR_NAME: attr.get(pythonic(ATTR_NAME)), ATTR_TYPE: attr.get(pythonic(ATTR_TYPE))}
+                for attr in attribute_definitions
+            ],
+            KEY_SCHEMA: [
+                {ATTR_NAME: attr.get(pythonic(ATTR_NAME)), KEY_TYPE: attr.get(pythonic(KEY_TYPE))}
+                for attr in key_schema
+            ],
+            GLOBAL_SECONDARY_INDEXES: [
+                {
+                    INDEX_NAME: index.get(pythonic(INDEX_NAME)),
+                    KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
+                    PROJECTION: index.get(pythonic(PROJECTION)),
+                    PROVISIONED_THROUGHPUT: index.get(pythonic(PROVISIONED_THROUGHPUT))
+                }
+                for index in global_secondary_indexes
+            ],
+            LOCAL_SECONDARY_INDEXES: [
+                {
+                    INDEX_NAME: index.get(pythonic(INDEX_NAME)),
+                    KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
+                    PROJECTION: index.get(pythonic(PROJECTION))
+                }
+                for index in local_secondary_indexes
+            ]
+        })
+
     def send_post_boto_callback(self, operation_name, req_uuid, table_name):
         try:
             post_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
@@ -776,7 +821,9 @@ class Connection(object):
 
     def get_identifier_map(self, table_name, hash_key, range_key=None, key=KEY):
         """
-        Builds the identifier map that is common to several operations
+        Builds the identifier map that is common to several operations,
+        if the connection doesn't have predefined table schema,
+        then describe_table request will be sent
         """
         tbl = self.get_meta_table(table_name)
         if tbl is None:

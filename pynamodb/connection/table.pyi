@@ -21,6 +21,7 @@ class TableConnection:
         aws_access_key_id: Optional[str] = ...,
         aws_secret_access_key: Optional[str] = ...,
         aws_access_token: Optional[str] = ...,
+        predefined_schema: Optional[Dict] = ...
     ) -> None: ...
 
     def get_operation_kwargs(
