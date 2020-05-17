@@ -41,7 +41,6 @@ class TableConnection(object):
                                      base_backoff_ms=base_backoff_ms,
                                      max_pool_connections=max_pool_connections,
                                      extra_headers=extra_headers,
-                                     base_backoff_ms=base_backoff_ms,
                                      dax_write_endpoints=dax_write_endpoints,
                                      dax_read_endpoints=dax_read_endpoints,
                                      fall_back_to_dynamodb=fall_back_to_dynamodb)
