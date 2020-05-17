@@ -16,7 +16,7 @@ from pynamodb.expressions.util import get_path_segments, get_value_placeholder, 
 if TYPE_CHECKING:
     from pynamodb.attributes import Attribute
 
-_PathOrAttribute = Union['Path', 'Attribute', List[str]]
+_PathOrAttribute = Union['Path', 'Attribute', List[str], str]
 
 
 class _Operand:

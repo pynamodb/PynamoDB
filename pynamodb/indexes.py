@@ -17,8 +17,9 @@ from pynamodb.pagination import ResultIterator
 from pynamodb.types import HASH, RANGE
 
 if TYPE_CHECKING:
-    from pynamodb.models import Model, KeyType
+    from pynamodb.models import Model
 
+_KeyType = Any
 _M = TypeVar('_M', bound='Model')
 
 
@@ -56,7 +57,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
     @classmethod
     def count(
         cls,
-        hash_key: KeyType,
+        hash_key: _KeyType,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
         consistent_read: bool = False,
@@ -78,8 +79,8 @@ class Index(Generic[_M], metaclass=IndexMeta):
 
     @classmethod
     def query(
-        self,
-        hash_key: str,
+        cls,
+        hash_key: _KeyType,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
         consistent_read: Optional[bool] = False,
@@ -93,12 +94,12 @@ class Index(Generic[_M], metaclass=IndexMeta):
         """
         Queries an index
         """
-        return self.Meta.model.query(
+        return cls.Meta.model.query(
             hash_key,
             range_key_condition=range_key_condition,
             filter_condition=filter_condition,
             consistent_read=consistent_read,
-            index_name=self.Meta.index_name,
+            index_name=cls.Meta.index_name,
             scan_index_forward=scan_index_forward,
             limit=limit,
             last_evaluated_key=last_evaluated_key,
@@ -109,7 +110,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
 
     @classmethod
     def scan(
-        self,
+        cls,
         filter_condition: Optional[Condition] = None,
         segment: Optional[int] = None,
         total_segments: Optional[int] = None,
@@ -123,7 +124,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
         """
         Scans an index
         """
-        return self.Meta.model.scan(
+        return cls.Meta.model.scan(
             filter_condition=filter_condition,
             segment=segment,
             total_segments=total_segments,
@@ -131,7 +132,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
             last_evaluated_key=last_evaluated_key,
             page_size=page_size,
             consistent_read=consistent_read,
-            index_name=self.Meta.index_name,
+            index_name=cls.Meta.index_name,
             rate_limit=rate_limit,
             attributes_to_get=attributes_to_get,
         )

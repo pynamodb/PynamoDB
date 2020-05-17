@@ -11,7 +11,7 @@ from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Seque
 
 from six import add_metaclass
 
-from pynamodb.expressons.update import Action
+from pynamodb.expressions.update import Action
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
 from pynamodb.attributes import (
     Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
@@ -63,7 +63,7 @@ class ModelContextManager(Generic[_T]):
         return self
 
 
-class BatchWrite(Generic[_T], ModelContextManager):
+class BatchWrite(ModelContextManager, Generic[_T]):
     """
     A class for batch writes
     """

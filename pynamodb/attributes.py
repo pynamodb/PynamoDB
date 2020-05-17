@@ -2,7 +2,7 @@
 PynamoDB attributes
 """
 import calendar
-import collections
+import collections.abc
 import six
 import json
 import time
@@ -15,7 +15,7 @@ from dateutil.parser import parse
 from dateutil.tz import tzutc
 from inspect import getmembers
 from six import add_metaclass
-from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, Text, TypeVar, Union, Set, overload
+from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, Text,  TypeVar, Type, Union, Set, overload
 from typing import TYPE_CHECKING
 
 
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 
 _T = TypeVar('_T')
-_KT = TypeVar('_KT')
+_KT = TypeVar('_KT', bound=str)
 _VT = TypeVar('_VT')
 _MT = TypeVar('_MT', bound='MapAttribute')
 
@@ -98,7 +98,7 @@ class Attribute(Generic[_T]):
     @overload
     def __get__(self: _A, instance: Any, owner: Any) -> _T: ...
 
-    def __get__(self: _A, instance: Any, owner: Any) -> Any:  # Union[_A, _T]:
+    def __get__(self: _A, instance: Any, owner: Any) -> Union[_A, _T]:
         if self._is_map_attribute_class_object(instance):
             # MapAttribute class objects store a local copy of the attribute with `attr_path` set to the document path.
             attr_name = instance._dynamo_to_python_attrs.get(self.attr_name, self.attr_name)
@@ -773,15 +773,15 @@ class MapAttribute(Generic[_KT, _VT], Attribute[Mapping[_KT, _VT]], AttributeCon
             return iter(self.attribute_values)
         return super().__iter__()
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: _KT) -> _VT:  # type: ignore
         if self._is_attribute_container():
             return self.attribute_values[item]
         # If this instance is being used as an Attribute, treat item access like the map dereference operator.
         # This provides equivalence between DynamoDB's nested attribute access for map elements (MyMap.nestedField)
         # and Python's item access for dictionaries (MyMap['nestedField']).
         if self.is_raw():
-            return Path(self.attr_path + [str(item)])
-        elif item in self._attributes:
+            return Path(self.attr_path + [str(item)])  # type: ignore
+        elif item in self._attributes:  # type: ignore
             return getattr(self, item)
         else:
             raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, item))
@@ -791,12 +791,12 @@ class MapAttribute(Generic[_KT, _VT], Attribute[Mapping[_KT, _VT]], AttributeCon
             raise TypeError("'{}' object does not support item assignment".format(self.__class__.__name__))
         if self.is_raw():
             self.attribute_values[item] = value
-        elif item in self._attributes:
+        elif item in self._attributes:  # type: ignore
             setattr(self, item, value)
         else:
             raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, item))
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> _VT:
         # This should only be called for "raw" (i.e. non-subclassed) MapAttribute instances.
         # MapAttribute subclasses should access attributes via the Attribute descriptors.
         if self.is_raw() and self._is_attribute_container():
@@ -806,6 +806,14 @@ class MapAttribute(Generic[_KT, _VT], Attribute[Mapping[_KT, _VT]], AttributeCon
                 pass
         raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, attr))
 
+    @overload  # type: ignore
+    def __get__(self: _A, instance: None, owner: Any) -> _A: ...
+    @overload
+    def __get__(self: _MT, instance: Any, owner: Any) -> _MT: ...
+    def __get__(self: _A, instance: Any, owner: Any) -> Union[_A, _T]:
+        # just for typing
+        return super().__get__(instance, owner)  # type: ignore
+
     def __setattr__(self, name, value):
         # "Raw" (i.e. non-subclassed) instances set their name-value pairs in the `attribute_values` dictionary.
         # MapAttribute subclasses should set attributes via the Attribute descriptors.
@@ -814,10 +822,10 @@ class MapAttribute(Generic[_KT, _VT], Attribute[Mapping[_KT, _VT]], AttributeCon
         else:
             object.__setattr__(self, name, value)
 
-    def __set__(self, instance, value):
-        if isinstance(value, Mapping):
-            value = type(self)(**value)
-        return super().__set__(instance, value)
+    def __set__(self, instance: Any, value: Union[None, 'MapAttribute[_KT, _VT]', Mapping[_KT, _VT]]):
+        if isinstance(value, collections.abc.Mapping):
+            value = type(self)(**value)  # type: ignore
+        return super().__set__(instance, value)  # type: ignore
 
     def _set_attributes(self, **attrs):
         """
@@ -977,9 +985,17 @@ def _fast_parse_utc_datestring(datestring):
 
 class ListAttribute(Generic[_T], Attribute[List[_T]]):
     attr_type = LIST
-    element_type = None
+    element_type: Any = None
 
-    def __init__(self, hash_key=False, range_key=False, null=None, default=None, attr_name=None, of=None):
+    def __init__(
+        self,
+        hash_key: bool = False,
+        range_key: bool = False,
+        null: Optional[bool] = None,
+        default: Optional[Union[Any, Callable[..., Any]]] = None,
+        attr_name: Optional[str] = None,
+        of: Optional[Type[_T]]=None,
+    ) -> None:
         super().__init__(hash_key=hash_key,
                                             range_key=range_key,
                                             null=null,

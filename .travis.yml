@@ -5,9 +5,6 @@ python:
   - "3.6"
   - "pypy"
 
-env:
-  - AWS_SECRET_ACCESS_KEY=fake_key AWS_ACCESS_KEY_ID=fake_id
-
 install:
   - pip install -e .[signals] -r requirements-dev.txt
 
