@@ -27,6 +27,11 @@ from six.moves import range
 
 from pynamodb.compat import NullHandler
 from pynamodb.connection.util import pythonic
+from pynamodb.connection.dax import (
+    OP_READ,
+    OP_WRITE,
+    DaxClient,
+)
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES, COMPARISON_OPERATOR_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES, ATTR_UPDATE_ACTIONS,
@@ -227,14 +232,23 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None,
+    def __init__(self, region=None, host=None, max_retry_attempts=None,
+                 base_backoff_ms=None, dax_write_endpoints=None, dax_read_endpoints=None,
+                 fall_back_to_dynamodb=False,
                  read_timeout_seconds=None, connect_timeout_seconds=None,
-                 max_retry_attempts=None, base_backoff_ms=None,
                  max_pool_connections=None, extra_headers=None):
         self._tables = {}
         self.host = host
+        if not dax_write_endpoints:
+            dax_write_endpoints = []
+        if not dax_read_endpoints:
+            dax_read_endpoints = []
+        self.dax_write_endpoints = dax_write_endpoints
+        self.dax_read_endpoints = dax_read_endpoints
         self._local = local()
         self._client = None
+        self._dax_write_client = None
+        self._dax_read_client = None
         if region:
             self.region = region
         else:
@@ -259,6 +273,11 @@ class Connection(object):
             self._base_backoff_ms = base_backoff_ms
         else:
             self._base_backoff_ms = get_settings_value('base_backoff_ms')
+
+        if fall_back_to_dynamodb is not None:
+            self._fall_back_to_dynamodb = fall_back_to_dynamodb
+        else:
+            self._fall_back_to_dynamodb = get_settings_value('fall_back_to_dynamodb')
 
         if max_pool_connections is not None:
             self._max_pool_connections = max_pool_connections
@@ -313,7 +332,9 @@ class Connection(object):
         req_uuid = uuid.uuid4()
 
         self.send_pre_boto_callback(operation_name, req_uuid, table_name)
+
         data = self._make_api_call(operation_name, operation_kwargs)
+
         self.send_post_boto_callback(operation_name, req_uuid, table_name)
 
         if data and CONSUMED_CAPACITY in data:
@@ -341,10 +362,20 @@ class Connection(object):
         1. It's faster to avoid using botocore's response parsing
         2. It provides a place to monkey patch requests for unit testing
         """
+        from amazondax.DaxError import DaxClientError
+        try:
+            if operation_name in OP_WRITE.keys() and self.dax_write_endpoints:
+                return self.dax_write_client.dispatch(operation_name, operation_kwargs)
+            elif operation_name in OP_READ.keys() and self.dax_read_endpoints:
+                return self.dax_read_client.dispatch(operation_name, operation_kwargs)
+        except DaxClientError as err:
+            if not self._fall_back_to_dynamodb:
+                raise err
+
         operation_model = self.client._service_model.operation_model(operation_name)
         request_dict = self.client._convert_to_request_dict(
             operation_kwargs,
-            operation_model,
+            operation_model
         )
 
         for i in range(0, self._max_retry_attempts_exception + 1):
@@ -506,6 +537,24 @@ class Connection(object):
                 max_pool_connections=self._max_pool_connections)
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
         return self._client
+
+    @property
+    def dax_write_client(self):
+        if self._dax_write_client is None:
+            self._dax_write_client = DaxClient(
+                endpoints=self.dax_write_endpoints,
+                region_name=self.region
+            )
+        return self._dax_write_client
+
+    @property
+    def dax_read_client(self):
+        if self._dax_read_client is None:
+            self._dax_read_client = DaxClient(
+                endpoints=self.dax_read_endpoints,
+                region_name=self.region
+            )
+        return self._dax_read_client
 
     def get_meta_table(self, table_name, refresh=False):
         """
