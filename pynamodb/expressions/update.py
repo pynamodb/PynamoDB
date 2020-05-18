@@ -46,9 +46,7 @@ class ListRemoveAction(Action):
     """
     The List REMOVE action deletes an element from a list item based on the index.
     """
-    format_string = None
-
-    def __init__(self, path, *indexes: int):
+    def __init__(self, path: 'Path', *indexes: int):
         self.format_string = ", ".join("{{0}}[{}]".format(index) for index in indexes)
         super(ListRemoveAction, self).__init__(path)
 

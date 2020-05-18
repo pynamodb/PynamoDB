@@ -996,11 +996,13 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         attr_name: Optional[str] = None,
         of: Optional[Type[_T]]=None,
     ) -> None:
-        super().__init__(hash_key=hash_key,
-                                            range_key=range_key,
-                                            null=null,
-                                            default=default,
-                                            attr_name=attr_name)
+        super().__init__(
+            hash_key=hash_key,
+            range_key=range_key,
+            null=null,
+            default=default,
+            attr_name=attr_name,
+        )
         if of:
             if not issubclass(of, MapAttribute):
                 raise ValueError("'of' must be subclass of MapAttribute")
@@ -1038,7 +1040,9 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
             deserialized_lst.append(class_for_deserialize.deserialize(attr_value))
         return deserialized_lst
 
-    def __getitem__(self, idx: int) -> Path: ...
+    def __getitem__(self, idx: int) -> Path:
+        # for typing only
+        return super().__getitem__(idx)
 
 
 DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {
