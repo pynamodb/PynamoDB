@@ -2,7 +2,6 @@
 pynamodb attributes tests
 """
 import json
-import six
 import time
 
 from base64 import b64encode
@@ -370,17 +369,16 @@ class TestUnicodeAttribute:
         assert attr is not None
         assert attr.attr_type == STRING
 
-        attr = UnicodeAttribute(default=six.u('foo'))
-        assert attr.default == six.u('foo')
+        attr = UnicodeAttribute(default='foo')
+        assert attr.default == 'foo'
 
     def test_unicode_serialize(self):
         """
         UnicodeAttribute.serialize
         """
         attr = UnicodeAttribute()
-        assert attr.serialize('foo') == six.u('foo')
-        assert attr.serialize(u'foo') == six.u('foo')
-        assert attr.serialize(u'') is None
+        assert attr.serialize('foo') == 'foo'
+        assert attr.serialize('') is None
         assert attr.serialize(None) is None
 
     def test_unicode_deserialize(self):
@@ -388,8 +386,8 @@ class TestUnicodeAttribute:
         UnicodeAttribute.deserialize
         """
         attr = UnicodeAttribute()
-        assert attr.deserialize('foo') == six.u('foo')
-        assert attr.deserialize(u'foo') == six.u('foo')
+        assert attr.deserialize('foo') == 'foo'
+        assert attr.deserialize(u'foo') == 'foo'
 
     def test_unicode_set_serialize(self):
         """
@@ -399,30 +397,30 @@ class TestUnicodeAttribute:
         assert attr.attr_type == STRING_SET
         assert attr.deserialize(None) is None
 
-        expected = sorted([six.u('foo'), six.u('bar')])
-        assert attr.serialize({six.u('foo'), six.u('bar')}) == expected
+        expected = sorted(['foo', 'bar'])
+        assert attr.serialize({'foo', 'bar'}) == expected
 
-        expected = sorted([six.u('True'), six.u('False')])
-        assert attr.serialize({six.u('True'), six.u('False')}) == expected
+        expected = sorted(['True', 'False'])
+        assert attr.serialize({'True', 'False'}) == expected
 
-        expected = sorted([six.u('true'), six.u('false')])
-        assert attr.serialize({six.u('true'), six.u('false')}) == expected
+        expected = sorted(['true', 'false'])
+        assert attr.serialize({'true', 'false'}) == expected
 
     def test_round_trip_unicode_set(self):
         """
         Round trip a unicode set
         """
         attr = UnicodeSetAttribute()
-        orig = {six.u('foo'), six.u('bar')}
+        orig = {'foo', 'bar'}
         assert orig == attr.deserialize(attr.serialize(orig))
 
-        orig = {six.u('true'), six.u('false')}
+        orig = {'true', 'false'}
         assert orig == attr.deserialize(attr.serialize(orig))
 
-        orig = {six.u('1'), six.u('2.8')}
+        orig = {'1', '2.8'}
         assert orig == attr.deserialize(attr.serialize(orig))
 
-        orig = {six.u('[1,2,3]'), six.u('2.8')}
+        orig = {'[1,2,3]', '2.8'}
         assert orig == attr.deserialize(attr.serialize(orig))
 
     def test_unicode_set_deserialize(self):
@@ -430,16 +428,16 @@ class TestUnicodeAttribute:
         UnicodeSetAttribute.deserialize
         """
         attr = UnicodeSetAttribute()
-        value = {six.u('foo'), six.u('bar')}
+        value = {'foo', 'bar'}
         assert attr.deserialize(value) == value
 
-        value = {six.u('True'), six.u('False')}
+        value = {'True', 'False'}
         assert attr.deserialize(value) == value
 
-        value = {six.u('true'), six.u('false')}
+        value = {'true', 'false'}
         assert attr.deserialize(value) == value
 
-        value = {six.u('1'), six.u('2.8')}
+        value = {'1', '2.8'}
         assert attr.deserialize(value) == value
 
     def test_unicode_set_attribute(self):
@@ -449,8 +447,8 @@ class TestUnicodeAttribute:
         attr = UnicodeSetAttribute()
         assert attr is not None
         assert attr.attr_type == STRING_SET
-        attr = UnicodeSetAttribute(default={six.u('foo'), six.u('bar')})
-        assert attr.default == {six.u('foo'), six.u('bar')}
+        attr = UnicodeSetAttribute(default={'foo', 'bar'})
+        assert attr.default == {'foo', 'bar'}
 
 
 class TestBooleanAttribute:
@@ -568,8 +566,8 @@ class TestJSONAttribute:
         """
         attr = JSONAttribute()
         item = {'foo': 'bar', 'bool': True, 'number': 3.141}
-        assert attr.serialize(item) == six.u(json.dumps(item))
-        assert attr.serialize({}) == six.u('{}')
+        assert attr.serialize(item) == json.dumps(item)
+        assert attr.serialize({}) == '{}'
         assert attr.serialize(None) is None
 
     def test_json_deserialize(self):
@@ -578,7 +576,7 @@ class TestJSONAttribute:
         """
         attr = JSONAttribute()
         item = {'foo': 'bar', 'bool': True, 'number': 3.141}
-        encoded = six.u(json.dumps(item))
+        encoded = json.dumps(item)
         assert attr.deserialize(encoded) == item
 
     def test_control_chars(self):
@@ -587,7 +585,7 @@ class TestJSONAttribute:
         """
         attr = JSONAttribute()
         item = {'foo\t': 'bar\n', 'bool': True, 'number': 3.141}
-        encoded = six.u(json.dumps(item))
+        encoded = json.dumps(item)
         assert attr.deserialize(encoded) == item
 
 
@@ -656,7 +654,7 @@ class TestMapAttribute:
             'overridden_number_attr': 10,
             'overridden_unicode_attr': "Hello"
         }
-        expected = {'number_attr': {'N': '10'}, 'unicode_attr': {'S': six.u('Hello')}}
+        expected = {'number_attr': {'N': '10'}, 'unicode_attr': {'S': 'Hello'}}
         assert CustomAttrMap().serialize(attribute) == expected
 
     def test_additional_attrs_deserialize(self):
@@ -664,10 +662,10 @@ class TestMapAttribute:
             'number_attr': {
                 'N': '10'},
             'unicode_attr': {
-                'S': six.u('Hello')
+                'S': 'Hello'
             },
             'undeclared_attr': {
-                'S': six.u('Goodbye')
+                'S': 'Goodbye'
             }
         }
         expected = {
@@ -731,7 +729,7 @@ class TestMapAttribute:
         }
         attr = MapAttribute(**raw)
 
-        for k, v in six.iteritems(raw):
+        for k, v in raw.items():
             assert attr[k] == v
 
     def test_raw_map_iter(self):

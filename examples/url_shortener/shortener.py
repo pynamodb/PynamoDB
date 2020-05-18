@@ -1,7 +1,6 @@
 """
 A fully working url shortener example
 """
-from __future__ import print_function
 import flask
 from hashlib import md5
 from base64 import b64encode

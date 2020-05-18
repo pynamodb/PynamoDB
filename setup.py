@@ -2,7 +2,6 @@ from setuptools import setup, find_packages
 
 
 install_requires = [
-    'six',
     'botocore>=1.12.54',
     'python-dateutil>=2.1,<3.0.0',
 ]

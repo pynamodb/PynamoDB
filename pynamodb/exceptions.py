@@ -11,7 +11,7 @@ class PynamoDBException(Exception):
     """
     A common exception class
     """
-    def __init__(self, msg: Optional[str] = None, cause: Optional[Exception] = None):
+    def __init__(self, msg: Optional[str] = None, cause: Optional[Exception] = None) -> None:
         self.msg = msg
         self.cause = cause
         super(PynamoDBException, self).__init__(self.msg)

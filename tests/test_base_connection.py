@@ -3,7 +3,6 @@ Tests for the base connection class
 """
 import base64
 import json
-import six
 from unittest import TestCase
 
 import botocore.exceptions
@@ -25,12 +24,8 @@ from pynamodb.expressions.update import SetAction
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from .deep_eq import deep_eq
 
-if six.PY3:
-    from unittest.mock import patch
-    from unittest import mock
-else:
-    from mock import patch
-    import mock
+from unittest.mock import patch
+from unittest import mock
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
@@ -1624,7 +1619,7 @@ class ConnectionTestCase(TestCase):
             self.assertEqual(call[1][0], prepared_request)
 
     def test_handle_binary_attributes_for_unprocessed_items(self):
-        binary_blob = six.b('\x00\xFF\x00\xFF')
+        binary_blob = b'\x00\xFF\x00\xFF'
 
         unprocessed_items = []
         for idx in range(0, 5):
@@ -1655,7 +1650,7 @@ class ConnectionTestCase(TestCase):
         )
 
     def test_handle_binary_attributes_for_unprocessed_keys(self):
-        binary_blob = six.b('\x00\xFF\x00\xFF')
+        binary_blob = b'\x00\xFF\x00\xFF'
         unprocessed_keys = {
             'UnprocessedKeys': {
                 'MyTable': {

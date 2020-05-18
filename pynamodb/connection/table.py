@@ -5,7 +5,7 @@ PynamoDB Connection classes
 
 from typing import Any, Dict, Mapping, Optional, Sequence
 
-from pynamodb.connection.base import Connection
+from pynamodb.connection.base import Connection, MetaTable
 from pynamodb.constants import DEFAULT_BILLING_MODE, KEY
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.update import Action
@@ -48,7 +48,7 @@ class TableConnection:
                                                     aws_secret_access_key,
                                                     aws_session_token)
 
-    def get_meta_table(self, refresh: bool = False):
+    def get_meta_table(self, refresh: bool = False) -> MetaTable:
         """
         Returns a MetaTable
         """

@@ -1,7 +1,6 @@
 """
 A PynamoDB example using a custom attribute
 """
-from __future__ import print_function
 import pickle
 from pynamodb.attributes import BinaryAttribute, UnicodeAttribute
 from pynamodb.models import Model

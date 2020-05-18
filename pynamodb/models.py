@@ -9,8 +9,6 @@ import warnings
 from inspect import getmembers
 from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Mapping, Type, TypeVar, Text, Tuple, Union
 
-from six import add_metaclass
-
 from pynamodb.expressions.update import Action
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
 from pynamodb.attributes import (
@@ -269,8 +267,7 @@ class MetaModel(AttributeContainerMeta):
                 cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
 
 
-@add_metaclass(MetaModel)
-class Model(AttributeContainer):
+class Model(AttributeContainer, metaclass=MetaModel):
     """
     Defines a `PynamoDB` Model
 

@@ -3,7 +3,6 @@ PynamoDB attributes
 """
 import calendar
 import collections.abc
-import six
 import json
 import time
 import warnings
@@ -13,8 +12,8 @@ from collections.abc import Mapping
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from dateutil.tz import tzutc
+from inspect import getfullargspec
 from inspect import getmembers
-from six import add_metaclass
 from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, Text,  TypeVar, Type, Union, Set, overload
 from typing import TYPE_CHECKING
 
@@ -24,8 +23,6 @@ from pynamodb.constants import (
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL,
 )
 from pynamodb.expressions.operand import Path
-from pynamodb._compat import getfullargspec
-
 
 
 if TYPE_CHECKING:
@@ -253,8 +250,7 @@ class AttributeContainerMeta(type):
                 attribute._update_attribute_paths(attribute.attr_name)
 
 
-@add_metaclass(AttributeContainerMeta)
-class AttributeContainer(object):
+class AttributeContainer(metaclass=AttributeContainerMeta):
 
     def __init__(self, _user_instantiated: bool = True, **attributes: Attribute) -> None:
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
@@ -417,9 +413,9 @@ class UnicodeSetAttribute(SetMixin, Attribute[Set[Text]]):
         :param value:
         :return:
         """
-        if isinstance(value, six.text_type):
+        if isinstance(value, str):
             return value
-        return six.u(str(value))
+        return str(value)
 
     def element_deserialize(self, value):
         return value
@@ -616,7 +612,7 @@ class UTCDateTimeAttribute(Attribute[datetime]):
         if value.tzinfo is None:
             value = value.replace(tzinfo=tzutc())
         fmt = value.astimezone(tzutc()).strftime(DATETIME_FORMAT)
-        return six.u(fmt)
+        return fmt
 
     def deserialize(self, value):
         """
@@ -832,7 +828,7 @@ class MapAttribute(Generic[_KT, _VT], Attribute[Mapping[_KT, _VT]], AttributeCon
         Sets the attributes for this object
         """
         if self.is_raw():
-            for name, value in six.iteritems(attrs):
+            for name, value in attrs.items():
                 setattr(self, name, value)
         else:
             super()._set_attributes(**attrs)
@@ -847,7 +843,7 @@ class MapAttribute(Generic[_KT, _VT], Attribute[Mapping[_KT, _VT]], AttributeCon
         return True  # TODO: check that the actual type of `value` meets requirements of `attr`
 
     def validate(self):
-        return all(self.is_correctly_typed(k, v) for k, v in six.iteritems(self.get_attributes()))
+        return all(self.is_correctly_typed(k, v) for k, v in self.get_attributes().items())
 
     def serialize(self, values):
         rval = {}
@@ -905,7 +901,7 @@ class MapAttribute(Generic[_KT, _VT], Attribute[Mapping[_KT, _VT]], AttributeCon
 
     def as_dict(self):
         result = {}
-        for key, value in six.iteritems(self.attribute_values):
+        for key, value in self.attribute_values.items():
             result[key] = value.as_dict() if isinstance(value, MapAttribute) else value
         return result
 

@@ -11,7 +11,6 @@ from base64 import b64decode
 from threading import local
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
-import six
 import botocore.client
 import botocore.exceptions
 from botocore.awsrequest import AWSPreparedRequest, create_request_object
@@ -19,7 +18,6 @@ from botocore.client import ClientError
 from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
-from six.moves import range
 
 from pynamodb.connection.util import pythonic
 from pynamodb.constants import (
@@ -78,7 +76,7 @@ class MetaTable(object):
 
     def __repr__(self) -> str:
         if self.data:
-            return six.u("MetaTable<{}>".format(self.data.get(TABLE_NAME)))
+            return "MetaTable<{}>".format(self.data.get(TABLE_NAME))
         return ""
 
     @property
@@ -292,7 +290,7 @@ class Connection(object):
             self._extra_headers = get_settings_value('extra_headers')
 
     def __repr__(self) -> str:
-        return six.u("Connection<{}>".format(self.client.meta.endpoint_url))
+        return "Connection<{}>".format(self.client.meta.endpoint_url)
 
     def _log_debug(self, operation: str, kwargs: str):
         """
@@ -470,39 +468,39 @@ class Connection(object):
     def _handle_binary_attributes(data):
         """ Simulate botocore's binary attribute handling """
         if ITEM in data:
-            for attr in six.itervalues(data[ITEM]):
+            for attr in data[ITEM].values():
                 _convert_binary(attr)
         if ITEMS in data:
             for item in data[ITEMS]:
-                for attr in six.itervalues(item):
+                for attr in item.values():
                     _convert_binary(attr)
         if RESPONSES in data:
             if isinstance(data[RESPONSES], list):
                 for item in data[RESPONSES]:
-                    for attr in six.itervalues(item):
+                    for attr in item.values():
                         _convert_binary(attr)
             else:
-                for item_list in six.itervalues(data[RESPONSES]):
+                for item_list in data[RESPONSES].values():
                     for item in item_list:
-                        for attr in six.itervalues(item):
+                        for attr in item.values():
                             _convert_binary(attr)
         if LAST_EVALUATED_KEY in data:
-            for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
+            for attr in data[LAST_EVALUATED_KEY].values():
                 _convert_binary(attr)
         if UNPROCESSED_KEYS in data:
-            for table_data in six.itervalues(data[UNPROCESSED_KEYS]):
+            for table_data in data[UNPROCESSED_KEYS].values():
                 for item in table_data[KEYS]:
-                    for attr in six.itervalues(item):
+                    for attr in item.values():
                         _convert_binary(attr)
         if UNPROCESSED_ITEMS in data:
-            for table_unprocessed_requests in six.itervalues(data[UNPROCESSED_ITEMS]):
+            for table_unprocessed_requests in data[UNPROCESSED_ITEMS].values():
                 for request in table_unprocessed_requests:
-                    for item_mapping in six.itervalues(request):
-                        for item in six.itervalues(item_mapping):
-                            for attr in six.itervalues(item):
+                    for item_mapping in request.values():
+                        for item in item_mapping.values():
+                            for attr in item.values():
                                 _convert_binary(attr)
         if ATTRIBUTES in data:
-            for attr in six.itervalues(data[ATTRIBUTES]):
+            for attr in data[ATTRIBUTES].values():
                 _convert_binary(attr)
         return data
 
@@ -546,10 +544,10 @@ class Connection(object):
                 data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
                 self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
             except BotoCoreError as e:
-                six.raise_from(TableError("Unable to describe table: {}".format(e), e), None)
+                raise TableError("Unable to describe table: {}".format(e), e)
             except ClientError as e:
                 if 'ResourceNotFound' in e.response['Error']['Code']:
-                    six.raise_from(TableDoesNotExist(e.response['Error']['Message']), None)
+                    raise TableDoesNotExist(e.response['Error']['Message'])
                 else:
                     raise
         return self._tables[table_name]
@@ -637,7 +635,7 @@ class Connection(object):
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TableError("Failed to create table: {}".format(e), e), None)
+            raise TableError("Failed to create table: {}".format(e), e)
         return data
 
     def update_time_to_live(self, table_name: str, ttl_attribute_name: str) -> Dict:
@@ -654,7 +652,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TableError("Failed to update TTL on table: {}".format(e), e), None)
+            raise TableError("Failed to update TTL on table: {}".format(e), e)
 
     def delete_table(self, table_name: str) -> Dict:
         """
@@ -666,7 +664,7 @@ class Connection(object):
         try:
             data = self.dispatch(DELETE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TableError("Failed to delete table: {}".format(e), e), None)
+            raise TableError("Failed to delete table: {}".format(e), e)
         return data
 
     def update_table(
@@ -705,7 +703,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TableError("Failed to update table: {}".format(e), e), None)
+            raise TableError("Failed to update table: {}".format(e), e)
 
     def list_tables(
         self,
@@ -727,7 +725,7 @@ class Connection(object):
         try:
             return self.dispatch(LIST_TABLES, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TableError("Unable to list tables: {}".format(e), e), None)
+            raise TableError("Unable to list tables: {}".format(e), e)
 
     def describe_table(self, table_name: str) -> Dict:
         """
@@ -946,7 +944,7 @@ class Connection(object):
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(DeleteError("Failed to delete item: {}".format(e), e), None)
+            raise DeleteError("Failed to delete item: {}".format(e), e)
 
     def update_item(
         self,
@@ -978,7 +976,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(UpdateError("Failed to update item: {}".format(e), e), None)
+            raise UpdateError("Failed to update item: {}".format(e), e)
 
     def put_item(
         self,
@@ -1008,7 +1006,7 @@ class Connection(object):
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(PutError("Failed to put item: {}".format(e), e), None)
+            raise PutError("Failed to put item: {}".format(e), e)
 
     def _get_transact_operation_kwargs(
         self,
@@ -1063,7 +1061,7 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TransactWriteError("Failed to write transaction items", e), None)
+            raise TransactWriteError("Failed to write transaction items", e)
 
     def transact_get_items(
         self,
@@ -1081,7 +1079,7 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TransactGetError("Failed to get transaction items", e), None)
+            raise TransactGetError("Failed to get transaction items", e)
 
     def batch_write_item(
         self,
@@ -1121,7 +1119,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(PutError("Failed to batch write items: {}".format(e), e), None)
+            raise PutError("Failed to batch write items: {}".format(e), e)
 
     def batch_get_item(
         self,
@@ -1162,7 +1160,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(GetError("Failed to batch get items: {}".format(e), e), None)
+            raise GetError("Failed to batch get items: {}".format(e), e)
 
     def get_item(
         self,
@@ -1185,7 +1183,7 @@ class Connection(object):
         try:
             return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(GetError("Failed to get item: {}".format(e), e), None)
+            raise GetError("Failed to get item: {}".format(e), e)
 
     def scan(
         self,
@@ -1237,7 +1235,7 @@ class Connection(object):
         try:
             return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(ScanError("Failed to scan table: {}".format(e), e), None)
+            raise ScanError("Failed to scan table: {}".format(e), e)
 
     def query(
         self,
@@ -1328,7 +1326,7 @@ class Connection(object):
         try:
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(QueryError("Failed to query items: {}".format(e), e), None)
+            raise QueryError("Failed to query items: {}".format(e), e)
 
     def _check_condition(self, name, condition):
         if condition is not None:
@@ -1337,7 +1335,7 @@ class Connection(object):
 
     @staticmethod
     def _reverse_dict(d):
-        return {v: k for k, v in six.iteritems(d)}
+        return {v: k for k, v in d.items()}
 
 
 def _convert_binary(attr):

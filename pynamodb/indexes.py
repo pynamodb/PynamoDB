@@ -46,7 +46,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
     """
     Base class for secondary indexes
     """
-    Meta = None  # type: Any
+    Meta: Any = None
 
     def __init__(self) -> None:
         if self.Meta is None:

@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import datetime, time, functools, operator, six
+import datetime, time, functools, operator
 
 default_fudge = datetime.timedelta(seconds=0, microseconds=0, days=0)
 
@@ -127,7 +127,7 @@ def deep_eq(_v1, _v2, datetime_fudge=default_fudge, _assert=False):
     # guard against strings because they are iterable and their
     # elements yield iterables infinitely.
     # I N C E P T I O N
-    if not isinstance(_v1, six.string_types):
+    if not isinstance(_v1, str):
         if isinstance(_v1, dict):
             op = _deep_dict_eq
         else:
