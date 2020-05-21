@@ -7,7 +7,7 @@ from pynamodb.expressions.condition import Condition
 from pynamodb.pagination import ResultIterator
 
 log: Any
-ConditionType = Union[ConditionType, Optional[bool]]
+ConditionType = Union[Optional[Condition], Optional[bool]]
 class DefaultMeta: ...
 
 class ResultSet(Iterable):
