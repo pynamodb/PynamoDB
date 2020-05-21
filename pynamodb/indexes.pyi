@@ -1,10 +1,11 @@
-from typing import Any, Dict, List, Optional, Text, TypeVar, Generic
+from typing import Any, Dict, List, Optional, Text, TypeVar, Generic, Union
 
 from pynamodb.expressions.condition import Condition
 from pynamodb.models import Model
 from pynamodb.pagination import ResultIterator
 
 _M = TypeVar('_M', bound=Model)
+ConditionType = Union[Optional[Condition], Optional[bool]]
 
 
 class IndexMeta(type):
@@ -18,8 +19,8 @@ class Index(Generic[_M], metaclass=IndexMeta):
     def count(
         cls,
         hash_key,
-        range_key_condition: Optional[Condition] = ...,
-        filter_condition: Optional[Condition] = ...,
+        range_key_condition: ConditionType = ...,
+        filter_condition: ConditionType = ...,
         consistent_read: bool = ...,
         limit: Optional[int] = ...,
         rate_limit: Optional[float] = ...,
@@ -28,8 +29,8 @@ class Index(Generic[_M], metaclass=IndexMeta):
     def query(
         cls,
         hash_key,
-        range_key_condition: Optional[Condition] = ...,
-        filter_condition: Optional[Condition] = ...,
+        range_key_condition: ConditionType = ...,
+        filter_condition: ConditionType = ...,
         scan_index_forward: Optional[Any] = ...,
         consistent_read: Optional[bool] = ...,
         limit: Optional[int] = ...,
@@ -41,7 +42,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
     @classmethod
     def scan(
         cls,
-        filter_condition: Optional[Condition] = ...,
+        filter_condition: ConditionType = ...,
         segment: Optional[int] = ...,
         total_segments: Optional[int] = ...,
         limit: Optional[int] = ...,
