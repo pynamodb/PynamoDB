@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, MutableMapping, Optional, Sequence, Text, List
+from typing import Any, Dict, Iterator, MutableMapping, Optional, Sequence, Text, List, Union
 
 import botocore.session
 from botocore.awsrequest import AWSPreparedRequest
@@ -9,6 +9,7 @@ from pynamodb.expressions.update import Action
 
 BOTOCORE_EXCEPTIONS: Any
 log: Any
+ConditionType = Union[Optional[Condition], Optional[bool]]
 
 class MetaTable:
     data: Dict
@@ -70,7 +71,7 @@ class Connection:
         attributes_to_get: Optional[Any] = ...,
         actions: Optional[Sequence[Action]] = ...,
         client_request_token: Optional[Text] = ...,
-        condition: Optional[Condition] = ...,
+        condition: ConditionType = ...,
         consistent_read: Optional[bool] = ...,
         return_values: Optional[Any] = ...,
         return_consumed_capacity: Optional[Any] = ...,
@@ -82,7 +83,7 @@ class Connection:
         table_name: Text,
         hash_key,
         range_key: Optional[Any] = ...,
-        condition: Optional[Condition] = ...,
+        condition: ConditionType = ...,
         return_values: Optional[Any] = ...,
         return_consumed_capacity: Optional[Any] = ...,
         return_item_collection_metrics: Optional[Any] = ...
@@ -94,7 +95,7 @@ class Connection:
         hash_key,
         range_key: Optional[Any] = ...,
         actions: Optional[Sequence[Action]] = ...,
-        condition: Optional[Condition] = ...,
+        condition: ConditionType = ...,
         return_consumed_capacity: Optional[Any] = ...,
         return_item_collection_metrics: Optional[Any] = ...,
         return_values: Optional[Any] = ...
@@ -106,7 +107,7 @@ class Connection:
         hash_key,
         range_key: Optional[Any] = ...,
         attributes: Optional[Any] = ...,
-        condition: Optional[Condition] = ...,
+        condition: ConditionType = ...,
         return_values: Optional[Any] = ...,
         return_consumed_capacity: Optional[Any] = ...,
         return_item_collection_metrics: Optional[Any] = ...
@@ -135,7 +136,7 @@ class Connection:
         self,
         table_name: Text,
         hash_key,
-        range_key_condition: Optional[Condition] = ...,
+        range_key_condition: ConditionType = ...,
         attributes_to_get: Optional[Any] = ...,
         consistent_read: bool = ...,
         exclusive_start_key: Optional[Any] = ...,

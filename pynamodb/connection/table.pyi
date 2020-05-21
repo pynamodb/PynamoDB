@@ -1,8 +1,9 @@
-from typing import Any, Dict, Iterator, MutableMapping, Optional, Sequence, Text
+from typing import Any, Dict, Iterator, MutableMapping, Optional, Sequence, Text, Union
 
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.update import Action
 
+ConditionType = Union[Optional[Condition], Optional[bool]]
 
 class TableConnection:
     table_name: Any
@@ -31,7 +32,7 @@ class TableConnection:
         attributes: Optional[Any] = ...,
         attributes_to_get: Optional[Any] = ...,
         actions: Optional[Sequence[Action]] = ...,
-        condition: Optional[Condition] = ...,
+        condition: ConditionType = ...,
         consistent_read: bool = ...,
         return_values: Optional[Any] = ...,
         return_consumed_capacity: Optional[Any] = ...,
@@ -43,7 +44,7 @@ class TableConnection:
         self,
         hash_key,
         range_key: Optional[Any] = ...,
-        condition: Optional[Condition] = ...,
+        condition: ConditionType = ...,
         return_values: Optional[Any] = ...,
         return_consumed_capacity: Optional[Any] = ...,
         return_item_collection_metrics: Optional[Any] = ...
@@ -54,7 +55,7 @@ class TableConnection:
         hash_key,
         range_key: Optional[Any] = ...,
         actions: Optional[Sequence[Action]] = ...,
-        condition: Optional[Condition] = ...,
+        condition: ConditionType = ...,
         return_consumed_capacity: Optional[Any] = ...,
         return_item_collection_metrics: Optional[Any] = ...,
         return_values: Optional[Any] = ...
@@ -65,7 +66,7 @@ class TableConnection:
         hash_key,
         range_key: Optional[Any] = ...,
         attributes: Optional[Any] = ...,
-        condition: Optional[Condition] = ...,
+        condition: ConditionType = ...,
         return_values: Optional[Any] = ...,
         return_consumed_capacity: Optional[Any] = ...,
         return_item_collection_metrics: Optional[Any] = ...
@@ -75,8 +76,8 @@ class TableConnection:
     def batch_get_item(self, keys, consistent_read: Optional[Any] = ..., return_consumed_capacity: Optional[Any] = ..., attributes_to_get: Optional[Any] = ...): ...
     def get_item(self, hash_key, range_key: Optional[Any] = ..., consistent_read: bool = ..., attributes_to_get: Optional[Any] = ...): ...
 
-    def scan(self, filter_condition: Optional[Condition] = ..., attributes_to_get: Optional[Any] = ..., limit: Optional[Any] = ..., return_consumed_capacity: Optional[Any] = ..., segment: Optional[Any] = ..., total_segments: Optional[Any] = ..., exclusive_start_key: Optional[Any] = ...): ...
-    def query(self, hash_key, range_key_condition: Optional[Condition] = ..., attributes_to_get: Optional[Any] = ..., consistent_read: bool = ..., exclusive_start_key: Optional[Any] = ..., index_name: Optional[Any] = ..., limit: Optional[Any] = ..., return_consumed_capacity: Optional[Any] = ..., scan_index_forward: Optional[Any] = ..., select: Optional[Any] = ...): ...
+    def scan(self, filter_condition: ConditionType = ..., attributes_to_get: Optional[Any] = ..., limit: Optional[Any] = ..., return_consumed_capacity: Optional[Any] = ..., segment: Optional[Any] = ..., total_segments: Optional[Any] = ..., exclusive_start_key: Optional[Any] = ...): ...
+    def query(self, hash_key, range_key_condition: ConditionType = ..., attributes_to_get: Optional[Any] = ..., consistent_read: bool = ..., exclusive_start_key: Optional[Any] = ..., index_name: Optional[Any] = ..., limit: Optional[Any] = ..., return_consumed_capacity: Optional[Any] = ..., scan_index_forward: Optional[Any] = ..., select: Optional[Any] = ...): ...
     def describe_table(self): ...
     def delete_table(self): ...
     def update_time_to_live(self, ttl_attr_name: Text): ...
