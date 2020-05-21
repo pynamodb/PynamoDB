@@ -7,7 +7,7 @@ from pynamodb.expressions.condition import Condition
 from pynamodb.pagination import ResultIterator
 
 log: Any
-
+ConditionType = Union[ConditionType, Optional[bool]]
 class DefaultMeta: ...
 
 class ResultSet(Iterable):
@@ -37,8 +37,8 @@ class Model(metaclass=MetaModel):
     @classmethod
     def batch_write(cls: Type[_T], auto_commit: bool = ...) -> BatchWrite[_T]: ...
     def delete(self, condition: Optional[Any] = ...) -> Any: ...
-    def update(self, actions: List[Any], condition: Optional[Condition] = ...) -> Any: ...
-    def save(self, condition: Optional[Condition] = ...) -> Dict[str, Any]: ...
+    def update(self, actions: List[Any], condition: ConditionType = ...) -> Any: ...
+    def save(self, condition: ConditionType = ...) -> Dict[str, Any]: ...
     def refresh(self, consistent_read: bool = ...): ...
     @classmethod
     def get(cls: Type[_T], hash_key: KeyType, range_key: Optional[KeyType] = ..., consistent_read: bool = ..., attributes_to_get: Optional[Sequence[Text]] = ...) -> _T: ...
@@ -49,8 +49,8 @@ class Model(metaclass=MetaModel):
     def count(
         cls: Type[_T],
         hash_key: Optional[KeyType] = ...,
-        range_key_condition: Optional[Condition] = ...,
-        filter_condition: Optional[Condition] = ...,
+        range_key_condition: ConditionType = ...,
+        filter_condition: ConditionType = ...,
         consistent_read: bool = ...,
         index_name: Optional[Text] = ...,
         limit: Optional[int] = ...,
@@ -61,8 +61,8 @@ class Model(metaclass=MetaModel):
     def query(
         cls: Type[_T],
         hash_key: KeyType,
-        range_key_condition: Optional[Condition] = ...,
-        filter_condition: Optional[Condition] = ...,
+        range_key_condition: ConditionType = ...,
+        filter_condition: ConditionType = ...,
         consistent_read: bool = ...,
         index_name: Optional[Text] = ...,
         scan_index_forward: Optional[Any] = ...,
@@ -76,7 +76,7 @@ class Model(metaclass=MetaModel):
     @classmethod
     def scan(
         cls: Type[_T],
-        filter_condition: Optional[Condition] = ...,
+        filter_condition: ConditionType = ...,
         segment: Optional[int] = ...,
         total_segments: Optional[int] = ...,
         limit: Optional[int] = ...,
