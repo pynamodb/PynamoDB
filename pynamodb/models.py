@@ -276,7 +276,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
     # These attributes are named to avoid colliding with user defined
     # DynamoDB attributes
-    _hash_keyname = None  # type: str
+    _hash_keyname: str = None
     _range_keyname: Optional[str] = None
     _indexes: Optional[Dict[str, List[Any]]] = None
     _connection: Optional[TableConnection] = None

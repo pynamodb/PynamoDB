@@ -48,7 +48,7 @@ class Attribute(Generic[_T]):
     """
     An attribute of a model
     """
-    attr_type = None  # type: str
+    attr_type: str = None
     null = False
 
     def __init__(
