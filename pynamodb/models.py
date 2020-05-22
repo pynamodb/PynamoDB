@@ -163,7 +163,6 @@ class DefaultMeta(object):
     pass
 
 
-
 # TODO(garrettheel): is this used anywhere?
 class ResultSet(Iterable):
 

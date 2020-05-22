@@ -8,7 +8,6 @@ import time
 import warnings
 from base64 import b64encode, b64decode
 from copy import deepcopy
-from collections.abc import Mapping
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from dateutil.tz import tzutc
