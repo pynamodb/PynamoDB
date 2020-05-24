@@ -29,7 +29,8 @@ class IndexMeta(type(Generic)):
     This class is here to allow for an index `Meta` class
     that contains the index settings
     """
-    def __init__(cls, name, bases, attrs):
+    def __init__(cls, name, bases, attrs, *args, **kwargs):
+        super().__init__(name, bases, attrs, *args, **kwargs)
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:

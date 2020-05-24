@@ -217,8 +217,8 @@ class Attribute(Generic[_T]):
 
 class AttributeContainerMeta(type(Generic)):
 
-    def __init__(cls, name, bases, attrs):
-        super(AttributeContainerMeta, cls).__init__(name, bases, attrs)
+    def __init__(cls, name, bases, attrs, *args, **kwargs):
+        super().__init__(name, bases, attrs, *args, **kwargs)
         AttributeContainerMeta._initialize_attributes(cls)
 
     @staticmethod
