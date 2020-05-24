@@ -5,7 +5,6 @@ from inspect import getmembers
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 from typing import TYPE_CHECKING
 
-from pynamodb._compat import FakeGenericMeta
 from pynamodb.constants import (
     INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, ATTR_TYPE_MAP, KEY_SCHEMA,
     ATTR_DEFINITIONS, META_CLASS_NAME
@@ -23,7 +22,7 @@ _KeyType = Any
 _M = TypeVar('_M', bound='Model')
 
 
-class IndexMeta(FakeGenericMeta):
+class IndexMeta(type(Generic)):
     """
     Index meta class
 

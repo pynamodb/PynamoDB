@@ -215,7 +215,7 @@ class Attribute(Generic[_T]):
         return Path(self).delete(*values)
 
 
-class AttributeContainerMeta(type):
+class AttributeContainerMeta(type(Generic)):
 
     def __init__(cls, name, bases, attrs):
         super(AttributeContainerMeta, cls).__init__(name, bases, attrs)
@@ -639,7 +639,7 @@ class NullAttribute(Attribute[None]):
         return None
 
 
-class MapAttribute(Generic[_KT, _VT], Attribute[Mapping[_KT, _VT]], AttributeContainer):
+class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
     """
     A Map Attribute
 
