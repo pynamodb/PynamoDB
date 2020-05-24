@@ -16,7 +16,7 @@ from inspect import getmembers
 from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, Text,  TypeVar, Type, Union, Set, overload
 from typing import TYPE_CHECKING
 
-
+from pynamodb._compat import GenericMeta
 from pynamodb.constants import (
     STRING, STRING_SHORT, NUMBER, BINARY, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
     MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL,
@@ -48,7 +48,7 @@ class Attribute(Generic[_T]):
     """
     An attribute of a model
     """
-    attr_type: str = None
+    attr_type: str
     null = False
 
     def __init__(
@@ -215,11 +215,11 @@ class Attribute(Generic[_T]):
         return Path(self).delete(*values)
 
 
-class AttributeContainerMeta(type(Generic)):
+class AttributeContainerMeta(GenericMeta):
 
-    def __init__(cls, name, bases, attrs, *args, **kwargs):
-        super().__init__(name, bases, attrs, *args, **kwargs)
-        AttributeContainerMeta._initialize_attributes(cls)
+    def __init__(self, name, bases, attrs, *args, **kwargs):
+        super().__init__(name, bases, attrs, *args, **kwargs)  # type: ignore
+        AttributeContainerMeta._initialize_attributes(self)
 
     @staticmethod
     def _initialize_attributes(cls):

@@ -5,6 +5,7 @@ from inspect import getmembers
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 from typing import TYPE_CHECKING
 
+from pynamodb._compat import GenericMeta
 from pynamodb.constants import (
     INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, ATTR_TYPE_MAP, KEY_SCHEMA,
     ATTR_DEFINITIONS, META_CLASS_NAME
@@ -22,7 +23,7 @@ _KeyType = Any
 _M = TypeVar('_M', bound='Model')
 
 
-class IndexMeta(type(Generic)):
+class IndexMeta(GenericMeta):
     """
     Index meta class
 
@@ -30,7 +31,7 @@ class IndexMeta(type(Generic)):
     that contains the index settings
     """
     def __init__(cls, name, bases, attrs, *args, **kwargs):
-        super().__init__(name, bases, attrs, *args, **kwargs)
+        super().__init__(name, bases, attrs, *args, **kwargs)  # type: ignore
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:

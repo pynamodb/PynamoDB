@@ -47,7 +47,6 @@ log.addHandler(logging.NullHandler())
 class ModelContextManager(Generic[_T]):
     """
     A class for managing batch operations
-
     """
 
     def __init__(self, model: Type[_T], auto_commit: bool = True):
@@ -193,8 +192,6 @@ class MetaModel(AttributeContainerMeta):
     billing_mode: Optional[str]
     stream_view_type: Optional[str]
 
-    _version_attribute_name: str
-
     """
     Model meta class
 
@@ -203,6 +200,9 @@ class MetaModel(AttributeContainerMeta):
     """
     def __init__(cls, name: str, bases: Any, attrs: Dict[str, Any]) -> None:
         super(MetaModel, cls).__init__(name, bases, attrs)
+        cls._hash_keyname = None
+        cls._range_keyname = None
+        cls._version_attribute_name = None
         for attr_name, attribute in cls.get_attributes().items():  # type: ignore
             if attribute.is_hash_key:
                 cls._hash_keyname = attr_name
@@ -276,13 +276,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
     # These attributes are named to avoid colliding with user defined
     # DynamoDB attributes
-    _hash_keyname: str = None
-    _range_keyname: Optional[str] = None
+    _hash_keyname: str
+    _range_keyname: Optional[str]
     _indexes: Optional[Dict[str, List[Any]]] = None
     _connection: Optional[TableConnection] = None
     _index_classes: Optional[Dict[str, Any]] = None
     DoesNotExist = DoesNotExist
-    _version_attribute_name = None
+    _version_attribute_name: Optional[str]
 
     Meta: MetaModel
 
@@ -1012,7 +1012,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return version_condition
 
     def update_local_version_attribute(self):
-        if self._version_attribute_name:
+        if self._version_attribute_name is not None:
             value = getattr(self, self._version_attribute_name, None) or 0
             setattr(self, self._version_attribute_name, value + 1)
 
