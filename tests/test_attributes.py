@@ -34,7 +34,7 @@ class AttributeTestModel(Model):
         host = 'http://localhost:8000'
         table_name = 'test'
 
-    binary_attr = BinaryAttribute()
+    binary_attr = BinaryAttribute(hash_key=True)
     binary_set_attr = BinarySetAttribute()
     number_attr = NumberAttribute()
     number_set_attr = NumberSetAttribute()

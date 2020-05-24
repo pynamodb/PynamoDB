@@ -201,7 +201,9 @@ class MetaModel(AttributeContainerMeta):
     """
     def __init__(self, name: str, bases: Any, attrs: Dict[str, Any]) -> None:
         super().__init__(name, bases, attrs)
-        cls: Type[Model] = cast(Type[Model], self)
+        if bases == (AttributeContainer,):
+            return  # we only need to initialize derived types
+        cls = cast(Type['Model'], self)
         hash_keyname: Optional[str] = None
         cls._range_keyname = None
         cls._version_attribute_name = None

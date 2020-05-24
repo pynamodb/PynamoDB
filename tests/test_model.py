@@ -349,7 +349,7 @@ class CarModel(Model):
 class CarModelWithNull(Model):
     class Meta:
         table_name = 'CarModelWithNull'
-    car_id = NumberAttribute(null=False)
+    car_id = NumberAttribute(hash_key=True, null=False)
     car_color = UnicodeAttribute(null=True)
     car_info = CarInfoMap(null=True)
 
