@@ -7,7 +7,8 @@ import time
 import logging
 import warnings
 from inspect import getmembers
-from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Mapping, Type, TypeVar, Text, Tuple, Union
+from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Mapping, Type, TypeVar, Text, \
+    Tuple, Union, cast
 
 from pynamodb.expressions.update import Action
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
@@ -198,14 +199,15 @@ class MetaModel(AttributeContainerMeta):
     This class is just here so that index queries have nice syntax.
     Model.index.query()
     """
-    def __init__(cls, name: str, bases: Any, attrs: Dict[str, Any]) -> None:
-        super(MetaModel, cls).__init__(name, bases, attrs)
-        cls._hash_keyname = None
+    def __init__(self, name: str, bases: Any, attrs: Dict[str, Any]) -> None:
+        super().__init__(name, bases, attrs)
+        cls: Type[Model] = cast(Type[Model], self)
+        hash_keyname: Optional[str] = None
         cls._range_keyname = None
         cls._version_attribute_name = None
-        for attr_name, attribute in cls.get_attributes().items():  # type: ignore
+        for attr_name, attribute in cls.get_attributes().items():
             if attribute.is_hash_key:
-                cls._hash_keyname = attr_name
+                hash_keyname = attr_name
             if attribute.is_range_key:
                 cls._range_keyname = attr_name
             if isinstance(attribute, VersionAttribute):
@@ -215,6 +217,11 @@ class MetaModel(AttributeContainerMeta):
                         .format(cls._version_attribute_name, attr_name)
                     )
                 cls._version_attribute_name = attr_name
+
+        if hash_keyname is None:
+            raise ValueError(f"The model does not have a hash key: {cls}")
+        cls._hash_keyname = hash_keyname
+
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
                 if attr_name == META_CLASS_NAME:
@@ -260,9 +267,10 @@ class MetaModel(AttributeContainerMeta):
             # create a custom Model.DoesNotExist derived from pynamodb.exceptions.DoesNotExist,
             # so that "except Model.DoesNotExist:" would not catch other models' exceptions
             if 'DoesNotExist' not in attrs:
-                exception_attrs = {'__module__': attrs.get('__module__')}
-                if hasattr(cls, '__qualname__'):  # On Python 3, Model.DoesNotExist
-                    exception_attrs['__qualname__'] = '{}.{}'.format(cls.__qualname__, 'DoesNotExist')
+                exception_attrs = {
+                    '__module__': attrs.get('__module__'),
+                    '__qualname__': f'{cls.__qualname__}.{"DoesNotExist"}',
+                }
                 cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
 
 
@@ -281,7 +289,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
     _indexes: Optional[Dict[str, List[Any]]] = None
     _connection: Optional[TableConnection] = None
     _index_classes: Optional[Dict[str, Any]] = None
-    DoesNotExist = DoesNotExist
+    DoesNotExist: Type[DoesNotExist] = DoesNotExist
     _version_attribute_name: Optional[str]
 
     Meta: MetaModel
