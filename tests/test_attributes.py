@@ -769,6 +769,7 @@ class TestMapAttribute:
             map_attr = MapAttribute()
 
         class SomeModel(Model):
+            key = NumberAttribute(hash_key=True)
             typed_map = TypedMap()
 
         item = SomeModel(
