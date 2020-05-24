@@ -3,7 +3,8 @@ Tests for the base connection class
 """
 import base64
 import json
-from unittest import TestCase
+from unittest import mock, TestCase
+from unittest.mock import patch
 
 import botocore.exceptions
 from botocore.awsrequest import AWSPreparedRequest, AWSRequest, AWSResponse
@@ -23,9 +24,6 @@ from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from .deep_eq import deep_eq
-
-from unittest.mock import patch
-from unittest import mock
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 

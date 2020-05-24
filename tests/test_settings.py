@@ -1,5 +1,5 @@
 import sys
-from mock import patch
+from unittest.mock import patch
 
 import pytest
 from importlib import reload

@@ -10,7 +10,7 @@ from datetime import datetime
 from datetime import timedelta
 from dateutil.tz import tzutc
 
-from mock import patch, Mock, call
+from unittest.mock import patch, Mock, call
 import pytest
 
 from pynamodb.attributes import (
