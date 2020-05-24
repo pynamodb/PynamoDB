@@ -812,6 +812,7 @@ class TestMapAttribute:
             double_nested_renamed = MapAttribute(attr_name='something_else')
 
         class ThingModel(Model):
+            key = NumberAttribute(hash_key=True)
             nested = NestedThing()
 
         t = ThingModel(nested=NestedThing(
@@ -847,6 +848,7 @@ class TestMapAttribute:
             bar = UnicodeAttribute(attr_name='dyn_bar')
 
         class SubModel(Model):
+            key = NumberAttribute(hash_key=True)
             sub_map = SubMapAttribute(attr_name='dyn_sub_map')
 
         class SubSubModel(SubModel):
@@ -876,6 +878,7 @@ class TestMapAttribute:
             mid_map_b = MiddleMapAttributeB()
 
         class MyModel(Model):
+            key = NumberAttribute(hash_key=True)
             outer_map = OuterMapAttribute(attr_name='dyn_out_map')
 
         mid_map_a_map_attr = MyModel.outer_map.mid_map_a.inner_map.map_attr
