@@ -8,7 +8,6 @@ import copy
 from datetime import datetime, timedelta
 from unittest import TestCase
 
-import six
 from botocore.client import ClientError
 import pytest
 from dateutil.tz import tzutc
@@ -49,10 +48,7 @@ from .data import (
     EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA, EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA,
     VERSIONED_TABLE_DATA)
 
-if six.PY3:
-    from unittest.mock import patch, MagicMock
-else:
-    from mock import patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
@@ -353,7 +349,7 @@ class CarModel(Model):
 class CarModelWithNull(Model):
     class Meta:
         table_name = 'CarModelWithNull'
-    car_id = NumberAttribute(null=False)
+    car_id = NumberAttribute(hash_key=True, null=False)
     car_color = UnicodeAttribute(null=True)
     car_info = CarInfoMap(null=True)
 
@@ -1676,7 +1672,7 @@ class ModelTestCase(TestCase):
                 },
                 'TableName': 'UserModel'
             }
-            self.assertEquals(params, req.call_args[0][1])
+            self.assertEqual(params, req.call_args[0][1])
 
     def test_get(self):
         """
@@ -2928,7 +2924,7 @@ class ModelTestCase(TestCase):
         instance = ExplicitRawMapModel()
         instance._deserialize({'map_attr': map_serialized})
         actual = instance.map_attr
-        for k, v in six.iteritems(map_native):
+        for k, v in map_native.items():
             self.assertEqual(v, actual[k])
 
     def test_raw_map_from_raw_data_works(self):
@@ -2946,7 +2942,7 @@ class ModelTestCase(TestCase):
             item = ExplicitRawMapModel.get(123)
             actual = item.map_attr
             self.assertEqual(map_native.get('listy')[2], actual['listy'][2])
-            for k, v in six.iteritems(map_native):
+            for k, v in map_native.items():
                 self.assertEqual(v, actual[k])
 
     def test_raw_map_as_sub_map_serialize_pass(self):
@@ -3010,7 +3006,7 @@ class ModelTestCase(TestCase):
             "map_field": map_serialized
         })
 
-        for k, v in six.iteritems(map_native):
+        for k, v in map_native.items():
             self.assertEqual(actual.map_field[k], v)
 
     def test_raw_map_as_sub_map_from_raw_data_works(self):

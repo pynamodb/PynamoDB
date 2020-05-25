@@ -1,21 +1,28 @@
+from typing import Tuple, TypeVar, Type, Any, List, Optional, Dict, Union, Text, Generic
+
+from pynamodb.connection import Connection
 from pynamodb.constants import ITEM, RESPONSES
-from pynamodb.models import _ModelFuture
+from pynamodb.expressions.condition import Condition
+from pynamodb.expressions.update import Action
+from pynamodb.models import Model, _ModelFuture, _KeyType
+
+_M = TypeVar('_M', bound=Model)
 
 
-class Transaction(object):
+class Transaction:
 
     """
     Base class for a type of transaction operation
     """
 
-    def __init__(self, connection, return_consumed_capacity=None):
+    def __init__(self, connection: Connection, return_consumed_capacity: Optional[str] = None) -> None:
         self._connection = connection
         self._return_consumed_capacity = return_consumed_capacity
 
     def _commit(self):
         raise NotImplementedError()
 
-    def __enter__(self):
+    def __enter__(self) -> 'Transaction':
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -23,16 +30,16 @@ class Transaction(object):
             self._commit()
 
 
-class TransactGet(Transaction):
+class TransactGet(Generic[_M], Transaction):
 
-    _results = None
+    _results: Optional[List] = None
 
     def __init__(self, *args, **kwargs):
-        self._get_items = []
-        self._futures = []
+        self._get_items: List[Dict] = []
+        self._futures: List[_ModelFuture] = []
         super(TransactGet, self).__init__(*args, **kwargs)
 
-    def get(self, model_cls, hash_key, range_key=None):
+    def get(self, model_cls: Type[_M], hash_key: _KeyType, range_key: Optional[_KeyType] = None) -> _ModelFuture[_M]:
         """
         Adds the operation arguments for an item to list of models to get
         returns a _ModelFuture object as a placeholder
@@ -48,33 +55,41 @@ class TransactGet(Transaction):
         self._get_items.append(operation_kwargs)
         return model_future
 
-    def _update_futures(self):
-        for model, data in zip(self._futures, self._results):
+    @staticmethod
+    def _update_futures(futures: List[_ModelFuture], results: List) -> None:
+        for model, data in zip(futures, results):
             model.update_with_raw_data(data.get(ITEM))
 
-    def _commit(self):
+    def _commit(self) -> Any:
         response = self._connection.transact_get_items(
             get_items=self._get_items,
             return_consumed_capacity=self._return_consumed_capacity
         )
-        self._results = response[RESPONSES]
-        self._update_futures()
+
+        results = response[RESPONSES]
+        self._results = results
+        self._update_futures(self._futures, results)
         return response
 
 
 class TransactWrite(Transaction):
 
-    def __init__(self, client_request_token=None, return_item_collection_metrics=None, **kwargs):
+    def __init__(
+        self,
+        client_request_token: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
         super(TransactWrite, self).__init__(**kwargs)
-        self._client_request_token = client_request_token
+        self._client_request_token: Optional[str] = client_request_token
         self._return_item_collection_metrics = return_item_collection_metrics
-        self._condition_check_items = []
-        self._delete_items = []
-        self._put_items = []
-        self._update_items = []
-        self._models_for_version_attribute_update = []
+        self._condition_check_items: List[Dict] = []
+        self._delete_items: List[Dict] = []
+        self._put_items: List[Dict] = []
+        self._update_items: List[Dict] = []
+        self._models_for_version_attribute_update: List[Any] = []
 
-    def condition_check(self, model_cls, hash_key, range_key=None, condition=None):
+    def condition_check(self, model_cls: Type[_M], hash_key: _KeyType, range_key: Optional[_KeyType] = None, condition: Optional[Condition] = None):
         if condition is None:
             raise TypeError('`condition` cannot be None')
         operation_kwargs = model_cls.get_operation_kwargs_from_class(
@@ -84,11 +99,11 @@ class TransactWrite(Transaction):
         )
         self._condition_check_items.append(operation_kwargs)
 
-    def delete(self, model, condition=None):
+    def delete(self, model: _M, condition: Optional[Condition] = None) -> None:
         operation_kwargs = model.get_operation_kwargs_from_instance(condition=condition)
         self._delete_items.append(operation_kwargs)
 
-    def save(self, model, condition=None, return_values=None):
+    def save(self, model: _M, condition: Optional[Condition] = None, return_values: Optional[str] = None) -> None:
         operation_kwargs = model.get_operation_kwargs_from_instance(
             key=ITEM,
             condition=condition,
@@ -97,7 +112,7 @@ class TransactWrite(Transaction):
         self._put_items.append(operation_kwargs)
         self._models_for_version_attribute_update.append(model)
 
-    def update(self, model, actions, condition=None, return_values=None):
+    def update(self, model: _M, actions: List[Action], condition: Optional[Condition] = None, return_values: Optional[str] = None) -> None:
         operation_kwargs = model.get_operation_kwargs_from_instance(
             actions=actions,
             condition=condition,
@@ -106,7 +121,7 @@ class TransactWrite(Transaction):
         self._update_items.append(operation_kwargs)
         self._models_for_version_attribute_update.append(model)
 
-    def _commit(self):
+    def _commit(self) -> Any:
         response = self._connection.transact_write_items(
             condition_check_items=self._condition_check_items,
             delete_items=self._delete_items,

@@ -1,5 +1,4 @@
 from pynamodb.constants import AND, BETWEEN, IN, OR
-from six.moves import range
 
 
 # match dynamo function syntax: size(path)

@@ -1,5 +1,4 @@
 import pytest
-import six
 from pynamodb.attributes import NumberAttribute, UnicodeAttribute, VersionAttribute
 
 from pynamodb.connection import Connection
@@ -7,10 +6,7 @@ from pynamodb.transactions import Transaction, TransactGet, TransactWrite
 from pynamodb.models import Model
 from tests.test_base_connection import PATCH_METHOD
 
-if six.PY3:
-    from unittest.mock import patch
-else:
-    from mock import patch
+from unittest.mock import patch
 
 
 class MockModel(Model):

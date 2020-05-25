@@ -1,8 +1,8 @@
 import sys
-from mock import patch
+from unittest.mock import patch
 
 import pytest
-from six.moves import reload_module
+from importlib import reload
 
 import pynamodb.settings
 
@@ -17,6 +17,6 @@ def test_override_old_attributes(settings_str, tmpdir):
 
     with patch.dict('os.environ', {'PYNAMODB_CONFIG': str(custom_settings)}):
         with pytest.warns(UserWarning) as warns:
-            reload_module(pynamodb.settings)
+            reload(pynamodb.settings)
     assert len(warns) == 1
     assert 'options are no longer supported' in str(warns[0].message)

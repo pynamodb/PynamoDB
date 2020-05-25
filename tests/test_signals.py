@@ -1,4 +1,4 @@
-import mock
+import unittest.mock
 import pytest
 
 from pynamodb.connection import Connection
@@ -13,8 +13,8 @@ except ImportError:
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
 
-@mock.patch(PATCH_METHOD)
-@mock.patch('pynamodb.connection.base.uuid')
+@unittest.mock.patch(PATCH_METHOD)
+@unittest.mock.patch('pynamodb.connection.base.uuid')
 def test_signal(mock_uuid, mock_req):
     pre_recorded = []
     post_recorded = []
@@ -40,8 +40,8 @@ def test_signal(mock_uuid, mock_req):
         post_dynamodb_send.disconnect(record_post_dynamodb_send)
 
 
-@mock.patch(PATCH_METHOD)
-@mock.patch('pynamodb.connection.base.uuid')
+@unittest.mock.patch(PATCH_METHOD)
+@unittest.mock.patch('pynamodb.connection.base.uuid')
 def test_signal_exception_pre_signal(mock_uuid, mock_req):
     post_recorded = []
     UUID = '123-abc'
@@ -65,8 +65,8 @@ def test_signal_exception_pre_signal(mock_uuid, mock_req):
         post_dynamodb_send.disconnect(record_post_dynamodb_send)
 
 
-@mock.patch(PATCH_METHOD)
-@mock.patch('pynamodb.connection.base.uuid')
+@unittest.mock.patch(PATCH_METHOD)
+@unittest.mock.patch('pynamodb.connection.base.uuid')
 def test_signal_exception_post_signal(mock_uuid, mock_req):
     pre_recorded = []
     UUID = '123-abc'

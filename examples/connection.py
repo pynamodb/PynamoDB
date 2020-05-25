@@ -1,7 +1,6 @@
 """
 Examples using a connection
 """
-from __future__ import print_function
 from pynamodb.connection import Connection
 
 # Get a connection

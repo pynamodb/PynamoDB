@@ -1,5 +1,5 @@
-mock
 pytest
+pytest-env
 pytest-mock
 
 # Due to https://github.com/boto/botocore/issues/1872. Remove after botocore fixes.
