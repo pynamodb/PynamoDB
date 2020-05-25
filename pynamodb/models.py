@@ -201,15 +201,10 @@ class MetaModel(AttributeContainerMeta):
     """
     def __init__(self, name: str, bases: Any, attrs: Dict[str, Any]) -> None:
         super().__init__(name, bases, attrs)
-        if bases == (AttributeContainer,):
-            return  # we only need to initialize derived types
         cls = cast(Type['Model'], self)
-        hash_keyname: Optional[str] = None
-        cls._range_keyname = None
-        cls._version_attribute_name = None
         for attr_name, attribute in cls.get_attributes().items():
             if attribute.is_hash_key:
-                hash_keyname = attr_name
+                cls._hash_keyname = attr_name
             if attribute.is_range_key:
                 cls._range_keyname = attr_name
             if isinstance(attribute, VersionAttribute):
@@ -219,10 +214,6 @@ class MetaModel(AttributeContainerMeta):
                         .format(cls._version_attribute_name, attr_name)
                     )
                 cls._version_attribute_name = attr_name
-
-        if hash_keyname is None:
-            raise ValueError(f"The model does not have a hash key: {cls}")
-        cls._hash_keyname = hash_keyname
 
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
@@ -286,13 +277,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
     # These attributes are named to avoid colliding with user defined
     # DynamoDB attributes
-    _hash_keyname: str
-    _range_keyname: Optional[str]
+    _hash_keyname: Optional[str] = None
+    _range_keyname: Optional[str] = None
     _indexes: Optional[Dict[str, List[Any]]] = None
     _connection: Optional[TableConnection] = None
     _index_classes: Optional[Dict[str, Any]] = None
     DoesNotExist: Type[DoesNotExist] = DoesNotExist
-    _version_attribute_name: Optional[str]
+    _version_attribute_name: Optional[str] = None
 
     Meta: MetaModel
 
@@ -309,12 +300,12 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param attrs: A dictionary of attributes to set on this object.
         """
         if hash_key is not None:
+            if self._hash_keyname is None:
+                raise ValueError(f"This model has no hash key, but a hash key value was provided: {range_key}")
             attributes[self._hash_keyname] = hash_key
         if range_key is not None:
             if self._range_keyname is None:
-                raise ValueError(
-                    "This table has no range key, but a range key value was provided: {}".format(range_key)
-                )
+                raise ValueError(f"This model has no range key, but a range key value was provided: {range_key}")
             attributes[self._range_keyname] = range_key
         super(Model, self).__init__(_user_instantiated=_user_instantiated, **attributes)
 
@@ -1031,7 +1022,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         Returns the attribute class for the hash key
         """
-        return cls.get_attributes()[cls._hash_keyname]
+        return cls.get_attributes()[cls._hash_keyname] if cls._hash_keyname else None
 
     @classmethod
     def _range_key_attribute(cls):
