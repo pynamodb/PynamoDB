@@ -19,7 +19,6 @@ from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 
-from pynamodb.connection.util import pythonic
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES,
@@ -56,6 +55,7 @@ from pynamodb.expressions.update import Action, Update
 from pynamodb.settings import get_settings_value
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
+from pynamodb.util import snake_to_camel_case
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 RATE_LIMITING_ERROR_CODES = ['ProvisionedThroughputExceededException', 'ThrottlingException']
@@ -580,8 +580,8 @@ class Connection(object):
             raise ValueError("attribute_definitions argument is required")
         for attr in attribute_definitions:
             attrs_list.append({
-                ATTR_NAME: attr.get(pythonic(ATTR_NAME)),
-                ATTR_TYPE: attr.get(pythonic(ATTR_TYPE))
+                ATTR_NAME: attr.get(snake_to_camel_case(ATTR_NAME)),
+                ATTR_TYPE: attr.get(snake_to_camel_case(ATTR_TYPE))
             })
         operation_kwargs[ATTR_DEFINITIONS] = attrs_list
 
@@ -596,10 +596,10 @@ class Connection(object):
             global_secondary_indexes_list = []
             for index in global_secondary_indexes:
                 index_kwargs = {
-                    INDEX_NAME: index.get(pythonic(INDEX_NAME)),
-                    KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
-                    PROJECTION: index.get(pythonic(PROJECTION)),
-                    PROVISIONED_THROUGHPUT: index.get(pythonic(PROVISIONED_THROUGHPUT))
+                    INDEX_NAME: index.get(snake_to_camel_case(INDEX_NAME)),
+                    KEY_SCHEMA: sorted(index.get(snake_to_camel_case(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
+                    PROJECTION: index.get(snake_to_camel_case(PROJECTION)),
+                    PROVISIONED_THROUGHPUT: index.get(snake_to_camel_case(PROVISIONED_THROUGHPUT))
                 }
                 if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
                     del index_kwargs[PROVISIONED_THROUGHPUT]
@@ -611,8 +611,8 @@ class Connection(object):
         key_schema_list = []
         for item in key_schema:
             key_schema_list.append({
-                ATTR_NAME: item.get(pythonic(ATTR_NAME)),
-                KEY_TYPE: str(item.get(pythonic(KEY_TYPE))).upper()
+                ATTR_NAME: item.get(snake_to_camel_case(ATTR_NAME)),
+                KEY_TYPE: str(item.get(snake_to_camel_case(KEY_TYPE))).upper()
             })
         operation_kwargs[KEY_SCHEMA] = sorted(key_schema_list, key=lambda x: x.get(KEY_TYPE))
 
@@ -620,16 +620,16 @@ class Connection(object):
         if local_secondary_indexes:
             for index in local_secondary_indexes:
                 local_secondary_indexes_list.append({
-                    INDEX_NAME: index.get(pythonic(INDEX_NAME)),
-                    KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
-                    PROJECTION: index.get(pythonic(PROJECTION)),
+                    INDEX_NAME: index.get(snake_to_camel_case(INDEX_NAME)),
+                    KEY_SCHEMA: sorted(index.get(snake_to_camel_case(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
+                    PROJECTION: index.get(snake_to_camel_case(PROJECTION)),
                 })
             operation_kwargs[LOCAL_SECONDARY_INDEXES] = local_secondary_indexes_list
 
         if stream_specification:
             operation_kwargs[STREAM_SPECIFICATION] = {
-                STREAM_ENABLED: stream_specification[pythonic(STREAM_ENABLED)],
-                STREAM_VIEW_TYPE: stream_specification[pythonic(STREAM_VIEW_TYPE)]
+                STREAM_ENABLED: stream_specification[snake_to_camel_case(STREAM_ENABLED)],
+                STREAM_VIEW_TYPE: stream_specification[snake_to_camel_case(STREAM_VIEW_TYPE)]
             }
 
         try:
@@ -692,10 +692,10 @@ class Connection(object):
             for index in global_secondary_index_updates:
                 global_secondary_indexes_list.append({
                     UPDATE: {
-                        INDEX_NAME: index.get(pythonic(INDEX_NAME)),
+                        INDEX_NAME: index.get(snake_to_camel_case(INDEX_NAME)),
                         PROVISIONED_THROUGHPUT: {
-                            READ_CAPACITY_UNITS: index.get(pythonic(READ_CAPACITY_UNITS)),
-                            WRITE_CAPACITY_UNITS: index.get(pythonic(WRITE_CAPACITY_UNITS))
+                            READ_CAPACITY_UNITS: index.get(snake_to_camel_case(READ_CAPACITY_UNITS)),
+                            WRITE_CAPACITY_UNITS: index.get(snake_to_camel_case(WRITE_CAPACITY_UNITS))
                         }
                     }
                 })

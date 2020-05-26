@@ -16,7 +16,6 @@ from pynamodb.attributes import (
     Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
 )
 from pynamodb.connection.table import TableConnection
-from pynamodb.connection.util import pythonic
 from pynamodb.expressions.condition import Condition
 from pynamodb.types import HASH, RANGE
 from pynamodb.indexes import Index, GlobalSecondaryIndex
@@ -36,6 +35,7 @@ from pynamodb.constants import (
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
     STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE
 )
+from pynamodb.util import snake_to_camel_case
 
 _T = TypeVar('_T', bound='Model')
 _KeyType = Any
@@ -119,7 +119,7 @@ class BatchWrite(ModelContextManager, Generic[_T]):
         log.debug("%s committing batch operation", self.model)
         put_items = []
         delete_items = []
-        attrs_name = pythonic(ATTRIBUTES)
+        attrs_name = snake_to_camel_case(ATTRIBUTES)
         for item in self.pending_operations:
             if item['action'] == PUT:
                 put_items.append(item['item']._serialize(attr_map=True)[attrs_name])
@@ -419,11 +419,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if version_condition is not None:
             condition &= version_condition
         kwargs: Dict[str, Any] = {
-            pythonic(RETURN_VALUES):  ALL_NEW,
+            snake_to_camel_case(RETURN_VALUES):  ALL_NEW,
         }
 
-        if pythonic(RANGE_KEY) in save_kwargs:
-            kwargs[pythonic(RANGE_KEY)] = save_kwargs[pythonic(RANGE_KEY)]
+        if snake_to_camel_case(RANGE_KEY) in save_kwargs:
+            kwargs[snake_to_camel_case(RANGE_KEY)] = save_kwargs[snake_to_camel_case(RANGE_KEY)]
 
         kwargs.update(condition=condition)
         kwargs.update(actions=actions)
@@ -486,8 +486,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         )
         if not is_update:
             kwargs.update(save_kwargs)
-        elif pythonic(RANGE_KEY) in save_kwargs:
-            kwargs[pythonic(RANGE_KEY)] = save_kwargs[pythonic(RANGE_KEY)]
+        elif snake_to_camel_case(RANGE_KEY) in save_kwargs:
+            kwargs[snake_to_camel_case(RANGE_KEY)] = save_kwargs[snake_to_camel_case(RANGE_KEY)]
         return self._get_connection().get_operation_kwargs(*args, **kwargs)
 
     @classmethod
@@ -766,32 +766,32 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         if not cls.exists():
             schema = cls._get_schema()
-            if hasattr(cls.Meta, pythonic(READ_CAPACITY_UNITS)):
-                schema[pythonic(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
-            if hasattr(cls.Meta, pythonic(WRITE_CAPACITY_UNITS)):
-                schema[pythonic(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
-            if hasattr(cls.Meta, pythonic(STREAM_VIEW_TYPE)):
-                schema[pythonic(STREAM_SPECIFICATION)] = {
-                    pythonic(STREAM_ENABLED): True,
-                    pythonic(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
+            if hasattr(cls.Meta, snake_to_camel_case(READ_CAPACITY_UNITS)):
+                schema[snake_to_camel_case(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
+            if hasattr(cls.Meta, snake_to_camel_case(WRITE_CAPACITY_UNITS)):
+                schema[snake_to_camel_case(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
+            if hasattr(cls.Meta, snake_to_camel_case(STREAM_VIEW_TYPE)):
+                schema[snake_to_camel_case(STREAM_SPECIFICATION)] = {
+                    snake_to_camel_case(STREAM_ENABLED): True,
+                    snake_to_camel_case(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
                 }
-            if hasattr(cls.Meta, pythonic(BILLING_MODE)):
-                schema[pythonic(BILLING_MODE)] = cls.Meta.billing_mode
+            if hasattr(cls.Meta, snake_to_camel_case(BILLING_MODE)):
+                schema[snake_to_camel_case(BILLING_MODE)] = cls.Meta.billing_mode
             if read_capacity_units is not None:
-                schema[pythonic(READ_CAPACITY_UNITS)] = read_capacity_units
+                schema[snake_to_camel_case(READ_CAPACITY_UNITS)] = read_capacity_units
             if write_capacity_units is not None:
-                schema[pythonic(WRITE_CAPACITY_UNITS)] = write_capacity_units
+                schema[snake_to_camel_case(WRITE_CAPACITY_UNITS)] = write_capacity_units
             if billing_mode is not None:
-                schema[pythonic(BILLING_MODE)] = billing_mode
+                schema[snake_to_camel_case(BILLING_MODE)] = billing_mode
             index_data = cls._get_indexes()
-            schema[pythonic(GLOBAL_SECONDARY_INDEXES)] = index_data.get(pythonic(GLOBAL_SECONDARY_INDEXES))
-            schema[pythonic(LOCAL_SECONDARY_INDEXES)] = index_data.get(pythonic(LOCAL_SECONDARY_INDEXES))
-            index_attrs = index_data.get(pythonic(ATTR_DEFINITIONS))
-            attr_keys = [attr.get(pythonic(ATTR_NAME)) for attr in schema.get(pythonic(ATTR_DEFINITIONS))]
+            schema[snake_to_camel_case(GLOBAL_SECONDARY_INDEXES)] = index_data.get(snake_to_camel_case(GLOBAL_SECONDARY_INDEXES))
+            schema[snake_to_camel_case(LOCAL_SECONDARY_INDEXES)] = index_data.get(snake_to_camel_case(LOCAL_SECONDARY_INDEXES))
+            index_attrs = index_data.get(snake_to_camel_case(ATTR_DEFINITIONS))
+            attr_keys = [attr.get(snake_to_camel_case(ATTR_NAME)) for attr in schema.get(snake_to_camel_case(ATTR_DEFINITIONS))]
             for attr in index_attrs:
-                attr_name = attr.get(pythonic(ATTR_NAME))
+                attr_name = attr.get(snake_to_camel_case(ATTR_NAME))
                 if attr_name not in attr_keys:
-                    schema[pythonic(ATTR_DEFINITIONS)].append(attr)
+                    schema[snake_to_camel_case(ATTR_DEFINITIONS)].append(attr)
                     attr_keys.append(attr_name)
             cls._get_connection().create_table(
                 **schema
@@ -864,7 +864,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         hash_key, attrs = data
         range_key = attrs.pop('range_key', None)
-        attributes = attrs.pop(pythonic(ATTRIBUTES))
+        attributes = attrs.pop(snake_to_camel_case(ATTRIBUTES))
         hash_key_attribute = cls._hash_key_attribute()
         hash_keyname = hash_key_attribute.attr_name
         hash_keytype = ATTR_TYPE_MAP[hash_key_attribute.attr_type]
@@ -888,24 +888,24 @@ class Model(AttributeContainer, metaclass=MetaModel):
         Returns the schema for this table
         """
         schema: Dict[str, List] = {
-            pythonic(ATTR_DEFINITIONS): [],
-            pythonic(KEY_SCHEMA): []
+            snake_to_camel_case(ATTR_DEFINITIONS): [],
+            snake_to_camel_case(KEY_SCHEMA): []
         }
         for attr_name, attr_cls in cls.get_attributes().items():
             if attr_cls.is_hash_key or attr_cls.is_range_key:
-                schema[pythonic(ATTR_DEFINITIONS)].append({
-                    pythonic(ATTR_NAME): attr_cls.attr_name,
-                    pythonic(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
+                schema[snake_to_camel_case(ATTR_DEFINITIONS)].append({
+                    snake_to_camel_case(ATTR_NAME): attr_cls.attr_name,
+                    snake_to_camel_case(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
                 })
             if attr_cls.is_hash_key:
-                schema[pythonic(KEY_SCHEMA)].append({
-                    pythonic(KEY_TYPE): HASH,
-                    pythonic(ATTR_NAME): attr_cls.attr_name
+                schema[snake_to_camel_case(KEY_SCHEMA)].append({
+                    snake_to_camel_case(KEY_TYPE): HASH,
+                    snake_to_camel_case(ATTR_NAME): attr_cls.attr_name
                 })
             elif attr_cls.is_range_key:
-                schema[pythonic(KEY_SCHEMA)].append({
-                    pythonic(KEY_TYPE): RANGE,
-                    pythonic(ATTR_NAME): attr_cls.attr_name
+                schema[snake_to_camel_case(KEY_SCHEMA)].append({
+                    snake_to_camel_case(KEY_TYPE): RANGE,
+                    snake_to_camel_case(ATTR_NAME): attr_cls.attr_name
                 })
         return schema
 
@@ -916,35 +916,35 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         if cls._indexes is None:
             cls._indexes = {
-                pythonic(GLOBAL_SECONDARY_INDEXES): [],
-                pythonic(LOCAL_SECONDARY_INDEXES): [],
-                pythonic(ATTR_DEFINITIONS): []
+                snake_to_camel_case(GLOBAL_SECONDARY_INDEXES): [],
+                snake_to_camel_case(LOCAL_SECONDARY_INDEXES): [],
+                snake_to_camel_case(ATTR_DEFINITIONS): []
             }
             cls._index_classes = {}
             for name, index in getmembers(cls, lambda o: isinstance(o, Index)):
                 cls._index_classes[index.Meta.index_name] = index
                 schema = index._get_schema()
                 idx = {
-                    pythonic(INDEX_NAME): index.Meta.index_name,
-                    pythonic(KEY_SCHEMA): schema.get(pythonic(KEY_SCHEMA)),
-                    pythonic(PROJECTION): {
+                    snake_to_camel_case(INDEX_NAME): index.Meta.index_name,
+                    snake_to_camel_case(KEY_SCHEMA): schema.get(snake_to_camel_case(KEY_SCHEMA)),
+                    snake_to_camel_case(PROJECTION): {
                         PROJECTION_TYPE: index.Meta.projection.projection_type,
                     },
 
                 }
                 if isinstance(index, GlobalSecondaryIndex):
                     if getattr(cls.Meta, 'billing_mode', None) != PAY_PER_REQUEST_BILLING_MODE:
-                        idx[pythonic(PROVISIONED_THROUGHPUT)] = {
+                        idx[snake_to_camel_case(PROVISIONED_THROUGHPUT)] = {
                             READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
                             WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
                         }
-                cls._indexes[pythonic(ATTR_DEFINITIONS)].extend(schema.get(pythonic(ATTR_DEFINITIONS)))
+                cls._indexes[snake_to_camel_case(ATTR_DEFINITIONS)].extend(schema.get(snake_to_camel_case(ATTR_DEFINITIONS)))
                 if index.Meta.projection.non_key_attributes:
-                    idx[pythonic(PROJECTION)][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
+                    idx[snake_to_camel_case(PROJECTION)][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
                 if isinstance(index, GlobalSecondaryIndex):
-                    cls._indexes[pythonic(GLOBAL_SECONDARY_INDEXES)].append(idx)
+                    cls._indexes[snake_to_camel_case(GLOBAL_SECONDARY_INDEXES)].append(idx)
                 else:
-                    cls._indexes[pythonic(LOCAL_SECONDARY_INDEXES)].append(idx)
+                    cls._indexes[snake_to_camel_case(LOCAL_SECONDARY_INDEXES)].append(idx)
         return cls._indexes
 
     def _get_json(self):
@@ -956,8 +956,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         hash_key = serialized.get(HASH)
         range_key = serialized.get(RANGE, None)
         if range_key is not None:
-            kwargs[pythonic(RANGE_KEY)] = range_key
-        kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
+            kwargs[snake_to_camel_case(RANGE_KEY)] = range_key
+        kwargs[snake_to_camel_case(ATTRIBUTES)] = serialized[snake_to_camel_case(ATTRIBUTES)]
         return hash_key, kwargs
 
     def _get_save_args(self, attributes=True, null_check=True):
@@ -975,9 +975,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         range_key = serialized.get(RANGE, None)
         args = (hash_key, )
         if range_key is not None:
-            kwargs[pythonic(RANGE_KEY)] = range_key
+            kwargs[snake_to_camel_case(RANGE_KEY)] = range_key
         if attributes:
-            kwargs[pythonic(ATTRIBUTES)] = serialized[pythonic(ATTRIBUTES)]
+            kwargs[snake_to_camel_case(ATTRIBUTES)] = serialized[snake_to_camel_case(ATTRIBUTES)]
         return args, kwargs
 
     def _handle_version_attribute(self, serialized_attributes, actions=None):
@@ -997,16 +997,16 @@ class Model(AttributeContainer, metaclass=MetaModel):
             version_condition = version_attribute == version_attribute_value
             if actions:
                 actions.append(version_attribute.add(1))
-            elif pythonic(ATTRIBUTES) in serialized_attributes:
-                serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+            elif snake_to_camel_case(ATTRIBUTES) in serialized_attributes:
+                serialized_attributes[snake_to_camel_case(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
                     version_attribute, version_attribute_value + 1, null_check=True
                 )
         else:
             version_condition = version_attribute.does_not_exist()
             if actions:
                 actions.append(version_attribute.set(1))
-            elif pythonic(ATTRIBUTES) in serialized_attributes:
-                serialized_attributes[pythonic(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+            elif snake_to_camel_case(ATTRIBUTES) in serialized_attributes:
+                serialized_attributes[snake_to_camel_case(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
                     version_attribute, 1, null_check=True
                 )
 
@@ -1132,7 +1132,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param attr_map: If True, then attributes are returned
         :param null_check: If True, then attributes are checked for null
         """
-        attributes = pythonic(ATTRIBUTES)
+        attributes = snake_to_camel_case(ATTRIBUTES)
         attrs: Dict[str, Dict] = {attributes: {}}
         for name, attr in self.get_attributes().items():
             value = getattr(self, name)

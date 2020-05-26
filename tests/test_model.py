@@ -13,7 +13,7 @@ import pytest
 from dateutil.tz import tzutc
 
 from .deep_eq import deep_eq
-from pynamodb.connection.util import pythonic
+from pynamodb.util import snake_to_camel_case
 from pynamodb.exceptions import DoesNotExist, TableError, PutError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
@@ -2442,9 +2442,9 @@ class ModelTestCase(TestCase):
             serialized_items = json.loads(content)
             for original, new_item in zip(items, serialized_items):
                 self.assertEqual(new_item[0], original['user_name'][STRING_SHORT])
-                self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['zip_code']['N'], original['zip_code']['N'])
-                self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['email']['S'], original['email']['S'])
-                self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['picture']['B'], original['picture']['B'])
+                self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['zip_code']['N'], original['zip_code']['N'])
+                self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['email']['S'], original['email']['S'])
+                self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['picture']['B'], original['picture']['B'])
 
     def test_loads(self):
         """
@@ -2691,7 +2691,7 @@ class ModelTestCase(TestCase):
             self.assertIsNone(item.person.age)
             self.assertIsNone(item.person.is_male)
 
-    def test_model_with_maps_with_pythonic_attributes(self):
+    def test_model_with_maps_with_snake_to_camel_case_attributes(self):
         fake_db = self.database_mocker(
             OfficeEmployee,
             OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
