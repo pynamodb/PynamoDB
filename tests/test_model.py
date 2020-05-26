@@ -3100,6 +3100,57 @@ class ModelTestCase(TestCase):
 
             deep_eq(args, params, _assert=True)
 
+    def test_model_version_attribute_save_no_auto_version_condition(self):
+        self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
+        old_auto_version_condition = VersionedModel.Meta.auto_version_condition
+        VersionedModel.Meta.auto_version_condition = False
+        item = VersionedModel('test_user_name', email='test_user@email.com')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item.save()
+            args = req.call_args[0][1]
+            params = {
+                'Item': {
+                    'name': {
+                        'S': 'test_user_name'
+                    },
+                    'email': {
+                        'S': 'test_user@email.com'
+                    },
+                    'version': {
+                        'N': '1'
+                    },
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'VersionedModel'
+            }
+
+            deep_eq(args, params, _assert=True)
+            item.version = 1
+            item.name = "test_new_username"
+            item.save()
+            args = req.call_args[0][1]
+
+            params = {
+                'Item': {
+                    'name': {
+                        'S': 'test_new_username'
+                    },
+                    'email': {
+                        'S': 'test_user@email.com'
+                    },
+                    'version': {
+                        'N': '2'
+                    },
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'VersionedModel'
+            }
+
+            deep_eq(args, params, _assert=True)
+        VersionedModel.Meta.auto_version_condition = old_auto_version_condition
+
     def test_version_attribute_increments_on_update(self):
         self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
         item = VersionedModel('test_user_name', email='test_user@email.com')
@@ -3142,7 +3193,7 @@ class ModelTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL',
                 'ReturnValues': 'ALL_NEW',
                 'TableName': 'VersionedModel',
-                'UpdateExpression': 'SET #1 = :0, #0 = :1'
+                'UpdateExpression': 'SET #1 = :0 ADD #0 :1'
             }
 
             deep_eq(args, params, _assert=True)

@@ -16,6 +16,7 @@ default_settings_dict = {
     'region': 'us-east-1',
     'max_pool_connections': 10,
     'extra_headers': None,
+    'auto_version_condition': True
 }
 
 OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default_settings.py')
