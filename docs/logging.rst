@@ -8,7 +8,6 @@ Here is an example showing how to enable logging for PynamoDB:
 
 .. code-block:: python
 
-    from __future__ import print_function
     import logging
     from pynamodb.models import Model
     from pynamodb.attributes import (

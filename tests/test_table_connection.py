@@ -1,19 +1,15 @@
 """
 Test suite for the table class
 """
-import six
 from unittest import TestCase
 
 from pynamodb.connection import TableConnection
-from pynamodb.constants import DEFAULT_REGION, PROVISIONED_BILLING_MODE
+from pynamodb.constants import DEFAULT_REGION
 from pynamodb.expressions.operand import Path
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
 from .response import HttpOK
 
-if six.PY3:
-    from unittest.mock import patch
-else:
-    from mock import patch
+from unittest.mock import patch
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 

@@ -1,21 +1,9 @@
 language: python
 
 python:
+  - "3.7"
   - "3.6"
-  - "3.5"
-  - "2.7"
-  - "pypy"
-
-
-# See https://github.com/travis-ci/travis-ci/issues/9815
-matrix:
-  include:
-    - python: "3.7"
-      dist: xenial
-      sudo: true
-
-env:
-  - AWS_SECRET_ACCESS_KEY=fake_key AWS_ACCESS_KEY_ID=fake_id
+  - "pypy3"
 
 install:
   - pip install -e .[signals] -r requirements-dev.txt

@@ -3,7 +3,6 @@ An example using Amazon's Thread example for motivation
 
 http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleTablesAndData.html
 """
-from __future__ import print_function
 import logging
 from pynamodb.models import Model
 from pynamodb.attributes import (

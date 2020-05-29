@@ -8,13 +8,12 @@ import copy
 from datetime import datetime, timedelta
 from unittest import TestCase
 
-import six
 from botocore.client import ClientError
 import pytest
 from dateutil.tz import tzutc
 
 from .deep_eq import deep_eq
-from pynamodb.connection.util import pythonic
+from pynamodb.util import snake_to_camel_case
 from pynamodb.exceptions import DoesNotExist, TableError, PutError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
@@ -49,10 +48,7 @@ from .data import (
     EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA, EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA,
     VERSIONED_TABLE_DATA)
 
-if six.PY3:
-    from unittest.mock import patch, MagicMock
-else:
-    from mock import patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
@@ -353,7 +349,7 @@ class CarModel(Model):
 class CarModelWithNull(Model):
     class Meta:
         table_name = 'CarModelWithNull'
-    car_id = NumberAttribute(null=False)
+    car_id = NumberAttribute(hash_key=True, null=False)
     car_color = UnicodeAttribute(null=True)
     car_info = CarInfoMap(null=True)
 
@@ -1676,7 +1672,7 @@ class ModelTestCase(TestCase):
                 },
                 'TableName': 'UserModel'
             }
-            self.assertEquals(params, req.call_args[0][1])
+            self.assertEqual(params, req.call_args[0][1])
 
     def test_get(self):
         """
@@ -2446,9 +2442,9 @@ class ModelTestCase(TestCase):
             serialized_items = json.loads(content)
             for original, new_item in zip(items, serialized_items):
                 self.assertEqual(new_item[0], original['user_name'][STRING_SHORT])
-                self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['zip_code']['N'], original['zip_code']['N'])
-                self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['email']['S'], original['email']['S'])
-                self.assertEqual(new_item[1][pythonic(ATTRIBUTES)]['picture']['B'], original['picture']['B'])
+                self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['zip_code']['N'], original['zip_code']['N'])
+                self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['email']['S'], original['email']['S'])
+                self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['picture']['B'], original['picture']['B'])
 
     def test_loads(self):
         """
@@ -2695,7 +2691,7 @@ class ModelTestCase(TestCase):
             self.assertIsNone(item.person.age)
             self.assertIsNone(item.person.is_male)
 
-    def test_model_with_maps_with_pythonic_attributes(self):
+    def test_model_with_maps_with_snake_to_camel_case_attributes(self):
         fake_db = self.database_mocker(
             OfficeEmployee,
             OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
@@ -2928,7 +2924,7 @@ class ModelTestCase(TestCase):
         instance = ExplicitRawMapModel()
         instance._deserialize({'map_attr': map_serialized})
         actual = instance.map_attr
-        for k, v in six.iteritems(map_native):
+        for k, v in map_native.items():
             self.assertEqual(v, actual[k])
 
     def test_raw_map_from_raw_data_works(self):
@@ -2946,7 +2942,7 @@ class ModelTestCase(TestCase):
             item = ExplicitRawMapModel.get(123)
             actual = item.map_attr
             self.assertEqual(map_native.get('listy')[2], actual['listy'][2])
-            for k, v in six.iteritems(map_native):
+            for k, v in map_native.items():
                 self.assertEqual(v, actual[k])
 
     def test_raw_map_as_sub_map_serialize_pass(self):
@@ -3010,7 +3006,7 @@ class ModelTestCase(TestCase):
             "map_field": map_serialized
         })
 
-        for k, v in six.iteritems(map_native):
+        for k, v in map_native.items():
             self.assertEqual(actual.map_field[k], v)
 
     def test_raw_map_as_sub_map_from_raw_data_works(self):

@@ -34,7 +34,7 @@ From GitHub::
     $ pip install git+https://github.com/pynamodb/PynamoDB#egg=pynamodb
 
 From conda-forge::
-    
+
     $ conda install -c conda-forge pynamodb
 
 Upgrading
@@ -228,7 +228,7 @@ Want to backup and restore a table? No problem.
 Features
 ========
 
-* Python >= 3.3, and 2.7 support
+* Python >= 3.5 support
 * An ORM-like interface with query and scan filters
 * Compatible with DynamoDB Local
 * Supports the entire DynamoDB API
@@ -240,4 +240,3 @@ Features
 * Complex queries
 * Batch operations with automatic pagination
 * Iterators for working with Query and Scan operations
-

@@ -1,14 +1,19 @@
 import re
-from six import string_types
+from typing import Dict, List, Union
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pynamodb.expressions.operands import Path
+
 
 PATH_SEGMENT_REGEX = re.compile(r'([^\[\]]+)((?:\[\d+\])*)$')
 
 
-def get_path_segments(document_path):
-    return document_path.split('.') if isinstance(document_path, string_types) else list(document_path)
+def get_path_segments(document_path: Union[str, 'Path', List[str]]) -> Union[List[str], List['Path']]:
+    return document_path.split('.') if isinstance(document_path, str) else list(document_path)
 
 
-def substitute_names(document_path, placeholders):
+def substitute_names(document_path: Union[str, 'Path'], placeholders: Dict[str, str]) -> str:
     """
     Replaces all attribute names in the given document path with placeholders.
     Stores the placeholders in the given dictionary.
@@ -35,7 +40,7 @@ def substitute_names(document_path, placeholders):
     return '.'.join(path_segments)
 
 
-def get_value_placeholder(value, expression_attribute_values):
+def get_value_placeholder(value: 'Path', expression_attribute_values: Dict[str, str]) -> str:
     placeholder = ':' + str(len(expression_attribute_values))
     expression_attribute_values[placeholder] = value
     return placeholder

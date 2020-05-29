@@ -2,6 +2,8 @@
 PynamoDB exceptions
 """
 
+from typing import Any, Optional
+
 import botocore.exceptions
 
 
@@ -9,17 +11,17 @@ class PynamoDBException(Exception):
     """
     A common exception class
     """
-    def __init__(self, msg=None, cause=None):
-        self.msg = msg or self.msg
+    def __init__(self, msg: Optional[str] = None, cause: Optional[Exception] = None) -> None:
+        self.msg = msg
         self.cause = cause
         super(PynamoDBException, self).__init__(self.msg)
 
     @property
-    def cause_response_code(self):
+    def cause_response_code(self) -> Optional[str]:
         return getattr(self.cause, 'response', {}).get('Error', {}).get('Code')
 
     @property
-    def cause_response_message(self):
+    def cause_response_message(self) -> Optional[str]:
         return getattr(self.cause, 'response', {}).get('Error', {}).get('Message')
 
 
@@ -90,7 +92,7 @@ class TableDoesNotExist(PynamoDBException):
     """
     Raised when an operation is attempted on a table that doesn't exist
     """
-    def __init__(self, table_name):
+    def __init__(self, table_name: str) -> None:
         msg = "Table does not exist: `{}`".format(table_name)
         super(TableDoesNotExist, self).__init__(msg)
 
@@ -117,7 +119,7 @@ class InvalidStateError(PynamoDBException):
 
 
 class VerboseClientError(botocore.exceptions.ClientError):
-    def __init__(self, error_response, operation_name, verbose_properties=None):
+    def __init__(self, error_response: Any, operation_name: str, verbose_properties: Optional[Any] = None):
         """ Modify the message template to include the desired verbose properties """
         if not verbose_properties:
             verbose_properties = {}
@@ -129,4 +131,3 @@ class VerboseClientError(botocore.exceptions.ClientError):
         ).format(request_id=verbose_properties.get('request_id'), table_name=verbose_properties.get('table_name'))
 
         super(VerboseClientError, self).__init__(error_response, operation_name)
-

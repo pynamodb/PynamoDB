@@ -1,8 +1,6 @@
 """
 Lowest level connection
 """
-from __future__ import division
-
 import json
 import logging
 import random
@@ -11,18 +9,16 @@ import time
 import uuid
 from base64 import b64decode
 from threading import local
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
-import six
 import botocore.client
 import botocore.exceptions
-from botocore.awsrequest import create_request_object
+from botocore.awsrequest import AWSPreparedRequest, create_request_object
 from botocore.client import ClientError
 from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
-from six.moves import range
 
-from pynamodb.connection.util import pythonic
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES,
@@ -56,11 +52,12 @@ from amazondax.DaxError import DaxClientError
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
-from pynamodb.expressions.update import Update
+from pynamodb.expressions.update import Action, Update
 from pynamodb.settings import get_settings_value
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
 from pynamodb.connection.dax import OP_READ, OP_WRITE, DaxClient
+from pynamodb.util import snake_to_camel_case
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 RATE_LIMITING_ERROR_CODES = ['ProvisionedThroughputExceededException', 'ThrottlingException']
@@ -74,36 +71,39 @@ class MetaTable(object):
     A pythonic wrapper around table metadata
     """
 
-    def __init__(self, data):
-        self.data = data or {}
+    def __init__(self, data: Dict) -> None:
+        self.data: Dict = data or {}
         self._range_keyname = None
         self._hash_keyname = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.data:
-            return six.u("MetaTable<{}>".format(self.data.get(TABLE_NAME)))
+            return "MetaTable<{}>".format(self.data.get(TABLE_NAME))
+        return ""
 
     @property
-    def range_keyname(self):
+    def range_keyname(self) -> Optional[str]:
         """
         Returns the name of this table's range key
         """
         if self._range_keyname is None:
-            for attr in self.data.get(KEY_SCHEMA):
+            for attr in self.data.get(KEY_SCHEMA, []):
                 if attr.get(KEY_TYPE) == RANGE:
                     self._range_keyname = attr.get(ATTR_NAME)
         return self._range_keyname
 
     @property
-    def hash_keyname(self):
+    def hash_keyname(self) -> str:
         """
         Returns the name of this table's hash key
         """
         if self._hash_keyname is None:
-            for attr in self.data.get(KEY_SCHEMA):
+            for attr in self.data.get(KEY_SCHEMA, []):
                 if attr.get(KEY_TYPE) == HASH:
                     self._hash_keyname = attr.get(ATTR_NAME)
                     break
+            if self._hash_keyname is None:
+                raise ValueError("No hash_key found in key schema")
         return self._hash_keyname
 
     def get_key_names(self, index_name=None):
@@ -131,7 +131,7 @@ class MetaTable(object):
         indexes = (global_indexes or []) + (local_indexes or [])
         return any(index.get(INDEX_NAME) == index_name for index in indexes)
 
-    def get_index_hash_keyname(self, index_name):
+    def get_index_hash_keyname(self, index_name: str) -> str:
         """
         Returns the name of the hash key for a given index
         """
@@ -147,6 +147,7 @@ class MetaTable(object):
                 for schema_key in index.get(KEY_SCHEMA):
                     if schema_key.get(KEY_TYPE) == HASH:
                         return schema_key.get(ATTR_NAME)
+        raise ValueError("No hash key attribute for index: {}".format(index_name))
 
     def get_index_range_keyname(self, index_name):
         """
@@ -166,13 +167,13 @@ class MetaTable(object):
                         return schema_key.get(ATTR_NAME)
         return None
 
-    def get_item_attribute_map(self, attributes, item_key=ITEM, pythonic_key=True):
+    def get_item_attribute_map(self, attributes: Dict, item_key=ITEM, pythonic_key: bool = True):
         """
         Builds up a dynamodb compatible AttributeValue map
         """
         if pythonic_key:
             item_key = item_key
-        attr_map = {
+        attr_map: Dict[str, Dict] = {
             item_key: {}
         }
         for key, value in attributes.items():
@@ -186,32 +187,32 @@ class MetaTable(object):
                 }
         return attr_map
 
-    def get_attribute_type(self, attribute_name, value=None):
+    def get_attribute_type(self, attribute_name: str, value: Optional[Any] = None) -> str:
         """
         Returns the proper attribute type for a given attribute name
         """
-        for attr in self.data.get(ATTR_DEFINITIONS):
+        for attr in self.data.get(ATTR_DEFINITIONS, []):
             if attr.get(ATTR_NAME) == attribute_name:
                 return attr.get(ATTR_TYPE)
         if value is not None and isinstance(value, dict):
             for key in SHORT_ATTR_TYPES:
                 if key in value:
                     return key
-        attr_names = [attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS)]
+        attr_names = [attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS, [])]
         raise ValueError("No attribute {} in {}".format(attribute_name, attr_names))
 
-    def get_identifier_map(self, hash_key, range_key=None, key=KEY):
+    def get_identifier_map(self, hash_key: str, range_key: Optional[str] = None, key: str = KEY):
         """
         Builds the identifier map that is common to several operations
         """
-        kwargs = {
+        kwargs: Dict[str, Any] = {
             key: {
                 self.hash_keyname: {
                     self.get_attribute_type(self.hash_keyname): hash_key
                 }
             }
         }
-        if range_key is not None:
+        if range_key is not None and self.range_keyname is not None:
             kwargs[key][self.range_keyname] = {
                 self.get_attribute_type(self.range_keyname): range_key
             }
@@ -242,12 +243,20 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(self, region=None, host=None,
-                 read_timeout_seconds=None, connect_timeout_seconds=None,
-                 max_retry_attempts=None, base_backoff_ms=None,
-                 max_pool_connections=None, extra_headers=None,
-                 dax_write_endpoints=None, dax_read_endpoints=None, fall_back_to_dynamodb=False):
-        self._tables = {}
+
+    def __init__(self,
+                 region: Optional[str] = None,
+                 host: Optional[str] = None,
+                 read_timeout_seconds: Optional[float] = None,
+                 connect_timeout_seconds: Optional[float] = None,
+                 max_retry_attempts: Optional[int] = None,
+                 base_backoff_ms: Optional[int] = None,
+                 max_pool_connections: Optional[int] = None,
+                 extra_headers: Optional[Mapping[str, str]] = None, 
+                 dax_write_endpoints=None, 
+                 dax_read_endpoints=None, 
+                 fall_back_to_dynamodb=False):
+        self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
         self._client = None
@@ -291,27 +300,14 @@ class Connection(object):
         self._dax_read_client = None
         self.__fall_back_to_dynamodb = fall_back_to_dynamodb
 
-    def __repr__(self):
-        return six.u("Connection<{}>".format(self.client.meta.endpoint_url))
+    def __repr__(self) -> str:
+        return "Connection<{}>".format(self.client.meta.endpoint_url)
 
-    def _log_debug(self, operation, kwargs):
+    def _log_debug(self, operation: str, kwargs: str):
         """
         Sends a debug message to the logger
         """
         log.debug("Calling %s with arguments %s", operation, kwargs)
-
-    def _log_debug_response(self, operation, response):
-        """
-        Sends a debug message to the logger about a response
-        """
-        log.debug("%s response: %s", operation, response)
-
-    def _log_error(self, operation, response):
-        """
-        Sends an error message to the logger
-        """
-        log.error("%s failed with status: %s, message: %s",
-                  operation, response.status_code,response.content)
 
     def _sign_request(self, request):
         auth = self.client._request_signer.get_auth_instance(
@@ -320,7 +316,11 @@ class Connection(object):
             self.client._request_signer.signature_version)
         auth.add_auth(request)
 
-    def _create_prepared_request(self, params, operation_model):
+    def _create_prepared_request(
+        self,
+        params: Dict,
+        operation_model: Optional[Any],
+    ) -> AWSPreparedRequest:
         request = create_request_object(params)
         self._sign_request(request)
         prepared_request = self.client._endpoint.prepare_request(request)
@@ -487,44 +487,44 @@ class Connection(object):
     def _handle_binary_attributes(data):
         """ Simulate botocore's binary attribute handling """
         if ITEM in data:
-            for attr in six.itervalues(data[ITEM]):
+            for attr in data[ITEM].values():
                 _convert_binary(attr)
         if ITEMS in data:
             for item in data[ITEMS]:
-                for attr in six.itervalues(item):
+                for attr in item.values():
                     _convert_binary(attr)
         if RESPONSES in data:
             if isinstance(data[RESPONSES], list):
                 for item in data[RESPONSES]:
-                    for attr in six.itervalues(item):
+                    for attr in item.values():
                         _convert_binary(attr)
             else:
-                for item_list in six.itervalues(data[RESPONSES]):
+                for item_list in data[RESPONSES].values():
                     for item in item_list:
-                        for attr in six.itervalues(item):
+                        for attr in item.values():
                             _convert_binary(attr)
         if LAST_EVALUATED_KEY in data:
-            for attr in six.itervalues(data[LAST_EVALUATED_KEY]):
+            for attr in data[LAST_EVALUATED_KEY].values():
                 _convert_binary(attr)
         if UNPROCESSED_KEYS in data:
-            for table_data in six.itervalues(data[UNPROCESSED_KEYS]):
+            for table_data in data[UNPROCESSED_KEYS].values():
                 for item in table_data[KEYS]:
-                    for attr in six.itervalues(item):
+                    for attr in item.values():
                         _convert_binary(attr)
         if UNPROCESSED_ITEMS in data:
-            for table_unprocessed_requests in six.itervalues(data[UNPROCESSED_ITEMS]):
+            for table_unprocessed_requests in data[UNPROCESSED_ITEMS].values():
                 for request in table_unprocessed_requests:
-                    for item_mapping in six.itervalues(request):
-                        for item in six.itervalues(item_mapping):
-                            for attr in six.itervalues(item):
+                    for item_mapping in request.values():
+                        for item in item_mapping.values():
+                            for attr in item.values():
                                 _convert_binary(attr)
         if ATTRIBUTES in data:
-            for attr in six.itervalues(data[ATTRIBUTES]):
+            for attr in data[ATTRIBUTES].values():
                 _convert_binary(attr)
         return data
 
     @property
-    def session(self):
+    def session(self) -> botocore.session.Session:
         """
         Returns a valid botocore session
         """
@@ -569,7 +569,7 @@ class Connection(object):
             )
         return self._dax_read_client
 
-    def get_meta_table(self, table_name, refresh=False):
+    def get_meta_table(self, table_name: str, refresh: bool = False):
         """
         Returns a MetaTable
         """
@@ -581,28 +581,30 @@ class Connection(object):
                 data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
                 self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
             except BotoCoreError as e:
-                six.raise_from(TableError("Unable to describe table: {}".format(e), e), None)
+                raise TableError("Unable to describe table: {}".format(e), e)
             except ClientError as e:
                 if 'ResourceNotFound' in e.response['Error']['Code']:
-                    six.raise_from(TableDoesNotExist(e.response['Error']['Message']), None)
+                    raise TableDoesNotExist(e.response['Error']['Message'])
                 else:
                     raise
         return self._tables[table_name]
 
-    def create_table(self,
-                     table_name,
-                     attribute_definitions=None,
-                     key_schema=None,
-                     read_capacity_units=None,
-                     write_capacity_units=None,
-                     global_secondary_indexes=None,
-                     local_secondary_indexes=None,
-                     stream_specification=None,
-                     billing_mode=DEFAULT_BILLING_MODE):
+    def create_table(
+        self,
+        table_name: str,
+        attribute_definitions: Optional[Any] = None,
+        key_schema: Optional[Any] = None,
+        read_capacity_units: Optional[int] = None,
+        write_capacity_units: Optional[int] = None,
+        global_secondary_indexes: Optional[Any] = None,
+        local_secondary_indexes: Optional[Any] = None,
+        stream_specification: Optional[Dict] = None,
+        billing_mode: str = DEFAULT_BILLING_MODE
+    ) -> Dict:
         """
         Performs the CreateTable operation
         """
-        operation_kwargs = {
+        operation_kwargs: Dict[str, Any] = {
             TABLE_NAME: table_name,
             BILLING_MODE: billing_mode,
             PROVISIONED_THROUGHPUT: {
@@ -615,8 +617,8 @@ class Connection(object):
             raise ValueError("attribute_definitions argument is required")
         for attr in attribute_definitions:
             attrs_list.append({
-                ATTR_NAME: attr.get(pythonic(ATTR_NAME)),
-                ATTR_TYPE: attr.get(pythonic(ATTR_TYPE))
+                ATTR_NAME: attr.get(snake_to_camel_case(ATTR_NAME)),
+                ATTR_TYPE: attr.get(snake_to_camel_case(ATTR_TYPE))
             })
         operation_kwargs[ATTR_DEFINITIONS] = attrs_list
 
@@ -631,10 +633,10 @@ class Connection(object):
             global_secondary_indexes_list = []
             for index in global_secondary_indexes:
                 index_kwargs = {
-                    INDEX_NAME: index.get(pythonic(INDEX_NAME)),
-                    KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
-                    PROJECTION: index.get(pythonic(PROJECTION)),
-                    PROVISIONED_THROUGHPUT: index.get(pythonic(PROVISIONED_THROUGHPUT))
+                    INDEX_NAME: index.get(snake_to_camel_case(INDEX_NAME)),
+                    KEY_SCHEMA: sorted(index.get(snake_to_camel_case(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
+                    PROJECTION: index.get(snake_to_camel_case(PROJECTION)),
+                    PROVISIONED_THROUGHPUT: index.get(snake_to_camel_case(PROVISIONED_THROUGHPUT))
                 }
                 if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
                     del index_kwargs[PROVISIONED_THROUGHPUT]
@@ -646,8 +648,8 @@ class Connection(object):
         key_schema_list = []
         for item in key_schema:
             key_schema_list.append({
-                ATTR_NAME: item.get(pythonic(ATTR_NAME)),
-                KEY_TYPE: str(item.get(pythonic(KEY_TYPE))).upper()
+                ATTR_NAME: item.get(snake_to_camel_case(ATTR_NAME)),
+                KEY_TYPE: str(item.get(snake_to_camel_case(KEY_TYPE))).upper()
             })
         operation_kwargs[KEY_SCHEMA] = sorted(key_schema_list, key=lambda x: x.get(KEY_TYPE))
 
@@ -655,25 +657,25 @@ class Connection(object):
         if local_secondary_indexes:
             for index in local_secondary_indexes:
                 local_secondary_indexes_list.append({
-                    INDEX_NAME: index.get(pythonic(INDEX_NAME)),
-                    KEY_SCHEMA: sorted(index.get(pythonic(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
-                    PROJECTION: index.get(pythonic(PROJECTION)),
+                    INDEX_NAME: index.get(snake_to_camel_case(INDEX_NAME)),
+                    KEY_SCHEMA: sorted(index.get(snake_to_camel_case(KEY_SCHEMA)), key=lambda x: x.get(KEY_TYPE)),
+                    PROJECTION: index.get(snake_to_camel_case(PROJECTION)),
                 })
             operation_kwargs[LOCAL_SECONDARY_INDEXES] = local_secondary_indexes_list
 
         if stream_specification:
             operation_kwargs[STREAM_SPECIFICATION] = {
-                STREAM_ENABLED: stream_specification[pythonic(STREAM_ENABLED)],
-                STREAM_VIEW_TYPE: stream_specification[pythonic(STREAM_VIEW_TYPE)]
+                STREAM_ENABLED: stream_specification[snake_to_camel_case(STREAM_ENABLED)],
+                STREAM_VIEW_TYPE: stream_specification[snake_to_camel_case(STREAM_VIEW_TYPE)]
             }
 
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TableError("Failed to create table: {}".format(e), e), None)
+            raise TableError("Failed to create table: {}".format(e), e)
         return data
 
-    def update_time_to_live(self, table_name, ttl_attribute_name):
+    def update_time_to_live(self, table_name: str, ttl_attribute_name: str) -> Dict:
         """
         Performs the UpdateTimeToLive operation
         """
@@ -687,9 +689,9 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TableError("Failed to update TTL on table: {}".format(e), e), None)
+            raise TableError("Failed to update TTL on table: {}".format(e), e)
 
-    def delete_table(self, table_name):
+    def delete_table(self, table_name: str) -> Dict:
         """
         Performs the DeleteTable operation
         """
@@ -699,18 +701,20 @@ class Connection(object):
         try:
             data = self.dispatch(DELETE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TableError("Failed to delete table: {}".format(e), e), None)
+            raise TableError("Failed to delete table: {}".format(e), e)
         return data
 
-    def update_table(self,
-                     table_name,
-                     read_capacity_units=None,
-                     write_capacity_units=None,
-                     global_secondary_index_updates=None):
+    def update_table(
+        self,
+        table_name: str,
+        read_capacity_units: Optional[int] = None,
+        write_capacity_units: Optional[int] = None,
+        global_secondary_index_updates: Optional[Any] = None,
+    ) -> Dict:
         """
         Performs the UpdateTable operation
         """
-        operation_kwargs = {
+        operation_kwargs: Dict[str, Any] = {
             TABLE_NAME: table_name
         }
         if read_capacity_units and not write_capacity_units or write_capacity_units and not read_capacity_units:
@@ -725,10 +729,10 @@ class Connection(object):
             for index in global_secondary_index_updates:
                 global_secondary_indexes_list.append({
                     UPDATE: {
-                        INDEX_NAME: index.get(pythonic(INDEX_NAME)),
+                        INDEX_NAME: index.get(snake_to_camel_case(INDEX_NAME)),
                         PROVISIONED_THROUGHPUT: {
-                            READ_CAPACITY_UNITS: index.get(pythonic(READ_CAPACITY_UNITS)),
-                            WRITE_CAPACITY_UNITS: index.get(pythonic(WRITE_CAPACITY_UNITS))
+                            READ_CAPACITY_UNITS: index.get(snake_to_camel_case(READ_CAPACITY_UNITS)),
+                            WRITE_CAPACITY_UNITS: index.get(snake_to_camel_case(WRITE_CAPACITY_UNITS))
                         }
                     }
                 })
@@ -736,13 +740,17 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TableError("Failed to update table: {}".format(e), e), None)
+            raise TableError("Failed to update table: {}".format(e), e)
 
-    def list_tables(self, exclusive_start_table_name=None, limit=None):
+    def list_tables(
+        self,
+        exclusive_start_table_name: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> Dict:
         """
         Performs the ListTables operation
         """
-        operation_kwargs = {}
+        operation_kwargs: Dict[str, Any] = {}
         if exclusive_start_table_name:
             operation_kwargs.update({
                 EXCLUSIVE_START_TABLE_NAME: exclusive_start_table_name
@@ -754,9 +762,9 @@ class Connection(object):
         try:
             return self.dispatch(LIST_TABLES, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TableError("Unable to list tables: {}".format(e), e), None)
+            raise TableError("Unable to list tables: {}".format(e), e)
 
-    def describe_table(self, table_name):
+    def describe_table(self, table_name: str) -> Dict:
         """
         Performs the DescribeTable operation
         """
@@ -768,7 +776,13 @@ class Connection(object):
             pass
         raise TableDoesNotExist(table_name)
 
-    def get_item_attribute_map(self, table_name, attributes, item_key=ITEM, pythonic_key=True):
+    def get_item_attribute_map(
+        self,
+        table_name: str,
+        attributes: Any,
+        item_key: str = ITEM,
+        pythonic_key: bool = True,
+    ) -> Dict:
         """
         Builds up a dynamodb compatible AttributeValue map
         """
@@ -780,7 +794,11 @@ class Connection(object):
             item_key=item_key,
             pythonic_key=pythonic_key)
 
-    def parse_attribute(self, attribute, return_type=False):
+    def parse_attribute(
+        self,
+        attribute: Any,
+        return_type: bool = False
+    ) -> Any:
         """
         Returns the attribute value, where the attribute can be
         a raw attribute value, or a dictionary containing the type:
@@ -798,7 +816,12 @@ class Connection(object):
                 return None, attribute
             return attribute
 
-    def get_attribute_type(self, table_name, attribute_name, value=None):
+    def get_attribute_type(
+        self,
+        table_name: str,
+        attribute_name: str,
+        value: Optional[Any] = None
+    ) -> str:
         """
         Returns the proper attribute type for a given attribute name
         :param value: The attribute value an be supplied just in case the type is already included
@@ -808,7 +831,13 @@ class Connection(object):
             raise TableError("No such table {}".format(table_name))
         return tbl.get_attribute_type(attribute_name, value=value)
 
-    def get_identifier_map(self, table_name, hash_key, range_key=None, key=KEY):
+    def get_identifier_map(
+        self,
+        table_name: str,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        key: str = KEY
+    ) -> Dict:
         """
         Builds the identifier map that is common to several operations
         """
@@ -817,7 +846,7 @@ class Connection(object):
             raise TableError("No such table {}".format(table_name))
         return tbl.get_identifier_map(hash_key, range_key=range_key, key=key)
 
-    def get_consumed_capacity_map(self, return_consumed_capacity):
+    def get_consumed_capacity_map(self, return_consumed_capacity: str) -> Dict:
         """
         Builds the consumed capacity map that is common to several operations
         """
@@ -827,7 +856,7 @@ class Connection(object):
             RETURN_CONSUMED_CAPACITY: str(return_consumed_capacity).upper()
         }
 
-    def get_return_values_map(self, return_values):
+    def get_return_values_map(self, return_values: str) -> Dict:
         """
         Builds the return values map that is common to several operations
         """
@@ -837,7 +866,10 @@ class Connection(object):
             RETURN_VALUES: str(return_values).upper()
         }
 
-    def get_return_values_on_condition_failure_map(self, return_values_on_condition_failure):
+    def get_return_values_on_condition_failure_map(
+        self,
+        return_values_on_condition_failure: str
+    ) -> Dict:
         """
         Builds the return values map that is common to several operations
         """
@@ -850,7 +882,7 @@ class Connection(object):
             RETURN_VALUES_ON_CONDITION_FAILURE: str(return_values_on_condition_failure).upper()
         }
 
-    def get_item_collection_map(self, return_item_collection_metrics):
+    def get_item_collection_map(self, return_item_collection_metrics: str) -> Dict:
         """
         Builds the item collection map
         """
@@ -860,7 +892,7 @@ class Connection(object):
             RETURN_ITEM_COLL_METRICS: str(return_item_collection_metrics).upper()
         }
 
-    def get_exclusive_start_key_map(self, table_name, exclusive_start_key):
+    def get_exclusive_start_key_map(self, table_name: str, exclusive_start_key: str) -> Dict:
         """
         Builds the exclusive start key attribute map
         """
@@ -869,25 +901,27 @@ class Connection(object):
             raise TableError("No such table {}".format(table_name))
         return tbl.get_exclusive_start_key_map(exclusive_start_key)
 
-    def get_operation_kwargs(self,
-                             table_name,
-                             hash_key,
-                             range_key=None,
-                             key=KEY,
-                             attributes=None,
-                             attributes_to_get=None,
-                             actions=None,
-                             condition=None,
-                             consistent_read=None,
-                             return_values=None,
-                             return_consumed_capacity=None,
-                             return_item_collection_metrics=None,
-                             return_values_on_condition_failure=None):
+    def get_operation_kwargs(
+        self,
+        table_name: str,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        key: str = KEY,
+        attributes: Optional[Any] = None,
+        attributes_to_get: Optional[Any] = None,
+        actions: Optional[Sequence[Action]] = None,
+        condition: Optional[Condition] = None,
+        consistent_read: Optional[bool] = None,
+        return_values: Optional[str] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None,
+        return_values_on_condition_failure: Optional[str] = None
+    ) -> Dict:
         self._check_condition('condition', condition)
 
-        operation_kwargs = {}
-        name_placeholders = {}
-        expression_attribute_values = {}
+        operation_kwargs: Dict[str, Any] = {}
+        name_placeholders: Dict[str, str]  = {}
+        expression_attribute_values: Dict[str, Any] = {}
 
         operation_kwargs[TABLE_NAME] = table_name
         operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=key))
@@ -922,14 +956,16 @@ class Connection(object):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
         return operation_kwargs
 
-    def delete_item(self,
-                    table_name,
-                    hash_key,
-                    range_key=None,
-                    condition=None,
-                    return_values=None,
-                    return_consumed_capacity=None,
-                    return_item_collection_metrics=None):
+    def delete_item(
+        self,
+        table_name: str,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        condition: Optional[Condition] = None,
+        return_values: Optional[str] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the DeleteItem operation and returns the result
         """
@@ -945,17 +981,19 @@ class Connection(object):
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(DeleteError("Failed to delete item: {}".format(e), e), None)
+            raise DeleteError("Failed to delete item: {}".format(e), e)
 
-    def update_item(self,
-                    table_name,
-                    hash_key,
-                    range_key=None,
-                    actions=None,
-                    condition=None,
-                    return_consumed_capacity=None,
-                    return_item_collection_metrics=None,
-                    return_values=None):
+    def update_item(
+        self,
+        table_name: str,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        actions: Optional[Sequence[Action]] = None,
+        condition: Optional[Condition] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None,
+        return_values: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the UpdateItem operation
         """
@@ -975,17 +1013,19 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(UpdateError("Failed to update item: {}".format(e), e), None)
+            raise UpdateError("Failed to update item: {}".format(e), e)
 
-    def put_item(self,
-                 table_name,
-                 hash_key,
-                 range_key=None,
-                 attributes=None,
-                 condition=None,
-                 return_values=None,
-                 return_consumed_capacity=None,
-                 return_item_collection_metrics=None):
+    def put_item(
+        self,
+        table_name: str,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        attributes: Optional[Any] = None,
+        condition: Optional[Condition] = None,
+        return_values: Optional[str] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the PutItem operation and returns the result
         """
@@ -1003,12 +1043,14 @@ class Connection(object):
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(PutError("Failed to put item: {}".format(e), e), None)
+            raise PutError("Failed to put item: {}".format(e), e)
 
-    def _get_transact_operation_kwargs(self,
-                                       client_request_token=None,
-                                       return_consumed_capacity=None,
-                                       return_item_collection_metrics=None):
+    def _get_transact_operation_kwargs(
+        self,
+        client_request_token: Optional[str] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None
+    ) -> Dict:
         operation_kwargs = {}
         if client_request_token is not None:
             operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
@@ -1019,18 +1061,20 @@ class Connection(object):
 
         return operation_kwargs
 
-    def transact_write_items(self,
-                             condition_check_items,
-                             delete_items,
-                             put_items,
-                             update_items,
-                             client_request_token=None,
-                             return_consumed_capacity=None,
-                             return_item_collection_metrics=None):
+    def transact_write_items(
+        self,
+        condition_check_items: Sequence[Dict],
+        delete_items: Sequence[Dict],
+        put_items: Sequence[Dict],
+        update_items: Sequence[Dict],
+        client_request_token: Optional[str] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None
+    ) -> Dict:
         """
         Performs the TransactWrite operation and returns the result
         """
-        transact_items = []
+        transact_items: List[Dict] = []
         transact_items.extend(
             {TRANSACT_CONDITION_CHECK: item} for item in condition_check_items
         )
@@ -1054,9 +1098,13 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TransactWriteError("Failed to write transaction items", e), None)
+            raise TransactWriteError("Failed to write transaction items", e)
 
-    def transact_get_items(self, get_items, return_consumed_capacity=None):
+    def transact_get_items(
+        self,
+        get_items: Sequence[Dict],
+        return_consumed_capacity: Optional[str] = None
+    ) -> Dict:
         """
         Performs the TransactGet operation and returns the result
         """
@@ -1068,20 +1116,22 @@ class Connection(object):
         try:
             return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(TransactGetError("Failed to get transaction items", e), None)
+            raise TransactGetError("Failed to get transaction items", e)
 
-    def batch_write_item(self,
-                         table_name,
-                         put_items=None,
-                         delete_items=None,
-                         return_consumed_capacity=None,
-                         return_item_collection_metrics=None):
+    def batch_write_item(
+        self,
+        table_name: str,
+        put_items: Optional[Any] = None,
+        delete_items: Optional[Any] = None,
+        return_consumed_capacity: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None
+    ) -> Dict:
         """
         Performs the batch_write_item operation
         """
         if put_items is None and delete_items is None:
             raise ValueError("Either put_items or delete_items must be specified")
-        operation_kwargs = {
+        operation_kwargs: Dict[str, Any] = {
             REQUEST_ITEMS: {
                 table_name: []
             }
@@ -1106,25 +1156,27 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(PutError("Failed to batch write items: {}".format(e), e), None)
+            raise PutError("Failed to batch write items: {}".format(e), e)
 
-    def batch_get_item(self,
-                       table_name,
-                       keys,
-                       consistent_read=None,
-                       return_consumed_capacity=None,
-                       attributes_to_get=None):
+    def batch_get_item(
+        self,
+        table_name: str,
+        keys: Sequence[str],
+        consistent_read: Optional[bool] = None,
+        return_consumed_capacity: Optional[str] = None,
+        attributes_to_get: Optional[Any] = None
+    ) -> Dict:
         """
         Performs the batch get item operation
         """
-        operation_kwargs = {
+        operation_kwargs: Dict[str, Any] = {
             REQUEST_ITEMS: {
                 table_name: {}
             }
         }
 
         args_map = {}
-        name_placeholders = {}
+        name_placeholders: Dict[str, str] = {}
         if consistent_read:
             args_map[CONSISTENT_READ] = consistent_read
         if return_consumed_capacity:
@@ -1136,7 +1188,7 @@ class Connection(object):
             args_map[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
         operation_kwargs[REQUEST_ITEMS][table_name].update(args_map)
 
-        keys_map = {KEYS: []}
+        keys_map: Dict[str, List] = {KEYS: []}
         for key in keys:
             keys_map[KEYS].append(
                 self.get_item_attribute_map(table_name, key)[ITEM]
@@ -1145,14 +1197,16 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(GetError("Failed to batch get items: {}".format(e), e), None)
+            raise GetError("Failed to batch get items: {}".format(e), e)
 
-    def get_item(self,
-                 table_name,
-                 hash_key,
-                 range_key=None,
-                 consistent_read=False,
-                 attributes_to_get=None):
+    def get_item(
+        self,
+        table_name: str,
+        hash_key: str,
+        range_key: Optional[str] = None,
+        consistent_read: bool = False,
+        attributes_to_get: Optional[Any] = None,
+    ) -> Dict:
         """
         Performs the GetItem operation and returns the result
         """
@@ -1166,27 +1220,29 @@ class Connection(object):
         try:
             return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(GetError("Failed to get item: {}".format(e), e), None)
+            raise GetError("Failed to get item: {}".format(e), e)
 
-    def scan(self,
-             table_name,
-             filter_condition=None,
-             attributes_to_get=None,
-             limit=None,
-             return_consumed_capacity=None,
-             exclusive_start_key=None,
-             segment=None,
-             total_segments=None,
-             consistent_read=None,
-             index_name=None):
+    def scan(
+        self,
+        table_name: str,
+        filter_condition: Optional[Any] = None,
+        attributes_to_get: Optional[Any] = None,
+        limit: Optional[int] = None,
+        return_consumed_capacity: Optional[str] = None,
+        exclusive_start_key: Optional[str] = None,
+        segment: Optional[int] = None,
+        total_segments: Optional[int] = None,
+        consistent_read: Optional[bool] = None,
+        index_name: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the scan operation
         """
         self._check_condition('filter_condition', filter_condition)
 
-        operation_kwargs = {TABLE_NAME: table_name}
-        name_placeholders = {}
-        expression_attribute_values = {}
+        operation_kwargs: Dict[str, Any] = {TABLE_NAME: table_name}
+        name_placeholders: Dict[str, str] = {}
+        expression_attribute_values: Dict[str, Any] = {}
 
         if filter_condition is not None:
             filter_expression = filter_condition.serialize(name_placeholders, expression_attribute_values)
@@ -1216,30 +1272,32 @@ class Connection(object):
         try:
             return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(ScanError("Failed to scan table: {}".format(e), e), None)
+            raise ScanError("Failed to scan table: {}".format(e), e)
 
-    def query(self,
-              table_name,
-              hash_key,
-              range_key_condition=None,
-              filter_condition=None,
-              attributes_to_get=None,
-              consistent_read=False,
-              exclusive_start_key=None,
-              index_name=None,
-              limit=None,
-              return_consumed_capacity=None,
-              scan_index_forward=None,
-              select=None):
+    def query(
+        self,
+        table_name: str,
+        hash_key: str,
+        range_key_condition: Optional[Condition] = None,
+        filter_condition: Optional[Any] = None,
+        attributes_to_get: Optional[Any] = None,
+        consistent_read: bool = False,
+        exclusive_start_key: Optional[Any] = None,
+        index_name: Optional[str] = None,
+        limit: Optional[int] = None,
+        return_consumed_capacity: Optional[str] = None,
+        scan_index_forward: Optional[bool] = None,
+        select: Optional[str] = None,
+    ) -> Dict:
         """
         Performs the Query operation and returns the result
         """
         self._check_condition('range_key_condition', range_key_condition)
         self._check_condition('filter_condition', filter_condition)
 
-        operation_kwargs = {TABLE_NAME: table_name}
-        name_placeholders = {}
-        expression_attribute_values = {}
+        operation_kwargs: Dict[str, Any] = {TABLE_NAME: table_name}
+        name_placeholders: Dict[str, str] = {}
+        expression_attribute_values: Dict[str, Any] = {}
 
         tbl = self.get_meta_table(table_name)
         if tbl is None:
@@ -1248,8 +1306,6 @@ class Connection(object):
             if not tbl.has_index_name(index_name):
                 raise ValueError("Table {} has no index: {}".format(table_name, index_name))
             hash_keyname = tbl.get_index_hash_keyname(index_name)
-            if not hash_keyname:
-                raise ValueError("No hash key attribute for index: {}".format(index_name))
             range_keyname = tbl.get_index_range_keyname(index_name)
         else:
             hash_keyname = tbl.hash_keyname
@@ -1307,7 +1363,7 @@ class Connection(object):
         try:
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            six.raise_from(QueryError("Failed to query items: {}".format(e), e), None)
+            raise QueryError("Failed to query items: {}".format(e), e)
 
     def _check_condition(self, name, condition):
         if condition is not None:
@@ -1316,7 +1372,7 @@ class Connection(object):
 
     @staticmethod
     def _reverse_dict(d):
-        return {v: k for k, v in six.iteritems(d)}
+        return {v: k for k, v in d.items()}
 
 
 def _convert_binary(attr):
