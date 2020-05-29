@@ -243,7 +243,6 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-
     def __init__(self,
                  region: Optional[str] = None,
                  host: Optional[str] = None,

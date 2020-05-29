@@ -19,6 +19,7 @@ Features
 * Batch operations with automatic pagination
 * Iterators for working with Query and Scan operations
 * `Fully tested <https://coveralls.io/r/pynamodb/PynamoDB>`_
+* Dax support
 
 Topics
 ======
@@ -47,6 +48,7 @@ Topics
    contributing
    release_notes
    versioning
+   dax
 
 API docs
 ========

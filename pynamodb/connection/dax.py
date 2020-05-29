@@ -12,9 +12,11 @@ OP_WRITE = {
 
 OP_READ = {
     'GetItem': 'get_item',
-    'Scan': 'scan',
     'BatchGetItem': 'batch_get_item',
+    # query and scan has a serious consistency issue
+    # https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DAX.consistency.html#DAX.consistency.query-cache
     # 'Query': 'query',
+    # 'Scan': 'scan',
     'TransactGetItems': 'transact_get_items',
 }
 
