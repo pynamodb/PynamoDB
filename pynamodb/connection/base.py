@@ -297,7 +297,7 @@ class Connection(object):
         self.dax_read_endpoints = dax_read_endpoints or []
         self._dax_write_client = None
         self._dax_read_client = None
-        self.__fall_back_to_dynamodb = fall_back_to_dynamodb
+        self._fall_back_to_dynamodb = fall_back_to_dynamodb
 
     def __repr__(self) -> str:
         return "Connection<{}>".format(self.client.meta.endpoint_url)
