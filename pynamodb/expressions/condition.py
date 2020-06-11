@@ -14,10 +14,6 @@ class Condition(object):
         self.operator = operator
         self.values = values
 
-    # http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
-    def is_valid_range_key_condition(self, path):
-        return self.operator in ['=', '<', '<=', '>', '>=', BETWEEN, 'begins_with'] and str(self.values[0]) == path
-
     def serialize(self, placeholder_names, expression_attribute_values):
         values = [value.serialize(placeholder_names, expression_attribute_values) for value in self.values]
         return self.format_string.format(*values, operator=self.operator)
