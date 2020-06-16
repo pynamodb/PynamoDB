@@ -53,6 +53,11 @@ class TestTransaction:
         with pytest.raises(NotImplementedError):
             t._commit()
 
+    def test_abort_skips_commit(self):
+        t = Transaction(connection=Connection())
+        with t:
+            t.abort()
+
 
 class TestTransactGet:
 
@@ -69,6 +74,17 @@ class TestTransactGet:
             get_items=[{'Key': {'MockHash': {'N': '1'}, 'MockRange': {'N': '2'}}, 'TableName': 'mock'}],
             return_consumed_capacity=None
         )
+
+    def test_commit_abort(self, mocker):
+        connection = Connection()
+        mock_connection_transact_get = mocker.patch.object(connection, 'transact_get_items')
+
+        with patch(PATCH_METHOD) as req:
+            with TransactGet(connection=connection) as t:
+                t.get(MockModel, 3, 4)
+                t.abort()
+
+        assert mock_connection_transact_get.mock_calls == []
 
 
 class TestTransactWrite:
@@ -125,3 +141,17 @@ class TestTransactWrite:
             return_consumed_capacity=None,
             return_item_collection_metrics=None
         )
+
+    def test_commit_abort(self, mocker):
+        connection = Connection()
+        mock_connection_transact_write = mocker.patch.object(connection, 'transact_write_items')
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MOCK_TABLE_DESCRIPTOR
+            with TransactWrite(connection=connection) as t:
+                t.condition_check(MockModel, 1, 3, condition=(MockModel.mock_hash.does_not_exist()))
+                t.delete(MockModel(2, 4))
+                t.save(MockModel(3, 5))
+                t.update(MockModel(4, 6), actions=[MockModel.mock_toot.set('hello')], return_values='ALL_OLD')
+                t.abort()
+
+        assert mock_connection_transact_write.mock_calls == []

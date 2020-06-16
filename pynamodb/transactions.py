@@ -18,15 +18,22 @@ class Transaction:
     def __init__(self, connection: Connection, return_consumed_capacity: Optional[str] = None) -> None:
         self._connection = connection
         self._return_consumed_capacity = return_consumed_capacity
+        self._aborted = False
 
     def _commit(self):
         raise NotImplementedError()
+
+    def abort(self):
+        """
+        Cancels the current transaction.
+        """
+        self._aborted = True
 
     def __enter__(self) -> 'Transaction':
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None and exc_val is None and exc_tb is None:
+        if (not self._aborted) and exc_type is None and exc_val is None and exc_tb is None:
             self._commit()
 
 
