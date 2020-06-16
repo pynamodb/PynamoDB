@@ -25,7 +25,7 @@ class Transaction:
 
     def abort(self):
         """
-        Cancels the current transaction.
+        Aborts the current transaction.
         """
         self._aborted = True
 
