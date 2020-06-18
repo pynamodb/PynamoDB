@@ -1279,6 +1279,14 @@ class Connection(object):
         key_condition = getattr(Path([hash_keyname]), '__eq__')(hash_condition_value)
 
         if range_key_condition is not None:
+            if range_keyname is None:
+                if index_name:
+                    raise ValueError(f'Invalid range key condition "{range_key_condition}": '
+                                     f'index "{index_name}" of table "{table_name}" has no range key')
+                else:
+                    raise ValueError(f'Invalid range key condition "{range_key_condition}": '
+                                     f'table "{table_name}" has no range key')
+
             if str(range_key_condition.values[0]) != range_keyname:
                 raise ValueError(f'Invalid range key condition "{range_key_condition}": '
                                  f'operand is "{range_key_condition.values[0]}"; expected "{range_keyname}"')

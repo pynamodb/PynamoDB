@@ -1137,7 +1137,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': 42, 'ScannedCount': 42}
             res = CustomAttrNameModel.uid_index.count(
                 'foo',
-                CustomAttrNameModel.overidden_user_name.startswith('bar'),
+                filter_condition=CustomAttrNameModel.overidden_user_name.startswith('bar'),
                 limit=2)
             self.assertEqual(res, 42)
             args = req.call_args[0][1]
@@ -2066,7 +2066,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
 
-            for item in IndexedModel.email_index.query('foo', IndexedModel.user_name.startswith('bar'), limit=2):
+            for item in IndexedModel.email_index.query('foo', filter_condition=IndexedModel.user_name.startswith('bar'), limit=2):
                 queried.append(item._serialize())
 
             params = {
@@ -2103,7 +2103,7 @@ class ModelTestCase(TestCase):
 
             for item in LocalIndexedModel.email_index.query(
                     'foo',
-                    LocalIndexedModel.user_name.startswith('bar') & LocalIndexedModel.aliases.contains(1),
+                    filter_condition=LocalIndexedModel.user_name.startswith('bar') & LocalIndexedModel.aliases.contains(1),
                     limit=1):
                 queried.append(item._serialize())
 
@@ -2144,7 +2144,7 @@ class ModelTestCase(TestCase):
 
             for item in CustomAttrNameModel.uid_index.query(
                     'foo',
-                    CustomAttrNameModel.overidden_user_name.startswith('bar'),
+                    filter_condition=CustomAttrNameModel.overidden_user_name.startswith('bar'),
                     limit=2):
                 queried.append(item._serialize())
 
