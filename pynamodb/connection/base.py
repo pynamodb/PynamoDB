@@ -7,6 +7,7 @@ import random
 import sys
 import time
 import uuid
+import warnings
 from base64 import b64decode
 from threading import local
 from typing import Any, Dict, List, Mapping, Optional, Sequence
@@ -40,9 +41,9 @@ from pynamodb.constants import (
     TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS, CLIENT_REQUEST_TOKEN, TRANSACT_ITEMS, TRANSACT_CONDITION_CHECK,
     TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE, TRANSACT_UPDATE, UPDATE_EXPRESSION,
     RETURN_VALUES_ON_CONDITION_FAILURE_VALUES, RETURN_VALUES_ON_CONDITION_FAILURE,
-    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE,  BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
+    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
     PROVISIONED_BILLING_MODE,
-    TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE
+    TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE, BETWEEN
 )
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
@@ -1278,13 +1279,16 @@ class Connection(object):
         key_condition = getattr(Path([hash_keyname]), '__eq__')(hash_condition_value)
 
         if range_key_condition is not None:
-            if range_key_condition.is_valid_range_key_condition(range_keyname):
-                key_condition = key_condition & range_key_condition
-            elif filter_condition is None:
-                # Try to gracefully handle the case where a user passed in a filter as a range key condition
-                (filter_condition, range_key_condition) = (range_key_condition, None)
-            else:
-                raise ValueError("{} is not a valid range key condition".format(range_key_condition))
+            if str(range_key_condition.values[0]) != range_keyname:
+                raise ValueError(f'Invalid range key condition "{range_key_condition}": '
+                                 f'operand is "{range_key_condition.values[0]}"; expected "{range_keyname}"')
+
+            # http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
+            if range_key_condition.operator not in ['=', '<', '<=', '>', '>=', BETWEEN, 'begins_with']:
+                raise ValueError(f'Invalid range key condition "{range_key_condition}": '
+                                 f'operator "{range_key_condition.operator}" is not supported for range key conditions')
+
+            key_condition &= range_key_condition
 
         operation_kwargs[KEY_CONDITION_EXPRESSION] = key_condition.serialize(
             name_placeholders, expression_attribute_values)
