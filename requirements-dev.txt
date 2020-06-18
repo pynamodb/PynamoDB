@@ -1,4 +1,4 @@
-pytest
+pytest>=5
 pytest-env
 pytest-mock
 
