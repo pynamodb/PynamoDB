@@ -1325,6 +1325,57 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.query(
+                table_name=table_name,
+                hash_key="FooForum",
+                range_key_condition=Path('Subject').startswith('thread'),
+                filter_condition=Path('a2').exists()
+                | Path('a3').exists()
+                | Path('a4').exists()
+                | Path('a5').exists()
+                | Path('a6').exists()
+                | Path('a7').exists()
+                | Path('a8').exists()
+                | Path('a9').exists()
+                | Path('a10').exists()
+            )
+
+            params = {
+                'TableName': 'Thread',
+                'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+                'FilterExpression':
+                    '((((((((attribute_exists (#2) '
+                    'OR attribute_exists (#3)) '
+                    'OR attribute_exists (#4)) '
+                    'OR attribute_exists (#5)) '
+                    'OR attribute_exists (#6)) '
+                    'OR attribute_exists (#7)) '
+                    'OR attribute_exists (#8)) '
+                    'OR attribute_exists (#9)) '
+                    'OR attribute_exists (#10))',
+                'ExpressionAttributeNames': {
+                    '#0': 'ForumName',
+                    '#1': 'Subject',
+                    '#2': 'a2',
+                    '#3': 'a3',
+                    '#4': 'a4',
+                    '#5': 'a5',
+                    '#6': 'a6',
+                    '#7': 'a7',
+                    '#8': 'a8',
+                    '#9': 'a9',
+                    '#10': 'a10'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {'S': 'FooForum'},
+                    ':1': {'S': 'thread'}
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
     def test_scan(self):
         """
         Connection.scan
