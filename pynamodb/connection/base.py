@@ -7,7 +7,6 @@ import random
 import sys
 import time
 import uuid
-import warnings
 from base64 import b64decode
 from threading import local
 from typing import Any, Dict, List, Mapping, Optional, Sequence
@@ -43,7 +42,7 @@ from pynamodb.constants import (
     RETURN_VALUES_ON_CONDITION_FAILURE_VALUES, RETURN_VALUES_ON_CONDITION_FAILURE,
     AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
     PROVISIONED_BILLING_MODE,
-    TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE, BETWEEN
+    TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE
 )
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
