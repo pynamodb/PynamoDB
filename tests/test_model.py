@@ -1395,10 +1395,6 @@ class ModelTestCase(TestCase):
                 queried
             )
 
-        # you cannot use a range key in a query filter
-        self.assertRaises(ValueError, lambda: list(UserModel.query(
-            'foo', UserModel.user_id > 'id-1', UserModel.user_id <= 'id-2')))
-
         with patch(PATCH_METHOD) as req:
             items = []
             for idx in range(10):
