@@ -1270,46 +1270,18 @@ class Connection(object):
             if not tbl.has_index_name(index_name):
                 raise ValueError("Table {} has no index: {}".format(table_name, index_name))
             hash_keyname = tbl.get_index_hash_keyname(index_name)
-            range_keyname = tbl.get_index_range_keyname(index_name)
         else:
             hash_keyname = tbl.hash_keyname
-            range_keyname = tbl.range_keyname
 
         hash_condition_value = {self.get_attribute_type(table_name, hash_keyname, hash_key): self.parse_attribute(hash_key)}
-        key_condition = getattr(Path([hash_keyname]), '__eq__')(hash_condition_value)
-
+        key_condition = Path([hash_keyname]) == hash_condition_value
         if range_key_condition is not None:
-            if range_keyname is None:
-                if index_name:
-                    raise ValueError(f'Invalid range key condition "{range_key_condition}": '
-                                     f'index "{index_name}" of table "{table_name}" has no range key')
-                else:
-                    raise ValueError(f'Invalid range key condition "{range_key_condition}": '
-                                     f'table "{table_name}" has no range key')
-
-            if str(range_key_condition.values[0]) != range_keyname:
-                raise ValueError(f'Invalid range key condition "{range_key_condition}": '
-                                 f'operand is "{range_key_condition.values[0]}"; expected "{range_keyname}"')
-
-            # http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
-            if range_key_condition.operator not in ['=', '<', '<=', '>', '>=', BETWEEN, 'begins_with']:
-                raise ValueError(f'Invalid range key condition "{range_key_condition}": '
-                                 f'operator "{range_key_condition.operator}" is not supported for range key conditions')
-
             key_condition &= range_key_condition
 
         operation_kwargs[KEY_CONDITION_EXPRESSION] = key_condition.serialize(
             name_placeholders, expression_attribute_values)
         if filter_condition is not None:
             filter_expression = filter_condition.serialize(name_placeholders, expression_attribute_values)
-            # FilterExpression does not allow key attributes. Check for hash and range key name placeholders
-            hash_key_placeholder = name_placeholders.get(hash_keyname)
-            range_key_placeholder = range_keyname and name_placeholders.get(range_keyname)
-            if (
-                hash_key_placeholder in filter_expression or
-                (range_key_placeholder and range_key_placeholder in filter_expression)
-            ):
-                raise ValueError("'filter_condition' cannot contain key attributes")
             operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if attributes_to_get:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
