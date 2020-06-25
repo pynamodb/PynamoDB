@@ -40,7 +40,7 @@ from pynamodb.constants import (
     TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS, CLIENT_REQUEST_TOKEN, TRANSACT_ITEMS, TRANSACT_CONDITION_CHECK,
     TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE, TRANSACT_UPDATE, UPDATE_EXPRESSION,
     RETURN_VALUES_ON_CONDITION_FAILURE_VALUES, RETURN_VALUES_ON_CONDITION_FAILURE,
-    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE,  BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
+    AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
     PROVISIONED_BILLING_MODE,
     TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE
 )
@@ -1269,35 +1269,18 @@ class Connection(object):
             if not tbl.has_index_name(index_name):
                 raise ValueError("Table {} has no index: {}".format(table_name, index_name))
             hash_keyname = tbl.get_index_hash_keyname(index_name)
-            range_keyname = tbl.get_index_range_keyname(index_name)
         else:
             hash_keyname = tbl.hash_keyname
-            range_keyname = tbl.range_keyname
 
         hash_condition_value = {self.get_attribute_type(table_name, hash_keyname, hash_key): self.parse_attribute(hash_key)}
-        key_condition = getattr(Path([hash_keyname]), '__eq__')(hash_condition_value)
-
+        key_condition = Path([hash_keyname]) == hash_condition_value
         if range_key_condition is not None:
-            if range_key_condition.is_valid_range_key_condition(range_keyname):
-                key_condition = key_condition & range_key_condition
-            elif filter_condition is None:
-                # Try to gracefully handle the case where a user passed in a filter as a range key condition
-                (filter_condition, range_key_condition) = (range_key_condition, None)
-            else:
-                raise ValueError("{} is not a valid range key condition".format(range_key_condition))
+            key_condition &= range_key_condition
 
         operation_kwargs[KEY_CONDITION_EXPRESSION] = key_condition.serialize(
             name_placeholders, expression_attribute_values)
         if filter_condition is not None:
             filter_expression = filter_condition.serialize(name_placeholders, expression_attribute_values)
-            # FilterExpression does not allow key attributes. Check for hash and range key name placeholders
-            hash_key_placeholder = name_placeholders.get(hash_keyname)
-            range_key_placeholder = range_keyname and name_placeholders.get(range_keyname)
-            if (
-                hash_key_placeholder in filter_expression or
-                (range_key_placeholder and range_key_placeholder in filter_expression)
-            ):
-                raise ValueError("'filter_condition' cannot contain key attributes")
             operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if attributes_to_get:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
