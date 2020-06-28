@@ -9,8 +9,8 @@ v5.0
   cannot contain range keys, this had limited utility to begin with, and would sometimes cause confusing
   "'filter_condition' cannot contain key attributes" errors.
 * ``Model.dump(s)`` and ``Model.load(s)`` were removed since they are woefully inadequate for any table at scale
-  and don't belong to the base Model class. Additionally, they were static methods but named confusingly
-  like methods that would (de)serialize a model instance.
+  and don't belong to the base Model class. Additionally, they were static methods applying to the entire table
+  but named confusingly like methods that would (de)serialize a model instance.
 
 v4.3.3
 ----------
