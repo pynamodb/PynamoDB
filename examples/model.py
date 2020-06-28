@@ -192,26 +192,3 @@ except:
 print(thread_item.update(actions=[
     Thread.tags.remove()
 ]))
-
-# Backup/restore example
-# Print the size of the table
-print("Table size: {}".format(Thread.describe_table().get('ItemCount')))
-
-# Dump the entire table to a file
-Thread.dump('thread.json')
-
-# Optionally Delete all table items
-# Commented out for safety
-# for item in Thread.scan():
-#     item.delete()
-print("Table size: {}".format(Thread.describe_table().get('ItemCount')))
-
-# Restore table from a file
-Thread.load('thread.json')
-print("Table size: {}".format(Thread.describe_table().get('ItemCount')))
-
-# Dump the entire table to a string
-serialized = Thread.dumps()
-
-# Load the entire table from a string
-Thread.loads(serialized)

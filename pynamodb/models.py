@@ -828,34 +828,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 else:
                     raise
 
-    @classmethod
-    def dumps(cls) -> Any:
-        """
-        Returns a JSON representation of this model's table
-        """
-        return json.dumps([item._get_json() for item in cls.scan()])
-
-    @classmethod
-    def dump(cls, filename: str) -> None:
-        """
-        Writes the contents of this model's table as JSON to the given filename
-        """
-        with open(filename, 'w') as out:
-            out.write(cls.dumps())
-
-    @classmethod
-    def loads(cls, data: str) -> None:
-        content = json.loads(data)
-        with cls.batch_write() as batch:
-            for item_data in content:
-                item = cls._from_data(item_data)
-                batch.save(item)
-
-    @classmethod
-    def load(cls, filename: str) -> None:
-        with open(filename, 'r') as inf:
-            cls.loads(inf.read())
-
     # Private API below
     @classmethod
     def _from_data(cls, data):
