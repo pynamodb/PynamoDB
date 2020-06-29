@@ -452,7 +452,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param consistent_read: If True, then a consistent read is performed.
         :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         """
-        args, kwargs = self._get_save_args(attributes=False)
+        args, kwargs = self._get_save_args(attributes=False, null_check=False)
         kwargs.setdefault('consistent_read', consistent_read)
         attrs = self._get_connection().get_item(*args, **kwargs)
         item_data = attrs.get(ITEM, None)
