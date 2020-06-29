@@ -243,7 +243,7 @@ class MetaModel(AttributeContainerMeta):
                     if not hasattr(attr_obj, 'aws_session_token'):
                         setattr(attr_obj, 'aws_session_token', None)
                 elif isinstance(attr_obj, Index):
-                    attr_obj.Meta.model = cls
+                    attr_obj._model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
                         attr_obj.Meta.index_name = attr_name
                 elif isinstance(attr_obj, Attribute):
