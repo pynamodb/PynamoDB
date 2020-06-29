@@ -37,7 +37,6 @@ Topics
    optimistic_locking
    rate_limited_operations
    local
-   backup_restore
    signals
    examples
    settings
