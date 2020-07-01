@@ -29,6 +29,8 @@ class Thread(Model):
     answered = NumberAttribute(default=0)
     tags = UnicodeSetAttribute()
     last_post_datetime = UTCDateTimeAttribute(null=True)
+    notes = ListAttribute(default=list)
+
 
 # Delete the table
 # print(Thread.delete_table())
@@ -191,6 +193,13 @@ except:
 # Remove an item's attribute
 print(thread_item.update(actions=[
     Thread.tags.remove()
+]))
+
+# Update list attribute
+print(thread_item.update(actions=[
+    Thread.notes.set(
+        Thread.notes.append(["new note"])
+    )
 ]))
 
 # Backup/restore example
