@@ -55,9 +55,8 @@ class Index(Generic[_M], metaclass=IndexMeta):
         if not hasattr(self.Meta, "projection"):
             raise ValueError("No projection defined, define a projection for this class")
 
-    @classmethod
     def count(
-        cls,
+        self,
         hash_key: _KeyType,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
@@ -68,11 +67,11 @@ class Index(Generic[_M], metaclass=IndexMeta):
         """
         Count on an index
         """
-        return cls.Meta.model.count(
+        return self._model.count(
             hash_key,
             range_key_condition=range_key_condition,
             filter_condition=filter_condition,
-            index_name=cls.Meta.index_name,
+            index_name=self.Meta.index_name,
             consistent_read=consistent_read,
             limit=limit,
             rate_limit=rate_limit,
