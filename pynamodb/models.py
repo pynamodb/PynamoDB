@@ -51,7 +51,7 @@ from pynamodb.constants import (
     BATCH_WRITE_PAGE_LIMIT,
     META_CLASS_NAME, REGION, HOST, NULL,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
-    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE
+    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE, TAGS
 )
 
 _T = TypeVar('_T', bound='Model')
@@ -185,6 +185,7 @@ class MetaProtocol(Protocol):
     aws_secret_access_key: Optional[str]
     aws_session_token: Optional[str]
     billing_mode: Optional[str]
+    tags: Optional[Dict[str, str]]
     stream_view_type: Optional[str]
 
 
@@ -788,6 +789,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 }
             if hasattr(cls.Meta, 'billing_mode'):
                 schema['billing_mode'] = cls.Meta.billing_mode
+            if hasattr(cls.Meta, 'tags'):
+                schema['tags'] = cls.Meta.tags
             if read_capacity_units is not None:
                 schema['read_capacity_units'] = read_capacity_units
             if write_capacity_units is not None:

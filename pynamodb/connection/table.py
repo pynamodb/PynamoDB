@@ -302,6 +302,7 @@ class TableConnection:
         local_secondary_indexes: Optional[Any] = None,
         stream_specification: Optional[Dict] = None,
         billing_mode: str = DEFAULT_BILLING_MODE,
+        tags: Optional[Dict[str, str]] = None,
     ) -> Dict:
         """
         Performs the CreateTable operation and returns the result
@@ -315,5 +316,6 @@ class TableConnection:
             global_secondary_indexes=global_secondary_indexes,
             local_secondary_indexes=local_secondary_indexes,
             stream_specification=stream_specification,
-            billing_mode=billing_mode
+            billing_mode=billing_mode,
+            tags=tags
         )
