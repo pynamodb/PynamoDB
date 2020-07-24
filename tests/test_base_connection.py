@@ -1156,53 +1156,8 @@ class ConnectionTestCase(TestCase):
             req.return_value = DESCRIBE_TABLE_DATA
             conn.describe_table(table_name)
 
-        self.assertRaises(
-            ValueError,
-            conn.query,
-            table_name,
-            "FooForum",
-            Path('NotRangeKey').startswith('thread'),
-            Path('Foo') == 'Bar',
-            return_consumed_capacity='TOTAL'
-        )
-
-        self.assertRaises(
-            ValueError,
-            conn.query,
-            table_name,
-            "FooForum",
-            Path('Subject') != 'thread',  # invalid sort key condition
-            return_consumed_capacity='TOTAL'
-        )
-
-        self.assertRaises(
-            ValueError,
-            conn.query,
-            table_name,
-            "FooForum",
-            Path('Subject').startswith('thread'),
-            Path('ForumName') == 'FooForum',  # filter containing hash key
-            return_consumed_capacity='TOTAL'
-        )
-
-        self.assertRaises(
-            ValueError,
-            conn.query,
-            table_name,
-            "FooForum",
-            Path('Subject').startswith('thread'),
-            Path('Subject').startswith('thread'),  # filter containing range key
-            return_consumed_capacity='TOTAL'
-        )
-
-        self.assertRaises(
-            ValueError,
-            conn.query,
-            table_name,
-            "FooForum",
-            limit=1,
-            index_name='NonExistentIndexName'
-        )
+        with pytest.raises(ValueError, match="Table Thread has no index: NonExistentIndexName"):
+            conn.query(table_name, "FooForum", limit=1, index_name='NonExistentIndexName')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}

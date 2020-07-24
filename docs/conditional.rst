@@ -89,7 +89,7 @@ This example saves a `Thread` item, only if the item exists.
     print(thread_item.save(Thread.forum_name.exists())
 
     # You can specify multiple conditions
-    print(thread_item.save(Thread.forum_name.exists() & Thread.forum_subject.contains('foobar')))
+    print(thread_item.save(Thread.forum_name.exists() & Thread.subject.contains('foobar')))
 
 
 Conditional Model.update

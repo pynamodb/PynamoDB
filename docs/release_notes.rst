@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+v5.0
+----------
+
+* ``Model.query`` no longer demotes invalid range key conditions to be filter conditions to avoid surprising behaviors:
+  where what's intended to be a cheap and fast condition ends up being expensive and slow. Since filter conditions
+  cannot contain range keys, this had limited utility to begin with, and would sometimes cause confusing
+  "'filter_condition' cannot contain key attributes" errors.
+
 v4.3.3
 ----------
 
