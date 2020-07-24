@@ -253,8 +253,7 @@ class Connection(object):
                  max_pool_connections: Optional[int] = None,
                  extra_headers: Optional[Mapping[str, str]] = None, 
                  dax_write_endpoints=None, 
-                 dax_read_endpoints=None, 
-                 fall_back_to_dynamodb=False):
+                 dax_read_endpoints=None):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
@@ -297,7 +296,6 @@ class Connection(object):
         self.dax_read_endpoints = dax_read_endpoints or []
         self._dax_write_client = None
         self._dax_read_client = None
-        self._fall_back_to_dynamodb = fall_back_to_dynamodb
 
     def __repr__(self) -> str:
         return "Connection<{}>".format(self.client.meta.endpoint_url)
@@ -375,9 +373,8 @@ class Connection(object):
                 return self.dax_write_client.dispatch(operation_name, operation_kwargs)
             elif operation_name in OP_READ and self.dax_read_endpoints:
                 return self.dax_read_client.dispatch(operation_name, operation_kwargs)
-        except DaxClientError as err:
-            if not self._fall_back_to_dynamodb:
-                raise
+        except DaxClientError:
+            raise
         operation_model = self.client._service_model.operation_model(operation_name)
         request_dict = self.client._convert_to_request_dict(
             operation_kwargs,

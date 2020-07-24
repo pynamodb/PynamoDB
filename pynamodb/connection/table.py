@@ -31,8 +31,7 @@ class TableConnection:
         aws_secret_access_key: Optional[str] = None,
         aws_session_token: Optional[str] = None,
         dax_write_endpoints: Optional[List[str]] = None,
-        dax_read_endpoints: Optional[List[str]] = None,
-        fall_back_to_dynamodb: Optional[bool] = False
+        dax_read_endpoints: Optional[List[str]] = None
     ) -> None:
         self._hash_keyname = None
         self._range_keyname = None
@@ -50,8 +49,7 @@ class TableConnection:
                                      max_pool_connections=max_pool_connections,
                                      extra_headers=extra_headers,
                                      dax_write_endpoints=dax_write_endpoints,
-                                     dax_read_endpoints=dax_read_endpoints,
-                                     fall_back_to_dynamodb=fall_back_to_dynamodb)
+                                     dax_read_endpoints=dax_read_endpoints)
 
         if aws_access_key_id and aws_secret_access_key:
             self.connection.session.set_credentials(aws_access_key_id,
