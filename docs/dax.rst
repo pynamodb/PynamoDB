@@ -26,7 +26,6 @@ Amazon DynamoDB Accelerator (DAX) is a write-through caching service that is des
             table_name = "Thread"
             dax_read_endpoints = ['xxxx:8111']
             dax_write_endpoints = ['xxxx:8111']
-            fall_back_to_dynamodb = False
 
         forum_name = UnicodeAttribute(hash_key=True)
 
