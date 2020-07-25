@@ -300,8 +300,8 @@ class Connection(object):
             self.dax_read_endpoints = dax_read_endpoints
         else:
             self.dax_read_endpoints = get_settings_value('dax_read_endpoints')
-        self._dax_write_client: DaxClient = None
-        self._dax_read_client: DaxClient = None
+        self._dax_write_client: Optional[DaxClient] = None
+        self._dax_read_client: Optional[DaxClient] = None
 
     def __repr__(self) -> str:
         return "Connection<{}>".format(self.client.meta.endpoint_url)
