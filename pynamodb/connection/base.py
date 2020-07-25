@@ -252,8 +252,8 @@ class Connection(object):
                  base_backoff_ms: Optional[int] = None,
                  max_pool_connections: Optional[int] = None,
                  extra_headers: Optional[Mapping[str, str]] = None, 
-                 dax_write_endpoints=None, 
-                 dax_read_endpoints=None):
+                 dax_write_endpoints: Optional[List[str]] = None,
+                 dax_read_endpoints: Optional[List[str]] = None):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
@@ -292,8 +292,14 @@ class Connection(object):
             self._extra_headers = extra_headers
         else:
             self._extra_headers = get_settings_value('extra_headers')
-        self.dax_write_endpoints = dax_write_endpoints or []
-        self.dax_read_endpoints = dax_read_endpoints or []
+        if dax_write_endpoints is not None:
+            self.dax_write_endpoints = dax_write_endpoints
+        else:
+            self.dax_write_endpoints = get_settings_value('dax_write_endpoints')
+        if dax_read_endpoints is not None:
+            self.dax_read_endpoints = dax_read_endpoints
+        else:
+            self.dax_read_endpoints = get_settings_value('dax_read_endpoints')
         self._dax_write_client = None
         self._dax_read_client = None
 
