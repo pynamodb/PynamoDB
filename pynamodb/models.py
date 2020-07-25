@@ -192,6 +192,8 @@ class MetaModel(AttributeContainerMeta):
     aws_session_token: Optional[str]
     billing_mode: Optional[str]
     stream_view_type: Optional[str]
+    dax_write_endpoints: Optional[List[str]]
+    dax_read_endpoints: Optional[List[str]]
 
     """
     Model meta class
