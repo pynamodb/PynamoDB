@@ -551,7 +551,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
             attr_name = cls._dynamo_to_python_attr(name)
             attr = cls.get_attributes().get(attr_name, None)  # type: ignore
             if attr:
-                attributes[attr_name] = attr.deserialize(attr.get_value(value))  # type: ignore
+                try:
+                    attributes[attr_name] = attr.deserialize(attr.get_value(value))  # type: ignore
+                except TypeError:
+                    raise TypeError(f'attribute: {attr_name}')
         return cls(_user_instantiated=False, **attributes)
 
     @classmethod
