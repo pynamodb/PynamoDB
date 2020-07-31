@@ -553,8 +553,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
             if attr:
                 try:
                     attributes[attr_name] = attr.deserialize(attr.get_value(value))  # type: ignore
-                except TypeError:
-                    raise TypeError(f'attribute: {attr_name}')
+                except TypeError as e:
+                    raise ValueError(f'attribute: {attr_name}') from e
         return cls(_user_instantiated=False, **attributes)
 
     @classmethod
