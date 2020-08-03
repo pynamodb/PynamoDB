@@ -11,7 +11,7 @@ from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Seque
     Tuple, Union, cast
 
 from pynamodb.expressions.update import Action
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError, AttributeDeserializationError
 from pynamodb.attributes import (
     Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
 )
@@ -554,7 +554,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 try:
                     attributes[attr_name] = attr.deserialize(attr.get_value(value))  # type: ignore
                 except TypeError as e:
-                    raise ValueError(f'attribute: {attr_name}') from e
+                    raise AttributeDeserializationError(attr_name=attr_name) from e
         return cls(_user_instantiated=False, **attributes)
 
     @classmethod

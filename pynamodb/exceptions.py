@@ -118,6 +118,15 @@ class InvalidStateError(PynamoDBException):
     msg = "Operation in invalid state"
 
 
+class AttributeDeserializationError(TypeError):
+    """
+    Raised when attribute type is invalid
+    """
+    def __init__(self, attr_name: str):
+        msg = "Deserialization error on `{}`".format(attr_name)
+        super(AttributeDeserializationError, self).__init__(msg)
+
+
 class VerboseClientError(botocore.exceptions.ClientError):
     def __init__(self, error_response: Any, operation_name: str, verbose_properties: Optional[Any] = None):
         """ Modify the message template to include the desired verbose properties """
