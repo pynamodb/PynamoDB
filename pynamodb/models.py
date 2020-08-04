@@ -554,7 +554,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 try:
                     attributes[attr_name] = attr.deserialize(attr.get_value(value))  # type: ignore
                 except TypeError as e:
-                    raise AttributeDeserializationError(attr_name=attr_name) from e
+                    raise AttributeDeserializationError(attr_name=attr_name) from e  # type: ignore
         return cls(_user_instantiated=False, **attributes)
 
     @classmethod
