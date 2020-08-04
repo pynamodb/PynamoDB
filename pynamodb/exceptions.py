@@ -122,7 +122,7 @@ class AttributeDeserializationError(TypeError):
     """
     Raised when attribute type is invalid
     """
-    def __init__(self, attr_name: Optional[str]):
+    def __init__(self, attr_name: str):
         msg = "Deserialization error on `{}`".format(attr_name)
         super(AttributeDeserializationError, self).__init__(msg)
 
