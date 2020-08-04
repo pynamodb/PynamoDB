@@ -14,7 +14,7 @@ from dateutil.tz import tzutc
 
 from .deep_eq import deep_eq
 from pynamodb.util import snake_to_camel_case
-from pynamodb.exceptions import DoesNotExist, TableError, PutError
+from pynamodb.exceptions import DoesNotExist, TableError, PutError, AttributeDeserializationError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
@@ -3301,6 +3301,9 @@ class ModelInitTestCase(TestCase):
             req.return_value = SIMPLE_MODEL_TABLE_DATA
             m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}, 'my_ttl': {'N': '1546300800'}})
         assert m.my_ttl == datetime(2019, 1, 1, tzinfo=tzutc())
+
+    def test_deserialized_with_invalid_type(self):
+        self.assertRaises(AttributeDeserializationError, TTLModel.from_raw_data, {'my_ttl': {'S': '1546300800'}})
 
     def test_multiple_version_attributes(self):
         with self.assertRaises(ValueError):

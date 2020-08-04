@@ -11,7 +11,7 @@ from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Seque
     Tuple, Union, cast
 
 from pynamodb.expressions.update import Action
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError, AttributeDeserializationError
 from pynamodb.attributes import (
     Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
 )
@@ -551,7 +551,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
             attr_name = cls._dynamo_to_python_attr(name)
             attr = cls.get_attributes().get(attr_name, None)  # type: ignore
             if attr:
-                attributes[attr_name] = attr.deserialize(attr.get_value(value))  # type: ignore
+                try:
+                    attributes[attr_name] = attr.deserialize(attr.get_value(value))  # type: ignore
+                except TypeError as e:
+                    raise AttributeDeserializationError(attr_name=attr_name) from e  # type: ignore
         return cls(_user_instantiated=False, **attributes)
 
     @classmethod
