@@ -2,7 +2,7 @@ Release Notes
 =============
 
 v5.0 (unreleased)
-----------
+-----------------
 
 * ``Model.query`` no longer demotes invalid range key conditions to be filter conditions to avoid surprising behaviors:
   where what's intended to be a cheap and fast condition ends up being expensive and slow. Since filter conditions
