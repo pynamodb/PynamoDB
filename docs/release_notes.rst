@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-v5.0
+v5.0 (unreleased)
 ----------
 
 * ``Model.query`` no longer demotes invalid range key conditions to be filter conditions to avoid surprising behaviors:
@@ -21,6 +21,9 @@ v4.3.3
       my_list = ListAttribute()
 
     MyModel.query(..., condition=MyModel.my_list[0] == 42)
+    
+* Fix a warning about ``collections.abc`` deprecation (#782)
+
 
 v4.3.2
 ----------
