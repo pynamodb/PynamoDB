@@ -845,6 +845,9 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         return all(self.is_correctly_typed(k, v) for k, v in self.get_attributes().items())
 
     def serialize(self, values):
+        if values is None:
+            return None
+
         rval = {}
         for k in values:
             v = values[k]
