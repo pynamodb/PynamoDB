@@ -1052,6 +1052,7 @@ DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {
 SERIALIZE_CLASS_MAP = {
     dict: MapAttribute(),
     list: ListAttribute(),
+    tuple: ListAttribute(),
     set: ListAttribute(),
     bool: BooleanAttribute(),
     float: NumberAttribute(),
@@ -1063,6 +1064,7 @@ SERIALIZE_CLASS_MAP = {
 SERIALIZE_KEY_MAP = {
     dict: MAP_SHORT,
     list: LIST_SHORT,
+    tuple: LIST_SHORT,
     set: LIST_SHORT,
     bool: BOOLEAN,
     float: NUMBER_SHORT,

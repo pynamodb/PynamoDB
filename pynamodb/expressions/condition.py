@@ -106,7 +106,7 @@ class BeginsWith(Condition):
 
 class Contains(Condition):
     format_string = '{operator} ({0}, {1})'
-
+    
     def __init__(self, path, operand):
         super(Contains, self).__init__('contains', path, operand)
 

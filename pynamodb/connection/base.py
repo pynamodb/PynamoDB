@@ -296,7 +296,8 @@ class Connection(object):
         """
         Sends a debug message to the logger
         """
-        log.debug("Calling %s with arguments %s", operation, kwargs)
+        # log.debug("Calling %s with arguments %s", operation, kwargs)
+        log.debug("Calling %s", operation)
 
     def _sign_request(self, request):
         auth = self.client._request_signer.get_auth_instance(
