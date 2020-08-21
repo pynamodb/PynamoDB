@@ -471,6 +471,8 @@ class JSONAttribute(Attribute[Any]):
         """
         Deserializes JSON
         """
+        if value is None:
+            return None
         return json.loads(value, strict=False)
 
 
@@ -516,6 +518,8 @@ class NumberAttribute(Attribute[float]):
         """
         Decode numbers from JSON
         """
+        if value is None:
+            return None
         return json.loads(value)
 
 
