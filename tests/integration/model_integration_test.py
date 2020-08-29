@@ -1,7 +1,11 @@
 """
 Integration tests for the model API
 """
+from builtins import ValueError
+
 from datetime import datetime
+
+from examples.indexes import TestModel
 from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
 from pynamodb.attributes import (
@@ -102,3 +106,52 @@ def test_model_integration(ddb_url):
 
     print(query_obj.update([TestModel.view.add(1)], condition=TestModel.forum.exists()))
     TestModel.delete_table()
+
+
+
+def test_can_inherit_version_attribute(ddb_url) -> None:
+
+    class TestModelA(Model):
+        """
+        A model for testing
+        """
+
+        class Meta:
+            region = 'us-east-1'
+            table_name = 'pynamodb-ci-a'
+            host = ddb_url
+
+        forum = UnicodeAttribute(hash_key=True)
+        thread = UnicodeAttribute(range_key=True)
+        scores = NumberSetAttribute()
+        version = VersionAttribute()
+
+    class TestModelB(TestModel):
+        class Meta:
+            region = 'us-east-1'
+            table_name = 'pynamodb-ci-b'
+            host = ddb_url
+
+    test_item_b = TestModelB(
+        forum='something',
+        thread='another-thing',
+        scores=2,
+    )
+    test_item_b.save()
+
+    class TestModelC(TestModel):
+        class Meta:
+            region = 'us-east-1'
+            table_name = 'pynamodb-ci-c'
+            host = ddb_url
+
+        version_invalid = VersionAttribute()
+
+    with pytest.raises(ValueError) as e:
+        test_item_c = TestModelC(
+            forum='something',
+            thread='another-thing',
+            scores=2,
+        )
+        test_item_c.save()
+    assert e.value == "The model has more than one Version attribute: version, version_invalid"
