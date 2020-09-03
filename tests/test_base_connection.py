@@ -18,8 +18,8 @@ from pynamodb.connection.base import MetaTable
 from pynamodb.exceptions import (
     TableError, DeleteError, PutError, ScanError, GetError, UpdateError, TableDoesNotExist)
 from pynamodb.constants import (
-    DEFAULT_REGION, UNPROCESSED_ITEMS, STRING_SHORT, BINARY_SHORT, DEFAULT_ENCODING, TABLE_KEY,
-    PROVISIONED_BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE)
+    DEFAULT_REGION, UNPROCESSED_ITEMS, STRING, BINARY, DEFAULT_ENCODING, TABLE_KEY,
+    PAY_PER_REQUEST_BILLING_MODE)
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
@@ -1579,8 +1579,8 @@ class ConnectionTestCase(TestCase):
             unprocessed_items.append({
                 'PutRequest': {
                     'Item': {
-                        'name': {STRING_SHORT: 'daniel'},
-                        'picture': {BINARY_SHORT: base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
+                        'name': {STRING: 'daniel'},
+                        'picture': {BINARY: base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
                     }
                 }
             })
@@ -1590,8 +1590,8 @@ class ConnectionTestCase(TestCase):
             expected_unprocessed_items.append({
                 'PutRequest': {
                     'Item': {
-                        'name': {STRING_SHORT: 'daniel'},
-                        'picture': {BINARY_SHORT: binary_blob}
+                        'name': {STRING: 'daniel'},
+                        'picture': {BINARY: binary_blob}
                     }
                 }
             })
