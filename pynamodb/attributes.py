@@ -237,10 +237,10 @@ class AttributeContainerMeta(GenericMeta):
                 initialized = attribute._make_attribute()
 
             cls._attributes[name] = attribute
-            if attribute.attr_name is not None:
-                cls._dynamo_to_python_attrs[attribute.attr_name] = name
-            else:
+            if attribute.attr_name is None:
                 attribute.attr_name = name
+            if attribute.attr_name != name:
+                cls._dynamo_to_python_attrs[attribute.attr_name] = name
 
             if initialized and isinstance(attribute, MapAttribute):
                 # To support creating expressions from nested attributes, MapAttribute instances
