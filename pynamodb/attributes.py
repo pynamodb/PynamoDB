@@ -18,8 +18,8 @@ from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
 from pynamodb.constants import (
-    STRING, STRING_SHORT, NUMBER, BINARY, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL,
+    BINARY, BINARY_SET, BOOLEAN, DATETIME_FORMAT, DEFAULT_ENCODING,
+    LIST, MAP, NULL, NUMBER, NUMBER_SET, STRING, STRING_SET
 )
 from pynamodb.expressions.operand import Path
 
@@ -121,8 +121,7 @@ class Attribute(Generic[_T]):
         return value
 
     def get_value(self, value: Any) -> Any:
-        serialized_dynamo_type = ATTR_TYPE_MAP[self.attr_type]
-        return value.get(serialized_dynamo_type)
+        return value.get(self.attr_type)
 
     def __iter__(self):
         # Because we define __getitem__ below for condition expression support
@@ -172,7 +171,7 @@ class Attribute(Generic[_T]):
 
     def is_type(self):
         # What makes sense here? Are we using this to check if deserialization will be successful?
-        return Path(self).is_type(ATTR_TYPE_MAP[self.attr_type])
+        return Path(self).is_type(self.attr_type)
 
     def startswith(self, prefix: str) -> 'BeginsWith':
         return Path(self).startswith(prefix)
@@ -854,7 +853,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             if attr_class is None:
                 continue
             if attr_class.attr_type:
-                attr_key = ATTR_TYPE_MAP[attr_class.attr_type]
+                attr_key = attr_class.attr_type
             else:
                 attr_key = _get_key_for_serialize(v)
 
@@ -951,7 +950,7 @@ def _get_key_for_serialize(value):
     if value is None:
         return NullAttribute.attr_type
     if isinstance(value, MapAttribute):
-        return MAP_SHORT
+        return MAP
     value_type = type(value)
     if value_type not in SERIALIZE_KEY_MAP:
         raise ValueError('Unknown value: {}'.format(value_type))
@@ -1018,7 +1017,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
                           if self.element_type
                           else _get_class_for_serialize(v))
             if attr_class.attr_type:
-                attr_key = ATTR_TYPE_MAP[attr_class.attr_type]
+                attr_key = attr_class.attr_type
             else:
                 attr_key = _get_key_for_serialize(v)
             rval.append({attr_key: attr_class.serialize(v)})
@@ -1041,11 +1040,11 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
 
 
 DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {
-    LIST_SHORT: ListAttribute(),
-    NUMBER_SHORT: NumberAttribute(),
-    STRING_SHORT: UnicodeAttribute(),
+    LIST: ListAttribute(),
+    NUMBER: NumberAttribute(),
+    STRING: UnicodeAttribute(),
     BOOLEAN: BooleanAttribute(),
-    MAP_SHORT: MapAttribute(),
+    MAP: MapAttribute(),
     NULL: NullAttribute()
 }
 
@@ -1061,11 +1060,11 @@ SERIALIZE_CLASS_MAP = {
 
 
 SERIALIZE_KEY_MAP = {
-    dict: MAP_SHORT,
-    list: LIST_SHORT,
-    set: LIST_SHORT,
+    dict: MAP,
+    list: LIST,
+    set: LIST,
     bool: BOOLEAN,
-    float: NUMBER_SHORT,
-    int: NUMBER_SHORT,
-    str: STRING_SHORT,
+    float: NUMBER,
+    int: NUMBER,
+    str: STRING,
 }
