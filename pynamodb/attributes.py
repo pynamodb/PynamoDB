@@ -852,10 +852,6 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             attr_class = self._get_serialize_class(k, v)
             if attr_class is None:
                 continue
-            if attr_class.attr_type:
-                attr_key = attr_class.attr_type
-            else:
-                attr_key = _get_key_for_serialize(v)
 
             # If this is a subclassed MapAttribute, there may be an alternate attr name
             attr = self.get_attributes().get(k)
@@ -866,7 +862,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
                 # Check after we serialize in case the serialized value is null
                 continue
 
-            rval[attr_name] = {attr_key: serialized}
+            rval[attr_name] = {attr_class.attr_type: serialized}
 
         return rval
 
@@ -946,17 +942,6 @@ def _get_class_for_serialize(value):
     return SERIALIZE_CLASS_MAP[value_type]
 
 
-def _get_key_for_serialize(value):
-    if value is None:
-        return NullAttribute.attr_type
-    if isinstance(value, MapAttribute):
-        return MAP
-    value_type = type(value)
-    if value_type not in SERIALIZE_KEY_MAP:
-        raise ValueError('Unknown value: {}'.format(value_type))
-    return SERIALIZE_KEY_MAP[value_type]
-
-
 def _fast_parse_utc_datestring(datestring):
     # Method to quickly parse strings formatted with '%Y-%m-%dT%H:%M:%S.%f+0000'.
     # This is ~5.8x faster than using strptime and 38x faster than dateutil.parser.parse.
@@ -1016,11 +1001,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
             attr_class = (self.element_type()
                           if self.element_type
                           else _get_class_for_serialize(v))
-            if attr_class.attr_type:
-                attr_key = attr_class.attr_type
-            else:
-                attr_key = _get_key_for_serialize(v)
-            rval.append({attr_key: attr_class.serialize(v)})
+            rval.append({attr_class.attr_type: attr_class.serialize(v)})
         return rval
 
     def deserialize(self, values):
@@ -1056,15 +1037,4 @@ SERIALIZE_CLASS_MAP = {
     float: NumberAttribute(),
     int: NumberAttribute(),
     str: UnicodeAttribute(),
-}
-
-
-SERIALIZE_KEY_MAP = {
-    dict: MAP,
-    list: LIST,
-    set: LIST,
-    bool: BOOLEAN,
-    float: NUMBER,
-    int: NUMBER,
-    str: STRING,
 }
