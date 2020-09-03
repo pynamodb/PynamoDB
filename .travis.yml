@@ -6,8 +6,9 @@ python:
   - "3.6"
   - "pypy3"
 
-# dynamodb-local uses deprecated JAXB APIs
-jdk: openjdk8
+before_install:
+  # dynamodb-local uses deprecated JAXB APIs
+  - sudo apt-get install openjdk-8-jdk
 
 install:
   - pip install -e .[signals] -r requirements-dev.txt
