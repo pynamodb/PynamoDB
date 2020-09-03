@@ -6,13 +6,15 @@ python:
   - "3.6"
   - "pypy3"
 
+# dynamodb-local uses deprecated JAXB APIs
+jdk: openjdk8
+
 install:
   - pip install -e .[signals] -r requirements-dev.txt
 
 before_script:
   - wget http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest.tar.gz -O /tmp/dynamodb_local_latest.tar.gz
   - tar -xzf /tmp/dynamodb_local_latest.tar.gz -C /tmp
-  - jdk_switcher use openjdk8
   - java -Djava.library.path=/tmp/DynamoDBLocal_lib -jar /tmp/DynamoDBLocal.jar -inMemory -port 8000 &
   - sleep 2
 
