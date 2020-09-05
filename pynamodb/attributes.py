@@ -364,6 +364,8 @@ class BinaryAttribute(Attribute[bytes]):
         """
         Returns a decoded string from base64
         """
+        if value is None:
+            return None
         try:
             return b64decode(value.decode(DEFAULT_ENCODING))
         except AttributeError:
@@ -470,7 +472,9 @@ class JSONAttribute(Attribute[Any]):
         """
         Deserializes JSON
         """
-        return json.loads(value, strict=False)
+        if value is None:
+            return None
+        return json.loads(value)
 
 
 class BooleanAttribute(Attribute[bool]):
@@ -488,6 +492,8 @@ class BooleanAttribute(Attribute[bool]):
             return False
 
     def deserialize(self, value):
+        if value is None:
+            return None
         return bool(value)
 
 
@@ -515,6 +521,8 @@ class NumberAttribute(Attribute[float]):
         """
         Decode numbers from JSON
         """
+        if value is None:
+            return None
         return json.loads(value)
 
 
@@ -547,6 +555,8 @@ class VersionAttribute(NumberAttribute):
         """
         Decode numbers from JSON and cast to int.
         """
+        if value is None:
+            return None
         return int(super().deserialize(value))
 
 
@@ -616,6 +626,8 @@ class UTCDateTimeAttribute(Attribute[datetime]):
         """
         Takes a UTC datetime string and returns a datetime object
         """
+        if value is None:
+            return None
         try:
             return _fast_parse_utc_datestring(value)
         except (ValueError, IndexError):
@@ -870,6 +882,8 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         """
         Decode as a dict.
         """
+        if values is None:
+            return None
         deserialized_dict: Dict[str, Any] = dict()
         for k in values:
             v = values[k]
@@ -1008,6 +1022,8 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         """
         Decode from list of AttributeValue types.
         """
+        if values is None:
+            return None
         deserialized_lst = []
         for v in values:
             class_for_deserialize = self.element_type() if self.element_type else _get_class_for_deserialize(v)
