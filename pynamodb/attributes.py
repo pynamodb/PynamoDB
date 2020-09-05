@@ -362,12 +362,9 @@ class BinaryAttribute(Attribute[bytes]):
 
     def deserialize(self, value):
         """
-        Returns a decoded string from base64
+        Returns a decoded byte string from a base64 encoded value
         """
-        try:
-            return b64decode(value.decode(DEFAULT_ENCODING))
-        except AttributeError:
-            return b64decode(value)
+        return b64decode(value)
 
 
 class BinarySetAttribute(SetMixin, Attribute[Set[bytes]]):
@@ -438,15 +435,6 @@ class UnicodeAttribute(Attribute[str]):
     A unicode attribute
     """
     attr_type = STRING
-
-    def serialize(self, value):
-        """
-        Returns a unicode string
-        """
-        if value is None or not len(value):
-            return None
-        else:
-            return value
 
 
 class JSONAttribute(Attribute[Any]):

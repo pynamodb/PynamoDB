@@ -378,7 +378,7 @@ class TestUnicodeAttribute:
         """
         attr = UnicodeAttribute()
         assert attr.serialize('foo') == 'foo'
-        assert attr.serialize('') is None
+        assert attr.serialize('') == ''
         assert attr.serialize(None) is None
 
     def test_unicode_deserialize(self):
@@ -388,6 +388,8 @@ class TestUnicodeAttribute:
         attr = UnicodeAttribute()
         assert attr.deserialize('foo') == 'foo'
         assert attr.deserialize(u'foo') == 'foo'
+        assert attr.deserialize('') == ''
+        assert attr.deserialize(None) is None
 
     def test_unicode_set_serialize(self):
         """
