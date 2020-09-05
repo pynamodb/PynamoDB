@@ -54,7 +54,7 @@ class CustomAttrMap(MapAttribute):
 
 class DefaultsMap(MapAttribute):
     map_field = MapAttribute(default={})
-    string_field = UnicodeAttribute(null=True)
+    string_set_field = UnicodeSetAttribute(null=True)
 
 
 class TestAttributeDescriptor:
@@ -624,7 +624,7 @@ class TestMapAttribute:
 
     def test_null_attribute_map_after_serialization(self):
         null_attribute = {
-            'string_field': '',
+            'string_set_field': {},
         }
         attr = DefaultsMap()
         serialized = attr.serialize(null_attribute)
