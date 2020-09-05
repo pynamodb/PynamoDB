@@ -175,6 +175,13 @@ class TestUTCDateTimeAttribute:
         parse_mock.assert_not_called()
         datetime_mock.strptime.assert_not_called()
 
+    def test_utc_date_time_deserialize_none(self):
+        """
+        UTCDateTimeAttribute.deserialize
+        """
+        attr = UTCDateTimeAttribute()
+        assert attr.deserialize(None) == None
+
     def test_utc_date_time_serialize(self):
         """
         UTCDateTimeAttribute.serialize
@@ -256,6 +263,13 @@ class TestBinaryAttribute:
         serial = b64encode(b'foo').decode(DEFAULT_ENCODING)
         assert attr.deserialize(serial) == b'foo'
 
+    def test_binary_deserialize_none(self):
+        """
+        BinaryAttribute.deserialize
+        """
+        attr = BinaryAttribute()
+        assert attr.deserialize(None) == None
+
     def test_binary_set_serialize(self):
         """
         BinarySetAttribute.serialize
@@ -285,6 +299,13 @@ class TestBinaryAttribute:
         assert attr.deserialize(
             [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]
         ) == value
+
+    def test_binary_set_deserialize_none(self):
+        """
+        BinarySetAttribute.deserialize
+        """
+        attr = BinarySetAttribute()
+        assert attr.deserialize(None) == None
 
     def test_binary_set_attribute(self):
         """
@@ -330,6 +351,14 @@ class TestNumberAttribute:
         assert attr.deserialize('3.141') == 3.141
         assert attr.deserialize('12345678909876543211234234324234') == 12345678909876543211234234324234
 
+    def test_number_deserialize_none(self):
+        """
+        NumberAttribute.deserialize
+        """
+        attr = NumberAttribute()
+        assert attr.deserialize(None) == None
+
+
     def test_number_set_deserialize(self):
         """
         NumberSetAttribute.deserialize
@@ -337,6 +366,14 @@ class TestNumberAttribute:
         attr = NumberSetAttribute()
         assert attr.attr_type == NUMBER_SET
         assert attr.deserialize([json.dumps(val) for val in sorted({1, 2})]) == {1, 2}
+
+    def test_number_set_deserialize_none(self):
+        """
+        NumberSetAttribute.deserialize
+        """
+        attr = NumberSetAttribute()
+        assert attr.deserialize(None) == None
+
 
     def test_number_set_serialize(self):
         """
@@ -389,6 +426,13 @@ class TestUnicodeAttribute:
         assert attr.deserialize('foo') == 'foo'
         assert attr.deserialize(u'foo') == 'foo'
 
+    def test_unicode_deserialize_none(self):
+        """
+        UnicodeAttribute.deserialize
+        """
+        attr = UnicodeAttribute()
+        assert attr.deserialize(None) == None
+
     def test_unicode_set_serialize(self):
         """
         UnicodeSetAttribute.serialize
@@ -440,6 +484,13 @@ class TestUnicodeAttribute:
         value = {'1', '2.8'}
         assert attr.deserialize(value) == value
 
+    def test_unicode_set_deserialize_none(self):
+        """
+        UnicodeSetAttribute.deserialize
+        """
+        attr = UnicodeSetAttribute()
+        assert attr.deserialize(None) == None
+
     def test_unicode_set_attribute(self):
         """
         UnicodeSetAttribute.default
@@ -483,6 +534,12 @@ class TestBooleanAttribute:
         assert attr.deserialize(True) is True
         assert attr.deserialize(False) is False
 
+    def test_boolean_deserialize_none(self):
+        """
+        BooleanAttribute.deserialize
+        """
+        attr = BooleanAttribute()
+        assert attr.deserialize(None) == None
 
 class TestTTLAttribute:
     """
@@ -578,6 +635,13 @@ class TestJSONAttribute:
         item = {'foo': 'bar', 'bool': True, 'number': 3.141}
         encoded = json.dumps(item)
         assert attr.deserialize(encoded) == item
+
+    def test_json_deserialize_none(self):
+        """
+        JSONAttribute.deserialize
+        """
+        attr = JSONAttribute()
+        assert attr.deserialize(None) is None
 
     def test_control_chars(self):
         """
@@ -913,6 +977,10 @@ class TestMapAndListAttribute:
         serialized = MapAttribute().serialize(grocery_list)
         assert MapAttribute().deserialize(serialized) == grocery_list
 
+
+    def test_map_none(self):
+        assert MapAttribute().deserialize(None) == None
+
     def test_map_of_list_of_map(self):
         family_attributes = {
             'phillips': [
@@ -1015,6 +1083,10 @@ class TestVersionAttribute:
         assert attr.serialize(3.141) == '3'
         assert attr.serialize(1) == '1'
         assert attr.serialize(12345678909876543211234234324234) == '12345678909876543211234234324234'
+
+    def test_deserialize_none(self):
+        attr = VersionAttribute()
+        assert attr.deserialize(None) is None
 
     def test_deserialize(self):
         attr = VersionAttribute()
