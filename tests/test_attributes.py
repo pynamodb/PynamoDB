@@ -263,7 +263,7 @@ class TestBinaryAttribute:
         attr = BinarySetAttribute()
         assert attr.attr_type == BINARY_SET
         assert sorted(attr.serialize({b'foo', b'bar'})) == ['YmFy', 'Zm9v']
-        assert attr.serialize(None) is None
+        assert attr.serialize({}) is None
 
     def test_binary_set_round_trip(self):
         """
@@ -342,7 +342,7 @@ class TestNumberAttribute:
         """
         attr = NumberSetAttribute()
         assert attr.serialize({1, 2}) == [json.dumps(val) for val in sorted({1, 2})]
-        assert attr.serialize(None) is None
+        assert attr.serialize({}) is None
 
     def test_number_set_attribute(self):
         """
