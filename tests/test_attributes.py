@@ -54,7 +54,7 @@ class CustomAttrMap(MapAttribute):
 
 class DefaultsMap(MapAttribute):
     map_field = MapAttribute(default={})
-    string_field = UnicodeAttribute(null=True)
+    string_set_field = UnicodeSetAttribute(null=True)
 
 
 class TestAttributeDescriptor:
@@ -378,7 +378,7 @@ class TestUnicodeAttribute:
         """
         attr = UnicodeAttribute()
         assert attr.serialize('foo') == 'foo'
-        assert attr.serialize('') is None
+        assert attr.serialize('') == ''
         assert attr.serialize(None) is None
 
     def test_unicode_deserialize(self):
@@ -388,6 +388,8 @@ class TestUnicodeAttribute:
         attr = UnicodeAttribute()
         assert attr.deserialize('foo') == 'foo'
         assert attr.deserialize(u'foo') == 'foo'
+        assert attr.deserialize('') == ''
+        assert attr.deserialize(None) is None
 
     def test_unicode_set_serialize(self):
         """
@@ -622,7 +624,7 @@ class TestMapAttribute:
 
     def test_null_attribute_map_after_serialization(self):
         null_attribute = {
-            'string_field': '',
+            'string_set_field': {},
         }
         attr = DefaultsMap()
         serialized = attr.serialize(null_attribute)
