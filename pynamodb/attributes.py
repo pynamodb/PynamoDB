@@ -350,7 +350,7 @@ class BinarySetAttribute(Attribute[Set[bytes]]):
         """
         Returns a list of base64 encoded binary strings. Encodes empty sets as "None".
         """
-        return [b64encode(v).decode(DEFAULT_ENCODING) for v in value] if value else None
+        return [b64encode(v).decode(DEFAULT_ENCODING) for v in value] or None
 
     def deserialize(self, value):
         """
@@ -377,7 +377,7 @@ class UnicodeSetAttribute(Attribute[Set[str]]):
         """
         Returns a list of strings. Encodes empty sets as "None".
         """
-        return list(value) if value else None
+        return list(value) or None
 
     def deserialize(self, value):
         """
@@ -458,7 +458,7 @@ class NumberSetAttribute(Attribute[Set[float]]):
         """
         Encodes a set of numbers as a JSON list. Encodes empty sets as "None".
         """
-        return [json.dumps(v) for v in value] if value else None
+        return [json.dumps(v) for v in value] or None
 
     def deserialize(self, value):
         """

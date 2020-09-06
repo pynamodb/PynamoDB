@@ -395,7 +395,7 @@ class TestUnicodeAttribute:
         """
         attr = UnicodeSetAttribute()
         assert attr.attr_type == STRING_SET
-        assert attr.serialize(None) is None
+        assert attr.serialize({}) is None
 
         expected = sorted(['foo', 'bar'])
         assert sorted(attr.serialize({'foo', 'bar'})) == expected
