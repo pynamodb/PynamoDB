@@ -320,34 +320,6 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         return self is not other
 
 
-class SetMixin(object):
-    """
-    Adds (de)serialization methods for sets
-    """
-    def serialize(self, value):
-        """
-        Serializes a set
-
-        Because dynamodb doesn't store empty attributes,
-        empty sets return None
-        """
-        if value is not None:
-            try:
-                iter(value)
-            except TypeError:
-                value = [value]
-            if len(value):
-                return [json.dumps(val) for val in sorted(value)]
-        return None
-
-    def deserialize(self, value):
-        """
-        Deserializes a set
-        """
-        if value and len(value):
-            return {json.loads(val) for val in value}
-
-
 class BinaryAttribute(Attribute[bytes]):
     """
     A binary attribute
@@ -367,7 +339,7 @@ class BinaryAttribute(Attribute[bytes]):
         return b64decode(value)
 
 
-class BinarySetAttribute(SetMixin, Attribute[Set[bytes]]):
+class BinarySetAttribute(Attribute[Set[bytes]]):
     """
     A binary set
     """
@@ -376,58 +348,15 @@ class BinarySetAttribute(SetMixin, Attribute[Set[bytes]]):
 
     def serialize(self, value):
         """
-        Returns a base64 encoded binary string
+        Returns a list of base64 encoded binary strings. Encodes empty sets as "None".
         """
-        if value and len(value):
-            return [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]
-        else:
-            return None
+        return [b64encode(v).decode(DEFAULT_ENCODING) for v in value] or None
 
     def deserialize(self, value):
         """
-        Returns a decoded string from base64
+        Returns a set of decoded byte strings from base64 encoded values.
         """
-        try:
-            if value and len(value):
-                return {b64decode(val.decode(DEFAULT_ENCODING)) for val in value}
-        except AttributeError:
-            return {b64decode(val) for val in value}
-
-
-class UnicodeSetAttribute(SetMixin, Attribute[Set[Text]]):
-    """
-    A unicode set
-    """
-    attr_type = STRING_SET
-    null = True
-
-    def element_serialize(self, value):
-        """
-        This serializes unicode / strings out as unicode strings.
-        It does not touch the value if it is already a unicode str
-        :param value:
-        :return:
-        """
-        if isinstance(value, str):
-            return value
-        return str(value)
-
-    def element_deserialize(self, value):
-        return value
-
-    def serialize(self, value):
-        if value is not None:
-            try:
-                iter(value)
-            except TypeError:
-                value = [value]
-            if len(value):
-                return [self.element_serialize(val) for val in sorted(value)]
-        return None
-
-    def deserialize(self, value):
-        if value and len(value):
-            return {self.element_deserialize(val) for val in value}
+        return {b64decode(v) for v in value}
 
 
 class UnicodeAttribute(Attribute[str]):
@@ -435,6 +364,26 @@ class UnicodeAttribute(Attribute[str]):
     A unicode attribute
     """
     attr_type = STRING
+
+
+class UnicodeSetAttribute(Attribute[Set[str]]):
+    """
+    A unicode set
+    """
+    attr_type = STRING_SET
+    null = True
+
+    def serialize(self, value):
+        """
+        Returns a list of strings. Encodes empty sets as "None".
+        """
+        return list(value) or None
+
+    def deserialize(self, value):
+        """
+        Returns a set from a list of strings.
+        """
+        return set(value)
 
 
 class JSONAttribute(Attribute[Any]):
@@ -479,14 +428,6 @@ class BooleanAttribute(Attribute[bool]):
         return bool(value)
 
 
-class NumberSetAttribute(SetMixin, Attribute[Set[float]]):
-    """
-    A number set attribute
-    """
-    attr_type = NUMBER_SET
-    null = True
-
-
 class NumberAttribute(Attribute[float]):
     """
     A number attribute
@@ -504,6 +445,26 @@ class NumberAttribute(Attribute[float]):
         Decode numbers from JSON
         """
         return json.loads(value)
+
+
+class NumberSetAttribute(Attribute[Set[float]]):
+    """
+    A number set attribute
+    """
+    attr_type = NUMBER_SET
+    null = True
+
+    def serialize(self, value):
+        """
+        Encodes a set of numbers as a JSON list. Encodes empty sets as "None".
+        """
+        return [json.dumps(v) for v in value] or None
+
+    def deserialize(self, value):
+        """
+        Returns a set from a JSON list of numbers.
+        """
+        return {json.loads(v) for v in value}
 
 
 class VersionAttribute(NumberAttribute):

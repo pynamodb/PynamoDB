@@ -2099,7 +2099,7 @@ class ModelTestCase(TestCase):
 
             for item in LocalIndexedModel.email_index.query(
                     'foo',
-                    filter_condition=LocalIndexedModel.user_name.startswith('bar') & LocalIndexedModel.aliases.contains(1),
+                    filter_condition=LocalIndexedModel.user_name.startswith('bar') & LocalIndexedModel.aliases.contains('baz'),
                     limit=1):
                 queried.append(item._serialize())
 
@@ -2119,7 +2119,7 @@ class ModelTestCase(TestCase):
                         'S': u'bar'
                     },
                     ':2': {
-                        'S': '1'
+                        'S': u'baz'
                     }
                 },
                 'IndexName': 'email_index',

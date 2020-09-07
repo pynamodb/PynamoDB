@@ -262,10 +262,8 @@ class TestBinaryAttribute:
         """
         attr = BinarySetAttribute()
         assert attr.attr_type == BINARY_SET
-        assert attr.serialize({b'foo', b'bar'}) == [
-            b64encode(val).decode(DEFAULT_ENCODING) for val in sorted({b'foo', b'bar'})
-        ]
-        assert attr.serialize(None) is None
+        assert sorted(attr.serialize({b'foo', b'bar'})) == ['YmFy', 'Zm9v']
+        assert attr.serialize({}) is None
 
     def test_binary_set_round_trip(self):
         """
@@ -344,7 +342,7 @@ class TestNumberAttribute:
         """
         attr = NumberSetAttribute()
         assert attr.serialize({1, 2}) == [json.dumps(val) for val in sorted({1, 2})]
-        assert attr.serialize(None) is None
+        assert attr.serialize({}) is None
 
     def test_number_set_attribute(self):
         """
@@ -397,16 +395,16 @@ class TestUnicodeAttribute:
         """
         attr = UnicodeSetAttribute()
         assert attr.attr_type == STRING_SET
-        assert attr.deserialize(None) is None
+        assert attr.serialize({}) is None
 
         expected = sorted(['foo', 'bar'])
-        assert attr.serialize({'foo', 'bar'}) == expected
+        assert sorted(attr.serialize({'foo', 'bar'})) == expected
 
         expected = sorted(['True', 'False'])
-        assert attr.serialize({'True', 'False'}) == expected
+        assert sorted(attr.serialize({'True', 'False'})) == expected
 
         expected = sorted(['true', 'false'])
-        assert attr.serialize({'true', 'false'}) == expected
+        assert sorted(attr.serialize({'true', 'false'})) == expected
 
     def test_round_trip_unicode_set(self):
         """
