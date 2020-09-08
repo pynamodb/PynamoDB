@@ -1093,7 +1093,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             )
         elif not hasattr(cls.Meta, "table_name") or cls.Meta.table_name is None:
             raise AttributeError(
-                'As of v1.0 PyanmoDB Models must have a table_name\n'
+                'As of v1.0 PynamoDB Models must have a table_name\n'
                 'Model: {}.{}\n'
                 'See https://pynamodb.readthedocs.io/en/latest/release_notes.html'.format(
                     cls.__module__, cls.__name__,
