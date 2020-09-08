@@ -437,7 +437,7 @@ class Connection(object):
                     for item in operation_kwargs[TRANSACT_ITEMS]:
                         for op in item.values():
                             table_names.append(op[TABLE_NAME])
-                    verbose_properties['table_name'] = ','.join(items)
+                    verbose_properties['table_name'] = ','.join(table_names)
                 else:
                     verbose_properties['table_name'] = operation_kwargs.get(TABLE_NAME)
 
