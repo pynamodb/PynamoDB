@@ -874,7 +874,7 @@ def _get_value_for_deserialize(value):
 
 
 def _get_class_for_deserialize(value):
-    value_type = list(value.keys())[0]
+    value_type = next(iter(value.keys()))
     if value_type not in DESERIALIZE_CLASS_MAP:
         raise ValueError('Unknown value: ' + str(value))
     return DESERIALIZE_CLASS_MAP[value_type]
@@ -922,7 +922,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         null: Optional[bool] = None,
         default: Optional[Union[Any, Callable[..., Any]]] = None,
         attr_name: Optional[str] = None,
-        of: Optional[Type[_T]]=None,
+        of: Optional[Type[_T]] = None,
     ) -> None:
         super().__init__(
             hash_key=hash_key,
@@ -932,8 +932,8 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
             attr_name=attr_name,
         )
         if of:
-            if not issubclass(of, MapAttribute):
-                raise ValueError("'of' must be subclass of MapAttribute")
+            if not issubclass(of, Attribute):
+                raise ValueError("'of' must be a subclass of Attribute")
             self.element_type = of
 
     def remove_indexes(self, *indexes):
@@ -947,10 +947,16 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         """
         rval = []
         for v in values:
-            attr_class = (self.element_type()
-                          if self.element_type
-                          else _get_class_for_serialize(v))
-            rval.append({attr_class.attr_type: attr_class.serialize(v)})
+            attr_class = self._get_serialize_class(v)
+            if self.element_type and v is not None and not isinstance(attr_class, self.element_type):
+                raise ValueError("List elements must be of type: {}".format(self.element_type.__name__))
+            attr_type = attr_class.attr_type
+            attr_value = attr_class.serialize(v)
+            if attr_value is None:
+                # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
+                attr_type = NULL
+                attr_value = True
+            rval.append({attr_type: attr_value})
         return rval
 
     def deserialize(self, values):
@@ -959,23 +965,44 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         """
         deserialized_lst = []
         for v in values:
-            class_for_deserialize = self.element_type() if self.element_type else _get_class_for_deserialize(v)
-            attr_value = _get_value_for_deserialize(v)
-            deserialized_lst.append(class_for_deserialize.deserialize(attr_value))
+            attr_type, attr_value = next(iter(v.items()))
+            attr_class = self._get_deserialize_class(attr_type)
+            if attr_class.attr_type != attr_type:
+                raise ValueError("Cannot deserialize {} elements from type: {}".format(
+                    attr_class.__class__.__name__, attr_type))
+            deserialized_lst.append(attr_class.deserialize(attr_value))
         return deserialized_lst
 
     def __getitem__(self, idx: int) -> Path:
         # for typing only
         return super().__getitem__(idx)
 
+    def _get_serialize_class(self, value):
+        if value is None:
+            return NullAttribute()
+        if isinstance(value, Attribute):
+            return value
+        if self.element_type:
+            return self.element_type()
+        return SERIALIZE_CLASS_MAP[type(value)]
+
+    def _get_deserialize_class(self, attr_type):
+        if self.element_type and attr_type != NULL:
+            return self.element_type()
+        return DESERIALIZE_CLASS_MAP[attr_type]
+
 
 DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {
-    LIST: ListAttribute(),
-    NUMBER: NumberAttribute(),
-    STRING: UnicodeAttribute(),
+    BINARY: BinaryAttribute(),
+    BINARY_SET: BinarySetAttribute(),
     BOOLEAN: BooleanAttribute(),
+    LIST: ListAttribute(),
     MAP: MapAttribute(),
-    NULL: NullAttribute()
+    NULL: NullAttribute(),
+    NUMBER: NumberAttribute(),
+    NUMBER_SET: NumberSetAttribute(),
+    STRING: UnicodeAttribute(),
+    STRING_SET: UnicodeSetAttribute()
 }
 
 SERIALIZE_CLASS_MAP = {
