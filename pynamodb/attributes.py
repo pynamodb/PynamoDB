@@ -968,7 +968,8 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
             attr_type, attr_value = next(iter(v.items()))
             attr_class = self._get_deserialize_class(attr_type)
             if attr_class.attr_type != attr_type:
-                raise ValueError("Cannot deserialize elements of type: {}".format(attr_type))
+                raise ValueError("Cannot deserialize {} elements from type: {}".format(
+                    attr_class.__class__.__name__, attr_type))
             deserialized_lst.append(attr_class.deserialize(attr_value))
         return deserialized_lst
 
