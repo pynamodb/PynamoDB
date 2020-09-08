@@ -903,6 +903,37 @@ class TestValueDeserialize:
         assert actual is None
 
 
+class TestListAttribute:
+
+    def test_untyped_list(self):
+        untyped_list = [{'Hello': 'World'}, ['!'], {'foo', 'bar'}, None, "", 0, False]
+        serialized = ListAttribute().serialize(untyped_list)
+        # set attributes are serialized as lists
+        untyped_list[2] = list(untyped_list[2])
+        assert ListAttribute().deserialize(serialized) == untyped_list
+
+    def test_list_of_strings(self):
+        string_list_attribute = ListAttribute(of=UnicodeAttribute)
+        string_list = ['foo', 'bar', 'baz']
+        serialized = string_list_attribute.serialize(string_list)
+        assert string_list_attribute.deserialize(serialized) == string_list
+
+    def test_list_type_error(self):
+        string_list_attribute = ListAttribute(of=UnicodeAttribute)
+
+        with pytest.raises(ValueError):
+            string_list_attribute.serialize([MapAttribute(foo='bar')])
+
+        with pytest.raises(ValueError):
+            string_list_attribute.deserialize([{'M': {'foo': {'S': 'bar'}}}])
+
+    def test_serialize_null(self):
+        string_set_list_attribute = ListAttribute(of=UnicodeSetAttribute)
+        list_with_empty_set = [{'foo'}, {}, {'bar'}]
+        serialized = string_set_list_attribute.serialize(list_with_empty_set)
+        assert string_set_list_attribute.deserialize(serialized) == [{'foo'}, None, {'bar'}]
+
+
 class TestMapAndListAttribute:
 
     def test_map_of_list(self):

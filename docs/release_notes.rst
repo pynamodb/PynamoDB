@@ -9,6 +9,7 @@ v5.0 (unreleased)
   cannot contain range keys, this had limited utility to begin with, and would sometimes cause confusing
   "'filter_condition' cannot contain key attributes" errors.
 * Replace the internal attribute type constants with their "short" DynamoDB version (#827)
+* Typed list attributes can now support any Attribute subclass (#833)
 
 v4.3.3
 ----------
