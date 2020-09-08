@@ -948,11 +948,11 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         rval = []
         for v in values:
             attr_class = self._get_serialize_class(v)
-            if self.element_type and not isinstance(attr_class, self.element_type):
+            if self.element_type and v is not None and not isinstance(attr_class, self.element_type):
                 raise ValueError("List elements must be of type: {}".format(self.element_type.__name__))
             attr_type = attr_class.attr_type
             attr_value = attr_class.serialize(v)
-            if self.element_type and attr_value is None:
+            if attr_value is None:
                 # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
                 attr_type = NULL
                 attr_value = True
@@ -967,11 +967,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         for v in values:
             attr_type, attr_value = next(iter(v.items()))
             attr_class = self._get_deserialize_class(attr_type)
-            if self.element_type and attr_type == NULL:
-                # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
-                attr_type = self.element_type.attr_type
-                attr_value = None
-            if self.element_type and self.element_type.attr_type != attr_type:
+            if attr_class.attr_type != attr_type:
                 raise ValueError("Cannot deserialize elements of type: {}".format(attr_type))
             deserialized_lst.append(attr_class.deserialize(attr_value))
         return deserialized_lst
@@ -981,6 +977,8 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         return super().__getitem__(idx)
 
     def _get_serialize_class(self, value):
+        if value is None:
+            return NullAttribute()
         if isinstance(value, Attribute):
             return value
         if self.element_type:
@@ -988,7 +986,9 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         return SERIALIZE_CLASS_MAP[type(value)]
 
     def _get_deserialize_class(self, attr_type):
-        return self.element_type() if self.element_type else DESERIALIZE_CLASS_MAP[attr_type]
+        if self.element_type and attr_type != NULL:
+            return self.element_type()
+        return DESERIALIZE_CLASS_MAP[attr_type]
 
 
 DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {
@@ -1012,5 +1012,4 @@ SERIALIZE_CLASS_MAP = {
     float: NumberAttribute(),
     int: NumberAttribute(),
     str: UnicodeAttribute(),
-    type(None): NullAttribute()
 }

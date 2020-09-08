@@ -929,9 +929,9 @@ class TestListAttribute:
 
     def test_serialize_null(self):
         string_set_list_attribute = ListAttribute(of=UnicodeSetAttribute)
-        list_with_empty_set = [{'foo'}, {}, {'bar'}]
+        list_with_empty_set = [{'foo'}, {}, None]
         serialized = string_set_list_attribute.serialize(list_with_empty_set)
-        assert string_set_list_attribute.deserialize(serialized) == [{'foo'}, None, {'bar'}]
+        assert string_set_list_attribute.deserialize(serialized) == [{'foo'}, None, None]
 
 
 class TestMapAndListAttribute:
