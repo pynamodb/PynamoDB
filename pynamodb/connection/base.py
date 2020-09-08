@@ -433,10 +433,10 @@ class Connection(object):
                 elif TRANSACT_ITEMS in operation_kwargs:
                     # Transactional operations can also hit multiple tables, or have multiple updates within
                     # the same table
-                    items = []
+                    table_names = []
                     for item in operation_kwargs[TRANSACT_ITEMS]:
-                        for op in item.keys():
-                            items.append(item[op][TABLE_NAME])
+                        for op in item.values():
+                            table_names.append(op[TABLE_NAME])
                     verbose_properties['table_name'] = ','.join(items)
                 else:
                     verbose_properties['table_name'] = operation_kwargs.get(TABLE_NAME)
