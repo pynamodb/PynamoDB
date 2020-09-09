@@ -227,7 +227,7 @@ Want to backup and restore a table? No problem.
 Features
 ========
 
-* Python >= 3.5 support
+* Python >= 3.6 support
 * An ORM-like interface with query and scan filters
 * Compatible with DynamoDB Local
 * Supports the entire DynamoDB API
