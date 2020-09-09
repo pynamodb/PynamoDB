@@ -312,11 +312,11 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             setattr(self, attr_name, attr_value)
 
     def __eq__(self, other: Any) -> bool:
-        # This is required for python 2 support so that MapAttribute can call this method.
+        # This is required so that MapAttribute can call this method.
         return self is other
 
     def __ne__(self, other: Any) -> bool:
-        # This is required for python 2 support so that MapAttribute can call this method.
+        # This is required so that MapAttribute can call this method.
         return self is not other
 
 
