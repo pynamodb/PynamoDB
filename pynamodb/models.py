@@ -208,7 +208,7 @@ class MetaModel(AttributeContainerMeta):
             if attribute.is_range_key:
                 cls._range_keyname = attr_name
             if isinstance(attribute, VersionAttribute):
-                if cls._version_attribute_name:
+                if cls._version_attribute_name and cls._version_attribute_name != attr_name:
                     raise ValueError(
                         "The model has more than one Version attribute: {}, {}"
                         .format(cls._version_attribute_name, attr_name)
