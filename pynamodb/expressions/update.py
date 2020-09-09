@@ -1,7 +1,7 @@
 from typing import List
 from typing import TYPE_CHECKING
 
-from pynamodb.constants import BINARY_SET_SHORT, NUMBER_SET_SHORT, NUMBER_SHORT, STRING_SET_SHORT
+from pynamodb.constants import BINARY_SET, NUMBER, NUMBER_SET, STRING_SET
 
 if TYPE_CHECKING:
     from pynamodb.expressions.operand import Path
@@ -58,7 +58,7 @@ class AddAction(Action):
     format_string = '{0} {1}'
 
     def __init__(self, path: 'Path', subset: 'Path') -> None:
-        subset._type_check(BINARY_SET_SHORT, NUMBER_SET_SHORT, NUMBER_SHORT, STRING_SET_SHORT)
+        subset._type_check(BINARY_SET, NUMBER, NUMBER_SET, STRING_SET)
         super(AddAction, self).__init__(path, subset)
 
 
@@ -69,7 +69,7 @@ class DeleteAction(Action):
     format_string = '{0} {1}'
 
     def __init__(self, path: 'Path', subset: 'Path') -> None:
-        subset._type_check(BINARY_SET_SHORT, NUMBER_SET_SHORT, STRING_SET_SHORT)
+        subset._type_check(BINARY_SET, NUMBER_SET, STRING_SET)
         super(DeleteAction, self).__init__(path, subset)
 
 

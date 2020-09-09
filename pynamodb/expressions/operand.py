@@ -2,8 +2,7 @@ from typing import Any, Dict, List, Optional, Union
 from typing import TYPE_CHECKING
 
 from pynamodb.constants import (
-    ATTR_TYPE_MAP, BINARY_SET, LIST, LIST_SHORT, MAP, MAP_SHORT,
-    NUMBER_SET, NUMBER_SHORT, SHORT_ATTR_TYPES, STRING_SET, STRING_SHORT
+    ATTRIBUTE_TYPES, BINARY_SET, LIST, MAP, NUMBER, NUMBER_SET, STRING, STRING_SET
 )
 from pynamodb.expressions.condition import (
     BeginsWith, Between, Comparison, Contains, Exists, In, IsType, NotExists
@@ -24,7 +23,7 @@ class _Operand:
     Operand is the base class for objects that can be operands in Condition and Update Expressions.
     """
     format_string = ''
-    short_attr_type: Any = None
+    attr_type: Any = None
 
     def __init__(self, *values: Any) -> None:
         self.values = values
@@ -51,7 +50,7 @@ class _Operand:
         return Value(value)
 
     def _type_check(self, *types):
-        if self.short_attr_type and self.short_attr_type not in types:
+        if self.attr_type and self.attr_type not in types:
             raise ValueError("The data type of '{}' must be one of {}".format(self, list(types)))
 
 
@@ -121,7 +120,7 @@ class _Size(_ConditionOperand):
     Size is a special operand that represents the result of calling the 'size' function on a Path operand.
     """
     format_string = 'size ({0})'
-    short_attr_type = NUMBER_SHORT
+    attr_type = NUMBER
 
     def __init__(self, path: _PathOrAttribute) -> None:
         if not isinstance(path, Path):
@@ -130,7 +129,7 @@ class _Size(_ConditionOperand):
 
     def _to_operand(self, value):
         operand = super(_Size, self)._to_operand(value)
-        operand._type_check(NUMBER_SHORT)
+        operand._type_check(NUMBER)
         return operand
 
 
@@ -139,11 +138,11 @@ class _Increment(_Operand):
     Increment is a special operand that represents an increment SET update action.
     """
     format_string = '{0} + {1}'
-    short_attr_type = NUMBER_SHORT
+    attr_type = NUMBER
 
     def __init__(self, lhs: '_Operand', rhs: '_Operand') -> None:
-        lhs._type_check(NUMBER_SHORT)
-        rhs._type_check(NUMBER_SHORT)
+        lhs._type_check(NUMBER)
+        rhs._type_check(NUMBER)
         super(_Increment, self).__init__(lhs, rhs)
 
 
@@ -152,11 +151,11 @@ class _Decrement(_Operand):
     Decrement is a special operand that represents an decrement SET update action.
     """
     format_string = '{0} - {1}'
-    short_attr_type = NUMBER_SHORT
+    attr_type = NUMBER
 
     def __init__(self, lhs: _Operand, rhs: _Operand) -> None:
-        lhs._type_check(NUMBER_SHORT)
-        rhs._type_check(NUMBER_SHORT)
+        lhs._type_check(NUMBER)
+        rhs._type_check(NUMBER)
         super(_Decrement, self).__init__(lhs, rhs)
 
 
@@ -165,11 +164,11 @@ class _ListAppend(_Operand):
     ListAppend is a special operand that represents the list_append function for the SET update action.
     """
     format_string = 'list_append ({0}, {1})'
-    short_attr_type = LIST_SHORT
+    attr_type = LIST
 
     def __init__(self, list1: _Operand, list2: _Operand):
-        list1._type_check(LIST_SHORT)
-        list2._type_check(LIST_SHORT)
+        list1._type_check(LIST)
+        list2._type_check(LIST)
         super(_ListAppend, self).__init__(list1, list2)
 
 
@@ -180,10 +179,10 @@ class _IfNotExists(_NumericOperand, _ListAppendOperand):
     format_string = 'if_not_exists ({0}, {1})'
 
     def __init__(self, path: _Operand, value: Any) -> None:
-        self.short_attr_type = path.short_attr_type or value.short_attr_type
-        if self.short_attr_type != value.short_attr_type:
+        self.attr_type = path.attr_type or value.attr_type
+        if self.attr_type != value.attr_type:
             # path and value have conflicting types -- defer any type checks to DynamoDB
-            self.short_attr_type = None
+            self.attr_type = None
         super(_IfNotExists, self).__init__(path, value)
 
 
@@ -195,13 +194,13 @@ class Value(_NumericOperand, _ListAppendOperand, _ConditionOperand):
 
     def __init__(self, value: Any, attribute: Optional['Attribute'] = None) -> None:
         # Check to see if value is already serialized
-        if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in SHORT_ATTR_TYPES:
-            (self.short_attr_type, value), = value.items()
+        if isinstance(value, dict) and len(value) == 1 and list(value.keys())[0] in ATTRIBUTE_TYPES:
+            (self.attr_type, value), = value.items()
         elif value is None:
-            (self.short_attr_type, value) = Value.__serialize(value)
+            (self.attr_type, value) = Value.__serialize(value)
         else:
-            (self.short_attr_type, value) = Value.__serialize(value, attribute)
-        super(Value, self).__init__({self.short_attr_type: value})
+            (self.attr_type, value) = Value.__serialize(value, attribute)
+        super(Value, self).__init__({self.attr_type: value})
 
     @property
     def value(self):
@@ -221,13 +220,13 @@ class Value(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         if attribute.attr_type == MAP and not isinstance(value, dict):
             # Map attributes assume the values to be serialized are maps.
             return Value.__serialize_based_on_type(value)
-        return ATTR_TYPE_MAP[attribute.attr_type], attribute.serialize(value)
+        return attribute.attr_type, attribute.serialize(value)
 
     @staticmethod
     def __serialize_based_on_type(value):
         from pynamodb.attributes import _get_class_for_serialize
         attr_class = _get_class_for_serialize(value)
-        return ATTR_TYPE_MAP[attr_class.attr_type], attr_class.serialize(value)
+        return attr_class.attr_type, attr_class.serialize(value)
 
 
 class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
@@ -241,11 +240,11 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         path: _PathOrAttribute
         if isinstance(attribute_or_path, Attribute):
             self.attribute = attribute_or_path
-            self.short_attr_type = ATTR_TYPE_MAP[attribute_or_path.attr_type]
+            self.attr_type = attribute_or_path.attr_type
             path = attribute_or_path.attr_path
         else:
             self.attribute = None
-            self.short_attr_type = None
+            self.attr_type = None
             path = attribute_or_path
         if not path:
             raise ValueError("path cannot be empty")
@@ -264,9 +263,9 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         # This is intended since the nested element is not the same attribute as ``self``.
         if self.attribute and self.attribute.attr_type not in [LIST, MAP]:
             raise TypeError("'{}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
-        if self.short_attr_type == LIST_SHORT and not isinstance(item, int):
+        if self.attr_type == LIST and not isinstance(item, int):
             raise TypeError("list indices must be integers, not {}".format(type(item).__name__))
-        if self.short_attr_type == MAP_SHORT and not isinstance(item, str):
+        if self.attr_type == MAP and not isinstance(item, str):
             raise TypeError("map attributes must be strings, not {}".format(type(item).__name__))
         if isinstance(item, int):
             # list dereference operator
@@ -309,15 +308,15 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         return NotExists(self)
 
     def is_type(self, attr_type: str) -> IsType:
-        if attr_type not in SHORT_ATTR_TYPES:
+        if attr_type not in ATTRIBUTE_TYPES:
             raise ValueError("{} is not a valid attribute type. Must be one of {}".format(
-                attr_type, SHORT_ATTR_TYPES))
+                attr_type, ATTRIBUTE_TYPES))
         return IsType(self, Value(attr_type))
 
     def startswith(self, prefix: str) -> BeginsWith:
         # A 'pythonic' replacement for begins_with to match string behavior (e.g. "foo".startswith("f"))
         operand = self._to_operand(prefix)
-        operand._type_check(STRING_SHORT)
+        operand._type_check(STRING)
         return BeginsWith(self, operand)
 
     def contains(self, item: Any) -> Contains:

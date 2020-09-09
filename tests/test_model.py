@@ -17,9 +17,9 @@ from pynamodb.util import snake_to_camel_case
 from pynamodb.exceptions import DoesNotExist, TableError, PutError, AttributeDeserializationError
 from pynamodb.types import RANGE
 from pynamodb.constants import (
-    ITEM, STRING_SHORT, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
-    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY_SHORT,
-    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP_SHORT, LIST_SHORT, NUMBER_SHORT, SCANNED_COUNT,
+    ITEM, STRING, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
+    RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY,
+    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP, LIST, NUMBER, SCANNED_COUNT,
 )
 from pynamodb.models import Model, ResultSet
 from pynamodb.indexes import (
@@ -715,7 +715,7 @@ class ModelTestCase(TestCase):
             item.refresh()
             self.assertEqual(
                 item.custom_user_name,
-                GET_MODEL_ITEM_DATA.get(ITEM).get('user_name').get(STRING_SHORT))
+                GET_MODEL_ITEM_DATA.get(ITEM).get('user_name').get(STRING))
             self.assertIsNone(item.picture)
 
     def test_complex_key(self):
@@ -1210,7 +1210,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(5):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
@@ -1227,7 +1227,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(5):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
@@ -1244,7 +1244,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1272,7 +1272,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1300,7 +1300,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1327,7 +1327,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1355,7 +1355,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1384,14 +1384,14 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id.between('id-1', 'id-3')):
                 queried.append(item._serialize().get(RANGE))
             self.assertListEqual(
-                [item.get('user_id').get(STRING_SHORT) for item in items],
+                [item.get('user_id').get(STRING) for item in items],
                 queried
             )
 
@@ -1399,7 +1399,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1411,7 +1411,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1423,7 +1423,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1435,7 +1435,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1447,7 +1447,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1459,7 +1459,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1502,7 +1502,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1549,7 +1549,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
 
             req.side_effect = [
@@ -1612,14 +1612,14 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             scanned_items = []
             for item in UserModel.scan():
                 scanned_items.append(item._serialize().get(RANGE))
             self.assertListEqual(
-                [item.get('user_id').get(STRING_SHORT) for item in items],
+                [item.get('user_id').get(STRING) for item in items],
                 scanned_items
             )
 
@@ -1654,7 +1654,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             for item in UserModel.scan(
@@ -1969,9 +1969,9 @@ class ModelTestCase(TestCase):
             unprocessed_items.append({
                 'PutRequest': {
                     'Item': {
-                        'custom_username': {STRING_SHORT: 'daniel'},
-                        'user_id': {STRING_SHORT: '{}'.format(idx)},
-                        'picture': {BINARY_SHORT: base64.b64encode(picture_blob).decode(DEFAULT_ENCODING)}
+                        'custom_username': {STRING: 'daniel'},
+                        'user_id': {STRING: '{}'.format(idx)},
+                        'picture': {BINARY: base64.b64encode(picture_blob).decode(DEFAULT_ENCODING)}
                     }
                 }
             })
@@ -2009,7 +2009,7 @@ class ModelTestCase(TestCase):
             unprocessed_items.append({
                 'PutRequest': {
                     'Item': {
-                        'user_name': {STRING_SHORT: 'daniel'},
+                        'user_name': {STRING: 'daniel'},
                     }
                 }
             })
@@ -2056,8 +2056,8 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING_SHORT: 'id-{}'.format(idx)}
-                item['email'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_name'] = {STRING: 'id-{}'.format(idx)}
+                item['email'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -2091,15 +2091,15 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING_SHORT: 'id-{}'.format(idx)}
-                item['email'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_name'] = {STRING: 'id-{}'.format(idx)}
+                item['email'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
 
             for item in LocalIndexedModel.email_index.query(
                     'foo',
-                    filter_condition=LocalIndexedModel.user_name.startswith('bar') & LocalIndexedModel.aliases.contains(1),
+                    filter_condition=LocalIndexedModel.user_name.startswith('bar') & LocalIndexedModel.aliases.contains('baz'),
                     limit=1):
                 queried.append(item._serialize())
 
@@ -2119,7 +2119,7 @@ class ModelTestCase(TestCase):
                         'S': u'bar'
                     },
                     ':2': {
-                        'S': '1'
+                        'S': u'baz'
                     }
                 },
                 'IndexName': 'email_index',
@@ -2133,7 +2133,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING_SHORT: 'id-{}'.format(idx)}
+                item['user_name'] = {STRING: 'id-{}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -2429,15 +2429,15 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING_SHORT: 'id-{}'.format(idx)}
-                item['email'] = {STRING_SHORT: 'email-{}'.format(random.randint(0, 65536))}
-                item['picture'] = {BINARY_SHORT: BINARY_ATTR_DATA}
+                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['email'] = {STRING: 'email-{}'.format(random.randint(0, 65536))}
+                item['picture'] = {BINARY: BINARY_ATTR_DATA}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             content = UserModel.dumps()
             serialized_items = json.loads(content)
             for original, new_item in zip(items, serialized_items):
-                self.assertEqual(new_item[0], original['user_name'][STRING_SHORT])
+                self.assertEqual(new_item[0], original['user_name'][STRING])
                 self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['zip_code']['N'], original['zip_code']['N'])
                 self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['email']['S'], original['email']['S'])
                 self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['picture']['B'], original['picture']['B'])
@@ -2670,7 +2670,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(
                 item.person.fname,
                 GET_OFFICE_EMPLOYEE_ITEM_DATA.get(ITEM).get('person').get(
-                    MAP_SHORT).get('firstName').get(STRING_SHORT))
+                    MAP).get('firstName').get(STRING))
 
     def test_model_with_maps_with_nulls_retrieve_from_db(self):
         fake_db = self.database_mocker(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
@@ -2683,7 +2683,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(
                 item.person.fname,
                 GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL.get(ITEM).get('person').get(
-                    MAP_SHORT).get('firstName').get(STRING_SHORT))
+                    MAP).get('firstName').get(STRING))
             self.assertIsNone(item.person.age)
             self.assertIsNone(item.person.is_male)
 
@@ -2705,9 +2705,9 @@ class ModelTestCase(TestCase):
                 GET_OFFICE_EMPLOYEE_ITEM_DATA
                     .get(ITEM)
                     .get('person')
-                    .get(MAP_SHORT)
+                    .get(MAP)
                     .get('firstName')
-                    .get(STRING_SHORT)
+                    .get(STRING)
             )
         assert item.person.is_male
         with pytest.raises(AttributeError):
@@ -2721,11 +2721,11 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=fake_db) as req:
             req.return_value = GET_GROCERY_LIST_ITEM_DATA
             item = GroceryList.get('Haight Street Market')
-            self.assertEqual(item.store_name, GET_GROCERY_LIST_ITEM_DATA.get(ITEM).get('store_name').get(STRING_SHORT))
+            self.assertEqual(item.store_name, GET_GROCERY_LIST_ITEM_DATA.get(ITEM).get('store_name').get(STRING))
             self.assertEqual(
                 item.groceries[2],
                 GET_GROCERY_LIST_ITEM_DATA.get(ITEM).get('groceries').get(
-                    LIST_SHORT)[2].get(STRING_SHORT))
+                    LIST)[2].get(STRING))
             self.assertEqual(item.store_name, 'Haight Street Market')
 
     def test_model_with_list_of_map_retrieve_from_db(self):
@@ -2737,12 +2737,12 @@ class ModelTestCase(TestCase):
             req.return_value = GET_OFFICE_ITEM_DATA
             item = Office.get(6161)
             self.assertEqual(item.office_id,
-                              int(GET_OFFICE_ITEM_DATA.get(ITEM).get('office_id').get(NUMBER_SHORT)))
+                              int(GET_OFFICE_ITEM_DATA.get(ITEM).get('office_id').get(NUMBER)))
             self.assertEqual(item.office_id, 6161)
             self.assertEqual(
                 item.employees[2].person.fname,
                 GET_OFFICE_ITEM_DATA.get(ITEM).get('employees').get(
-                    LIST_SHORT)[2].get(MAP_SHORT).get('person').get(MAP_SHORT).get('firstName').get(STRING_SHORT))
+                    LIST)[2].get(MAP).get('person').get(MAP).get('firstName').get(STRING))
 
     def test_complex_model_retrieve_from_db(self):
         fake_db = self.database_mocker(ComplexModel, COMPLEX_MODEL_TABLE_DATA,
@@ -2754,12 +2754,12 @@ class ModelTestCase(TestCase):
             item = ComplexModel.get(123)
             self.assertEqual(item.key,
                               int(COMPLEX_MODEL_ITEM_DATA.get(ITEM).get(
-                                  'key').get(NUMBER_SHORT)))
+                                  'key').get(NUMBER)))
             self.assertEqual(item.key, 123)
             self.assertEqual(
                 item.person.fname,
                 COMPLEX_MODEL_ITEM_DATA.get(ITEM).get('weird_person').get(
-                    MAP_SHORT).get('firstName').get(STRING_SHORT))
+                    MAP).get('firstName').get(STRING))
 
     def database_mocker(self, model, table_data, item_data,
                         primary_key_name, primary_key_dynamo_type, primary_key_id):
@@ -2789,7 +2789,7 @@ class ModelTestCase(TestCase):
             item = CarModel.get(123)
             self.assertEqual(item.car_id,
                               int(FULL_CAR_MODEL_ITEM_DATA.get(ITEM).get(
-                                  'car_id').get(NUMBER_SHORT)))
+                                  'car_id').get(NUMBER)))
             self.assertEqual(item.car_info.make, 'Volkswagen')
             self.assertEqual(item.car_info.model, 'Beetle')
 
@@ -2803,7 +2803,7 @@ class ModelTestCase(TestCase):
             item = CarModel.get(123)
             self.assertEqual(item.car_id,
                               int(CAR_MODEL_WITH_NULL_ITEM_DATA.get(ITEM).get(
-                                  'car_id').get(NUMBER_SHORT)))
+                                  'car_id').get(NUMBER)))
             self.assertEqual(item.car_info.make, 'Dodge')
             self.assertIsNone(item.car_info.model)
 
@@ -2817,7 +2817,7 @@ class ModelTestCase(TestCase):
             item = CarModel.get(123)
             self.assertEqual(item.car_id,
                               int(INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA.get(ITEM).get(
-                                  'car_id').get(NUMBER_SHORT)))
+                                  'car_id').get(NUMBER)))
             self.assertIsNone(item.car_info.make)
 
     def test_boolean_serializes_as_bool(self):

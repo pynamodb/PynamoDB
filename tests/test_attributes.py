@@ -54,7 +54,7 @@ class CustomAttrMap(MapAttribute):
 
 class DefaultsMap(MapAttribute):
     map_field = MapAttribute(default={})
-    string_field = UnicodeAttribute(null=True)
+    string_set_field = UnicodeSetAttribute(null=True)
 
 
 class TestAttributeDescriptor:
@@ -262,10 +262,8 @@ class TestBinaryAttribute:
         """
         attr = BinarySetAttribute()
         assert attr.attr_type == BINARY_SET
-        assert attr.serialize({b'foo', b'bar'}) == [
-            b64encode(val).decode(DEFAULT_ENCODING) for val in sorted({b'foo', b'bar'})
-        ]
-        assert attr.serialize(None) is None
+        assert sorted(attr.serialize({b'foo', b'bar'})) == ['YmFy', 'Zm9v']
+        assert attr.serialize({}) is None
 
     def test_binary_set_round_trip(self):
         """
@@ -344,7 +342,7 @@ class TestNumberAttribute:
         """
         attr = NumberSetAttribute()
         assert attr.serialize({1, 2}) == [json.dumps(val) for val in sorted({1, 2})]
-        assert attr.serialize(None) is None
+        assert attr.serialize({}) is None
 
     def test_number_set_attribute(self):
         """
@@ -378,7 +376,7 @@ class TestUnicodeAttribute:
         """
         attr = UnicodeAttribute()
         assert attr.serialize('foo') == 'foo'
-        assert attr.serialize('') is None
+        assert attr.serialize('') == ''
         assert attr.serialize(None) is None
 
     def test_unicode_deserialize(self):
@@ -388,6 +386,8 @@ class TestUnicodeAttribute:
         attr = UnicodeAttribute()
         assert attr.deserialize('foo') == 'foo'
         assert attr.deserialize(u'foo') == 'foo'
+        assert attr.deserialize('') == ''
+        assert attr.deserialize(None) is None
 
     def test_unicode_set_serialize(self):
         """
@@ -395,16 +395,16 @@ class TestUnicodeAttribute:
         """
         attr = UnicodeSetAttribute()
         assert attr.attr_type == STRING_SET
-        assert attr.deserialize(None) is None
+        assert attr.serialize({}) is None
 
         expected = sorted(['foo', 'bar'])
-        assert attr.serialize({'foo', 'bar'}) == expected
+        assert sorted(attr.serialize({'foo', 'bar'})) == expected
 
         expected = sorted(['True', 'False'])
-        assert attr.serialize({'True', 'False'}) == expected
+        assert sorted(attr.serialize({'True', 'False'})) == expected
 
         expected = sorted(['true', 'false'])
-        assert attr.serialize({'true', 'false'}) == expected
+        assert sorted(attr.serialize({'true', 'false'})) == expected
 
     def test_round_trip_unicode_set(self):
         """
@@ -622,7 +622,7 @@ class TestMapAttribute:
 
     def test_null_attribute_map_after_serialization(self):
         null_attribute = {
-            'string_field': '',
+            'string_set_field': {},
         }
         attr = DefaultsMap()
         serialized = attr.serialize(null_attribute)
@@ -901,6 +901,37 @@ class TestValueDeserialize:
         data = {'NULL': 'True'}
         actual = _get_value_for_deserialize(data)
         assert actual is None
+
+
+class TestListAttribute:
+
+    def test_untyped_list(self):
+        untyped_list = [{'Hello': 'World'}, ['!'], {'foo', 'bar'}, None, "", 0, False]
+        serialized = ListAttribute().serialize(untyped_list)
+        # set attributes are serialized as lists
+        untyped_list[2] = list(untyped_list[2])
+        assert ListAttribute().deserialize(serialized) == untyped_list
+
+    def test_list_of_strings(self):
+        string_list_attribute = ListAttribute(of=UnicodeAttribute)
+        string_list = ['foo', 'bar', 'baz']
+        serialized = string_list_attribute.serialize(string_list)
+        assert string_list_attribute.deserialize(serialized) == string_list
+
+    def test_list_type_error(self):
+        string_list_attribute = ListAttribute(of=UnicodeAttribute)
+
+        with pytest.raises(ValueError):
+            string_list_attribute.serialize([MapAttribute(foo='bar')])
+
+        with pytest.raises(ValueError):
+            string_list_attribute.deserialize([{'M': {'foo': {'S': 'bar'}}}])
+
+    def test_serialize_null(self):
+        string_set_list_attribute = ListAttribute(of=UnicodeSetAttribute)
+        list_with_empty_set = [{'foo'}, {}, None]
+        serialized = string_set_list_attribute.serialize(list_with_empty_set)
+        assert string_set_list_attribute.deserialize(serialized) == [{'foo'}, None, None]
 
 
 class TestMapAndListAttribute:

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
 from pynamodb.constants import (
-    INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, ATTR_TYPE_MAP, KEY_SCHEMA,
+    INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, KEY_SCHEMA,
     ATTR_DEFINITIONS, META_CLASS_NAME
 )
 from pynamodb.attributes import Attribute
@@ -157,7 +157,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
         for attr_name, attr_cls in cls._get_attributes().items():
             attr_definitions.append({
                 snake_to_camel_case(ATTR_NAME): attr_cls.attr_name,
-                snake_to_camel_case(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
+                snake_to_camel_case(ATTR_TYPE): attr_cls.attr_type
             })
             if attr_cls.is_hash_key:
                 schema.append({

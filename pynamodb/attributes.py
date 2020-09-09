@@ -18,8 +18,8 @@ from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
 from pynamodb.constants import (
-    STRING, STRING_SHORT, NUMBER, BINARY, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    MAP, MAP_SHORT, LIST, LIST_SHORT, DEFAULT_ENCODING, BOOLEAN, ATTR_TYPE_MAP, NUMBER_SHORT, NULL,
+    BINARY, BINARY_SET, BOOLEAN, DATETIME_FORMAT, DEFAULT_ENCODING,
+    LIST, MAP, NULL, NUMBER, NUMBER_SET, STRING, STRING_SET
 )
 from pynamodb.expressions.operand import Path
 
@@ -121,8 +121,7 @@ class Attribute(Generic[_T]):
         return value
 
     def get_value(self, value: Any) -> Any:
-        serialized_dynamo_type = ATTR_TYPE_MAP[self.attr_type]
-        return value.get(serialized_dynamo_type)
+        return value.get(self.attr_type)
 
     def __iter__(self):
         # Because we define __getitem__ below for condition expression support
@@ -172,7 +171,7 @@ class Attribute(Generic[_T]):
 
     def is_type(self):
         # What makes sense here? Are we using this to check if deserialization will be successful?
-        return Path(self).is_type(ATTR_TYPE_MAP[self.attr_type])
+        return Path(self).is_type(self.attr_type)
 
     def startswith(self, prefix: str) -> 'BeginsWith':
         return Path(self).startswith(prefix)
@@ -237,10 +236,10 @@ class AttributeContainerMeta(GenericMeta):
                 initialized = attribute._make_attribute()
 
             cls._attributes[name] = attribute
-            if attribute.attr_name is not None:
-                cls._dynamo_to_python_attrs[attribute.attr_name] = name
-            else:
+            if attribute.attr_name is None:
                 attribute.attr_name = name
+            if attribute.attr_name != name:
+                cls._dynamo_to_python_attrs[attribute.attr_name] = name
 
             if initialized and isinstance(attribute, MapAttribute):
                 # To support creating expressions from nested attributes, MapAttribute instances
@@ -321,34 +320,6 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         return self is not other
 
 
-class SetMixin(object):
-    """
-    Adds (de)serialization methods for sets
-    """
-    def serialize(self, value):
-        """
-        Serializes a set
-
-        Because dynamodb doesn't store empty attributes,
-        empty sets return None
-        """
-        if value is not None:
-            try:
-                iter(value)
-            except TypeError:
-                value = [value]
-            if len(value):
-                return [json.dumps(val) for val in sorted(value)]
-        return None
-
-    def deserialize(self, value):
-        """
-        Deserializes a set
-        """
-        if value and len(value):
-            return {json.loads(val) for val in value}
-
-
 class BinaryAttribute(Attribute[bytes]):
     """
     A binary attribute
@@ -363,15 +334,12 @@ class BinaryAttribute(Attribute[bytes]):
 
     def deserialize(self, value):
         """
-        Returns a decoded string from base64
+        Returns a decoded byte string from a base64 encoded value
         """
-        try:
-            return b64decode(value.decode(DEFAULT_ENCODING))
-        except AttributeError:
-            return b64decode(value)
+        return b64decode(value)
 
 
-class BinarySetAttribute(SetMixin, Attribute[Set[bytes]]):
+class BinarySetAttribute(Attribute[Set[bytes]]):
     """
     A binary set
     """
@@ -380,58 +348,15 @@ class BinarySetAttribute(SetMixin, Attribute[Set[bytes]]):
 
     def serialize(self, value):
         """
-        Returns a base64 encoded binary string
+        Returns a list of base64 encoded binary strings. Encodes empty sets as "None".
         """
-        if value and len(value):
-            return [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]
-        else:
-            return None
+        return [b64encode(v).decode(DEFAULT_ENCODING) for v in value] or None
 
     def deserialize(self, value):
         """
-        Returns a decoded string from base64
+        Returns a set of decoded byte strings from base64 encoded values.
         """
-        try:
-            if value and len(value):
-                return {b64decode(val.decode(DEFAULT_ENCODING)) for val in value}
-        except AttributeError:
-            return {b64decode(val) for val in value}
-
-
-class UnicodeSetAttribute(SetMixin, Attribute[Set[Text]]):
-    """
-    A unicode set
-    """
-    attr_type = STRING_SET
-    null = True
-
-    def element_serialize(self, value):
-        """
-        This serializes unicode / strings out as unicode strings.
-        It does not touch the value if it is already a unicode str
-        :param value:
-        :return:
-        """
-        if isinstance(value, str):
-            return value
-        return str(value)
-
-    def element_deserialize(self, value):
-        return value
-
-    def serialize(self, value):
-        if value is not None:
-            try:
-                iter(value)
-            except TypeError:
-                value = [value]
-            if len(value):
-                return [self.element_serialize(val) for val in sorted(value)]
-        return None
-
-    def deserialize(self, value):
-        if value and len(value):
-            return {self.element_deserialize(val) for val in value}
+        return {b64decode(v) for v in value}
 
 
 class UnicodeAttribute(Attribute[str]):
@@ -440,14 +365,25 @@ class UnicodeAttribute(Attribute[str]):
     """
     attr_type = STRING
 
+
+class UnicodeSetAttribute(Attribute[Set[str]]):
+    """
+    A unicode set
+    """
+    attr_type = STRING_SET
+    null = True
+
     def serialize(self, value):
         """
-        Returns a unicode string
+        Returns a list of strings. Encodes empty sets as "None".
         """
-        if value is None or not len(value):
-            return None
-        else:
-            return value
+        return list(value) or None
+
+    def deserialize(self, value):
+        """
+        Returns a set from a list of strings.
+        """
+        return set(value)
 
 
 class JSONAttribute(Attribute[Any]):
@@ -492,14 +428,6 @@ class BooleanAttribute(Attribute[bool]):
         return bool(value)
 
 
-class NumberSetAttribute(SetMixin, Attribute[Set[float]]):
-    """
-    A number set attribute
-    """
-    attr_type = NUMBER_SET
-    null = True
-
-
 class NumberAttribute(Attribute[float]):
     """
     A number attribute
@@ -517,6 +445,26 @@ class NumberAttribute(Attribute[float]):
         Decode numbers from JSON
         """
         return json.loads(value)
+
+
+class NumberSetAttribute(Attribute[Set[float]]):
+    """
+    A number set attribute
+    """
+    attr_type = NUMBER_SET
+    null = True
+
+    def serialize(self, value):
+        """
+        Encodes a set of numbers as a JSON list. Encodes empty sets as "None".
+        """
+        return [json.dumps(v) for v in value] or None
+
+    def deserialize(self, value):
+        """
+        Returns a set from a JSON list of numbers.
+        """
+        return {json.loads(v) for v in value}
 
 
 class VersionAttribute(NumberAttribute):
@@ -853,10 +801,6 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             attr_class = self._get_serialize_class(k, v)
             if attr_class is None:
                 continue
-            if attr_class.attr_type:
-                attr_key = ATTR_TYPE_MAP[attr_class.attr_type]
-            else:
-                attr_key = _get_key_for_serialize(v)
 
             # If this is a subclassed MapAttribute, there may be an alternate attr name
             attr = self.get_attributes().get(k)
@@ -867,7 +811,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
                 # Check after we serialize in case the serialized value is null
                 continue
 
-            rval[attr_name] = {attr_key: serialized}
+            rval[attr_name] = {attr_class.attr_type: serialized}
 
         return rval
 
@@ -930,7 +874,7 @@ def _get_value_for_deserialize(value):
 
 
 def _get_class_for_deserialize(value):
-    value_type = list(value.keys())[0]
+    value_type = next(iter(value.keys()))
     if value_type not in DESERIALIZE_CLASS_MAP:
         raise ValueError('Unknown value: ' + str(value))
     return DESERIALIZE_CLASS_MAP[value_type]
@@ -945,17 +889,6 @@ def _get_class_for_serialize(value):
     if value_type not in SERIALIZE_CLASS_MAP:
         raise ValueError('Unknown value: {}'.format(value_type))
     return SERIALIZE_CLASS_MAP[value_type]
-
-
-def _get_key_for_serialize(value):
-    if value is None:
-        return NullAttribute.attr_type
-    if isinstance(value, MapAttribute):
-        return MAP_SHORT
-    value_type = type(value)
-    if value_type not in SERIALIZE_KEY_MAP:
-        raise ValueError('Unknown value: {}'.format(value_type))
-    return SERIALIZE_KEY_MAP[value_type]
 
 
 def _fast_parse_utc_datestring(datestring):
@@ -989,7 +922,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         null: Optional[bool] = None,
         default: Optional[Union[Any, Callable[..., Any]]] = None,
         attr_name: Optional[str] = None,
-        of: Optional[Type[_T]]=None,
+        of: Optional[Type[_T]] = None,
     ) -> None:
         super().__init__(
             hash_key=hash_key,
@@ -999,8 +932,8 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
             attr_name=attr_name,
         )
         if of:
-            if not issubclass(of, MapAttribute):
-                raise ValueError("'of' must be subclass of MapAttribute")
+            if not issubclass(of, Attribute):
+                raise ValueError("'of' must be a subclass of Attribute")
             self.element_type = of
 
     def remove_indexes(self, *indexes):
@@ -1014,14 +947,16 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         """
         rval = []
         for v in values:
-            attr_class = (self.element_type()
-                          if self.element_type
-                          else _get_class_for_serialize(v))
-            if attr_class.attr_type:
-                attr_key = ATTR_TYPE_MAP[attr_class.attr_type]
-            else:
-                attr_key = _get_key_for_serialize(v)
-            rval.append({attr_key: attr_class.serialize(v)})
+            attr_class = self._get_serialize_class(v)
+            if self.element_type and v is not None and not isinstance(attr_class, self.element_type):
+                raise ValueError("List elements must be of type: {}".format(self.element_type.__name__))
+            attr_type = attr_class.attr_type
+            attr_value = attr_class.serialize(v)
+            if attr_value is None:
+                # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
+                attr_type = NULL
+                attr_value = True
+            rval.append({attr_type: attr_value})
         return rval
 
     def deserialize(self, values):
@@ -1030,23 +965,44 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         """
         deserialized_lst = []
         for v in values:
-            class_for_deserialize = self.element_type() if self.element_type else _get_class_for_deserialize(v)
-            attr_value = _get_value_for_deserialize(v)
-            deserialized_lst.append(class_for_deserialize.deserialize(attr_value))
+            attr_type, attr_value = next(iter(v.items()))
+            attr_class = self._get_deserialize_class(attr_type)
+            if attr_class.attr_type != attr_type:
+                raise ValueError("Cannot deserialize {} elements from type: {}".format(
+                    attr_class.__class__.__name__, attr_type))
+            deserialized_lst.append(attr_class.deserialize(attr_value))
         return deserialized_lst
 
     def __getitem__(self, idx: int) -> Path:
         # for typing only
         return super().__getitem__(idx)
 
+    def _get_serialize_class(self, value):
+        if value is None:
+            return NullAttribute()
+        if isinstance(value, Attribute):
+            return value
+        if self.element_type:
+            return self.element_type()
+        return SERIALIZE_CLASS_MAP[type(value)]
+
+    def _get_deserialize_class(self, attr_type):
+        if self.element_type and attr_type != NULL:
+            return self.element_type()
+        return DESERIALIZE_CLASS_MAP[attr_type]
+
 
 DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {
-    LIST_SHORT: ListAttribute(),
-    NUMBER_SHORT: NumberAttribute(),
-    STRING_SHORT: UnicodeAttribute(),
+    BINARY: BinaryAttribute(),
+    BINARY_SET: BinarySetAttribute(),
     BOOLEAN: BooleanAttribute(),
-    MAP_SHORT: MapAttribute(),
-    NULL: NullAttribute()
+    LIST: ListAttribute(),
+    MAP: MapAttribute(),
+    NULL: NullAttribute(),
+    NUMBER: NumberAttribute(),
+    NUMBER_SET: NumberSetAttribute(),
+    STRING: UnicodeAttribute(),
+    STRING_SET: UnicodeSetAttribute()
 }
 
 SERIALIZE_CLASS_MAP = {
@@ -1057,15 +1013,4 @@ SERIALIZE_CLASS_MAP = {
     float: NumberAttribute(),
     int: NumberAttribute(),
     str: UnicodeAttribute(),
-}
-
-
-SERIALIZE_KEY_MAP = {
-    dict: MAP_SHORT,
-    list: LIST_SHORT,
-    set: LIST_SHORT,
-    bool: BOOLEAN,
-    float: NUMBER_SHORT,
-    int: NUMBER_SHORT,
-    str: STRING_SHORT,
 }

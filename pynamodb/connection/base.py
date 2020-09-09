@@ -31,9 +31,8 @@ from pynamodb.constants import (
     KEYS, KEY, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
-    CONSUMED_CAPACITY, CAPACITY_UNITS,
-    SHORT_ATTR_TYPES,
-    ITEMS, DEFAULT_ENCODING, BINARY_SHORT, BINARY_SET_SHORT, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
+    CONSUMED_CAPACITY, CAPACITY_UNITS, ATTRIBUTE_TYPES,
+    ITEMS, DEFAULT_ENCODING, BINARY, BINARY_SET, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
     CONDITION_EXPRESSION, FILTER_EXPRESSION,
@@ -193,7 +192,7 @@ class MetaTable(object):
             if attr.get(ATTR_NAME) == attribute_name:
                 return attr.get(ATTR_TYPE)
         if value is not None and isinstance(value, dict):
-            for key in SHORT_ATTR_TYPES:
+            for key in ATTRIBUTE_TYPES:
                 if key in value:
                     return key
         attr_names = [attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS, [])]
@@ -768,7 +767,7 @@ class Connection(object):
         {'S': 'String value'}
         """
         if isinstance(attribute, dict):
-            for key in SHORT_ATTR_TYPES:
+            for key in ATTRIBUTE_TYPES:
                 if key in attribute:
                     if return_type:
                         return key, attribute.get(key)
@@ -1322,9 +1321,9 @@ class Connection(object):
 
 
 def _convert_binary(attr):
-    if BINARY_SHORT in attr:
-        attr[BINARY_SHORT] = b64decode(attr[BINARY_SHORT].encode(DEFAULT_ENCODING))
-    elif BINARY_SET_SHORT in attr:
-        value = attr[BINARY_SET_SHORT]
+    if BINARY in attr:
+        attr[BINARY] = b64decode(attr[BINARY].encode(DEFAULT_ENCODING))
+    elif BINARY_SET in attr:
+        value = attr[BINARY_SET]
         if value and len(value):
-            attr[BINARY_SET_SHORT] = {b64decode(v.encode(DEFAULT_ENCODING)) for v in value}
+            attr[BINARY_SET] = {b64decode(v.encode(DEFAULT_ENCODING)) for v in value}

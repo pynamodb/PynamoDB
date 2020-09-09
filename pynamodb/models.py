@@ -22,7 +22,7 @@ from pynamodb.indexes import Index, GlobalSecondaryIndex
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import get_settings_value
 from pynamodb.constants import (
-    ATTR_TYPE_MAP, ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
+    ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES,
     INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ALL_NEW,
@@ -870,14 +870,14 @@ class Model(AttributeContainer, metaclass=MetaModel):
         attributes = attrs.pop(snake_to_camel_case(ATTRIBUTES))
         hash_key_attribute = cls._hash_key_attribute()
         hash_keyname = hash_key_attribute.attr_name
-        hash_keytype = ATTR_TYPE_MAP[hash_key_attribute.attr_type]
+        hash_keytype = hash_key_attribute.attr_type
         attributes[hash_keyname] = {
             hash_keytype: hash_key
         }
         if range_key is not None:
             range_key_attribute = cls._range_key_attribute()
             range_keyname = range_key_attribute.attr_name
-            range_keytype = ATTR_TYPE_MAP[range_key_attribute.attr_type]
+            range_keytype = range_key_attribute.attr_type
             attributes[range_keyname] = {
                 range_keytype: range_key
             }
@@ -898,7 +898,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             if attr_cls.is_hash_key or attr_cls.is_range_key:
                 schema[snake_to_camel_case(ATTR_DEFINITIONS)].append({
                     snake_to_camel_case(ATTR_NAME): attr_cls.attr_name,
-                    snake_to_camel_case(ATTR_TYPE): ATTR_TYPE_MAP[attr_cls.attr_type]
+                    snake_to_camel_case(ATTR_TYPE): attr_cls.attr_type
                 })
             if attr_cls.is_hash_key:
                 schema[snake_to_camel_case(KEY_SCHEMA)].append({
@@ -1093,7 +1093,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             )
         elif not hasattr(cls.Meta, "table_name") or cls.Meta.table_name is None:
             raise AttributeError(
-                'As of v1.0 PyanmoDB Models must have a table_name\n'
+                'As of v1.0 PynamoDB Models must have a table_name\n'
                 'Model: {}.{}\n'
                 'See https://pynamodb.readthedocs.io/en/latest/release_notes.html'.format(
                     cls.__module__, cls.__name__,
@@ -1123,7 +1123,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         for name, attr in self.get_attributes().items():
             value = attrs.get(attr.attr_name, None)
             if value is not None:
-                value = value.get(ATTR_TYPE_MAP[attr.attr_type], None)
+                value = value.get(attr.attr_type, None)
                 if value is not None:
                     value = attr.deserialize(value)
             setattr(self, name, value)
@@ -1151,9 +1151,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 attrs[attributes][attr.attr_name] = serialized
             else:
                 if attr.is_hash_key:
-                    attrs[HASH] = serialized[ATTR_TYPE_MAP[attr.attr_type]]
+                    attrs[HASH] = serialized[attr.attr_type]
                 elif attr.is_range_key:
-                    attrs[RANGE] = serialized[ATTR_TYPE_MAP[attr.attr_type]]
+                    attrs[RANGE] = serialized[attr.attr_type]
                 else:
                     attrs[attributes][attr.attr_name] = serialized
 
@@ -1178,7 +1178,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 raise ValueError("Attribute '{}' cannot be None".format(attr.attr_name))
             return {NULL: True}
 
-        return {ATTR_TYPE_MAP[attr.attr_type]: serialized}
+        return {attr.attr_type: serialized}
 
     @classmethod
     def _serialize_keys(cls, hash_key, range_key=None) -> Tuple[_KeyType, _KeyType]:
