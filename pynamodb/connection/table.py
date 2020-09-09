@@ -3,7 +3,7 @@ PynamoDB Connection classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence, List
 
 from pynamodb.connection.base import Connection, MetaTable
 from pynamodb.constants import DEFAULT_BILLING_MODE, KEY
@@ -30,10 +30,16 @@ class TableConnection:
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
         aws_session_token: Optional[str] = None,
+        dax_write_endpoints: Optional[List[str]] = None,
+        dax_read_endpoints: Optional[List[str]] = None
     ) -> None:
         self._hash_keyname = None
         self._range_keyname = None
         self.table_name = table_name
+        if not dax_read_endpoints:
+            dax_read_endpoints = []
+        if not dax_write_endpoints:
+            dax_write_endpoints = []
         self.connection = Connection(region=region,
                                      host=host,
                                      connect_timeout_seconds=connect_timeout_seconds,
@@ -41,7 +47,9 @@ class TableConnection:
                                      max_retry_attempts=max_retry_attempts,
                                      base_backoff_ms=base_backoff_ms,
                                      max_pool_connections=max_pool_connections,
-                                     extra_headers=extra_headers)
+                                     extra_headers=extra_headers,
+                                     dax_write_endpoints=dax_write_endpoints,
+                                     dax_read_endpoints=dax_read_endpoints)
 
         if aws_access_key_id and aws_secret_access_key:
             self.connection.session.set_credentials(aws_access_key_id,

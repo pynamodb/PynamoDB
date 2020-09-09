@@ -47,6 +47,7 @@ from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError,
     TransactGetError, TransactWriteError)
+from amazondax.DaxError import DaxClientError
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
@@ -54,6 +55,7 @@ from pynamodb.expressions.update import Action, Update
 from pynamodb.settings import get_settings_value
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
+from pynamodb.connection.dax import OP_READ, OP_WRITE, DaxClient
 from pynamodb.util import snake_to_camel_case
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
@@ -248,7 +250,9 @@ class Connection(object):
                  max_retry_attempts: Optional[int] = None,
                  base_backoff_ms: Optional[int] = None,
                  max_pool_connections: Optional[int] = None,
-                 extra_headers: Optional[Mapping[str, str]] = None):
+                 extra_headers: Optional[Mapping[str, str]] = None, 
+                 dax_write_endpoints: Optional[List[str]] = None,
+                 dax_read_endpoints: Optional[List[str]] = None):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
@@ -287,6 +291,16 @@ class Connection(object):
             self._extra_headers = extra_headers
         else:
             self._extra_headers = get_settings_value('extra_headers')
+        if dax_write_endpoints is not None:
+            self.dax_write_endpoints = dax_write_endpoints
+        else:
+            self.dax_write_endpoints = get_settings_value('dax_write_endpoints')
+        if dax_read_endpoints is not None:
+            self.dax_read_endpoints = dax_read_endpoints
+        else:
+            self.dax_read_endpoints = get_settings_value('dax_read_endpoints')
+        self._dax_write_client: Optional[DaxClient] = None
+        self._dax_read_client: Optional[DaxClient] = None
 
     def __repr__(self) -> str:
         return "Connection<{}>".format(self.client.meta.endpoint_url)
@@ -359,6 +373,13 @@ class Connection(object):
         1. It's faster to avoid using botocore's response parsing
         2. It provides a place to monkey patch HTTP requests for unit testing
         """
+        try:
+            if operation_name in OP_WRITE and self.dax_write_endpoints:
+                return self.dax_write_client.dispatch(operation_name, operation_kwargs)
+            elif operation_name in OP_READ and self.dax_read_endpoints:
+                return self.dax_read_client.dispatch(operation_name, operation_kwargs)
+        except DaxClientError:
+            raise
         operation_model = self.client._service_model.operation_model(operation_name)
         request_dict = self.client._convert_to_request_dict(
             operation_kwargs,
@@ -530,6 +551,24 @@ class Connection(object):
                 max_pool_connections=self._max_pool_connections)
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
         return self._client
+
+    @property
+    def dax_write_client(self):
+        if self._dax_write_client is None:
+            self._dax_write_client = DaxClient(
+                endpoints=self.dax_write_endpoints,
+                region_name=self.region
+            )
+        return self._dax_write_client
+
+    @property
+    def dax_read_client(self):
+        if self._dax_read_client is None:
+            self._dax_read_client = DaxClient(
+                endpoints=self.dax_read_endpoints,
+                region_name=self.region
+            )
+        return self._dax_read_client
 
     def get_meta_table(self, table_name: str, refresh: bool = False):
         """

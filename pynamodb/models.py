@@ -192,6 +192,8 @@ class MetaModel(AttributeContainerMeta):
     aws_session_token: Optional[str]
     billing_mode: Optional[str]
     stream_view_type: Optional[str]
+    dax_write_endpoints: Optional[List[str]]
+    dax_read_endpoints: Optional[List[str]]
 
     """
     Model meta class
@@ -242,6 +244,10 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_secret_access_key', None)
                     if not hasattr(attr_obj, 'aws_session_token'):
                         setattr(attr_obj, 'aws_session_token', None)
+                    if not hasattr(attr_obj, 'dax_write_endpoints'):
+                        setattr(attr_obj, 'dax_write_endpoints', get_settings_value('dax_write_endpoints'))
+                    if not hasattr(attr_obj, 'dax_read_endpoints'):
+                        setattr(attr_obj, 'dax_read_endpoints', get_settings_value('dax_read_endpoints'))
                 elif isinstance(attr_obj, Index):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -1111,7 +1117,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
                                               extra_headers=cls.Meta.extra_headers,
                                               aws_access_key_id=cls.Meta.aws_access_key_id,
                                               aws_secret_access_key=cls.Meta.aws_secret_access_key,
-                                              aws_session_token=cls.Meta.aws_session_token)
+                                              aws_session_token=cls.Meta.aws_session_token,
+                                              dax_write_endpoints=cls.Meta.dax_write_endpoints,
+                                              dax_read_endpoints=cls.Meta.dax_read_endpoints)
         return cls._connection
 
     def _deserialize(self, attrs):
