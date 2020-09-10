@@ -317,10 +317,13 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         """
         Sets attributes sent back from DynamoDB on this object
         """
+        self.attribute_values = {}
+        self._set_defaults(_user_instantiated=False)
         for name, attr in self.get_attributes().items():
-            attribute_value = attribute_values.get(attr.attr_name, {NULL: True})
-            value = None if NULL in attribute_value else attr.deserialize(attr.get_value(attribute_value))
-            setattr(self, name, value)
+            attribute_value = attribute_values.get(attr.attr_name)
+            if attribute_value and NULL not in attribute_value:
+                value = attr.deserialize(attr.get_value(attribute_value)
+                setattr(self, name, value)
 
     def __eq__(self, other: Any) -> bool:
         # This is required so that MapAttribute can call this method.
