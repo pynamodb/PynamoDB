@@ -2,7 +2,7 @@
 PynamoDB Indexes
 """
 from inspect import getmembers
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
@@ -38,9 +38,6 @@ class IndexMeta(GenericMeta):
                     meta_cls = attrs.get(META_CLASS_NAME)
                     if meta_cls is not None:
                         meta_cls.attributes = None
-                elif isinstance(attr_obj, Attribute):
-                    if attr_obj.attr_name is None:
-                        attr_obj.attr_name = attr_name
 
 
 class Index(Generic[_M], metaclass=IndexMeta):
@@ -54,6 +51,12 @@ class Index(Generic[_M], metaclass=IndexMeta):
             raise ValueError("Indexes require a Meta class for settings")
         if not hasattr(self.Meta, "projection"):
             raise ValueError("No projection defined, define a projection for this class")
+
+    def __set_name__(self, owner: Type[_M], name: str):
+        if not hasattr(self.Meta, "model"):
+            self.Meta.model = owner
+        if not hasattr(self.Meta, "index_name"):
+            self.Meta.index_name = name
 
     @classmethod
     def count(
