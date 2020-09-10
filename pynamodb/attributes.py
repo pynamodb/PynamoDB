@@ -820,18 +820,15 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         Decode as a dict.
         """
         deserialized_dict: Dict[str, Any] = dict()
-        for k in values:
-            v = values[k]
-            attr_value = _get_value_for_deserialize(v)
-            key = self._dynamo_to_python_attr(k)
-            attr_class = self._get_deserialize_class(key, v)
-            if key is None or attr_class is None:
-                continue
-            deserialized_value = None
-            if attr_value is not None:
-                deserialized_value = attr_class.deserialize(attr_value)
-
-            deserialized_dict[key] = deserialized_value
+        for k, v in values.items():
+            attr_name = self._dynamo_to_python_attr(k)
+            attr_type, attr_value = next(iter(v.items()))
+            attr_class = self._get_deserialize_class(attr_name, attr_type)
+            if attr_class and attr_class.attr_type != attr_type:
+                raise ValueError("Cannot deserialize '{}' attribute from type: {}".format(
+                    attr_name, attr_type))
+            if attr_class:
+                deserialized_dict[attr_name] = attr_class.deserialize(attr_value)
 
         # If this is a subclass of a MapAttribute (i.e typed), instantiate an instance
         if not self.is_raw():
@@ -850,7 +847,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
 
     def _should_skip(self, value):
         # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
-        # This special case behavior for "raw" attribtues should be removed in the future.
+        # This special case behavior for "raw" attributes should be removed in the future.
         return not self.is_raw() and value is None
 
     @classmethod
@@ -860,24 +857,10 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         return _get_class_for_serialize(value)
 
     @classmethod
-    def _get_deserialize_class(cls, key, value):
+    def _get_deserialize_class(cls, attr_name, attr_type):
         if not cls.is_raw():
-            return cls.get_attributes().get(key)
-        return _get_class_for_deserialize(value)
-
-
-def _get_value_for_deserialize(value):
-    key = next(iter(value.keys()))
-    if key == NULL:
-        return None
-    return value[key]
-
-
-def _get_class_for_deserialize(value):
-    value_type = next(iter(value.keys()))
-    if value_type not in DESERIALIZE_CLASS_MAP:
-        raise ValueError('Unknown value: ' + str(value))
-    return DESERIALIZE_CLASS_MAP[value_type]
+            return cls.get_attributes().get(attr_name)
+        return DESERIALIZE_CLASS_MAP[attr_type]
 
 
 def _get_class_for_serialize(value):
