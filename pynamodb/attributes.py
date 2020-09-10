@@ -278,7 +278,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         return cls._attributes  # type: ignore
 
     @classmethod
-    def _dynamo_to_python_attr(cls, dynamo_key: str) -> Optional[str]:
+    def _dynamo_to_python_attr(cls, dynamo_key: str) -> str:
         """
         Convert a DynamoDB attribute name to the internal Python name.
 

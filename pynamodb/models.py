@@ -549,12 +549,12 @@ class Model(AttributeContainer, metaclass=MetaModel):
         attributes: Dict[str, Any] = {}
         for name, value in data.items():
             attr_name = cls._dynamo_to_python_attr(name)
-            attr = cls.get_attributes().get(attr_name, None)  # type: ignore
+            attr = cls.get_attributes().get(attr_name, None)
             if attr:
                 try:
-                    attributes[attr_name] = attr.deserialize(attr.get_value(value))  # type: ignore
+                    attributes[attr_name] = attr.deserialize(attr.get_value(value))
                 except TypeError as e:
-                    raise AttributeDeserializationError(attr_name=attr_name) from e  # type: ignore
+                    raise AttributeDeserializationError(attr_name=attr_name) from e
         return cls(_user_instantiated=False, **attributes)
 
     @classmethod
