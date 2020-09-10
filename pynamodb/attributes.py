@@ -13,7 +13,7 @@ from dateutil.parser import parse
 from dateutil.tz import tzutc
 from inspect import getfullargspec
 from inspect import getmembers
-from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, Text,  TypeVar, Type, Union, Set, overload
+from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload
 from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta

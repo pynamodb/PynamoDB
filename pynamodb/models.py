@@ -11,7 +11,7 @@ from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Seque
     Tuple, Union, cast
 
 from pynamodb.expressions.update import Action
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError, AttributeDeserializationError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
 from pynamodb.attributes import (
     Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
 )
