@@ -867,7 +867,7 @@ def _get_class_for_serialize(value):
     if value is None:
         return NullAttribute()
     if isinstance(value, MapAttribute):
-        return type(value)()
+        return value
     value_type = type(value)
     if value_type not in SERIALIZE_CLASS_MAP:
         raise ValueError('Unknown value: {}'.format(value_type))
