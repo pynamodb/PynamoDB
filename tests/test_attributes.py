@@ -16,7 +16,7 @@ import pytest
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute,
-    ListAttribute, JSONAttribute, TTLAttribute, _get_value_for_deserialize, _fast_parse_utc_datestring,
+    ListAttribute, JSONAttribute, TTLAttribute, _fast_parse_utc_datestring,
     VersionAttribute)
 from pynamodb.constants import (
     DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
@@ -888,19 +888,6 @@ class TestMapAttribute:
         assert mid_map_a_map_attr.attr_path == ['dyn_out_map', 'mid_map_a', 'dyn_in_map_a', 'dyn_map_attr']
         assert mid_map_b_map_attr.attr_name == 'dyn_map_attr'
         assert mid_map_b_map_attr.attr_path == ['dyn_out_map', 'mid_map_b', 'dyn_in_map_b', 'dyn_map_attr']
-
-
-class TestValueDeserialize:
-    def test__get_value_for_deserialize(self):
-        expected = '3'
-        data = {'N': '3'}
-        actual = _get_value_for_deserialize(data)
-        assert expected == actual
-
-    def test__get_value_for_deserialize_null(self):
-        data = {'NULL': 'True'}
-        actual = _get_value_for_deserialize(data)
-        assert actual is None
 
 
 class TestListAttribute:

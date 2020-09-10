@@ -13,7 +13,7 @@ from dateutil.parser import parse
 from dateutil.tz import tzutc
 from inspect import getfullargspec
 from inspect import getmembers
-from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, Text,  TypeVar, Type, Union, Set, overload
+from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload
 from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
@@ -21,6 +21,7 @@ from pynamodb.constants import (
     BINARY, BINARY_SET, BOOLEAN, DATETIME_FORMAT, DEFAULT_ENCODING,
     LIST, MAP, NULL, NUMBER, NUMBER_SET, STRING, STRING_SET
 )
+from pynamodb.exceptions import AttributeDeserializationError
 from pynamodb.expressions.operand import Path
 
 
@@ -71,12 +72,11 @@ class Attribute(Generic[_T]):
         self.is_hash_key = hash_key
         self.is_range_key = range_key
 
-        # AttributeContainerMeta._initialize_attributes will ensure this is a
-        # string
+        # AttributeContainerMeta._initialize_attributes will ensure this is a string
         self.attr_path: List[str] = [attr_name]  # type: ignore
 
     @property
-    def attr_name(self) -> Optional[str]:
+    def attr_name(self) -> str:
         return self.attr_path[-1]
 
     @attr_name.setter
@@ -120,8 +120,10 @@ class Attribute(Generic[_T]):
         """
         return value
 
-    def get_value(self, value: Any) -> Any:
-        return value.get(self.attr_type)
+    def get_value(self, value: Dict[str, Any]) -> Any:
+        if self.attr_type not in value:
+            raise AttributeDeserializationError(self.attr_name, self.attr_type)
+        return value[self.attr_type]
 
     def __iter__(self):
         # Because we define __getitem__ below for condition expression support
@@ -278,7 +280,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         return cls._attributes  # type: ignore
 
     @classmethod
-    def _dynamo_to_python_attr(cls, dynamo_key: str) -> Optional[str]:
+    def _dynamo_to_python_attr(cls, dynamo_key: str) -> str:
         """
         Convert a DynamoDB attribute name to the internal Python name.
 
@@ -310,6 +312,18 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             if attr_name not in self.get_attributes():
                 raise ValueError("Attribute {} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
+
+    def _deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
+        """
+        Sets attributes sent back from DynamoDB on this object
+        """
+        self.attribute_values = {}
+        self._set_defaults(_user_instantiated=False)
+        for name, attr in self.get_attributes().items():
+            attribute_value = attribute_values.get(attr.attr_name)
+            if attribute_value and NULL not in attribute_value:
+                value = attr.deserialize(attr.get_value(attribute_value))
+                setattr(self, name, value)
 
     def __eq__(self, other: Any) -> bool:
         # This is required so that MapAttribute can call this method.
@@ -803,8 +817,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
                 continue
 
             # If this is a subclassed MapAttribute, there may be an alternate attr name
-            attr = self.get_attributes().get(k)
-            attr_name = attr.attr_name if attr else k
+            attr_name = attr_class.attr_name if not self.is_raw() else k
 
             serialized = attr_class.serialize(v)
             if self._should_skip(serialized):
@@ -819,23 +832,17 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         """
         Decode as a dict.
         """
-        deserialized_dict: Dict[str, Any] = dict()
-        for k in values:
-            v = values[k]
-            attr_value = _get_value_for_deserialize(v)
-            key = self._dynamo_to_python_attr(k)
-            attr_class = self._get_deserialize_class(key, v)
-            if key is None or attr_class is None:
-                continue
-            deserialized_value = None
-            if attr_value is not None:
-                deserialized_value = attr_class.deserialize(attr_value)
-
-            deserialized_dict[key] = deserialized_value
-
-        # If this is a subclass of a MapAttribute (i.e typed), instantiate an instance
         if not self.is_raw():
-            return type(self)(**deserialized_dict)
+            # If this is a subclass of a MapAttribute (i.e typed), instantiate an instance
+            instance = type(self)()
+            instance._deserialize(values)
+            return instance
+
+        deserialized_dict: Dict[str, Any] = dict()
+        for k, v in values.items():
+            attr_type, attr_value = next(iter(v.items()))
+            attr_class = DESERIALIZE_CLASS_MAP[attr_type]
+            deserialized_dict[k] = attr_class.deserialize(attr_value)
         return deserialized_dict
 
     @classmethod
@@ -850,7 +857,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
 
     def _should_skip(self, value):
         # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
-        # This special case behavior for "raw" attribtues should be removed in the future.
+        # This special case behavior for "raw" attributes should be removed in the future.
         return not self.is_raw() and value is None
 
     @classmethod
@@ -859,32 +866,12 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             return cls.get_attributes().get(key)
         return _get_class_for_serialize(value)
 
-    @classmethod
-    def _get_deserialize_class(cls, key, value):
-        if not cls.is_raw():
-            return cls.get_attributes().get(key)
-        return _get_class_for_deserialize(value)
-
-
-def _get_value_for_deserialize(value):
-    key = next(iter(value.keys()))
-    if key == NULL:
-        return None
-    return value[key]
-
-
-def _get_class_for_deserialize(value):
-    value_type = next(iter(value.keys()))
-    if value_type not in DESERIALIZE_CLASS_MAP:
-        raise ValueError('Unknown value: ' + str(value))
-    return DESERIALIZE_CLASS_MAP[value_type]
-
 
 def _get_class_for_serialize(value):
     if value is None:
         return NullAttribute()
     if isinstance(value, MapAttribute):
-        return type(value)()
+        return value
     value_type = type(value)
     if value_type not in SERIALIZE_CLASS_MAP:
         raise ValueError('Unknown value: {}'.format(value_type))
