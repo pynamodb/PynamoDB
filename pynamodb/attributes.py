@@ -322,7 +322,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         for name, attr in self.get_attributes().items():
             attribute_value = attribute_values.get(attr.attr_name)
             if attribute_value and NULL not in attribute_value:
-                value = attr.deserialize(attr.get_value(attribute_value)
+                value = attr.deserialize(attr.get_value(attribute_value))
                 setattr(self, name, value)
 
     def __eq__(self, other: Any) -> bool:
