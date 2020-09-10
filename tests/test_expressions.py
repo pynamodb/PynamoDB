@@ -431,6 +431,7 @@ class UpdateExpressionTestCase(TestCase):
 
     def setUp(self):
         self.attribute = UnicodeAttribute(attr_name='foo')
+        self.list_attribute = ListAttribute(attr_name='foo_list')
 
     def test_set_action(self):
         action = self.attribute.set('bar')
@@ -515,6 +516,14 @@ class UpdateExpressionTestCase(TestCase):
         expression = action.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0"
         assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {}
+
+    def test_remove_action_list_element(self):
+        action = self.list_attribute[10].remove()
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0[10]"
+        assert placeholder_names == {'foo_list': '#0'}
         assert expression_attribute_values == {}
 
     def test_add_action(self):

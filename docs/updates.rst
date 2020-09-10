@@ -37,7 +37,7 @@ Any value provided will be serialized using the serializer defined for that attr
     :header: DynamoDB Action / Operator, PynamoDB Syntax, Example
 
     SET, set( `value` ), Thread.views.set(10)
-    REMOVE, remove(), Thread.subjects.remove()
+    REMOVE, remove(), Thread.notes[0].remove()
     ADD, add( `value` ), "Thread.subjects.add({'A New Subject', 'Another New Subject'})"
     DELETE, delete( `value` ), Thread.subjects.delete({'An Old Subject'})
     `attr_or_value_1` \+ `attr_or_value_2`, `attr_or_value_1` \+ `attr_or_value_2`, Thread.views + 5
