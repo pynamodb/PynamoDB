@@ -21,6 +21,7 @@ from pynamodb.constants import (
     BINARY, BINARY_SET, BOOLEAN, DATETIME_FORMAT, DEFAULT_ENCODING,
     LIST, MAP, NULL, NUMBER, NUMBER_SET, STRING, STRING_SET
 )
+from pynamodb.exceptions import AttributeDeserializationError
 from pynamodb.expressions.operand import Path
 
 
@@ -121,7 +122,9 @@ class Attribute(Generic[_T]):
         return value
 
     def get_value(self, value: Any) -> Any:
-        return value.get(self.attr_type)
+        if self.attr_type not in value:
+            raise AttributeDeserializationError(self.attr_name, self.attr_type)
+        return value[self.attr_type]
 
     def __iter__(self):
         # Because we define __getitem__ below for condition expression support
@@ -310,6 +313,15 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             if attr_name not in self.get_attributes():
                 raise ValueError("Attribute {} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
+
+    def _deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
+        """
+        Sets attributes sent back from DynamoDB on this object
+        """
+        for name, attr in self.get_attributes().items():
+            value = attribute_values.get(attr.attr_name, {NULL: True})
+            value = None if NULL in value else attr.deserialize(attr.get_value(value))
+            setattr(self, name, value)
 
     def __eq__(self, other: Any) -> bool:
         # This is required so that MapAttribute can call this method.
@@ -803,8 +815,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
                 continue
 
             # If this is a subclassed MapAttribute, there may be an alternate attr name
-            attr = self.get_attributes().get(k)
-            attr_name = attr.attr_name if attr else k
+            attr_name = attr_class.attr_name if not self.is_raw() else k
 
             serialized = attr_class.serialize(v)
             if self._should_skip(serialized):
@@ -819,20 +830,17 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         """
         Decode as a dict.
         """
+        if not self.is_raw():
+            # If this is a subclass of a MapAttribute (i.e typed), instantiate an instance
+            instance = type(self)()
+            instance._deserialize(values)
+            return instance
+
         deserialized_dict: Dict[str, Any] = dict()
         for k, v in values.items():
-            attr_name = self._dynamo_to_python_attr(k)
             attr_type, attr_value = next(iter(v.items()))
-            attr_class = self._get_deserialize_class(attr_name, attr_type)
-            if attr_class and attr_class.attr_type != attr_type:
-                raise ValueError("Cannot deserialize '{}' attribute from type: {}".format(
-                    attr_name, attr_type))
-            if attr_class:
-                deserialized_dict[attr_name] = attr_class.deserialize(attr_value)
-
-        # If this is a subclass of a MapAttribute (i.e typed), instantiate an instance
-        if not self.is_raw():
-            return type(self)(**deserialized_dict)
+            attr_class = DESERIALIZE_CLASS_MAP[attr_type]
+            deserialized_dict[k] = attr_class.deserialize(attr_value)
         return deserialized_dict
 
     @classmethod
@@ -855,12 +863,6 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         if not cls.is_raw():
             return cls.get_attributes().get(key)
         return _get_class_for_serialize(value)
-
-    @classmethod
-    def _get_deserialize_class(cls, attr_name, attr_type):
-        if not cls.is_raw() and attr_type != NULL:
-            return cls.get_attributes().get(attr_name)
-        return DESERIALIZE_CLASS_MAP[attr_type]
 
 
 def _get_class_for_serialize(value):

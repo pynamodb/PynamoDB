@@ -546,16 +546,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if data is None:
             raise ValueError("Received no data to construct object")
 
-        attributes: Dict[str, Any] = {}
-        for name, value in data.items():
-            attr_name = cls._dynamo_to_python_attr(name)
-            attr = cls.get_attributes().get(attr_name, None)
-            if attr:
-                try:
-                    attributes[attr_name] = attr.deserialize(attr.get_value(value))
-                except TypeError as e:
-                    raise AttributeDeserializationError(attr_name=attr_name) from e
-        return cls(_user_instantiated=False, **attributes)
+        model = cls(_user_instantiated=False)
+        model._deserialize(data)
+        return model
 
     @classmethod
     def count(
@@ -1113,20 +1106,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                                               aws_secret_access_key=cls.Meta.aws_secret_access_key,
                                               aws_session_token=cls.Meta.aws_session_token)
         return cls._connection
-
-    def _deserialize(self, attrs):
-        """
-        Sets attributes sent back from DynamoDB on this object
-
-        :param attrs: A dictionary of attributes to update this item with.
-        """
-        for name, attr in self.get_attributes().items():
-            value = attrs.get(attr.attr_name, None)
-            if value is not None:
-                value = value.get(attr.attr_type, None)
-                if value is not None:
-                    value = attr.deserialize(value)
-            setattr(self, name, value)
 
     def _serialize(self, attr_map=False, null_check=True) -> Dict[str, Any]:
         """
