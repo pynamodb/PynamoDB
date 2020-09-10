@@ -121,7 +121,7 @@ class Attribute(Generic[_T]):
         """
         return value
 
-    def get_value(self, value: Any) -> Any:
+    def get_value(self, value: Dict[str, Any]) -> Any:
         if self.attr_type not in value:
             raise AttributeDeserializationError(self.attr_name, self.attr_type)
         return value[self.attr_type]
