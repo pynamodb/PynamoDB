@@ -858,7 +858,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
 
     @classmethod
     def _get_deserialize_class(cls, attr_name, attr_type):
-        if not cls.is_raw():
+        if not cls.is_raw() and attr_type != NULL:
             return cls.get_attributes().get(attr_name)
         return DESERIALIZE_CLASS_MAP[attr_type]
 
