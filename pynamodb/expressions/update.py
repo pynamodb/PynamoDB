@@ -42,15 +42,6 @@ class RemoveAction(Action):
         super(RemoveAction, self).__init__(path)
 
 
-class ListRemoveAction(Action):
-    """
-    The List REMOVE action deletes an element from a list item based on the index.
-    """
-    def __init__(self, path: 'Path', *indexes: int):
-        self.format_string = ", ".join("{{0}}[{}]".format(index) for index in indexes)
-        super(ListRemoveAction, self).__init__(path)
-
-
 class AddAction(Action):
     """
     The ADD action appends elements to a set or mathematically adds to a number attribute.
@@ -80,7 +71,6 @@ class Update(object):
         self.remove_actions: List[RemoveAction] = []
         self.add_actions: List[AddAction] = []
         self.delete_actions: List[DeleteAction] = []
-        self.list_remove_actions: List[ListRemoveAction] = []
         for action in actions:
             self.add_action(action)
 
@@ -89,8 +79,6 @@ class Update(object):
             self.set_actions.append(action)
         elif isinstance(action, RemoveAction):
             self.remove_actions.append(action)
-        elif isinstance(action, ListRemoveAction):
-            self.list_remove_actions.append(action)
         elif isinstance(action, AddAction):
             self.add_actions.append(action)
         elif isinstance(action, DeleteAction):
@@ -102,7 +90,6 @@ class Update(object):
         expression = None
         expression = self._add_clause(expression, 'SET', self.set_actions, placeholder_names, expression_attribute_values)
         expression = self._add_clause(expression, 'REMOVE', self.remove_actions, placeholder_names, expression_attribute_values)
-        expression = self._add_clause(expression, 'REMOVE', self.list_remove_actions, placeholder_names, expression_attribute_values)
         expression = self._add_clause(expression, 'ADD', self.add_actions, placeholder_names, expression_attribute_values)
         expression = self._add_clause(expression, 'DELETE', self.delete_actions, placeholder_names, expression_attribute_values)
         return expression

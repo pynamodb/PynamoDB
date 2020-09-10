@@ -8,7 +8,7 @@ from pynamodb.expressions.condition import (
     BeginsWith, Between, Comparison, Contains, Exists, In, IsType, NotExists
 )
 from pynamodb.expressions.update import (
-    AddAction, DeleteAction, RemoveAction, SetAction, ListRemoveAction
+    AddAction, DeleteAction, RemoveAction, SetAction
 )
 from pynamodb.expressions.util import get_path_segments, get_value_placeholder, substitute_names
 
@@ -287,9 +287,6 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     def remove(self) -> RemoveAction:
         # Returns an update action that removes this attribute from the item
         return RemoveAction(self)
-
-    def remove_list_elements(self, *indexes: int) -> ListRemoveAction:
-        return ListRemoveAction(self, *indexes)
 
     def add(self, *values: Any) -> AddAction:
         # Returns an update action that appends the given values to a set or mathematically adds a value to a number

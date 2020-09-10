@@ -37,12 +37,11 @@ Any value provided will be serialized using the serializer defined for that attr
     :header: DynamoDB Action / Operator, PynamoDB Syntax, Example
 
     SET, set( `value` ), Thread.views.set(10)
-    REMOVE, remove(), Thread.subjects.remove()
+    REMOVE, remove(), Thread.notes[0].remove()
     ADD, add( `value` ), "Thread.subjects.add({'A New Subject', 'Another New Subject'})"
     DELETE, delete( `value` ), Thread.subjects.delete({'An Old Subject'})
     `attr_or_value_1` \+ `attr_or_value_2`, `attr_or_value_1` \+ `attr_or_value_2`, Thread.views + 5
     `attr_or_value_1` \- `attr_or_value_2`, `attr_or_value_1` \- `attr_or_value_2`, 5 - Thread.views
     "list_append( `attr` , `value` )", append( `value` ), Thread.notes.append(['my last note'])
     "list_append( `value` , `attr` )", prepend( `value` ), Thread.notes.prepend(['my first note'])
-    "REMOVE list[index1], list[index2]", "remove_indexes(`index1`, `index2`)", "Thread.notes.remove_indexes(0, 1)"
     "if_not_exists( `attr`, `value` )", `attr` | `value`, Thread.forum_name | 'Default Forum Name'

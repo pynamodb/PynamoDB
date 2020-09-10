@@ -10,6 +10,7 @@ v5.0 (unreleased)
   "'filter_condition' cannot contain key attributes" errors.
 * Replace the internal attribute type constants with their "short" DynamoDB version (#827)
 * Typed list attributes can now support any Attribute subclass (#833)
+* Remove ``ListAttribute.remove_indexes`` (added in v4.3.2) and document usage of remove for list elements (#838)
 
 v4.3.3
 ----------
