@@ -72,12 +72,11 @@ class Attribute(Generic[_T]):
         self.is_hash_key = hash_key
         self.is_range_key = range_key
 
-        # AttributeContainerMeta._initialize_attributes will ensure this is a
-        # string
+        # AttributeContainerMeta._initialize_attributes will ensure this is a string
         self.attr_path: List[str] = [attr_name]  # type: ignore
 
     @property
-    def attr_name(self) -> Optional[str]:
+    def attr_name(self) -> str:
         return self.attr_path[-1]
 
     @attr_name.setter
@@ -319,8 +318,8 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         Sets attributes sent back from DynamoDB on this object
         """
         for name, attr in self.get_attributes().items():
-            value = attribute_values.get(attr.attr_name, {NULL: True})
-            value = None if NULL in value else attr.deserialize(attr.get_value(value))
+            attribute_value = attribute_values.get(attr.attr_name, {NULL: True})
+            value = None if NULL in attribute_value else attr.deserialize(attr.get_value(attribute_value))
             setattr(self, name, value)
 
     def __eq__(self, other: Any) -> bool:
