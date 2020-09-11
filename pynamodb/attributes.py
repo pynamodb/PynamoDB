@@ -7,7 +7,7 @@ import json
 import time
 import warnings
 from base64 import b64encode, b64decode
-from copy import copy, deepcopy
+from copy import deepcopy
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from dateutil.tz import tzutc
@@ -898,7 +898,7 @@ def _fast_parse_utc_datestring(datestring):
 
 class ListAttribute(Generic[_T], Attribute[List[_T]]):
     attr_type = LIST
-    element_type: Optional[Type[Attribute[_T]]] = None
+    element_type: Optional[Type[Attribute]] = None
 
     def __init__(
         self,
@@ -907,7 +907,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         null: Optional[bool] = None,
         default: Optional[Union[Any, Callable[..., Any]]] = None,
         attr_name: Optional[str] = None,
-        of: Optional[Type[Attribute[_T]]] = None,
+        of: Optional[Type[_T]] = None,
     ) -> None:
         super().__init__(
             hash_key=hash_key,
@@ -962,7 +962,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
             for v in values for attr_type, attr_value in v.items()
         ]
 
-    def __getitem__(self, idx: int) -> Any:
+    def __getitem__(self, idx: int) -> Path:  # type: ignore
         if not isinstance(idx, int):
             raise TypeError("list indices must be integers, not {}".format(type(idx).__name__))
 
@@ -976,7 +976,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
             if isinstance(element_attr, MapAttribute):
                 for path_segment in reversed(element_attr.attr_path):
                     element_attr._update_attribute_paths(path_segment)
-            return element_attr
+            return element_attr  # type: ignore
 
         return super().__getitem__(idx)
 

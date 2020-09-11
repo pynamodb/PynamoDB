@@ -911,7 +911,7 @@ class TestListAttribute:
         with pytest.raises(ValueError):
             string_list_attribute.serialize([MapAttribute(foo='bar')])
 
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             string_list_attribute.deserialize([{'M': {'foo': {'S': 'bar'}}}])
 
     def test_serialize_null(self):
