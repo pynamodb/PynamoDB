@@ -327,7 +327,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             if null_check and attr_value is None and not attr.null:
                 raise ValueError("Attribute '{}' cannot be None".format(name))
 
-            if attr_value:
+            if attr_value is not None:
                 attribute_values[attr.attr_name] = {attr.attr_type: attr_value}
         return attribute_values
 
