@@ -313,6 +313,24 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
                 raise ValueError("Attribute {} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
 
+    def _serialize(self, null_check=True) -> Dict[str, Dict[str, Any]]:
+        """
+        Serialize attribute values for DynamoDB
+        """
+        attribute_values: Dict[str, Dict[str, Any]] = {}
+        for name, attr in self.get_attributes().items():
+            value = getattr(self, name)
+            if isinstance(value, MapAttribute) and not value.validate():
+                raise ValueError("Attribute '{}' is not correctly typed".format(name))
+
+            attr_value = attr.serialize(value) if value is not None else None
+            if null_check and attr_value is None and not attr.null:
+                raise ValueError("Attribute '{}' cannot be None".format(name))
+
+            if attr_value:
+                attribute_values[attr.attr_name] = {attr.attr_type: attr_value}
+        return attribute_values
+
     def _deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
         """
         Sets attributes sent back from DynamoDB on this object
@@ -807,6 +825,9 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         return all(self.is_correctly_typed(k, v) for k, v in self.get_attributes().items())
 
     def serialize(self, values):
+        if isinstance(values, type(self)) and not values.is_raw():
+            return values._serialize()
+
         rval = {}
         for k in values:
             v = values[k]

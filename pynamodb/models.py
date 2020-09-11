@@ -1115,27 +1115,14 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param null_check: If True, then attributes are checked for null
         """
         attributes = snake_to_camel_case(ATTRIBUTES)
-        attrs: Dict[str, Dict] = {attributes: {}}
-        for name, attr in self.get_attributes().items():
-            value = getattr(self, name)
-            if isinstance(value, MapAttribute):
-                if not value.validate():
-                    raise ValueError("Attribute '{}' is not correctly typed".format(attr.attr_name))
-
-            serialized = self._serialize_value(attr, value, null_check)
-            if NULL in serialized:
-                continue
-
-            if attr_map:
-                attrs[attributes][attr.attr_name] = serialized
-            else:
-                if attr.is_hash_key:
-                    attrs[HASH] = serialized[attr.attr_type]
-                elif attr.is_range_key:
-                    attrs[RANGE] = serialized[attr.attr_type]
-                else:
-                    attrs[attributes][attr.attr_name] = serialized
-
+        attrs: Dict[str, Dict] = {attributes: super()._serialize(null_check)}
+        if not attr_map:
+            if self._hash_key_attribute().attr_name in attrs[attributes]:
+                hash_key_attribute_value = attrs[attributes].pop(self._hash_key_attribute().attr_name)
+                attrs[HASH] = hash_key_attribute_value[self._hash_key_attribute().attr_type]
+            if self._range_keyname and self._range_key_attribute().attr_name in attrs[attributes]:
+                range_key_attribute_value = attrs[attributes].pop(self._range_key_attribute().attr_name)
+                attrs[RANGE] = range_key_attribute_value[self._range_key_attribute().attr_type]
         return attrs
 
     @classmethod
