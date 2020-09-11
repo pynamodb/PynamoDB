@@ -156,8 +156,8 @@ class Attribute(Generic[_T]):
     def __ge__(self, other: Any) -> 'Comparison':
         return Path(self).__ge__(other)
 
-    def __getitem__(self, idx: int) -> Any:
-        return Path(self).__getitem__(idx)
+    def __getitem__(self, item: Union[int, str]) -> Path:
+        return Path(self).__getitem__(item)
 
     def between(self, lower: Any, upper: Any) -> 'Between':
         return Path(self).between(lower, upper)
@@ -838,12 +838,10 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             instance._deserialize(values)
             return instance
 
-        deserialized_dict: Dict[str, Any] = dict()
-        for k, v in values.items():
-            attr_type, attr_value = next(iter(v.items()))
-            attr_class = DESERIALIZE_CLASS_MAP[attr_type]
-            deserialized_dict[k] = attr_class.deserialize(attr_value)
-        return deserialized_dict
+        return {
+            k: DESERIALIZE_CLASS_MAP[attr_type].deserialize(attr_value)
+            for k, v in values.items() for attr_type, attr_value in v.items()
+        }
 
     @classmethod
     def is_raw(cls):
@@ -900,7 +898,7 @@ def _fast_parse_utc_datestring(datestring):
 
 class ListAttribute(Generic[_T], Attribute[List[_T]]):
     attr_type = LIST
-    element_type: Any = None
+    element_type: Optional[Type[Attribute]] = None
 
     def __init__(
         self,
@@ -945,18 +943,41 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         """
         Decode from list of AttributeValue types.
         """
-        deserialized_lst = []
-        for v in values:
-            attr_type, attr_value = next(iter(v.items()))
-            attr_class = self._get_deserialize_class(attr_type)
-            if attr_class.attr_type != attr_type:
-                raise ValueError("Cannot deserialize {} elements from type: {}".format(
-                    attr_class.__class__.__name__, attr_type))
-            deserialized_lst.append(attr_class.deserialize(attr_value))
-        return deserialized_lst
+        if self.element_type:
+            element_attr = self.element_type()
+            if isinstance(element_attr, MapAttribute):
+                element_attr._make_attribute()  # ensure attr_name exists
+            deserialized_lst = []
+            for idx, attribute_value in enumerate(values):
+                value = None
+                if NULL not in attribute_value:
+                    # set attr_name in case `get_value` raises an exception
+                    element_attr.attr_name = '{}[{}]'.format(self.attr_name, idx)
+                    value = element_attr.deserialize(element_attr.get_value(attribute_value))
+                deserialized_lst.append(value)
+            return deserialized_lst
 
-    def __getitem__(self, idx: int) -> Path:
-        # for typing only
+        return [
+            DESERIALIZE_CLASS_MAP[attr_type].deserialize(attr_value)
+            for v in values for attr_type, attr_value in v.items()
+        ]
+
+    def __getitem__(self, idx: int) -> Path:  # type: ignore
+        if not isinstance(idx, int):
+            raise TypeError("list indices must be integers, not {}".format(type(idx).__name__))
+
+        if self.element_type:
+            # If this instance is typed, return a properly configured attribute on list element access.
+            element_attr = self.element_type()
+            if isinstance(element_attr, MapAttribute):
+                element_attr._make_attribute()
+            element_attr.attr_path = list(self.attr_path)  # copy the document path before indexing last element
+            element_attr.attr_name = '{}[{}]'.format(element_attr.attr_name, idx)
+            if isinstance(element_attr, MapAttribute):
+                for path_segment in reversed(element_attr.attr_path):
+                    element_attr._update_attribute_paths(path_segment)
+            return element_attr  # type: ignore
+
         return super().__getitem__(idx)
 
     def _get_serialize_class(self, value):
@@ -967,11 +988,6 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         if self.element_type:
             return self.element_type()
         return SERIALIZE_CLASS_MAP[type(value)]
-
-    def _get_deserialize_class(self, attr_type):
-        if self.element_type and attr_type != NULL:
-            return self.element_type()
-        return DESERIALIZE_CLASS_MAP[attr_type]
 
 
 DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {

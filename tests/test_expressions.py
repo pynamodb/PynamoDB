@@ -325,7 +325,7 @@ class ConditionExpressionTestCase(TestCase):
         expression = condition.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0[0] = :0"
         assert placeholder_names == {'foo': '#0'}
-        assert expression_attribute_values == {':0': {'S' : 'bar'}}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
 
     def test_invalid_indexing(self):
         with self.assertRaises(TypeError):
@@ -337,7 +337,17 @@ class ConditionExpressionTestCase(TestCase):
         expression = condition.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0[0][1] = :0"
         assert placeholder_names == {'foo': '#0'}
-        assert expression_attribute_values == {':0': {'S' : 'bar'}}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
+
+    def test_typed_list_indexing(self):
+        class StringMap(MapAttribute):
+            bar = UnicodeAttribute()
+        condition = ListAttribute(attr_name='foo', of=StringMap)[0].bar == 'baz'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0[0].#1 = :0"
+        assert placeholder_names == {'foo': '#0', 'bar': '#1'}
+        assert expression_attribute_values == {':0': {'S': 'baz'}}
 
     def test_map_comparison(self):
         # Simulate initialization from inside an AttributeContainer
