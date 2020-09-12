@@ -995,7 +995,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 actions.append(version_attribute.add(1))
             elif snake_to_camel_case(ATTRIBUTES) in serialized_attributes:
                 serialized_attributes[snake_to_camel_case(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
-                    version_attribute, version_attribute_value + 1, null_check=True
+                    version_attribute, version_attribute_value + 1
                 )
         else:
             version_condition = version_attribute.does_not_exist()
@@ -1003,7 +1003,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 actions.append(version_attribute.set(1))
             elif snake_to_camel_case(ATTRIBUTES) in serialized_attributes:
                 serialized_attributes[snake_to_camel_case(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
-                    version_attribute, 1, null_check=True
+                    version_attribute, 1
                 )
 
         return version_condition
@@ -1129,7 +1129,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return attrs
 
     @classmethod
-    def _serialize_value(cls, attr, value, null_check=True):
+    def _serialize_value(cls, attr, value):
         """
         Serializes a value for use with DynamoDB
 
@@ -1137,13 +1137,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param value: a value to be serialized
         :param null_check: If True, then attributes are checked for null
         """
-        if value is None:
-            serialized = None
-        else:
-            serialized = attr.serialize(value)
+        serialized = attr.serialize(value)
 
         if serialized is None:
-            if not attr.null and null_check:
+            if not attr.null:
                 raise ValueError("Attribute '{}' cannot be None".format(attr.attr_name))
             return {NULL: True}
 
