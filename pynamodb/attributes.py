@@ -878,12 +878,6 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             result[key] = value.as_dict() if isinstance(value, MapAttribute) else value
         return result
 
-    @classmethod
-    def _get_serialize_class(cls, key, value):
-        if not cls.is_raw():
-            return cls.get_attributes().get(key)
-        return _get_class_for_serialize(value)
-
 
 def _get_class_for_serialize(value):
     if value is None:
