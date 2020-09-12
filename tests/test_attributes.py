@@ -889,6 +889,29 @@ class TestMapAttribute:
         assert mid_map_b_map_attr.attr_name == 'dyn_map_attr'
         assert mid_map_b_map_attr.attr_path == ['dyn_out_map', 'mid_map_b', 'dyn_in_map_b', 'dyn_map_attr']
 
+    def test_required_elements(self):
+        class InnerMapAttribute(MapAttribute):
+            foo = UnicodeAttribute()
+
+        class OuterMapAttribute(MapAttribute):
+            inner_map = InnerMapAttribute()
+
+        outer_map_attribute = OuterMapAttribute()
+        with pytest.raises(ValueError):
+            outer_map_attribute.serialize(outer_map_attribute)
+
+        outer_map_attribute = OuterMapAttribute(inner_map={})
+        with pytest.raises(ValueError):
+            outer_map_attribute.serialize(outer_map_attribute)
+
+        outer_map_attribute = OuterMapAttribute(inner_map=MapAttribute())
+        with pytest.raises(ValueError):
+            outer_map_attribute.serialize(outer_map_attribute)
+
+        outer_map_attribute = OuterMapAttribute(inner_map={'foo': 'bar'})
+        serialized = outer_map_attribute.serialize(outer_map_attribute)
+        assert serialized == {'inner_map': {'M': {'foo': {'S': 'bar'}}}}
+
 
 class TestListAttribute:
 
