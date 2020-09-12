@@ -313,6 +313,24 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
                 raise ValueError("Attribute {} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
 
+    def _serialize(self, null_check=True) -> Dict[str, Dict[str, Any]]:
+        """
+        Serialize attribute values for DynamoDB
+        """
+        attribute_values: Dict[str, Dict[str, Any]] = {}
+        for name, attr in self.get_attributes().items():
+            value = getattr(self, name)
+            if isinstance(value, MapAttribute) and not value.validate():
+                raise ValueError("Attribute '{}' is not correctly typed".format(name))
+
+            attr_value = attr.serialize(value) if value is not None else None
+            if null_check and attr_value is None and not attr.null:
+                raise ValueError("Attribute '{}' cannot be None".format(name))
+
+            if attr_value is not None:
+                attribute_values[attr.attr_name] = {attr.attr_type: attr_value}
+        return attribute_values
+
     def _deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
         """
         Sets attributes sent back from DynamoDB on this object
@@ -807,25 +825,34 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         return all(self.is_correctly_typed(k, v) for k, v in self.get_attributes().items())
 
     def serialize(self, values):
+        if not self.is_raw():
+            # This is a subclassed MapAttribute that acts as an AttributeContainer.
+            # Serialize the values based on the attributes in the class.
+
+            if not isinstance(values, type(self)):
+                # Copy the values onto an instance of the class for serialization.
+                instance = type(self)()
+                instance.attribute_values = {}  # clear any defaults
+                for name in values:
+                    if name in self.get_attributes():
+                        setattr(instance, name, values[name])
+                values = instance
+
+            return values._serialize()
+
+        # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
+        # This special case behavior for "raw" attributes should be removed in the future.
         rval = {}
-        for k in values:
-            v = values[k]
-            if self._should_skip(v):
-                continue
-            attr_class = self._get_serialize_class(k, v)
-            if attr_class is None:
-                continue
-
-            # If this is a subclassed MapAttribute, there may be an alternate attr name
-            attr_name = attr_class.attr_name if not self.is_raw() else k
-
-            serialized = attr_class.serialize(v)
-            if self._should_skip(serialized):
-                # Check after we serialize in case the serialized value is null
-                continue
-
-            rval[attr_name] = {attr_class.attr_type: serialized}
-
+        for attr_name in values:
+            v = values[attr_name]
+            attr_class = _get_class_for_serialize(v)
+            attr_type = attr_class.attr_type
+            attr_value = attr_class.serialize(v)
+            if attr_value is None:
+                # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
+                attr_type = NULL
+                attr_value = True
+            rval[attr_name] = {attr_type: attr_value}
         return rval
 
     def deserialize(self, values):
@@ -852,17 +879,6 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         for key, value in self.attribute_values.items():
             result[key] = value.as_dict() if isinstance(value, MapAttribute) else value
         return result
-
-    def _should_skip(self, value):
-        # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
-        # This special case behavior for "raw" attributes should be removed in the future.
-        return not self.is_raw() and value is None
-
-    @classmethod
-    def _get_serialize_class(cls, key, value):
-        if not cls.is_raw():
-            return cls.get_attributes().get(key)
-        return _get_class_for_serialize(value)
 
 
 def _get_class_for_serialize(value):
