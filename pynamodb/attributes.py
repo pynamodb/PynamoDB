@@ -825,18 +825,20 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         return all(self.is_correctly_typed(k, v) for k, v in self.get_attributes().items())
 
     def serialize(self, values):
-        if isinstance(values, type(self)) and not values.is_raw():
-            return values._serialize()
-
         if not self.is_raw():
-            # Need to serialized based on the attributes in the class; however,
-            # the value passed in was not an instance of the class.
-            instance = type(self)()
-            instance.attribute_values = {}  # clear any defaults
-            for name in values:
-                if name in self.get_attributes():
-                    setattr(instance, name, values[name])
-            return instance._serialize()
+            # This is a subclassed MapAttribute that acts as an AttributeContainer.
+            # Serialize the values based on the attributes in the class.
+
+            if not isinstance(values, type(self)):
+                # Copy the values onto an instance of the class for serialization.
+                instance = type(self)()
+                instance.attribute_values = {}  # clear any defaults
+                for name in values:
+                    if name in self.get_attributes():
+                        setattr(instance, name, values[name])
+                values = instance
+
+            return values._serialize()
 
         # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
         # This special case behavior for "raw" attributes should be removed in the future.
