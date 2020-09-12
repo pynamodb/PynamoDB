@@ -614,19 +614,21 @@ class TestMapAttribute:
 
     def test_null_attribute_subclassed_map(self):
         null_attribute = {
-            'map_field': None
+            'map_field': {},
+            'string_set_field': None
         }
         attr = DefaultsMap()
         serialized = attr.serialize(null_attribute)
-        assert serialized == {}
+        assert serialized == {'map_field': {'M': {}}}
 
     def test_null_attribute_map_after_serialization(self):
         null_attribute = {
+            'map_field': {},
             'string_set_field': {},
         }
         attr = DefaultsMap()
         serialized = attr.serialize(null_attribute)
-        assert serialized == {}
+        assert serialized == {'map_field': {'M': {}}}
 
     def test_map_of_map(self):
         attribute = {
