@@ -1107,22 +1107,25 @@ class Model(AttributeContainer, metaclass=MetaModel):
                                               aws_session_token=cls.Meta.aws_session_token)
         return cls._connection
 
-    def _serialize(self, attr_map=False, null_check=True) -> Dict[str, Any]:
+    def _serialize(self, null_check=True, attr_map=False) -> Dict[str, Dict[str, Any]]:
         """
         Serializes all model attributes for use with DynamoDB
 
-        :param attr_map: If True, then attributes are returned
         :param null_check: If True, then attributes are checked for null
+        :param attr_map: If True, then attributes are returned
         """
         attributes = snake_to_camel_case(ATTRIBUTES)
         attrs: Dict[str, Dict] = {attributes: super()._serialize(null_check)}
         if not attr_map:
-            if self._hash_key_attribute().attr_name in attrs[attributes]:
-                hash_key_attribute_value = attrs[attributes].pop(self._hash_key_attribute().attr_name)
-                attrs[HASH] = hash_key_attribute_value[self._hash_key_attribute().attr_type]
-            if self._range_keyname and self._range_key_attribute().attr_name in attrs[attributes]:
-                range_key_attribute_value = attrs[attributes].pop(self._range_key_attribute().attr_name)
-                attrs[RANGE] = range_key_attribute_value[self._range_key_attribute().attr_type]
+            hash_key_attribute = self._hash_key_attribute()
+            hash_key_attribute_value = attrs[attributes].pop(hash_key_attribute.attr_name, None)
+            if hash_key_attribute_value is not None:
+                attrs[HASH] = hash_key_attribute_value[hash_key_attribute.attr_type]
+            range_key_attribute = self._range_key_attribute()
+            if range_key_attribute:
+                range_key_attribute_value = attrs[attributes].pop(range_key_attribute.attr_name, None)
+                if range_key_attribute_value is not None:
+                    attrs[RANGE] = range_key_attribute_value[range_key_attribute.attr_type]
         return attrs
 
     @classmethod
