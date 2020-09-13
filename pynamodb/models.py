@@ -1135,7 +1135,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         :param attr: an instance of `Attribute` for serialization
         :param value: a value to be serialized
-        :param null_check: If True, then attributes are checked for null
         """
         serialized = attr.serialize(value)
 
