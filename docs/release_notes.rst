@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-v5.0.0 (unreleased)
+v5.0.0b1
 -------------------
 
 :date: 2020-xx-xx
@@ -10,7 +10,7 @@ This is major release and contains breaking changes. Please read the notes below
 
 **Polymorphism**
 
-This release introduces polymorphism support via ``DiscriminatorAttribute``.
+This release introduces :ref:`polymorphism` support via :py:class:`DiscriminatorAttribute <pynamodb.attributes.DiscriminatorAttribute`.
 Discriminator values are written to DynamoDB and used during deserialization to instantiate the desired class.
 
 Other changes in this release:
@@ -22,7 +22,19 @@ Other changes in this release:
   "'filter_condition' cannot contain key attributes" errors.
 * Replace the internal attribute type constants with their "short" DynamoDB version (#827)
 * Typed list attributes can now support any Attribute subclass (#833)
+* Add support for empty values in Binary and String attributes (#830)
 * Remove ``ListAttribute.remove_indexes`` (added in v4.3.2) and document usage of remove for list elements (#838)
+* Add the attribute name to error messages when deserialization fails (#815)
+* Add the table name to error messages for transactional operations (#835)
+* Move ``pynamodb.connection.util.pythonic`` to ``pynamodb.util.snake_to_camel_case`` (#753)
+
+Contributors to this release:
+
+* @jpinner
+* @ikonst
+* @rchilaka-amzn
+* @jonathantan
+
 
 v4.3.3
 ----------
@@ -36,7 +48,7 @@ v4.3.3
       my_list = ListAttribute()
 
     MyModel.query(..., condition=MyModel.my_list[0] == 42)
-    
+
 * Fix a warning about ``collections.abc`` deprecation (#782)
 
 
