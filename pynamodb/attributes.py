@@ -13,7 +13,7 @@ from dateutil.parser import parse
 from dateutil.tz import tzutc
 from inspect import getfullargspec
 from inspect import getmembers
-from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload
+from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, cast, overload
 from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
@@ -218,12 +218,16 @@ class Attribute(Generic[_T]):
 
 class AttributeContainerMeta(GenericMeta):
 
-    def __init__(self, name, bases, attrs, *args, **kwargs):
-        super().__init__(name, bases, attrs, *args, **kwargs)  # type: ignore
-        AttributeContainerMeta._initialize_attributes(self)
+    def __new__(cls, name, bases, namespace, discriminator=None):
+        # Defined so that the discriminator can be set in the class definition.
+        return super().__new__(cls, name, bases, namespace)
+
+    def __init__(self, name, bases, namespace, discriminator=None):
+        super().__init__(name, bases, namespace)
+        AttributeContainerMeta._initialize_attributes(self, discriminator)
 
     @staticmethod
-    def _initialize_attributes(cls):
+    def _initialize_attributes(cls, discriminator_value):
         """
         Initialize attributes on the class.
         """
@@ -249,6 +253,20 @@ class AttributeContainerMeta(GenericMeta):
                 # Prepend the `attr_path` lists with the dynamo attribute name.
                 attribute._update_attribute_paths(attribute.attr_name)
 
+        # Register the class with the discriminator if necessary.
+        discriminators = [name for name, attr in cls._attributes.items() if isinstance(attr, DiscriminatorAttribute)]
+        if len(discriminators) > 1:
+            raise ValueError("{} has more than one discriminator attribute: {}".format(
+                cls.__name__, ", ".join(discriminators)))
+        cls._discriminator = discriminators[0] if discriminators else None
+        # TODO(jpinner) add support for model polymorphism
+        if cls._discriminator and not issubclass(cls, MapAttribute):
+            raise NotImplementedError("Discriminators are not yet supported in model classes.")
+        if discriminator_value is not None:
+            if not cls._discriminator:
+                raise ValueError("{} does not have a discriminator attribute".format(cls.__name__))
+            cls._attributes[cls._discriminator].register_class(cls, discriminator_value)
+
 
 class AttributeContainer(metaclass=AttributeContainerMeta):
 
@@ -259,6 +277,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         # instances do not have any Attributes defined and instead use this dictionary to store their
         # collection of name-value pairs.
         self.attribute_values: Dict[str, Any] = {}
+        self._set_discriminator()
         self._set_defaults(_user_instantiated=_user_instantiated)
         self._set_attributes(**attributes)
 
@@ -287,6 +306,15 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         This covers cases where an attribute name has been overridden via "attr_name".
         """
         return cls._dynamo_to_python_attrs.get(dynamo_key, dynamo_key)  # type: ignore
+
+    @classmethod
+    def _get_discriminator_attribute(cls) -> Optional['DiscriminatorAttribute']:
+        return cls.get_attributes()[cls._discriminator] if cls._discriminator else None  # type: ignore
+
+    def _set_discriminator(self) -> None:
+        discriminator_attr = self._get_discriminator_attribute()
+        if discriminator_attr and discriminator_attr.get_discriminator(self.__class__) is not None:
+            self.attribute_values[self._discriminator] = self.__class__  # type: ignore
 
     def _set_defaults(self, _user_instantiated: bool = True) -> None:
         """
@@ -336,6 +364,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         Sets attributes sent back from DynamoDB on this object
         """
         self.attribute_values = {}
+        self._set_discriminator()
         self._set_defaults(_user_instantiated=False)
         for name, attr in self.get_attributes().items():
             attribute_value = attribute_values.get(attr.attr_name)
@@ -350,6 +379,47 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
     def __ne__(self, other: Any) -> bool:
         # This is required so that MapAttribute can call this method.
         return self is not other
+
+
+class DiscriminatorAttribute(Attribute[type]):
+    attr_type = STRING
+
+    def __init__(self, attr_name: Optional[str] = None) -> None:
+        super().__init__(attr_name=attr_name)
+        self._class_map: Dict[type, Any] = {}
+        self._discriminator_map: Dict[Any, type] = {}
+
+    def register_class(self, cls: type, discriminator: Any):
+        discriminator = discriminator(cls) if callable(discriminator) else discriminator
+        current_class = self._discriminator_map.get(discriminator)
+        if current_class and current_class != cls:
+            raise ValueError("The discriminator value '{}' is already assigned to a class: {}".format(
+                discriminator, current_class.__name__))
+
+        if cls not in self._class_map:
+            self._class_map[cls] = discriminator
+
+        self._discriminator_map[discriminator] = cls
+
+    def get_discriminator(self, cls: type) -> Optional[Any]:
+        return self._class_map.get(cls)
+
+    def __set__(self, instance: Any, value: Optional[type]) -> None:
+        raise TypeError("'{}' object does not support item assignment".format(self.__class__.__name__))
+
+    def serialize(self, value):
+        """
+        Returns the discriminator value corresponding to the given class.
+        """
+        return self._class_map[value]
+
+    def deserialize(self, value):
+        """
+        Returns the class corresponding to the given discriminator value.
+        """
+        if value not in self._discriminator_map:
+            raise ValueError("Unknown discriminator value: {}".format(value))
+        return self._discriminator_map[value]
 
 
 class BinaryAttribute(Attribute[bytes]):
@@ -861,7 +931,14 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         """
         if not self.is_raw():
             # If this is a subclass of a MapAttribute (i.e typed), instantiate an instance
-            instance = type(self)()
+            cls = type(self)
+            discriminator_attr = cls._get_discriminator_attribute()
+            if discriminator_attr:
+                discriminator_attribute_value = values.pop(discriminator_attr.attr_name, None)
+                if discriminator_attribute_value:
+                    discriminator_value = discriminator_attr.get_value(discriminator_attribute_value)
+                    cls = discriminator_attr.deserialize(discriminator_value)
+            instance = cls()
             instance._deserialize(values)
             return instance
 
