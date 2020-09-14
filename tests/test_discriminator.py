@@ -67,3 +67,11 @@ class TestDiscriminatorAttribute:
         assert dtm.value.value == 'Hello'
         assert dtm.values[0].value == 5
         assert dtm.values[1].value == 'World'
+
+    def test_condition_expression(self):
+        condition = DiscriminatorTestModel.value._cls == RenamedValue
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0.#1 = :0"
+        assert placeholder_names == {'value': '#0', 'cls': '#1'}
+        assert expression_attribute_values == {':0': {'S': 'custom_name'}}

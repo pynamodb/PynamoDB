@@ -1,9 +1,21 @@
 Release Notes
 =============
 
-v5.0 (unreleased)
------------------
+v5.0.0 (unreleased)
+-------------------
 
+:date: 2020-xx-xx
+
+This is major release and contains breaking changes. Please read the notes below carefully.
+
+**Polymorphism**
+
+This release introduces polymorphism support via ``DiscriminatorAttribute``.
+Discriminator values are written to DynamoDB and used during deserialization to instantiate the desired class.
+
+Other changes in this release:
+
+* Python 2 is no longer supported.
 * ``Model.query`` no longer demotes invalid range key conditions to be filter conditions to avoid surprising behaviors:
   where what's intended to be a cheap and fast condition ends up being expensive and slow. Since filter conditions
   cannot contain range keys, this had limited utility to begin with, and would sometimes cause confusing

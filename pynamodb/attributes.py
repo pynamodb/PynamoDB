@@ -259,6 +259,9 @@ class AttributeContainerMeta(GenericMeta):
             raise ValueError("{} has more than one discriminator attribute: {}".format(
                 cls.__name__, ", ".join(discriminators)))
         cls._discriminator = discriminators[0] if discriminators else None
+        # TODO(jpinner) add support for model polymorphism
+        if cls._discriminator and not issubclass(cls, MapAttribute):
+            raise NotImplementedError("Discriminators are not yet supported in model classes.")
         if discriminator_value is not None:
             if not cls._discriminator:
                 raise ValueError("{} does not have a discriminator attribute".format(cls.__name__))
