@@ -17,7 +17,7 @@ The discriminator value can be assigned to a class as part of the definition:
 .. code-block:: python
 
     class ParentClass(MapAttribute):
-        _cls = DiscriminatorAttribute()
+        cls = DiscriminatorAttribute()
 
     class ChildClass(ParentClass, discriminator='child'):
         pass
@@ -28,9 +28,15 @@ A class can also be registered manually:
 .. code-block:: python
 
     class ParentClass(MapAttribute):
-        _cls = DiscriminatorAttribute()
+        cls = DiscriminatorAttribute()
 
     class ChildClass(ParentClass):
         pass
 
     ParentClass._cls.register_class(ChildClass, 'child')
+
+.. warning::
+
+    Discriminator values are written to DynamoDB.
+    Changing the value after items have been saved to the database can result in deserialization failures.
+    In order to read items with an old discriminator value, the old value must be manually registered.

@@ -15,7 +15,7 @@ Discriminator values are written to DynamoDB and used during deserialization to 
 
 Other changes in this release:
 
-* Python 2 is no longer supported.
+* Python 2 is no longer supported. Python 3.6 or greater is now required.
 * ``Model.query`` no longer demotes invalid range key conditions to be filter conditions to avoid surprising behaviors:
   where what's intended to be a cheap and fast condition ends up being expensive and slow. Since filter conditions
   cannot contain range keys, this had limited utility to begin with, and would sometimes cause confusing
