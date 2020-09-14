@@ -124,6 +124,7 @@ def test_transact_write__error__idempotent_parameter_mismatch(connection):
         with TransactWrite(connection=connection, client_request_token=client_token) as transaction:
             transaction.save(User(3))
     assert get_error_code(exc_info.value) == IDEMPOTENT_PARAMETER_MISMATCH
+    assert User.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
 
     # ensure that the first request succeeded in creating new users
     assert User.get(1)
@@ -143,6 +144,9 @@ def test_transact_write__error__different_regions(connection):
             transact_write.save(BankStatement(1))
             transact_write.save(User(1))
     assert get_error_code(exc_info.value) == RESOURCE_NOT_FOUND
+    assert DifferentRegion.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
+    assert BankStatement.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
+    assert User.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
 
 
 @pytest.mark.ddblocal
@@ -158,6 +162,8 @@ def test_transact_write__error__transaction_cancelled__condition_check_failure(c
             transaction.save(BankStatement(1), condition=(BankStatement.user_id.does_not_exist()))
     assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
     assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+    assert User.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
+    assert BankStatement.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
 
 
 @pytest.mark.ddblocal
@@ -170,6 +176,7 @@ def test_transact_write__error__multiple_operations_on_same_record(connection):
             transaction.condition_check(BankStatement, 1, condition=(BankStatement.user_id.exists()))
             transaction.update(BankStatement(1), actions=[(BankStatement.balance.add(10))])
     assert get_error_code(exc_info.value) == VALIDATION_EXCEPTION
+    assert BankStatement.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
 
 
 @pytest.mark.ddblocal
@@ -343,6 +350,7 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
             transaction.save(Foo(21))
     assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
     assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+    assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
 
     with pytest.raises(TransactWriteError) as exc_info:
         with TransactWrite(connection=connection) as transaction:
@@ -354,6 +362,7 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
             )
     assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
     assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+    assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
     # Version attribute is not updated on failure.
     assert foo2.version is None
 
@@ -362,3 +371,4 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
             transaction.delete(foo2)
     assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
     assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+    assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
