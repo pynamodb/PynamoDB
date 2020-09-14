@@ -1,3 +1,5 @@
+import pytest
+
 from pynamodb.attributes import DiscriminatorAttribute
 from pynamodb.attributes import ListAttribute
 from pynamodb.attributes import MapAttribute
@@ -75,3 +77,9 @@ class TestDiscriminatorAttribute:
         assert expression == "#0.#1 = :0"
         assert placeholder_names == {'value': '#0', 'cls': '#1'}
         assert expression_attribute_values == {':0': {'S': 'custom_name'}}
+
+    def test_model(self):
+        with pytest.raises(NotImplementedError):
+            class DiscriminatedModel(Model):
+                hash_key = UnicodeAttribute(hash_key=True)
+                _cls = DiscriminatorAttribute()
