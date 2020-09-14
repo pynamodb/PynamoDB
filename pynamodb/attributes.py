@@ -396,11 +396,9 @@ class DiscriminatorAttribute(Attribute[type]):
             raise ValueError("The discriminator value '{}' is already assigned to a class: {}".format(
                 discriminator, current_class.__name__))
 
-        current_discriminator = self._class_map.get(cls)
-        if current_discriminator is not None:
-            del self._discriminator_map[current_discriminator]
+        if cls not in self._class_map:
+            self._class_map[cls] = discriminator
 
-        self._class_map[cls] = discriminator
         self._discriminator_map[discriminator] = cls
 
     def get_discriminator(self, cls: type) -> Optional[Any]:

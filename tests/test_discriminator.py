@@ -78,6 +78,26 @@ class TestDiscriminatorAttribute:
         assert placeholder_names == {'value': '#0', 'cls': '#1'}
         assert expression_attribute_values == {':0': {'S': 'custom_name'}}
 
+    def test_multiple_discriminator_values(self):
+        class TestAttribute(MapAttribute, discriminator='new_value'):
+            cls = DiscriminatorAttribute()
+
+        TestAttribute.cls.register_class(TestAttribute, 'old_value')
+
+        # ensure the first registered value is used during serialization
+        assert TestAttribute.cls.get_discriminator(TestAttribute) == 'new_value'
+        assert TestAttribute.cls.serialize(TestAttribute) == 'new_value'
+
+        # ensure the second registered value can be used to deserialize
+        assert TestAttribute.cls.deserialize('old_value') == TestAttribute
+        assert TestAttribute.cls.deserialize('new_value') == TestAttribute
+
+    def test_multiple_discriminator_classes(self):
+        with pytest.raises(ValueError):
+            # fail when attempting to register a class with an existing discriminator value
+            class RenamedValue2(TypedValue, discriminator='custom_name'):
+                pass
+
     def test_model(self):
         with pytest.raises(NotImplementedError):
             class DiscriminatedModel(Model):

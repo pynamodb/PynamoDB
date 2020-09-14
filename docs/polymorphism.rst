@@ -35,6 +35,13 @@ A class can also be registered manually:
 
     ParentClass._cls.register_class(ChildClass, 'child')
 
+.. note::
+
+    A class may be registered with a discriminator attribute multiple times.
+    Only the first registered value is used during serialization;
+    however, any registered value can be used to deserialize the class.
+    This behavior is intended to facilitate migrations if discriminator values must be changed.
+
 .. warning::
 
     Discriminator values are written to DynamoDB.
