@@ -10,7 +10,7 @@ This is major release and contains breaking changes. Please read the notes below
 
 **Polymorphism**
 
-This release introduces :ref:`polymorphism` support via :py:class:`DiscriminatorAttribute <pynamodb.attributes.DiscriminatorAttribute`.
+This release introduces :ref:`polymorphism` support via :py:class:`DiscriminatorAttribute <pynamodb.attributes.DiscriminatorAttribute>`.
 Discriminator values are written to DynamoDB and used during deserialization to instantiate the desired class.
 
 Other changes in this release:
