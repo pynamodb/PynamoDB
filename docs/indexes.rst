@@ -94,9 +94,10 @@ Local secondary indexes are defined just like global ones, but they inherit from
         forum = UnicodeAttribute(hash_key=True)
         view = NumberAttribute(range_key=True)
 
-
-You must specify the same hash key on the local secondary index and the model. The range key can be any attribute.
-
+Every local secondary index must meet the following conditions:
+- The partition key (hash key) is the same as that of its base table.
+- the sort key (range key) consists of exactly one scalar attribute. The range key can be any attribute.
+- The sort key (range key) of the base table is projected into the index, where it acts as a non-key attribute.
 
 Querying an index
 ^^^^^^^^^^^^^^^^^^
