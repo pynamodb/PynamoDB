@@ -8,12 +8,13 @@ import time
 import warnings
 from base64 import b64encode, b64decode
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
 from dateutil.parser import parse
-from dateutil.tz import tzutc
 from inspect import getfullargspec
 from inspect import getmembers
-from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, cast, overload
+from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload
 from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
@@ -624,7 +625,7 @@ class TTLAttribute(Attribute[datetime]):
             value = calendar.timegm(value.utctimetuple())
         else:
             raise ValueError("TTLAttribute value must be a timedelta or datetime")
-        return datetime.utcfromtimestamp(value).replace(tzinfo=tzutc())
+        return datetime.utcfromtimestamp(value).replace(tzinfo=timezone.utc)
 
     def __set__(self, instance, value):
         """
@@ -645,7 +646,7 @@ class TTLAttribute(Attribute[datetime]):
         Deserializes a timestamp (Unix time) as a UTC datetime.
         """
         timestamp = json.loads(value)
-        return datetime.utcfromtimestamp(timestamp).replace(tzinfo=tzutc())
+        return datetime.utcfromtimestamp(timestamp).replace(tzinfo=timezone.utc)
 
 
 class UTCDateTimeAttribute(Attribute[datetime]):
@@ -659,8 +660,8 @@ class UTCDateTimeAttribute(Attribute[datetime]):
         Takes a datetime object and returns a string
         """
         if value.tzinfo is None:
-            value = value.replace(tzinfo=tzutc())
-        fmt = value.astimezone(tzutc()).strftime(DATETIME_FORMAT)
+            value = value.replace(tzinfo=timezone.utc)
+        fmt = value.astimezone(timezone.utc).strftime(DATETIME_FORMAT)
         return fmt
 
     def deserialize(self, value):
@@ -982,7 +983,7 @@ def _fast_parse_utc_datestring(datestring):
         return datetime(
             _int(datestring[0:4]), _int(datestring[5:7]), _int(datestring[8:10]),
             _int(datestring[11:13]), _int(datestring[14:16]), _int(datestring[17:19]),
-            _int(round(float(datestring[19:-5]) * 1e6)), tzutc()
+            _int(round(float(datestring[19:-5]) * 1e6)), timezone.utc
         )
     except (TypeError, ValueError):
         raise ValueError("Datetime string '{}' does not match format "

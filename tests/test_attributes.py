@@ -2,15 +2,13 @@
 pynamodb attributes tests
 """
 import json
-import time
 
 from base64 import b64encode
 from datetime import datetime
-
 from datetime import timedelta
-from dateutil.tz import tzutc
+from datetime import timezone
 
-from unittest.mock import patch, Mock, call
+from unittest.mock import patch, call
 import pytest
 
 from pynamodb.attributes import (
@@ -23,9 +21,6 @@ from pynamodb.constants import (
     BINARY, BOOLEAN,
 )
 from pynamodb.models import Model
-
-
-UTC = tzutc()
 
 
 class AttributeTestModel(Model):
@@ -148,7 +143,7 @@ class TestUTCDateTimeAttribute:
         """
         UTCDateTimeAttribute.deserialize
         """
-        tstamp = datetime.now(UTC)
+        tstamp = datetime.now(timezone.utc)
         attr = UTCDateTimeAttribute()
         assert attr.deserialize(tstamp.strftime(DATETIME_FORMAT)) == tstamp
 
@@ -156,7 +151,7 @@ class TestUTCDateTimeAttribute:
         """
         UTCDateTimeAttribute.deserialize
         """
-        expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=tzutc())
+        expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=timezone.utc)
         attr = UTCDateTimeAttribute()
         assert attr.deserialize('January 6, 2047 at 8:21:00AM UTC') == expected_value
 
@@ -166,7 +161,7 @@ class TestUTCDateTimeAttribute:
         """
         UTCDateTimeAttribute.deserialize
         """
-        tstamp = datetime.now(UTC)
+        tstamp = datetime.now(timezone.utc)
         attr = UTCDateTimeAttribute()
 
         tstamp_str = tstamp.strftime(DATETIME_FORMAT)
@@ -181,15 +176,15 @@ class TestUTCDateTimeAttribute:
         """
         tstamp = datetime.now()
         attr = UTCDateTimeAttribute()
-        assert attr.serialize(tstamp) == tstamp.replace(tzinfo=UTC).strftime(DATETIME_FORMAT)
+        assert attr.serialize(tstamp) == tstamp.replace(tzinfo=timezone.utc).strftime(DATETIME_FORMAT)
 
     def test__fast_parse_utc_datestring_roundtrips(self):
-        tstamp = datetime.now(UTC)
+        tstamp = datetime.now(timezone.utc)
         tstamp_str = tstamp.strftime(DATETIME_FORMAT)
         assert _fast_parse_utc_datestring(tstamp_str) == tstamp
 
     def test__fast_parse_utc_datestring_no_microseconds(self):
-        expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=tzutc())
+        expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=timezone.utc)
         assert _fast_parse_utc_datestring('2047-01-06T08:21:00.0+0000') == expected_value
 
     @pytest.mark.parametrize(
@@ -497,7 +492,7 @@ class TestTTLAttribute:
         mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
         model = AttributeTestModel()
         model.ttl_attr = timedelta(seconds=60)
-        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=timezone.utc)
 
     def test_datetime_naive_ttl(self):
         model = AttributeTestModel()
@@ -507,8 +502,8 @@ class TestTTLAttribute:
 
     def test_datetime_with_tz_ttl(self):
         model = AttributeTestModel()
-        model.ttl_attr = datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
-        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+        model.ttl_attr = datetime(2019, 6, 5, 0, 1, tzinfo=timezone.utc)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=timezone.utc)
 
     def test_ttl_attribute_wrong_type(self):
         with pytest.raises(ValueError, match='TTLAttribute value must be a timedelta or datetime'):
@@ -531,10 +526,10 @@ class TestTTLAttribute:
         mock_time.side_effect = [1559692800, 1559692800]  # 2019-06-05 00:00:00 UTC
         model = AttributeTestModel()
         model.ttl_attr = timedelta(minutes=1)
-        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=timezone.utc)
         s = TTLAttribute().serialize(model.ttl_attr)
         assert s == '1559692860'
-        assert TTLAttribute().deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+        assert TTLAttribute().deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=timezone.utc)
 
 
 class TestJSONAttribute:
