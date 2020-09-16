@@ -13,6 +13,12 @@ This is major release and contains breaking changes. Please read the notes below
 This release introduces :ref:`polymorphism` support via :py:class:`DiscriminatorAttribute <pynamodb.attributes.DiscriminatorAttribute>`.
 Discriminator values are written to DynamoDB and used during deserialization to instantiate the desired class.
 
+** UTCDateTimeAttribute **
+
+The UTCDateTimeAttribute now strictly requires the date string format '%Y-%m-%dT%H:%M:%S.%f%z' to ensure proper ordering.
+PynamoDB has always written values with this format but previously would accept reading other formats.
+Items written using other formats must be rewritten before upgrading.
+
 Other changes in this release:
 
 * Python 2 is no longer supported. Python 3.6 or greater is now required.

@@ -11,7 +11,6 @@ from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
-from dateutil.parser import parse
 from inspect import getfullargspec
 from inspect import getmembers
 from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload
@@ -668,16 +667,25 @@ class UTCDateTimeAttribute(Attribute[datetime]):
         """
         Takes a UTC datetime string and returns a datetime object
         """
+        return self._fast_parse_utc_date_string(value)
+
+    @staticmethod
+    def _fast_parse_utc_date_string(date_string):
+        # Method to quickly parse strings formatted with '%Y-%m-%dT%H:%M:%S.%f+0000'.
+        # This is ~5.8x faster than using strptime and 38x faster than dateutil.parser.parse.
+        _int = int  # Hack to prevent global lookups of int, speeds up the function ~10%
         try:
-            return _fast_parse_utc_datestring(value)
-        except (ValueError, IndexError):
-            try:
-                # Attempt to parse the datetime with the datetime format used
-                # by default when storing UTCDateTimeAttributes.  This is significantly
-                # faster than always going through dateutil.
-                return datetime.strptime(value, DATETIME_FORMAT)
-            except ValueError:
-                return parse(value)
+            if (len(date_string) != 31 or date_string[4] != '-' or date_string[7] != '-'
+                    or date_string[10] != 'T' or date_string[13] != ':' or date_string[16] != ':'
+                    or date_string[19] != '.' or date_string[26:31] != '+0000'):
+                raise ValueError("Datetime string '{}' does not match format '{}'".format(date_string, DATETIME_FORMAT))
+            return datetime(
+                _int(date_string[0:4]), _int(date_string[5:7]), _int(date_string[8:10]),
+                _int(date_string[11:13]), _int(date_string[14:16]), _int(date_string[17:19]),
+                _int(date_string[20:26]), timezone.utc
+            )
+        except (TypeError, ValueError):
+            raise ValueError("Datetime string '{}' does not match format '{}'".format(date_string, DATETIME_FORMAT))
 
 
 class NullAttribute(Attribute[None]):
@@ -968,26 +976,6 @@ def _get_class_for_serialize(value):
     if value_type not in SERIALIZE_CLASS_MAP:
         raise ValueError('Unknown value: {}'.format(value_type))
     return SERIALIZE_CLASS_MAP[value_type]
-
-
-def _fast_parse_utc_datestring(datestring):
-    # Method to quickly parse strings formatted with '%Y-%m-%dT%H:%M:%S.%f+0000'.
-    # This is ~5.8x faster than using strptime and 38x faster than dateutil.parser.parse.
-    _int = int  # Hack to prevent global lookups of int, speeds up the function ~10%
-    try:
-        if (datestring[4] != '-' or datestring[7] != '-' or datestring[10] != 'T' or
-                datestring[13] != ':' or datestring[16] != ':' or datestring[19] != '.' or
-                datestring[-5:] != '+0000'):
-            raise ValueError("Datetime string '{}' does not match format "
-                            "'%Y-%m-%dT%H:%M:%S.%f+0000'".format(datestring))
-        return datetime(
-            _int(datestring[0:4]), _int(datestring[5:7]), _int(datestring[8:10]),
-            _int(datestring[11:13]), _int(datestring[14:16]), _int(datestring[17:19]),
-            _int(round(float(datestring[19:-5]) * 1e6)), timezone.utc
-        )
-    except (TypeError, ValueError):
-        raise ValueError("Datetime string '{}' does not match format "
-                         "'%Y-%m-%dT%H:%M:%S.%f+0000'".format(datestring))
 
 
 class ListAttribute(Generic[_T], Attribute[List[_T]]):
