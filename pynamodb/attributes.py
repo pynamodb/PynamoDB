@@ -670,7 +670,7 @@ class UTCDateTimeAttribute(Attribute[datetime]):
         return self._fast_parse_utc_date_string(value)
 
     @staticmethod
-    def _fast_parse_utc_date_string(date_string):
+    def _fast_parse_utc_date_string(date_string: str) -> datetime:
         # Method to quickly parse strings formatted with '%Y-%m-%dT%H:%M:%S.%f+0000'.
         # This is ~5.8x faster than using strptime and 38x faster than dateutil.parser.parse.
         _int = int  # Hack to prevent global lookups of int, speeds up the function ~10%
