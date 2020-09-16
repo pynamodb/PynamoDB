@@ -441,6 +441,7 @@ class UpdateExpressionTestCase(TestCase):
 
     def setUp(self):
         self.attribute = UnicodeAttribute(attr_name='foo')
+        self.set_attribute = NumberSetAttribute(attr_name='foo_set')
         self.list_attribute = ListAttribute(attr_name='foo_list')
 
     def test_set_action(self):
@@ -596,15 +597,31 @@ class UpdateExpressionTestCase(TestCase):
         update = Update(
             self.attribute.set({'S': 'bar'}),
             self.attribute.remove(),
-            self.attribute.add({'N': '0'}),
-            self.attribute.delete({'NS': ['0']})
+            self.set_attribute.add({'NS': ['0']}),
+            self.set_attribute.delete({'NS': ['1']})
         )
         placeholder_names, expression_attribute_values = {}, {}
         expression = update.serialize(placeholder_names, expression_attribute_values)
-        assert expression == "SET #0 = :0 REMOVE #0 ADD #0 :1 DELETE #0 :2"
-        assert placeholder_names == {'foo': '#0'}
+        assert expression == "SET #0 = :0 REMOVE #0 ADD #1 :1 DELETE #1 :2"
+        assert placeholder_names == {'foo': '#0', 'foo_set': '#1'}
         assert expression_attribute_values == {
             ':0': {'S': 'bar'},
-            ':1': {'N': '0'},
-            ':2': {'NS': ['0']}
+            ':1': {'NS': ['0']},
+            ':2': {'NS': ['1']}
         }
+
+    def test_update_skips_empty_clauses(self):
+        update = Update(self.attribute.remove())
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = update.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "REMOVE #0"
+        assert placeholder_names == {'foo': '#0'}
+        assert expression_attribute_values == {}
+
+    def test_update_empty(self):
+        update = Update()
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = update.serialize(placeholder_names, expression_attribute_values)
+        assert expression is None
+        assert placeholder_names == {}
+        assert expression_attribute_values == {}
