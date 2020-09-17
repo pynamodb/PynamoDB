@@ -201,8 +201,3 @@ BATCH_WRITE_PAGE_LIMIT = 25
 META_CLASS_NAME = "Meta"
 REGION = "region"
 HOST = "host"
-
-AND = 'AND'
-OR = 'OR'
-BETWEEN = 'BETWEEN'
-IN = 'IN'
