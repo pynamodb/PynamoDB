@@ -44,10 +44,6 @@ class Condition(object):
         values = [str(value) for value in self.values]
         return self.format_string.format(*values, operator=self.operator)
 
-    def __nonzero__(self):
-        # Prevent users from accidentally comparing the condition object instead of the attribute instance
-        raise TypeError("unsupported operand type(s) for bool: '{}'".format(self.__class__.__name__))
-
     def __bool__(self):
         # Prevent users from accidentally comparing the condition object instead of the attribute instance
         raise TypeError("unsupported operand type(s) for bool: {}".format(self.__class__.__name__))
