@@ -103,7 +103,7 @@ class Update:
             self._get_clause('ADD', self.add_actions, placeholder_names, expression_attribute_values),
             self._get_clause('DELETE', self.delete_actions, placeholder_names, expression_attribute_values),
         ]
-        expression = ' '.join([clause for clause in clauses if clause is not None])
+        expression = ' '.join(clause for clause in clauses if clause is not None)
         return expression or None
 
     @staticmethod
@@ -114,6 +114,6 @@ class Update:
             expression_attribute_values: Dict[str, str]
     ) -> Optional[str]:
         actions_string = ', '.join(
-            [action.serialize(placeholder_names, expression_attribute_values) for action in actions]
+            action.serialize(placeholder_names, expression_attribute_values) for action in actions
         )
         return keyword + ' ' + actions_string if actions_string else None
