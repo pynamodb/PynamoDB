@@ -1145,7 +1145,7 @@ class Connection(object):
             }
         }
 
-        args_map = {}
+        args_map: Dict[str, Any] = {}
         name_placeholders: Dict[str, str] = {}
         if consistent_read:
             args_map[CONSISTENT_READ] = consistent_read

@@ -15,15 +15,13 @@ from pynamodb.expressions.util import get_path_segments, get_value_placeholder, 
 if TYPE_CHECKING:
     from pynamodb.attributes import Attribute
 
-_PathOrAttribute = Union['Path', 'Attribute', List[str], str]
-
 
 class _Operand:
     """
     Operand is the base class for objects that can be operands in Condition and Update Expressions.
     """
     format_string = ''
-    attr_type: Any = None
+    attr_type: Optional[str] = None
 
     def __init__(self, *values: Any) -> None:
         self.values = values
@@ -122,7 +120,7 @@ class _Size(_ConditionOperand):
     format_string = 'size ({0})'
     attr_type = NUMBER
 
-    def __init__(self, path: _PathOrAttribute) -> None:
+    def __init__(self, path: Union['Path', 'Attribute', str, List[str]]) -> None:
         if not isinstance(path, Path):
             path = Path(path)
         super(_Size, self).__init__(path)
@@ -235,9 +233,9 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     """
     format_string = '{0}'
 
-    def __init__(self, attribute_or_path: _PathOrAttribute) -> None:
+    def __init__(self, attribute_or_path: Union['Attribute', str, List[str]]) -> None:
         from pynamodb.attributes import Attribute  # prevent circular import -- Attribute imports Path
-        path: _PathOrAttribute
+        path: Union[str, List[str]]
         if isinstance(attribute_or_path, Attribute):
             self.attribute = attribute_or_path
             self.attr_type = attribute_or_path.attr_type
@@ -251,7 +249,7 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         super(Path, self).__init__(get_path_segments(path))
 
     @property
-    def path(self) -> Any:
+    def path(self) -> List[str]:
         return self.values[0]
 
     def __iter__(self):
@@ -338,6 +336,6 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         return "Path({})".format(self.path)
 
     @staticmethod
-    def _quote_path(path):
+    def _quote_path(path: str) -> str:
         path, sep, rem = path.partition('[')
         return repr(path) + sep + rem
