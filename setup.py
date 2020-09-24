@@ -3,7 +3,6 @@ from setuptools import setup, find_packages
 
 install_requires = [
     'botocore>=1.12.54',
-    'python-dateutil>=2.1,<3.0.0',
 ]
 
 setup(
@@ -27,6 +26,7 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'License :: OSI Approved :: MIT License',
     ],
     extras_require={

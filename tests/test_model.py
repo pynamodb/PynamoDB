@@ -5,12 +5,13 @@ import base64
 import random
 import json
 import copy
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
 from unittest import TestCase
 
 from botocore.client import ClientError
 import pytest
-from dateutil.tz import tzutc
 
 from .deep_eq import deep_eq
 from pynamodb.util import snake_to_camel_case
@@ -3300,7 +3301,7 @@ class ModelInitTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = SIMPLE_MODEL_TABLE_DATA
             m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}, 'my_ttl': {'N': '1546300800'}})
-        assert m.my_ttl == datetime(2019, 1, 1, tzinfo=tzutc())
+        assert m.my_ttl == datetime(2019, 1, 1, tzinfo=timezone.utc)
 
     def test_deserialized_with_invalid_type(self):
         self.assertRaises(AttributeDeserializationError, TTLModel.from_raw_data, {'my_ttl': {'S': '1546300800'}})

@@ -11,7 +11,7 @@ from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Seque
     Tuple, Union, cast
 
 from pynamodb.expressions.update import Action
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError, AttributeDeserializationError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
 from pynamodb.attributes import (
     Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
 )
@@ -546,16 +546,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if data is None:
             raise ValueError("Received no data to construct object")
 
-        attributes: Dict[str, Any] = {}
-        for name, value in data.items():
-            attr_name = cls._dynamo_to_python_attr(name)
-            attr = cls.get_attributes().get(attr_name, None)  # type: ignore
-            if attr:
-                try:
-                    attributes[attr_name] = attr.deserialize(attr.get_value(value))  # type: ignore
-                except TypeError as e:
-                    raise AttributeDeserializationError(attr_name=attr_name) from e  # type: ignore
-        return cls(_user_instantiated=False, **attributes)
+        model = cls(_user_instantiated=False)
+        model._deserialize(data)
+        return model
 
     @classmethod
     def count(
@@ -1002,7 +995,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 actions.append(version_attribute.add(1))
             elif snake_to_camel_case(ATTRIBUTES) in serialized_attributes:
                 serialized_attributes[snake_to_camel_case(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
-                    version_attribute, version_attribute_value + 1, null_check=True
+                    version_attribute, version_attribute_value + 1
                 )
         else:
             version_condition = version_attribute.does_not_exist()
@@ -1010,7 +1003,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 actions.append(version_attribute.set(1))
             elif snake_to_camel_case(ATTRIBUTES) in serialized_attributes:
                 serialized_attributes[snake_to_camel_case(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
-                    version_attribute, 1, null_check=True
+                    version_attribute, 1
                 )
 
         return version_condition
@@ -1114,67 +1107,39 @@ class Model(AttributeContainer, metaclass=MetaModel):
                                               aws_session_token=cls.Meta.aws_session_token)
         return cls._connection
 
-    def _deserialize(self, attrs):
-        """
-        Sets attributes sent back from DynamoDB on this object
-
-        :param attrs: A dictionary of attributes to update this item with.
-        """
-        for name, attr in self.get_attributes().items():
-            value = attrs.get(attr.attr_name, None)
-            if value is not None:
-                value = value.get(attr.attr_type, None)
-                if value is not None:
-                    value = attr.deserialize(value)
-            setattr(self, name, value)
-
-    def _serialize(self, attr_map=False, null_check=True) -> Dict[str, Any]:
+    def _serialize(self, null_check=True, attr_map=False) -> Dict[str, Dict[str, Any]]:
         """
         Serializes all model attributes for use with DynamoDB
 
-        :param attr_map: If True, then attributes are returned
         :param null_check: If True, then attributes are checked for null
+        :param attr_map: If True, then attributes are returned
         """
         attributes = snake_to_camel_case(ATTRIBUTES)
-        attrs: Dict[str, Dict] = {attributes: {}}
-        for name, attr in self.get_attributes().items():
-            value = getattr(self, name)
-            if isinstance(value, MapAttribute):
-                if not value.validate():
-                    raise ValueError("Attribute '{}' is not correctly typed".format(attr.attr_name))
-
-            serialized = self._serialize_value(attr, value, null_check)
-            if NULL in serialized:
-                continue
-
-            if attr_map:
-                attrs[attributes][attr.attr_name] = serialized
-            else:
-                if attr.is_hash_key:
-                    attrs[HASH] = serialized[attr.attr_type]
-                elif attr.is_range_key:
-                    attrs[RANGE] = serialized[attr.attr_type]
-                else:
-                    attrs[attributes][attr.attr_name] = serialized
-
+        attrs: Dict[str, Dict] = {attributes: super()._serialize(null_check)}
+        if not attr_map:
+            hash_key_attribute = self._hash_key_attribute()
+            hash_key_attribute_value = attrs[attributes].pop(hash_key_attribute.attr_name, None)
+            if hash_key_attribute_value is not None:
+                attrs[HASH] = hash_key_attribute_value[hash_key_attribute.attr_type]
+            range_key_attribute = self._range_key_attribute()
+            if range_key_attribute:
+                range_key_attribute_value = attrs[attributes].pop(range_key_attribute.attr_name, None)
+                if range_key_attribute_value is not None:
+                    attrs[RANGE] = range_key_attribute_value[range_key_attribute.attr_type]
         return attrs
 
     @classmethod
-    def _serialize_value(cls, attr, value, null_check=True):
+    def _serialize_value(cls, attr, value):
         """
         Serializes a value for use with DynamoDB
 
         :param attr: an instance of `Attribute` for serialization
         :param value: a value to be serialized
-        :param null_check: If True, then attributes are checked for null
         """
-        if value is None:
-            serialized = None
-        else:
-            serialized = attr.serialize(value)
+        serialized = attr.serialize(value)
 
         if serialized is None:
-            if not attr.null and null_check:
+            if not attr.null:
                 raise ValueError("Attribute '{}' cannot be None".format(attr.attr_name))
             return {NULL: True}
 

@@ -2,30 +2,24 @@
 pynamodb attributes tests
 """
 import json
-import time
 
 from base64 import b64encode
 from datetime import datetime
-
 from datetime import timedelta
-from dateutil.tz import tzutc
+from datetime import timezone
 
-from unittest.mock import patch, Mock, call
+from unittest.mock import patch, call
 import pytest
 
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute,
-    ListAttribute, JSONAttribute, TTLAttribute, _get_value_for_deserialize, _fast_parse_utc_datestring,
-    VersionAttribute)
+    ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute)
 from pynamodb.constants import (
-    DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
+    DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, BOOLEAN,
 )
 from pynamodb.models import Model
-
-
-UTC = tzutc()
 
 
 class AttributeTestModel(Model):
@@ -133,87 +127,53 @@ class TestUTCDateTimeAttribute:
     """
     Tests UTCDateTime attributes
     """
+
+    def setup(self):
+        self.attr = UTCDateTimeAttribute()
+        self.dt = datetime(2047, 1, 6, 8, 21, 30, 2000, tzinfo=timezone.utc)
+
     def test_utc_datetime_attribute(self):
         """
         UTCDateTimeAttribute.default
         """
-        attr = UTCDateTimeAttribute()
-        assert attr is not None
+        attr = UTCDateTimeAttribute(default=self.dt)
         assert attr.attr_type == STRING
-        tstamp = datetime.now()
-        attr = UTCDateTimeAttribute(default=tstamp)
-        assert attr.default == tstamp
-
-    def test_utc_date_time_deserialize(self):
-        """
-        UTCDateTimeAttribute.deserialize
-        """
-        tstamp = datetime.now(UTC)
-        attr = UTCDateTimeAttribute()
-        assert attr.deserialize(tstamp.strftime(DATETIME_FORMAT)) == tstamp
-
-    def test_dateutil_parser_fallback(self):
-        """
-        UTCDateTimeAttribute.deserialize
-        """
-        expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=tzutc())
-        attr = UTCDateTimeAttribute()
-        assert attr.deserialize('January 6, 2047 at 8:21:00AM UTC') == expected_value
-
-    @patch('pynamodb.attributes.datetime')
-    @patch('pynamodb.attributes.parse')
-    def test_utc_date_time_deserialize_parse_args(self, parse_mock, datetime_mock):
-        """
-        UTCDateTimeAttribute.deserialize
-        """
-        tstamp = datetime.now(UTC)
-        attr = UTCDateTimeAttribute()
-
-        tstamp_str = tstamp.strftime(DATETIME_FORMAT)
-        attr.deserialize(tstamp_str)
-
-        parse_mock.assert_not_called()
-        datetime_mock.strptime.assert_not_called()
+        assert attr.default == self.dt
 
     def test_utc_date_time_serialize(self):
         """
         UTCDateTimeAttribute.serialize
         """
-        tstamp = datetime.now()
-        attr = UTCDateTimeAttribute()
-        assert attr.serialize(tstamp) == tstamp.replace(tzinfo=UTC).strftime(DATETIME_FORMAT)
+        assert self.attr.serialize(self.dt) == '2047-01-06T08:21:30.002000+0000'
 
-    def test__fast_parse_utc_datestring_roundtrips(self):
-        tstamp = datetime.now(UTC)
-        tstamp_str = tstamp.strftime(DATETIME_FORMAT)
-        assert _fast_parse_utc_datestring(tstamp_str) == tstamp
-
-    def test__fast_parse_utc_datestring_no_microseconds(self):
-        expected_value = datetime(2047, 1, 6, 8, 21, tzinfo=tzutc())
-        assert _fast_parse_utc_datestring('2047-01-06T08:21:00.0+0000') == expected_value
+    def test_utc_date_time_deserialize(self):
+        """
+        UTCDateTimeAttribute.deserialize
+        """
+        assert self.attr.deserialize('2047-01-06T08:21:30.002000+0000') == self.dt
 
     @pytest.mark.parametrize(
         "invalid_string",
         [
-            '2.47-01-06T08:21:00.0+0000',
-            '2047-01-06T08:21:00.+0000',
-            '2047-01-06T08:21:00.0',
-            '2047-01-06 08:21:00.0+0000',
-            'abcd-01-06T08:21:00.0+0000',
-            '2047-ab-06T08:21:00.0+0000',
-            '2047-01-abT08:21:00.0+0000',
-            '2047-01-06Tab:21:00.0+0000',
-            '2047-01-06T08:ab:00.0+0000',
-            '2047-01-06T08:ab:00.0+0000',
-            '2047-01-06T08:21:00.a+0000',
-            '2047-01-06T08:21:00.0.1+0000',
-            '2047-01-06T08:21:00.0+00000'
+            '2047-01-06T08:21:30.002000',       # naive datetime
+            '2047-01-06T08:21:30+0000',         # missing microseconds
+            '2047-01-06T08:21:30.001+0000',     # shortened microseconds
+            '2047-01-06T08:21:30.002000-0000'   # "negative" utc
+            '2047-01-06T08:21:30.002000+0030'   # not utc
+            '2047-01-06 08:21:30.002000+0000',  # missing separator
+            '2.47-01-06T08:21:30.002000+0000',
+            'abcd-01-06T08:21:30.002000+0000',
+            '2047-ab-06T08:21:30.002000+0000',
+            '2047-01-abT08:21:30.002000+0000',
+            '2047-01-06Tab:21:30.002000+0000',
+            '2047-01-06T08:ab:30.002000+0000',
+            '2047-01-06T08:21:ab.002000+0000',
+            '2047-01-06T08:21:30.a00000+0000',
         ]
     )
-    def test__fast_parse_utc_datestring_invalid_input(self, invalid_string):
+    def test_utc_date_time_invalid(self, invalid_string):
         with pytest.raises(ValueError, match="does not match format"):
-            _fast_parse_utc_datestring(invalid_string)
-
+            self.attr.deserialize(invalid_string)
 
 
 class TestBinaryAttribute:
@@ -497,7 +457,7 @@ class TestTTLAttribute:
         mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
         model = AttributeTestModel()
         model.ttl_attr = timedelta(seconds=60)
-        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=timezone.utc)
 
     def test_datetime_naive_ttl(self):
         model = AttributeTestModel()
@@ -507,8 +467,8 @@ class TestTTLAttribute:
 
     def test_datetime_with_tz_ttl(self):
         model = AttributeTestModel()
-        model.ttl_attr = datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
-        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+        model.ttl_attr = datetime(2019, 6, 5, 0, 1, tzinfo=timezone.utc)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=timezone.utc)
 
     def test_ttl_attribute_wrong_type(self):
         with pytest.raises(ValueError, match='TTLAttribute value must be a timedelta or datetime'):
@@ -531,10 +491,10 @@ class TestTTLAttribute:
         mock_time.side_effect = [1559692800, 1559692800]  # 2019-06-05 00:00:00 UTC
         model = AttributeTestModel()
         model.ttl_attr = timedelta(minutes=1)
-        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=UTC)
+        assert model.ttl_attr == datetime(2019, 6, 5, 0, 1, tzinfo=timezone.utc)
         s = TTLAttribute().serialize(model.ttl_attr)
         assert s == '1559692860'
-        assert TTLAttribute().deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=UTC)
+        assert TTLAttribute().deserialize(s) == datetime(2019, 6, 5, 0, 1, 0, tzinfo=timezone.utc)
 
 
 class TestJSONAttribute:
@@ -614,19 +574,21 @@ class TestMapAttribute:
 
     def test_null_attribute_subclassed_map(self):
         null_attribute = {
-            'map_field': None
+            'map_field': {},
+            'string_set_field': None
         }
         attr = DefaultsMap()
         serialized = attr.serialize(null_attribute)
-        assert serialized == {}
+        assert serialized == {'map_field': {'M': {}}}
 
     def test_null_attribute_map_after_serialization(self):
         null_attribute = {
+            'map_field': {},
             'string_set_field': {},
         }
         attr = DefaultsMap()
         serialized = attr.serialize(null_attribute)
-        assert serialized == {}
+        assert serialized == {'map_field': {'M': {}}}
 
     def test_map_of_map(self):
         attribute = {
@@ -889,18 +851,28 @@ class TestMapAttribute:
         assert mid_map_b_map_attr.attr_name == 'dyn_map_attr'
         assert mid_map_b_map_attr.attr_path == ['dyn_out_map', 'mid_map_b', 'dyn_in_map_b', 'dyn_map_attr']
 
+    def test_required_elements(self):
+        class InnerMapAttribute(MapAttribute):
+            foo = UnicodeAttribute()
 
-class TestValueDeserialize:
-    def test__get_value_for_deserialize(self):
-        expected = '3'
-        data = {'N': '3'}
-        actual = _get_value_for_deserialize(data)
-        assert expected == actual
+        class OuterMapAttribute(MapAttribute):
+            inner_map = InnerMapAttribute()
 
-    def test__get_value_for_deserialize_null(self):
-        data = {'NULL': 'True'}
-        actual = _get_value_for_deserialize(data)
-        assert actual is None
+        outer_map_attribute = OuterMapAttribute()
+        with pytest.raises(ValueError):
+            outer_map_attribute.serialize(outer_map_attribute)
+
+        outer_map_attribute = OuterMapAttribute(inner_map={})
+        with pytest.raises(ValueError):
+            outer_map_attribute.serialize(outer_map_attribute)
+
+        outer_map_attribute = OuterMapAttribute(inner_map=MapAttribute())
+        with pytest.raises(ValueError):
+            outer_map_attribute.serialize(outer_map_attribute)
+
+        outer_map_attribute = OuterMapAttribute(inner_map={'foo': 'bar'})
+        serialized = outer_map_attribute.serialize(outer_map_attribute)
+        assert serialized == {'inner_map': {'M': {'foo': {'S': 'bar'}}}}
 
 
 class TestListAttribute:
@@ -924,7 +896,7 @@ class TestListAttribute:
         with pytest.raises(ValueError):
             string_list_attribute.serialize([MapAttribute(foo='bar')])
 
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             string_list_attribute.deserialize([{'M': {'foo': {'S': 'bar'}}}])
 
     def test_serialize_null(self):

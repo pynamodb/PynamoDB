@@ -11,7 +11,6 @@ Features
 ========
 
 * Python 3 support
-* Python 2 support
 * Support for Unicode, Binary, JSON, Number, Set, and UTC Datetime attributes
 * Support for DynamoDB Local
 * Support for all of the DynamoDB API
@@ -32,6 +31,7 @@ Topics
    batch
    updates
    conditional
+   polymorphism
    attributes
    transaction
    optimistic_locking

@@ -462,7 +462,7 @@ GET_OFFICE_EMPLOYEE_ITEM_DATA = {
                     'N': '31'
                 },
                 'is_dude': {
-                    'N': '1'
+                    'BOOL': True
                 }
             }
         },
@@ -641,7 +641,7 @@ GET_OFFICE_ITEM_DATA = {
                                     'N': '31'
                                 },
                                 'is_dude': {
-                                    'N': '1'
+                                    'BOOL': True
                                 }
                             }
                         },
@@ -677,7 +677,7 @@ GET_OFFICE_ITEM_DATA = {
                                     'N': '30'
                                 },
                                 'is_dude': {
-                                    'N': '1'
+                                    'BOOL': True
                                 }
                             }
                         },
@@ -713,7 +713,7 @@ GET_OFFICE_ITEM_DATA = {
                                     'N': '32'
                                 },
                                 'is_dude': {
-                                    'N': '1'
+                                    'BOOL': True
                                 }
                             }
                         },
@@ -749,7 +749,7 @@ GET_OFFICE_ITEM_DATA = {
                                     'N': '30'
                                 },
                                 'is_dude': {
-                                    'N': '0'
+                                    'BOOL': False
                                 }
                             }
                         },
@@ -926,7 +926,7 @@ COMPLEX_MODEL_SERIALIZED_TABLE_DATA = [
                             'N': '31'
                         },
                         'is_dude': {
-                            'N': '1'
+                            'BOOL': True
                         }
                     }
 

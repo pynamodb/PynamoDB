@@ -427,11 +427,19 @@ class Connection(object):
                     'request_id': headers.get('x-amzn-RequestId')
                 }
 
-                if 'RequestItems' in operation_kwargs:
+                if REQUEST_ITEMS in operation_kwargs:
                     # Batch operations can hit multiple tables, report them comma separated
-                    verbose_properties['table_name'] = ','.join(operation_kwargs['RequestItems'])
+                    verbose_properties['table_name'] = ','.join(operation_kwargs[REQUEST_ITEMS])
+                elif TRANSACT_ITEMS in operation_kwargs:
+                    # Transactional operations can also hit multiple tables, or have multiple updates within
+                    # the same table
+                    table_names = []
+                    for item in operation_kwargs[TRANSACT_ITEMS]:
+                        for op in item.values():
+                            table_names.append(op[TABLE_NAME])
+                    verbose_properties['table_name'] = ','.join(table_names)
                 else:
-                    verbose_properties['table_name'] = operation_kwargs.get('TableName')
+                    verbose_properties['table_name'] = operation_kwargs.get(TABLE_NAME)
 
                 try:
                     raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
@@ -1137,7 +1145,7 @@ class Connection(object):
             }
         }
 
-        args_map = {}
+        args_map: Dict[str, Any] = {}
         name_placeholders: Dict[str, str] = {}
         if consistent_read:
             args_map[CONSISTENT_READ] = consistent_read

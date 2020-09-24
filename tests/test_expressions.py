@@ -325,7 +325,7 @@ class ConditionExpressionTestCase(TestCase):
         expression = condition.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0[0] = :0"
         assert placeholder_names == {'foo': '#0'}
-        assert expression_attribute_values == {':0': {'S' : 'bar'}}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
 
     def test_invalid_indexing(self):
         with self.assertRaises(TypeError):
@@ -337,7 +337,17 @@ class ConditionExpressionTestCase(TestCase):
         expression = condition.serialize(placeholder_names, expression_attribute_values)
         assert expression == "#0[0][1] = :0"
         assert placeholder_names == {'foo': '#0'}
-        assert expression_attribute_values == {':0': {'S' : 'bar'}}
+        assert expression_attribute_values == {':0': {'S': 'bar'}}
+
+    def test_typed_list_indexing(self):
+        class StringMap(MapAttribute):
+            bar = UnicodeAttribute()
+        condition = ListAttribute(attr_name='foo', of=StringMap)[0].bar == 'baz'
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = condition.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0[0].#1 = :0"
+        assert placeholder_names == {'foo': '#0', 'bar': '#1'}
+        assert expression_attribute_values == {':0': {'S': 'baz'}}
 
     def test_map_comparison(self):
         # Simulate initialization from inside an AttributeContainer
@@ -431,7 +441,8 @@ class UpdateExpressionTestCase(TestCase):
 
     def setUp(self):
         self.attribute = UnicodeAttribute(attr_name='foo')
-        self.list_attribute = ListAttribute(attr_name='foo_list', default=[])
+        self.set_attribute = NumberSetAttribute(attr_name='foo_set')
+        self.list_attribute = ListAttribute(attr_name='foo_list')
 
     def test_set_action(self):
         action = self.attribute.set('bar')
@@ -518,6 +529,14 @@ class UpdateExpressionTestCase(TestCase):
         assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {}
 
+    def test_remove_action_list_element(self):
+        action = self.list_attribute[10].remove()
+        placeholder_names, expression_attribute_values = {}, {}
+        expression = action.serialize(placeholder_names, expression_attribute_values)
+        assert expression == "#0[10]"
+        assert placeholder_names == {'foo_list': '#0'}
+        assert expression_attribute_values == {}
+
     def test_add_action(self):
         action = Path('foo').add(0)
         placeholder_names, expression_attribute_values = {}, {}
@@ -578,38 +597,31 @@ class UpdateExpressionTestCase(TestCase):
         update = Update(
             self.attribute.set({'S': 'bar'}),
             self.attribute.remove(),
-            self.attribute.add({'N': '0'}),
-            self.attribute.delete({'NS': ['0']})
+            self.set_attribute.add({'NS': ['0']}),
+            self.set_attribute.delete({'NS': ['1']})
         )
         placeholder_names, expression_attribute_values = {}, {}
         expression = update.serialize(placeholder_names, expression_attribute_values)
-        assert expression == "SET #0 = :0 REMOVE #0 ADD #0 :1 DELETE #0 :2"
-        assert placeholder_names == {'foo': '#0'}
+        assert expression == "SET #0 = :0 REMOVE #0 ADD #1 :1 DELETE #1 :2"
+        assert placeholder_names == {'foo': '#0', 'foo_set': '#1'}
         assert expression_attribute_values == {
             ':0': {'S': 'bar'},
-            ':1': {'N': '0'},
-            ':2': {'NS': ['0']}
+            ':1': {'NS': ['0']},
+            ':2': {'NS': ['1']}
         }
 
-    def test_list_update_remove_by_index(self):
-        update = Update(
-            self.list_attribute.remove_indexes(0),
-        )
+    def test_update_skips_empty_clauses(self):
+        update = Update(self.attribute.remove())
         placeholder_names, expression_attribute_values = {}, {}
         expression = update.serialize(placeholder_names, expression_attribute_values)
-        assert expression == "REMOVE #0[0]"
-        assert placeholder_names == {'foo_list': '#0'}
+        assert expression == "REMOVE #0"
+        assert placeholder_names == {'foo': '#0'}
         assert expression_attribute_values == {}
 
-        update = Update(
-            self.list_attribute.remove_indexes(0, 10),
-        )
+    def test_update_empty(self):
+        update = Update()
         placeholder_names, expression_attribute_values = {}, {}
         expression = update.serialize(placeholder_names, expression_attribute_values)
-        assert expression == "REMOVE #0[0], #0[10]"
-        assert placeholder_names == {'foo_list': '#0'}
+        assert expression is None
+        assert placeholder_names == {}
         assert expression_attribute_values == {}
-
-        with self.assertRaises(ValueError) as e:
-            Update(self.list_attribute.remove_indexes(0, "a"))
-        assert str(e.exception) == "Method 'remove_indexes' arguments must be 'int'"

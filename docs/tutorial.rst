@@ -2,8 +2,7 @@ Basic Tutorial
 ==============
 
 PynamoDB is attempt to be a Pythonic interface to DynamoDB that supports all of DynamoDB's
-powerful features in *both* Python 3, and Python 2. This includes support for unicode and
-binary attributes.
+powerful features. This includes support for unicode and binary attributes.
 
 But why stop there? PynamoDB also supports:
 
@@ -216,7 +215,7 @@ PynamoDB comes with several built in attribute types for convenience, which incl
 * :py:class:`JSONAttribute <pynamodb.attributes.JSONAttribute>`
 * :py:class:`MapAttribute <pynamodb.attributes.MapAttribute>`
 
-All of these built in attributes handle serializing and deserializng themselves, in both Python 2 and Python 3.
+All of these built in attributes handle serializing and deserializng themselves.
 
 Creating the table
 ------------------
