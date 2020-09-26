@@ -2,6 +2,7 @@
 Lowest level connection
 """
 import asyncio
+import functools
 import json
 import logging
 import random
@@ -21,7 +22,7 @@ from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 
 if True:
-    # TODO:
+    # TODO: handle optional dependency
     import aiobotocore.session
     from aiobotocore.client import AioBaseClient
     from aiobotocore.session import get_session as get_async_session
@@ -72,7 +73,6 @@ log.addHandler(logging.NullHandler())
 
 def run_secretly_sync_async_fn(async_fn, *args, **kwargs):
     # From https://github.com/python-trio/hip/issues/1#issuecomment-322028457
-    print('called with', async_fn, args, kwargs)
     coro = async_fn(*args, **kwargs)
     try:
         coro.send(None)
@@ -254,7 +254,8 @@ class MetaTable(object):
             }
 
 
-def create_wrapper(async_fn):
+def sync_wrapper(async_fn):
+    @functools.wraps(async_fn)
     def wrap(*args, **kwargs):
         return run_secretly_sync_async_fn(async_fn, *args, **kwargs)
     return wrap
@@ -264,13 +265,9 @@ class ConnectionMeta(type):
     def __init__(self, name, bases, attrs):
         super().__init__(name, bases, attrs)
 
-        import functools
         for attr_name, attr_value in attrs.items():
             if attr_name.endswith('_async') and asyncio.iscoroutinefunction(attr_value):
-                # TODO: use functools.wraps?
-                #setattr(self, attr_name.rstrip("_async"), create_wrapper(attr_value))
-                sync_fn = functools.partial(run_secretly_sync_async_fn, attr_value)
-                setattr(self, attr_name.rstrip("_async"), sync_fn)
+                setattr(self, attr_name.rstrip("_async"), sync_wrapper(attr_value))
 
 
 class Connection(metaclass=ConnectionMeta):
@@ -484,6 +481,7 @@ class Connection(metaclass=ConnectionMeta):
                     verbose_properties['table_name'] = operation_kwargs.get(TABLE_NAME)
 
                 try:
+                    print(http_response.headers)
                     raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
                 except VerboseClientError as e:
                     if is_last_attempt_for_exceptions:
@@ -601,7 +599,7 @@ class Connection(metaclass=ConnectionMeta):
                     raise
         return self._tables[table_name]
 
-    def create_table(
+    async def create_table_async(
         self,
         table_name: str,
         attribute_definitions: Optional[Any] = None,
@@ -691,7 +689,7 @@ class Connection(metaclass=ConnectionMeta):
             ]
 
         try:
-            data = self.dispatch(CREATE_TABLE, operation_kwargs)
+            data = await self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to create table: {}".format(e), e)
         return data
@@ -712,7 +710,7 @@ class Connection(metaclass=ConnectionMeta):
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to update TTL on table: {}".format(e), e)
 
-    def delete_table(self, table_name: str) -> Dict:
+    async def delete_table_async(self, table_name: str) -> Dict:
         """
         Performs the DeleteTable operation
         """
@@ -720,12 +718,12 @@ class Connection(metaclass=ConnectionMeta):
             TABLE_NAME: table_name
         }
         try:
-            data = self.dispatch(DELETE_TABLE, operation_kwargs)
+            data = await self.dispatch(DELETE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to delete table: {}".format(e), e)
         return data
 
-    def update_table(
+    async def update_table_async(
         self,
         table_name: str,
         read_capacity_units: Optional[int] = None,
@@ -759,11 +757,11 @@ class Connection(metaclass=ConnectionMeta):
                 })
             operation_kwargs[GLOBAL_SECONDARY_INDEX_UPDATES] = global_secondary_indexes_list
         try:
-            return self.dispatch(UPDATE_TABLE, operation_kwargs)
+            return await self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to update table: {}".format(e), e)
 
-    def list_tables(
+    async def list_tables_async(
         self,
         exclusive_start_table_name: Optional[str] = None,
         limit: Optional[int] = None,
@@ -781,16 +779,16 @@ class Connection(metaclass=ConnectionMeta):
                 LIMIT: limit
             })
         try:
-            return self.dispatch(LIST_TABLES, operation_kwargs)
+            return await self.dispatch(LIST_TABLES, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Unable to list tables: {}".format(e), e)
 
-    def describe_table(self, table_name: str) -> Dict:
+    async def describe_table_async(self, table_name: str) -> Dict:
         """
         Performs the DescribeTable operation
         """
         try:
-            tbl = self.get_meta_table(table_name, refresh=True)
+            tbl = await self.get_meta_table_async(table_name, refresh=True)
             if tbl:
                 return tbl.data
         except ValueError:
@@ -977,7 +975,7 @@ class Connection(metaclass=ConnectionMeta):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
         return operation_kwargs
 
-    def delete_item(
+    async def delete_item_async(
         self,
         table_name: str,
         hash_key: str,
@@ -1000,11 +998,11 @@ class Connection(metaclass=ConnectionMeta):
             return_item_collection_metrics=return_item_collection_metrics
         )
         try:
-            return self.dispatch(DELETE_ITEM, operation_kwargs)
+            return await self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise DeleteError("Failed to delete item: {}".format(e), e)
 
-    def update_item(
+    async def update_item_async(
         self,
         table_name: str,
         hash_key: str,
@@ -1032,11 +1030,11 @@ class Connection(metaclass=ConnectionMeta):
             return_item_collection_metrics=return_item_collection_metrics
         )
         try:
-            return self.dispatch(UPDATE_ITEM, operation_kwargs)
+            return await self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise UpdateError("Failed to update item: {}".format(e), e)
 
-    def put_item(
+    async def put_item_async(
         self,
         table_name: str,
         hash_key: str,
@@ -1062,7 +1060,7 @@ class Connection(metaclass=ConnectionMeta):
             return_item_collection_metrics=return_item_collection_metrics
         )
         try:
-            return self.dispatch(PUT_ITEM, operation_kwargs)
+            return await self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to put item: {}".format(e), e)
 
@@ -1082,7 +1080,7 @@ class Connection(metaclass=ConnectionMeta):
 
         return operation_kwargs
 
-    def transact_write_items(
+    async def transact_write_items_async(
         self,
         condition_check_items: Sequence[Dict],
         delete_items: Sequence[Dict],
@@ -1117,11 +1115,11 @@ class Connection(metaclass=ConnectionMeta):
         operation_kwargs[TRANSACT_ITEMS] = transact_items
 
         try:
-            return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
+            return await self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TransactWriteError("Failed to write transaction items", e)
 
-    def transact_get_items(
+    async def transact_get_items_await(
         self,
         get_items: Sequence[Dict],
         return_consumed_capacity: Optional[str] = None
@@ -1135,11 +1133,11 @@ class Connection(metaclass=ConnectionMeta):
         ]
 
         try:
-            return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
+            return await self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TransactGetError("Failed to get transaction items", e)
 
-    def batch_write_item(
+    async def batch_write_item_async(
         self,
         table_name: str,
         put_items: Optional[Any] = None,
@@ -1175,11 +1173,11 @@ class Connection(metaclass=ConnectionMeta):
                 })
         operation_kwargs[REQUEST_ITEMS][table_name] = delete_items_list + put_items_list
         try:
-            return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
+            return await self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to batch write items: {}".format(e), e)
 
-    def batch_get_item(
+    async def batch_get_item_async(
         self,
         table_name: str,
         keys: Sequence[str],
@@ -1216,11 +1214,11 @@ class Connection(metaclass=ConnectionMeta):
             )
         operation_kwargs[REQUEST_ITEMS][table_name].update(keys_map)
         try:
-            return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
+            return await self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise GetError("Failed to batch get items: {}".format(e), e)
 
-    def get_item(
+    async def get_item_async(
         self,
         table_name: str,
         hash_key: str,
@@ -1239,11 +1237,11 @@ class Connection(metaclass=ConnectionMeta):
             attributes_to_get=attributes_to_get
         )
         try:
-            return self.dispatch(GET_ITEM, operation_kwargs)
+            return await self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise GetError("Failed to get item: {}".format(e), e)
 
-    def scan(
+    async def scan_async(
         self,
         table_name: str,
         filter_condition: Optional[Any] = None,
@@ -1291,11 +1289,11 @@ class Connection(metaclass=ConnectionMeta):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
 
         try:
-            return self.dispatch(SCAN, operation_kwargs)
+            return await self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise ScanError("Failed to scan table: {}".format(e), e)
 
-    def query(
+    async def query_async(
         self,
         table_name: str,
         hash_key: str,
@@ -1365,7 +1363,7 @@ class Connection(metaclass=ConnectionMeta):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
 
         try:
-            return self.dispatch(QUERY, operation_kwargs)
+            return await self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {}".format(e), e)
 
