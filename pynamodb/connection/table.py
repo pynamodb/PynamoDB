@@ -3,15 +3,26 @@ PynamoDB Connection classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
+import asyncio
 from typing import Any, Dict, Mapping, Optional, Sequence
 
+from pynamodb.async_util import wrap_secretly_sync_async_fn
 from pynamodb.connection.base import Connection, MetaTable
 from pynamodb.constants import DEFAULT_BILLING_MODE, KEY
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.update import Action
 
 
-class TableConnection:
+class TableMeta(type):
+    def __init__(self, name, bases, attrs):
+        super().__init__(name, bases, attrs)
+
+        for attr_name, attr_value in attrs.items():
+            if attr_name.endswith('_async') and asyncio.iscoroutinefunction(attr_value):
+                setattr(self, attr_name.rstrip("_async"), wrap_secretly_sync_async_fn(attr_value))
+
+
+class TableConnection(metaclass=TableMeta):
     """
     A higher level abstraction over botocore
     """
@@ -32,6 +43,8 @@ class TableConnection:
         aws_session_token: Optional[str] = None,
     ) -> None:
         self.table_name = table_name
+
+        # TODO: optional async
         self.connection = Connection(region=region,
                                      host=host,
                                      connect_timeout_seconds=connect_timeout_seconds,
@@ -46,7 +59,7 @@ class TableConnection:
                                                     aws_secret_access_key,
                                                     aws_session_token)
 
-    def get_meta_table(self, refresh: bool = False) -> MetaTable:
+    def get_meta_table_async(self, refresh: bool = False) -> MetaTable:
         """
         Returns a MetaTable
         """
@@ -259,11 +272,11 @@ class TableConnection:
             scan_index_forward=scan_index_forward,
             select=select)
 
-    def describe_table(self) -> Dict:
+    async def describe_table_async(self) -> Dict:
         """
         Performs the DescribeTable operation and returns the result
         """
-        return self.connection.describe_table(self.table_name)
+        return await self.connection.describe_table_async(self.table_name)
 
     def delete_table(self) -> Dict:
         """

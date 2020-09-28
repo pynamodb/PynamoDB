@@ -2,7 +2,6 @@
 Lowest level connection
 """
 import asyncio
-import functools
 import json
 import logging
 import random
@@ -28,6 +27,7 @@ if True:
     from aiobotocore.session import get_session as get_async_session
 
 
+from pynamodb.async_util import wrap_secretly_sync_async_fn
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES,
@@ -69,17 +69,6 @@ RATE_LIMITING_ERROR_CODES = ['ProvisionedThroughputExceededException', 'Throttli
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
-
-
-def run_secretly_sync_async_fn(async_fn, *args, **kwargs):
-    # From https://github.com/python-trio/hip/issues/1#issuecomment-322028457
-    coro = async_fn(*args, **kwargs)
-    try:
-        coro.send(None)
-    except StopIteration as exc:
-        return exc.value
-    else:
-        raise RuntimeError("you lied, this async function is not secretly synchronous")
 
 
 class MetaTable(object):
@@ -254,20 +243,15 @@ class MetaTable(object):
             }
 
 
-def sync_wrapper(async_fn):
-    @functools.wraps(async_fn)
-    def wrap(*args, **kwargs):
-        return run_secretly_sync_async_fn(async_fn, *args, **kwargs)
-    return wrap
-
-
 class ConnectionMeta(type):
     def __init__(self, name, bases, attrs):
         super().__init__(name, bases, attrs)
 
         for attr_name, attr_value in attrs.items():
             if attr_name.endswith('_async') and asyncio.iscoroutinefunction(attr_value):
-                setattr(self, attr_name.rstrip("_async"), sync_wrapper(attr_value))
+                wrapped_fn = wrap_secretly_sync_async_fn(attr_value)
+                wrapped_fn.__name__ = wrapped_fn.__name__.rstrip('_async')
+                setattr(self, wrapped_fn.__name__, wrapped_fn)
 
 
 class Connection(metaclass=ConnectionMeta):
@@ -370,7 +354,7 @@ class Connection(metaclass=ConnectionMeta):
 
         self.send_pre_boto_callback(operation_name, req_uuid, table_name)
 
-        data = self._make_api_call(operation_name, operation_kwargs)
+        data = await self._make_api_call(operation_name, operation_kwargs)
         if asyncio.iscoroutine(data):
             data = await data
 
@@ -395,7 +379,7 @@ class Connection(metaclass=ConnectionMeta):
         except Exception as e:
             log.exception("pre_boto callback threw an exception.")
 
-    def _make_api_call(self, operation_name, operation_kwargs):
+    async def _make_api_call(self, operation_name, operation_kwargs):
         """
         This private method is here for two reasons:
         1. It's faster to avoid using botocore's response parsing
@@ -422,7 +406,7 @@ class Connection(metaclass=ConnectionMeta):
                     prepared_request.reset_stream()
 
                 # Create a new request for each retry (including a new signature).
-                prepared_request = run_secretly_sync_async_fn(self._create_prepared_request, self.client, request_dict, operation_model)
+                prepared_request = await self._create_prepared_request(self.client, request_dict, operation_model)
 
                 # Implement the before-send event from botocore
                 event_name = 'before-send.dynamodb.{}'.format(operation_model.name)
@@ -694,7 +678,7 @@ class Connection(metaclass=ConnectionMeta):
             raise TableError("Failed to create table: {}".format(e), e)
         return data
 
-    def update_time_to_live(self, table_name: str, ttl_attribute_name: str) -> Dict:
+    async def update_time_to_live_async(self, table_name: str, ttl_attribute_name: str) -> Dict:
         """
         Performs the UpdateTimeToLive operation
         """
@@ -706,7 +690,7 @@ class Connection(metaclass=ConnectionMeta):
             }
         }
         try:
-            return self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
+            return await self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to update TTL on table: {}".format(e), e)
 
