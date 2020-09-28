@@ -14,7 +14,7 @@ class Color(object):
         self.name = name
 
     def __str__(self):
-        return "<Color: {}>".format(self.name)
+        return f"<Color: {self.name}>"
 
 
 class PickleAttribute(BinaryAttribute):

@@ -37,7 +37,7 @@ def substitute_names(document_path: Union[str, List[str]], placeholders: Dict[st
     for idx, segment in enumerate(path_segments):
         match = PATH_SEGMENT_REGEX.match(segment)
         if not match:
-            raise ValueError('{} is not a valid document path'.format('.'.join(document_path)))
+            raise ValueError(f"{'.'.join(document_path)} is not a valid document path")
         name, indexes = match.groups()
         if name in placeholders:
             placeholder = placeholders[name]

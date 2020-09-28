@@ -252,7 +252,7 @@ class MetaModel(AttributeContainerMeta):
 
             ttl_attr_names = [name for name, attr_obj in attrs.items() if isinstance(attr_obj, TTLAttribute)]
             if len(ttl_attr_names) > 1:
-                raise ValueError("The model has more than one TTL attribute: {}".format(", ".join(ttl_attr_names)))
+                raise ValueError(f"The model has more than one TTL attribute: {', '.join(ttl_attr_names)}")
 
             if META_CLASS_NAME not in attrs:
                 setattr(cls, META_CLASS_NAME, DefaultMeta)
@@ -383,9 +383,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         table_name = self.Meta.table_name if self.Meta.table_name else 'unknown'
         serialized = self._serialize(null_check=False)
         if self._range_keyname:
-            msg = "{}<{}, {}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
+            msg = f"{self.Meta.table_name}<{serialized.get(HASH)}, {serialized.get(RANGE)}>"
         else:
-            msg = "{}<{}>".format(self.Meta.table_name, serialized.get(HASH))
+            msg = f"{self.Meta.table_name}<{serialized.get(HASH)}>"
         return msg
 
     def delete(self, condition: Optional[Condition] = None) -> Any:
@@ -820,7 +820,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 cls._get_connection().update_time_to_live(ttl_attribute.attr_name)
             except Exception:
                 if ignore_update_ttl_errors:
-                    log.info("Unable to update the TTL for {}".format(cls.Meta.table_name))
+                    log.info(f"Unable to update the TTL for {cls.Meta.table_name}")
                 else:
                     raise
 
@@ -1140,7 +1140,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         if serialized is None:
             if not attr.null:
-                raise ValueError("Attribute '{}' cannot be None".format(attr.attr_name))
+                raise ValueError(f"Attribute '{attr.attr_name}' cannot be None")
             return {NULL: True}
 
         return {attr.attr_type: serialized}

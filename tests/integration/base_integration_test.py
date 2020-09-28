@@ -143,7 +143,7 @@ def test_connection_integration(ddb_url):
     items = []
     for i in range(10):
         items.append(
-            {"Forum": "FooForum", "Thread": "thread-{}".format(i)}
+            {"Forum": "FooForum", "Thread": f"thread-{i}"}
         )
     print("conn.batch_write_items...")
     conn.batch_write_item(

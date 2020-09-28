@@ -47,7 +47,7 @@ item.save()
 
 # Indexes can be queried easily using the index's hash key
 for item in TestModel.view_index.query(1):
-    print("Item queried from index: {0}".format(item))
+    print(f"Item queried from index: {item}")
 
 
 class GamePlayerOpponentIndex(LocalSecondaryIndex):
@@ -96,7 +96,7 @@ item.save()
 
 # Indexes can be queried easily using the index's hash key
 for item in GameModel.player_opponent_index.query('1234'):
-    print("Item queried from index: {0}".format(item))
+    print(f"Item queried from index: {item}")
 
 # Count on an index
 print(GameModel.player_opponent_index.count('1234'))

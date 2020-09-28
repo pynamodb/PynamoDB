@@ -477,14 +477,14 @@ class ModelTestCase(TestCase):
         This function allows both the lists and dictionaries to have any order
         """
         if len(list1) != len(list2):
-            raise AssertionError("Values not equal: {} {}".format(list1, list2))
+            raise AssertionError(f"Values not equal: {list1} {list2}")
         for d1_item in list1:
             found = False
             for d2_item in list2:
                 if d2_item == d1_item:
                     found = True
             if not found:
-                raise AssertionError("Values not equal: {} {}".format(list1, list2))
+                raise AssertionError(f"Values not equal: {list1} {list2}")
 
     def test_create_model(self):
         """
@@ -658,12 +658,12 @@ class ModelTestCase(TestCase):
         self.assertEqual(item.email, 'needs_email')
         self.assertEqual(item.callable_field, 42)
         self.assertEqual(
-            repr(item), '{}<{}, {}>'.format(UserModel.Meta.table_name, item.custom_user_name, item.user_id)
+            repr(item), f'{UserModel.Meta.table_name}<{item.custom_user_name}, {item.user_id}>'
         )
 
         self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
         item = SimpleUserModel('foo')
-        self.assertEqual(repr(item), '{}<{}>'.format(SimpleUserModel.Meta.table_name, item.user_name))
+        self.assertEqual(repr(item), f'{SimpleUserModel.Meta.table_name}<{item.user_name}>')
         self.assertRaises(ValueError, item.save)
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
@@ -1211,7 +1211,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(5):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
 
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
@@ -1228,7 +1228,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(5):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
 
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
@@ -1245,7 +1245,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
 
             req.side_effect = [
@@ -1273,7 +1273,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
 
             req.side_effect = [
@@ -1301,7 +1301,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
 
             req.side_effect = [
@@ -1328,7 +1328,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
 
             req.side_effect = [
@@ -1356,7 +1356,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
 
             req.side_effect = [
@@ -1385,7 +1385,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1400,7 +1400,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1412,7 +1412,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1424,7 +1424,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1436,7 +1436,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1448,7 +1448,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1460,7 +1460,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1503,7 +1503,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -1550,7 +1550,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(30):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
 
             req.side_effect = [
@@ -1613,7 +1613,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             scanned_items = []
@@ -1655,7 +1655,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{0}'.format(idx)}
+                item['user_id'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             for item in UserModel.scan(
@@ -1767,7 +1767,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = SIMPLE_BATCH_GET_ITEMS
-            item_keys = ['hash-{}'.format(x) for x in range(10)]
+            item_keys = [f'hash-{x}' for x in range(10)]
             for item in SimpleUserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
             params = {
@@ -1793,7 +1793,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = SIMPLE_BATCH_GET_ITEMS
-            item_keys = ['hash-{}'.format(x) for x in range(10)]
+            item_keys = [f'hash-{x}' for x in range(10)]
             for item in SimpleUserModel.batch_get(item_keys, attributes_to_get=['numbers']):
                 self.assertIsNotNone(item)
             params = {
@@ -1823,7 +1823,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = SIMPLE_BATCH_GET_ITEMS
-            item_keys = ['hash-{}'.format(x) for x in range(10)]
+            item_keys = [f'hash-{x}' for x in range(10)]
             for item in SimpleUserModel.batch_get(item_keys, consistent_read=True):
                 self.assertIsNotNone(item)
             params = {
@@ -1851,7 +1851,7 @@ class ModelTestCase(TestCase):
         self.init_table_meta(UserModel, MODEL_TABLE_DATA)
 
         with patch(PATCH_METHOD) as req:
-            item_keys = [('hash-{}'.format(x), '{}'.format(x)) for x in range(10)]
+            item_keys = [(f'hash-{x}', f'{x}') for x in range(10)]
             item_keys_copy = list(item_keys)
             req.return_value = BATCH_GET_ITEMS
             for item in UserModel.batch_get(item_keys):
@@ -1906,7 +1906,7 @@ class ModelTestCase(TestCase):
         batch_get_mock.side_effect = fake_batch_get
 
         with patch(PATCH_METHOD, new=batch_get_mock) as req:
-            item_keys = [('hash-{}'.format(x), '{}'.format(x)) for x in range(200)]
+            item_keys = [(f'hash-{x}', f'{x}') for x in range(200)]
             for item in UserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
 
@@ -1926,30 +1926,30 @@ class ModelTestCase(TestCase):
 
             with self.assertRaises(ValueError):
                 with UserModel.batch_write(auto_commit=False) as batch:
-                    items = [UserModel('hash-{}'.format(x), '{}'.format(x)) for x in range(26)]
+                    items = [UserModel(f'hash-{x}', f'{x}') for x in range(26)]
                     for item in items:
                         batch.delete(item)
                     self.assertRaises(ValueError, batch.save, UserModel('asdf', '1234'))
 
             with UserModel.batch_write(auto_commit=False) as batch:
-                items = [UserModel('hash-{}'.format(x), '{}'.format(x)) for x in range(25)]
+                items = [UserModel(f'hash-{x}', f'{x}') for x in range(25)]
                 for item in items:
                     batch.delete(item)
                 self.assertRaises(ValueError, batch.save, UserModel('asdf', '1234'))
 
             with UserModel.batch_write(auto_commit=False) as batch:
-                items = [UserModel('hash-{}'.format(x), '{}'.format(x)) for x in range(25)]
+                items = [UserModel(f'hash-{x}', f'{x}') for x in range(25)]
                 for item in items:
                     batch.save(item)
                 self.assertRaises(ValueError, batch.save, UserModel('asdf', '1234'))
 
             with UserModel.batch_write() as batch:
-                items = [UserModel('hash-{}'.format(x), '{}'.format(x)) for x in range(30)]
+                items = [UserModel(f'hash-{x}', f'{x}') for x in range(30)]
                 for item in items:
                     batch.delete(item)
 
             with UserModel.batch_write() as batch:
-                items = [UserModel('hash-{}'.format(x), '{}'.format(x)) for x in range(30)]
+                items = [UserModel(f'hash-{x}', f'{x}') for x in range(30)]
                 for item in items:
                     batch.save(item)
 
@@ -1961,7 +1961,7 @@ class ModelTestCase(TestCase):
         for idx in range(10):
             items.append(UserModel(
                 'daniel',
-                '{}'.format(idx),
+                f'{idx}',
                 picture=picture_blob,
             ))
 
@@ -1971,7 +1971,7 @@ class ModelTestCase(TestCase):
                 'PutRequest': {
                     'Item': {
                         'custom_username': {STRING: 'daniel'},
-                        'user_id': {STRING: '{}'.format(idx)},
+                        'user_id': {STRING: f'{idx}'},
                         'picture': {BINARY: base64.b64encode(picture_blob).decode(DEFAULT_ENCODING)}
                     }
                 }
@@ -2002,7 +2002,7 @@ class ModelTestCase(TestCase):
         items = []
         for idx in range(10):
             items.append(BatchModel(
-                '{}'.format(idx)
+                f'{idx}'
             ))
 
         unprocessed_items = []
@@ -2057,8 +2057,8 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING: 'id-{}'.format(idx)}
-                item['email'] = {STRING: 'id-{}'.format(idx)}
+                item['user_name'] = {STRING: f'id-{idx}'}
+                item['email'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -2092,8 +2092,8 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING: 'id-{}'.format(idx)}
-                item['email'] = {STRING: 'id-{}'.format(idx)}
+                item['user_name'] = {STRING: f'id-{idx}'}
+                item['email'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -2134,7 +2134,7 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_name'] = {STRING: 'id-{}'.format(idx)}
+                item['user_name'] = {STRING: f'id-{idx}'}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
@@ -2430,8 +2430,8 @@ class ModelTestCase(TestCase):
             items = []
             for idx in range(10):
                 item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
-                item['email'] = {STRING: 'email-{}'.format(random.randint(0, 65536))}
+                item['user_id'] = {STRING: f'id-{idx}'}
+                item['email'] = {STRING: f'email-{random.randint(0, 65536)}'}
                 item['picture'] = {BINARY: BINARY_ATTR_DATA}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}

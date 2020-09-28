@@ -94,7 +94,7 @@ class Update:
         elif isinstance(action, DeleteAction):
             self.delete_actions.append(action)
         else:
-            raise ValueError("unsupported action type: '{}'".format(action.__class__.__name__))
+            raise ValueError(f"unsupported action type: '{action.__class__.__name__}'")
 
     def serialize(self, placeholder_names: Dict[str, str], expression_attribute_values: Dict[str, str]) -> Optional[str]:
         clauses = [

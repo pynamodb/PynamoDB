@@ -49,7 +49,7 @@ class _Operand:
 
     def _type_check(self, *types):
         if self.attr_type and self.attr_type not in types:
-            raise ValueError("The data type of '{}' must be one of {}".format(self, list(types)))
+            raise ValueError(f"The data type of '{self}' must be one of {list(types)}")
 
 
 class _ConditionOperand(_Operand):
@@ -254,26 +254,26 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
 
     def __iter__(self):
         # Because we define __getitem__ Path is considered an iterable
-        raise TypeError("'{}' object is not iterable".format(self.__class__.__name__))
+        raise TypeError(f"'{self.__class__.__name__}' object is not iterable")
 
     def __getitem__(self, item: Union[int, str]) -> 'Path':
         # The __getitem__ call returns a new Path instance without any attribute set.
         # This is intended since the nested element is not the same attribute as ``self``.
         if self.attribute and self.attribute.attr_type not in [LIST, MAP]:
-            raise TypeError("'{}' object has no attribute __getitem__".format(self.attribute.__class__.__name__))
+            raise TypeError(f"'{self.attribute.__class__.__name__}' object has no attribute __getitem__")
         if self.attr_type == LIST and not isinstance(item, int):
-            raise TypeError("list indices must be integers, not {}".format(type(item).__name__))
+            raise TypeError(f"list indices must be integers, not {type(item).__name__}")
         if self.attr_type == MAP and not isinstance(item, str):
-            raise TypeError("map attributes must be strings, not {}".format(type(item).__name__))
+            raise TypeError(f"map attributes must be strings, not {type(item).__name__}")
         if isinstance(item, int):
             # list dereference operator
             element_path = Path(self.path)  # copy the document path before indexing last element
-            element_path.path[-1] = '{}[{}]'.format(self.path[-1], item)
+            element_path.path[-1] = f'{self.path[-1]}[{item}]'
             return element_path
         if isinstance(item, str):
             # map dereference operator
             return Path(self.path + [item])
-        raise TypeError("item must be an integer or string, not {}".format(type(item).__name__))
+        raise TypeError(f"item must be an integer or string, not {type(item).__name__}")
 
     def __or__(self, other):
         return _IfNotExists(self, self._to_operand(other))
@@ -304,8 +304,7 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
 
     def is_type(self, attr_type: str) -> IsType:
         if attr_type not in ATTRIBUTE_TYPES:
-            raise ValueError("{} is not a valid attribute type. Must be one of {}".format(
-                attr_type, ATTRIBUTE_TYPES))
+            raise ValueError(f"{attr_type} is not a valid attribute type. Must be one of {ATTRIBUTE_TYPES}")
         return IsType(self, Value(attr_type))
 
     def startswith(self, prefix: str) -> BeginsWith:
@@ -333,7 +332,7 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         return '.'.join(quoted_path)
 
     def __repr__(self) -> str:
-        return "Path({})".format(self.path)
+        return f"Path({self.path})"
 
     @staticmethod
     def _quote_path(path: str) -> str:
