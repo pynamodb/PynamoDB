@@ -75,7 +75,7 @@ class MetaTable(object):
 
     def __repr__(self) -> str:
         if self.data:
-            return "MetaTable<{}>".format(self.data.get(TABLE_NAME))
+            return f"MetaTable<{self.data.get(TABLE_NAME)}>"
         return ""
 
     @property
@@ -144,7 +144,7 @@ class MetaTable(object):
                 for schema_key in index.get(KEY_SCHEMA):
                     if schema_key.get(KEY_TYPE) == HASH:
                         return schema_key.get(ATTR_NAME)
-        raise ValueError("No hash key attribute for index: {}".format(index_name))
+        raise ValueError(f"No hash key attribute for index: {index_name}")
 
     def get_index_range_keyname(self, index_name):
         """
@@ -196,7 +196,7 @@ class MetaTable(object):
                 if key in value:
                     return key
         attr_names = [attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS, [])]
-        raise ValueError("No attribute {} in {}".format(attribute_name, attr_names))
+        raise ValueError(f"No attribute {attribute_name} in {attr_names}")
 
     def get_identifier_map(self, hash_key: str, range_key: Optional[str] = None, key: str = KEY):
         """
@@ -289,7 +289,7 @@ class Connection(object):
             self._extra_headers = get_settings_value('extra_headers')
 
     def __repr__(self) -> str:
-        return "Connection<{}>".format(self.client.meta.endpoint_url)
+        return f"Connection<{self.client.meta.endpoint_url}>"
 
     def _log_debug(self, operation: str, kwargs: str):
         """
@@ -383,7 +383,7 @@ class Connection(object):
                 prepared_request = self._create_prepared_request(request_dict, operation_model)
 
                 # Implement the before-send event from botocore
-                event_name = 'before-send.dynamodb.{}'.format(operation_model.name)
+                event_name = f'before-send.dynamodb.{operation_model.name}'
                 event_responses = self.client._endpoint._event_emitter.emit(event_name, request=prepared_request)
                 event_response = first_non_none_response(event_responses)
 
@@ -551,7 +551,7 @@ class Connection(object):
                 data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
                 self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
             except BotoCoreError as e:
-                raise TableError("Unable to describe table: {}".format(e), e)
+                raise TableError(f"Unable to describe table: {e}", e)
             except ClientError as e:
                 if 'ResourceNotFound' in e.response['Error']['Code']:
                     raise TableDoesNotExist(e.response['Error']['Message'])
@@ -593,7 +593,7 @@ class Connection(object):
         operation_kwargs[ATTR_DEFINITIONS] = attrs_list
 
         if billing_mode not in AVAILABLE_BILLING_MODES:
-            raise ValueError("incorrect value for billing_mode, available modes: {}".format(AVAILABLE_BILLING_MODES))
+            raise ValueError(f"incorrect value for billing_mode, available modes: {AVAILABLE_BILLING_MODES}")
         if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
             del operation_kwargs[PROVISIONED_THROUGHPUT]
         elif billing_mode == PROVISIONED_BILLING_MODE:
@@ -642,7 +642,7 @@ class Connection(object):
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to create table: {}".format(e), e)
+            raise TableError(f"Failed to create table: {e}", e)
         return data
 
     def update_time_to_live(self, table_name: str, ttl_attribute_name: str) -> Dict:
@@ -659,7 +659,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to update TTL on table: {}".format(e), e)
+            raise TableError(f"Failed to update TTL on table: {e}", e)
 
     def delete_table(self, table_name: str) -> Dict:
         """
@@ -671,7 +671,7 @@ class Connection(object):
         try:
             data = self.dispatch(DELETE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to delete table: {}".format(e), e)
+            raise TableError(f"Failed to delete table: {e}", e)
         return data
 
     def update_table(
@@ -710,7 +710,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Failed to update table: {}".format(e), e)
+            raise TableError(f"Failed to update table: {e}", e)
 
     def list_tables(
         self,
@@ -732,7 +732,7 @@ class Connection(object):
         try:
             return self.dispatch(LIST_TABLES, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise TableError("Unable to list tables: {}".format(e), e)
+            raise TableError(f"Unable to list tables: {e}", e)
 
     def describe_table(self, table_name: str) -> Dict:
         """
@@ -758,7 +758,7 @@ class Connection(object):
         """
         tbl = self.get_meta_table(table_name)
         if tbl is None:
-            raise TableError("No such table {}".format(table_name))
+            raise TableError(f"No such table {table_name}")
         return tbl.get_item_attribute_map(
             attributes,
             item_key=item_key,
@@ -780,7 +780,7 @@ class Connection(object):
                     if return_type:
                         return key, attribute.get(key)
                     return attribute.get(key)
-            raise ValueError("Invalid attribute supplied: {}".format(attribute))
+            raise ValueError(f"Invalid attribute supplied: {attribute}")
         else:
             if return_type:
                 return None, attribute
@@ -798,7 +798,7 @@ class Connection(object):
         """
         tbl = self.get_meta_table(table_name)
         if tbl is None:
-            raise TableError("No such table {}".format(table_name))
+            raise TableError(f"No such table {table_name}")
         return tbl.get_attribute_type(attribute_name, value=value)
 
     def get_identifier_map(
@@ -813,7 +813,7 @@ class Connection(object):
         """
         tbl = self.get_meta_table(table_name)
         if tbl is None:
-            raise TableError("No such table {}".format(table_name))
+            raise TableError(f"No such table {table_name}")
         return tbl.get_identifier_map(hash_key, range_key=range_key, key=key)
 
     def get_consumed_capacity_map(self, return_consumed_capacity: str) -> Dict:
@@ -821,7 +821,7 @@ class Connection(object):
         Builds the consumed capacity map that is common to several operations
         """
         if return_consumed_capacity.upper() not in RETURN_CONSUMED_CAPACITY_VALUES:
-            raise ValueError("{} must be one of {}".format(RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY_VALUES))
+            raise ValueError(f"{RETURN_ITEM_COLL_METRICS} must be one of {RETURN_CONSUMED_CAPACITY_VALUES}")
         return {
             RETURN_CONSUMED_CAPACITY: str(return_consumed_capacity).upper()
         }
@@ -831,7 +831,7 @@ class Connection(object):
         Builds the return values map that is common to several operations
         """
         if return_values.upper() not in RETURN_VALUES_VALUES:
-            raise ValueError("{} must be one of {}".format(RETURN_VALUES, RETURN_VALUES_VALUES))
+            raise ValueError(f"{RETURN_VALUES} must be one of {RETURN_VALUES_VALUES}")
         return {
             RETURN_VALUES: str(return_values).upper()
         }
@@ -857,7 +857,7 @@ class Connection(object):
         Builds the item collection map
         """
         if return_item_collection_metrics.upper() not in RETURN_ITEM_COLL_METRICS_VALUES:
-            raise ValueError("{} must be one of {}".format(RETURN_ITEM_COLL_METRICS, RETURN_ITEM_COLL_METRICS_VALUES))
+            raise ValueError(f"{RETURN_ITEM_COLL_METRICS} must be one of {RETURN_ITEM_COLL_METRICS_VALUES}")
         return {
             RETURN_ITEM_COLL_METRICS: str(return_item_collection_metrics).upper()
         }
@@ -868,7 +868,7 @@ class Connection(object):
         """
         tbl = self.get_meta_table(table_name)
         if tbl is None:
-            raise TableError("No such table {}".format(table_name))
+            raise TableError(f"No such table {table_name}")
         return tbl.get_exclusive_start_key_map(exclusive_start_key)
 
     def get_operation_kwargs(
@@ -951,7 +951,7 @@ class Connection(object):
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise DeleteError("Failed to delete item: {}".format(e), e)
+            raise DeleteError(f"Failed to delete item: {e}", e)
 
     def update_item(
         self,
@@ -983,7 +983,7 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise UpdateError("Failed to update item: {}".format(e), e)
+            raise UpdateError(f"Failed to update item: {e}", e)
 
     def put_item(
         self,
@@ -1013,7 +1013,7 @@ class Connection(object):
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to put item: {}".format(e), e)
+            raise PutError(f"Failed to put item: {e}", e)
 
     def _get_transact_operation_kwargs(
         self,
@@ -1126,7 +1126,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to batch write items: {}".format(e), e)
+            raise PutError(f"Failed to batch write items: {e}", e)
 
     def batch_get_item(
         self,
@@ -1167,7 +1167,7 @@ class Connection(object):
         try:
             return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to batch get items: {}".format(e), e)
+            raise GetError(f"Failed to batch get items: {e}", e)
 
     def get_item(
         self,
@@ -1190,7 +1190,7 @@ class Connection(object):
         try:
             return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise GetError("Failed to get item: {}".format(e), e)
+            raise GetError(f"Failed to get item: {e}", e)
 
     def scan(
         self,
@@ -1242,7 +1242,7 @@ class Connection(object):
         try:
             return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise ScanError("Failed to scan table: {}".format(e), e)
+            raise ScanError(f"Failed to scan table: {e}", e)
 
     def query(
         self,
@@ -1271,10 +1271,10 @@ class Connection(object):
 
         tbl = self.get_meta_table(table_name)
         if tbl is None:
-            raise TableError("No such table: {}".format(table_name))
+            raise TableError(f"No such table: {table_name}")
         if index_name:
             if not tbl.has_index_name(index_name):
-                raise ValueError("Table {} has no index: {}".format(table_name, index_name))
+                raise ValueError(f"Table {table_name} has no index: {index_name}")
             hash_keyname = tbl.get_index_hash_keyname(index_name)
         else:
             hash_keyname = tbl.hash_keyname
@@ -1304,7 +1304,7 @@ class Connection(object):
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if select:
             if select.upper() not in SELECT_VALUES:
-                raise ValueError("{} must be one of {}".format(SELECT, SELECT_VALUES))
+                raise ValueError(f"{SELECT} must be one of {SELECT_VALUES}")
             operation_kwargs[SELECT] = str(select).upper()
         if scan_index_forward is not None:
             operation_kwargs[SCAN_INDEX_FORWARD] = scan_index_forward
@@ -1316,12 +1316,12 @@ class Connection(object):
         try:
             return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise QueryError("Failed to query items: {}".format(e), e)
+            raise QueryError(f"Failed to query items: {e}", e)
 
     def _check_condition(self, name, condition):
         if condition is not None:
             if not isinstance(condition, Condition):
-                raise ValueError("'{}' must be an instance of Condition".format(name))
+                raise ValueError(f"'{name}' must be an instance of Condition")
 
     @staticmethod
     def _reverse_dict(d):

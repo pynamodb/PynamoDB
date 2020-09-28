@@ -68,26 +68,26 @@ def test_model_integration(ddb_url):
     obj3.refresh()
 
     with TestModel.batch_write() as batch:
-        items = [TestModel('hash-{}'.format(x), '{}'.format(x)) for x in range(10)]
+        items = [TestModel(f'hash-{x}', f'{x}') for x in range(10)]
         for item in items:
             batch.save(item)
 
-    item_keys = [('hash-{}'.format(x), 'thread-{}'.format(x)) for x in range(10)]
+    item_keys = [(f'hash-{x}', f'thread-{x}') for x in range(10)]
 
     for item in TestModel.batch_get(item_keys):
         print(item)
 
     for item in TestModel.query('setitem', TestModel.thread.startswith('set')):
-        print("Query Item {}".format(item))
+        print(f"Query Item {item}")
 
     with TestModel.batch_write() as batch:
-        items = [TestModel('hash-{}'.format(x), '{}'.format(x)) for x in range(10)]
+        items = [TestModel(f'hash-{x}', f'{x}') for x in range(10)]
         for item in items:
             print("Batch delete")
             batch.delete(item)
 
     for item in TestModel.scan():
-        print("Scanned item: {}".format(item))
+        print(f"Scanned item: {item}")
 
     tstamp = datetime.now()
     query_obj = TestModel('query_forum', 'query_thread')
@@ -95,10 +95,10 @@ def test_model_integration(ddb_url):
     query_obj.save()
     query_obj.update([TestModel.view.add(1)])
     for item in TestModel.epoch_index.query(tstamp):
-        print("Item queried from index: {}".format(item))
+        print(f"Item queried from index: {item}")
 
     for item in TestModel.view_index.query('foo', TestModel.view > 0):
-        print("Item queried from index: {}".format(item.view))
+        print(f"Item queried from index: {item.view}")
 
     print(query_obj.update([TestModel.view.add(1)], condition=TestModel.forum.exists()))
     TestModel.delete_table()

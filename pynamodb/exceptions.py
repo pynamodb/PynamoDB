@@ -93,7 +93,7 @@ class TableDoesNotExist(PynamoDBException):
     Raised when an operation is attempted on a table that doesn't exist
     """
     def __init__(self, table_name: str) -> None:
-        msg = "Table does not exist: `{}`".format(table_name)
+        msg = f"Table does not exist: `{table_name}`"
         super(TableDoesNotExist, self).__init__(msg)
 
 
@@ -123,7 +123,7 @@ class AttributeDeserializationError(TypeError):
     Raised when attribute type is invalid
     """
     def __init__(self, attr_name: str, attr_type: str):
-        msg = "Cannot deserialize '{}' attribute from type: {}".format(attr_name, attr_type)
+        msg = f"Cannot deserialize '{attr_name}' attribute from type: {attr_type}"
         super(AttributeDeserializationError, self).__init__(msg)
 
 

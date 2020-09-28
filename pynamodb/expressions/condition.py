@@ -46,7 +46,7 @@ class Condition(object):
 
     def __bool__(self):
         # Prevent users from accidentally comparing the condition object instead of the attribute instance
-        raise TypeError("unsupported operand type(s) for bool: {}".format(self.__class__.__name__))
+        raise TypeError(f"unsupported operand type(s) for bool: {self.__class__.__name__}")
 
 
 class Comparison(Condition):
@@ -54,7 +54,7 @@ class Comparison(Condition):
 
     def __init__(self, operator, lhs, rhs):
         if operator not in ['=', '<>', '<', '<=', '>', '>=']:
-            raise ValueError("{0} is not a valid comparison operator: {0}".format(operator))
+            raise ValueError(f"{operator} is not a valid comparison operator.")
         super().__init__(operator, lhs, rhs)
 
 

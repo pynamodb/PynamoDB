@@ -59,7 +59,7 @@ thread_item.save()
 with Thread.batch_write() as batch:
     threads = []
     for x in range(100):
-        thread = Thread('forum-{0}'.format(x), 'subject-{0}'.format(x))
+        thread = Thread(f'forum-{x}', f'subject-{x}')
         thread.tags = ['tag1', 'tag2']
         thread.last_post_datetime = datetime.now()
         threads.append(thread)
@@ -74,7 +74,7 @@ print(Thread.count())
 print(Thread.count('forum-1'))
 
 # Batch get
-item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(100)]
+item_keys = [(f'forum-{x}', f'subject-{x}') for x in range(100)]
 for item in Thread.batch_get(item_keys):
     print(item)
 
@@ -121,7 +121,7 @@ thread_item.save()
 with AliasedModel.batch_write() as batch:
     threads = []
     for x in range(100):
-        thread = AliasedModel('forum-{0}'.format(x), 'subject-{0}'.format(x))
+        thread = AliasedModel(f'forum-{x}', f'subject-{x}')
         thread.tags = ['tag1', 'tag2']
         thread.last_post_datetime = datetime.now()
         threads.append(thread)
@@ -130,30 +130,30 @@ with AliasedModel.batch_write() as batch:
         batch.save(thread)
 
 # Batch get
-item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(100)]
+item_keys = [(f'forum-{x}', f'subject-{x}') for x in range(100)]
 for item in AliasedModel.batch_get(item_keys):
-    print("Batch get item: {0}".format(item))
+    print(f"Batch get item: {item}")
 
 # Scan
 for item in AliasedModel.scan():
-    print("Scanned item: {0}".format(item))
+    print(f"Scanned item: {item}")
 
 # Query
 for item in AliasedModel.query('forum-1', AliasedModel.subject.startswith('subject')):
-    print("Query using aliased attribute: {0}".format(item))
+    print(f"Query using aliased attribute: {item}")
 
 # Query with filters
 for item in Thread.query('forum-1', (Thread.views == 0) | (Thread.replies == 0)):
-    print("Query result: {0}".format(item))
+    print(f"Query result: {item}")
 
 
 # Scan with filters
 for item in Thread.scan(Thread.subject.startswith('subject') & (Thread.views == 0)):
-    print("Scanned item: {0} {1}".format(item.subject, item.views))
+    print(f"Scanned item: {item.subject} {item.views}")
 
 # Scan with null filter
 for item in Thread.scan(Thread.subject.startswith('subject') & Thread.last_post_datetime.does_not_exist()):
-    print("Scanned item: {0} {1}".format(item.subject, item.views))
+    print(f"Scanned item: {item.subject} {item.views}")
 
 # Conditionally save an item
 thread_item = Thread(
@@ -204,7 +204,7 @@ print(thread_item.update(actions=[
 
 # Backup/restore example
 # Print the size of the table
-print("Table size: {}".format(Thread.describe_table().get('ItemCount')))
+print(f"Table size: {Thread.describe_table().get('ItemCount')}")
 
 # Dump the entire table to a file
 Thread.dump('thread.json')
@@ -213,11 +213,11 @@ Thread.dump('thread.json')
 # Commented out for safety
 # for item in Thread.scan():
 #     item.delete()
-print("Table size: {}".format(Thread.describe_table().get('ItemCount')))
+print(f"Table size: {Thread.describe_table().get('ItemCount')}")
 
 # Restore table from a file
 Thread.load('thread.json')
-print("Table size: {}".format(Thread.describe_table().get('ItemCount')))
+print(f"Table size: {Thread.describe_table().get('ItemCount')}")
 
 # Dump the entire table to a string
 serialized = Thread.dumps()

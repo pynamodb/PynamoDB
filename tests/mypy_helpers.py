@@ -15,7 +15,7 @@ def _run_mypy(program: str, *, use_pdb: bool) -> Iterable[str]:
     import mypy.api
 
     with TemporaryDirectory() as tempdirname:
-        with open('{}/__main__.py'.format(tempdirname), 'w') as f:
+        with open(f'{tempdirname}/__main__.py', 'w') as f:
             f.write(program)
         error_pattern = re.compile(fr'^{re.escape(f.name)}:'
                                    r'(?P<line>\d+): (?P<level>note|warning|error): (?P<message>.*)$')

@@ -384,7 +384,7 @@ class ConnectionTestCase(TestCase):
         conn = TableConnection(self.test_table_name)
         for i in range(10):
             items.append(
-                {"ForumName": "FooForum", "Subject": "thread-{}".format(i)}
+                {"ForumName": "FooForum", "Subject": f"thread-{i}"}
             )
         with patch(PATCH_METHOD) as req:
             req.return_value = DESCRIBE_TABLE_DATA
@@ -421,7 +421,7 @@ class ConnectionTestCase(TestCase):
         conn = TableConnection(self.test_table_name)
         for i in range(10):
             items.append(
-                {"ForumName": "FooForum", "Subject": "thread-{}".format(i)}
+                {"ForumName": "FooForum", "Subject": f"thread-{i}"}
             )
         with patch(PATCH_METHOD) as req:
             req.return_value = DESCRIBE_TABLE_DATA

@@ -127,7 +127,7 @@ class Attribute(Generic[_T]):
 
     def __iter__(self):
         # Because we define __getitem__ below for condition expression support
-        raise TypeError("'{}' object is not iterable".format(self.__class__.__name__))
+        raise TypeError(f"'{self.__class__.__name__}' object is not iterable")
 
     # Condition Expression Support
     def __eq__(self, other: Any) -> 'Comparison':  # type: ignore
@@ -264,7 +264,7 @@ class AttributeContainerMeta(GenericMeta):
             raise NotImplementedError("Discriminators are not yet supported in model classes.")
         if discriminator_value is not None:
             if not cls._discriminator:
-                raise ValueError("{} does not have a discriminator attribute".format(cls.__name__))
+                raise ValueError(f"{cls.__name__} does not have a discriminator attribute")
             cls._attributes[cls._discriminator].register_class(cls, discriminator_value)
 
 
@@ -338,7 +338,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         """
         for attr_name, attr_value in attributes.items():
             if attr_name not in self.get_attributes():
-                raise ValueError("Attribute {} specified does not exist".format(attr_name))
+                raise ValueError(f"Attribute {attr_name} specified does not exist")
             setattr(self, attr_name, attr_value)
 
     def _serialize(self, null_check=True) -> Dict[str, Dict[str, Any]]:
@@ -349,11 +349,11 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         for name, attr in self.get_attributes().items():
             value = getattr(self, name)
             if isinstance(value, MapAttribute) and not value.validate():
-                raise ValueError("Attribute '{}' is not correctly typed".format(name))
+                raise ValueError(f"Attribute '{name}' is not correctly typed")
 
             attr_value = attr.serialize(value) if value is not None else None
             if null_check and attr_value is None and not attr.null:
-                raise ValueError("Attribute '{}' cannot be None".format(name))
+                raise ValueError(f"Attribute '{name}' cannot be None")
 
             if attr_value is not None:
                 attribute_values[attr.attr_name] = {attr.attr_type: attr_value}
@@ -405,7 +405,7 @@ class DiscriminatorAttribute(Attribute[type]):
         return self._class_map.get(cls)
 
     def __set__(self, instance: Any, value: Optional[type]) -> None:
-        raise TypeError("'{}' object does not support item assignment".format(self.__class__.__name__))
+        raise TypeError(f"'{self.__class__.__name__}' object does not support item assignment")
 
     def serialize(self, value):
         """
@@ -418,7 +418,7 @@ class DiscriminatorAttribute(Attribute[type]):
         Returns the class corresponding to the given discriminator value.
         """
         if value not in self._discriminator_map:
-            raise ValueError("Unknown discriminator value: {}".format(value))
+            raise ValueError(f"Unknown discriminator value: {value}")
         return self._discriminator_map[value]
 
 
@@ -678,14 +678,14 @@ class UTCDateTimeAttribute(Attribute[datetime]):
             if (len(date_string) != 31 or date_string[4] != '-' or date_string[7] != '-'
                     or date_string[10] != 'T' or date_string[13] != ':' or date_string[16] != ':'
                     or date_string[19] != '.' or date_string[26:31] != '+0000'):
-                raise ValueError("Datetime string '{}' does not match format '{}'".format(date_string, DATETIME_FORMAT))
+                raise ValueError(f"Datetime string '{date_string}' does not match format '{DATETIME_FORMAT}'")
             return datetime(
                 _int(date_string[0:4]), _int(date_string[5:7]), _int(date_string[8:10]),
                 _int(date_string[11:13]), _int(date_string[14:16]), _int(date_string[17:19]),
                 _int(date_string[20:26]), timezone.utc
             )
         except (TypeError, ValueError):
-            raise ValueError("Datetime string '{}' does not match format '{}'".format(date_string, DATETIME_FORMAT))
+            raise ValueError(f"Datetime string '{date_string}' does not match format '{DATETIME_FORMAT}'")
 
 
 class NullAttribute(Attribute[None]):
@@ -838,17 +838,17 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         elif item in self._attributes:  # type: ignore
             return getattr(self, item)
         else:
-            raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, item))
+            raise AttributeError(f"'{self.__class__.__name__}' has no attribute '{item}'")
 
     def __setitem__(self, item, value):
         if not self._is_attribute_container():
-            raise TypeError("'{}' object does not support item assignment".format(self.__class__.__name__))
+            raise TypeError(f"'{self.__class__.__name__}' object does not support item assignment")
         if self.is_raw():
             self.attribute_values[item] = value
         elif item in self._attributes:  # type: ignore
             setattr(self, item, value)
         else:
-            raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, item))
+            raise AttributeError(f"'{self.__class__.__name__}' has no attribute '{item}'")
 
     def __getattr__(self, attr: str) -> _VT:
         # This should only be called for "raw" (i.e. non-subclassed) MapAttribute instances.
@@ -858,7 +858,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
                 return self.attribute_values[attr]
             except KeyError:
                 pass
-        raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, attr))
+        raise AttributeError(f"'{self.__class__.__name__}' has no attribute '{attr}'")
 
     @overload  # type: ignore
     def __get__(self: _A, instance: None, owner: Any) -> _A: ...
@@ -897,7 +897,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         if can_be_null and value is None:
             return True
         if getattr(self, key) is None:
-            raise ValueError("Attribute '{}' cannot be None".format(key))
+            raise ValueError(f"Attribute '{key}' cannot be None")
         return True  # TODO: check that the actual type of `value` meets requirements of `attr`
 
     def validate(self):
@@ -974,7 +974,7 @@ def _get_class_for_serialize(value):
         return value
     value_type = type(value)
     if value_type not in SERIALIZE_CLASS_MAP:
-        raise ValueError('Unknown value: {}'.format(value_type))
+        raise ValueError(f'Unknown value: {value_type}')
     return SERIALIZE_CLASS_MAP[value_type]
 
 
@@ -1011,7 +1011,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         for v in values:
             attr_class = self._get_serialize_class(v)
             if self.element_type and v is not None and not isinstance(attr_class, self.element_type):
-                raise ValueError("List elements must be of type: {}".format(self.element_type.__name__))
+                raise ValueError(f"List elements must be of type: {self.element_type.__name__}")
             attr_type = attr_class.attr_type
             attr_value = attr_class.serialize(v)
             if attr_value is None:
@@ -1034,7 +1034,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
                 value = None
                 if NULL not in attribute_value:
                     # set attr_name in case `get_value` raises an exception
-                    element_attr.attr_name = '{}[{}]'.format(self.attr_name, idx)
+                    element_attr.attr_name = f'{self.attr_name}[{idx}]'
                     value = element_attr.deserialize(element_attr.get_value(attribute_value))
                 deserialized_lst.append(value)
             return deserialized_lst
@@ -1046,7 +1046,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
 
     def __getitem__(self, idx: int) -> Path:  # type: ignore
         if not isinstance(idx, int):
-            raise TypeError("list indices must be integers, not {}".format(type(idx).__name__))
+            raise TypeError(f"list indices must be integers, not {type(idx).__name__}")
 
         if self.element_type:
             # If this instance is typed, return a properly configured attribute on list element access.
@@ -1054,7 +1054,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
             if isinstance(element_attr, MapAttribute):
                 element_attr._make_attribute()
             element_attr.attr_path = list(self.attr_path)  # copy the document path before indexing last element
-            element_attr.attr_name = '{}[{}]'.format(element_attr.attr_name, idx)
+            element_attr.attr_name = f'{element_attr.attr_name}[{idx}]'
             if isinstance(element_attr, MapAttribute):
                 for path_segment in reversed(element_attr.attr_path):
                     element_attr._update_attribute_paths(path_segment)
