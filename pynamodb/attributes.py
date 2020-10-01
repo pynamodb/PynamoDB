@@ -17,11 +17,20 @@ from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVa
 from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
-from pynamodb.constants import (
-    BINARY, BINARY_SET, BOOLEAN, DATETIME_FORMAT, DEFAULT_ENCODING,
-    LIST, MAP, NULL, NUMBER, NUMBER_SET, STRING, STRING_SET
-)
-from pynamodb.exceptions import AttributeDeserializationError, AttributeNullError
+from pynamodb.constants import BINARY
+from pynamodb.constants import BINARY_SET
+from pynamodb.constants import BOOLEAN
+from pynamodb.constants import DATETIME_FORMAT
+from pynamodb.constants import DEFAULT_ENCODING
+from pynamodb.constants import LIST
+from pynamodb.constants import MAP
+from pynamodb.constants import NULL
+from pynamodb.constants import NUMBER
+from pynamodb.constants import NUMBER_SET
+from pynamodb.constants import STRING
+from pynamodb.constants import STRING_SET
+from pynamodb.exceptions import AttributeDeserializationError
+from pynamodb.exceptions import AttributeNullError
 from pynamodb.expressions.operand import Path
 
 
@@ -368,6 +377,36 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             if attribute_value and NULL not in attribute_value:
                 value = attr.deserialize(attr.get_value(attribute_value))
                 setattr(self, name, value)
+
+    @classmethod
+    def _update_attribute_types(cls, attribute_values: Dict[str, Dict[str, Any]]):
+        """
+        Update the attribute types in the attribute values dictionary to disambiguate json string and array types
+        """
+        for attr in cls.get_attributes().values():
+            attribute_value = attribute_values.get(attr.attr_name)
+            if attribute_value:
+                AttributeContainer._coerce_attribute_type(attr.attr_type, attribute_value)
+                if isinstance(attr, ListAttribute) and attr.element_type and LIST in attribute_value:
+                    if issubclass(attr.element_type, AttributeContainer):
+                        for element in attribute_value[LIST]:
+                            if MAP in element:
+                                attr.element_type._update_attribute_types(element[MAP])
+                    else:
+                        for element in attribute_value[LIST]:
+                            AttributeContainer._coerce_attribute_type(attr.element_type.attr_type, element)
+                if isinstance(attr, AttributeContainer) and MAP in attribute_value:
+                    attr._update_attribute_types(attribute_value[MAP])
+
+    @staticmethod
+    def _coerce_attribute_type(attr_type: str, attribute_value: Dict[str, Any]):
+        # coerce attribute types to disambiguate json string and array types
+        if attr_type == BINARY and STRING in attribute_value:
+            attribute_value[BINARY] = attribute_value.pop(STRING)
+        if attr_type in {BINARY_SET, NUMBER_SET, STRING_SET} and LIST in attribute_value:
+            json_type = NUMBER if attr_type == NUMBER_SET else STRING
+            if all(next(iter(v)) == json_type for v in attribute_value[LIST]):
+                attribute_value[attr_type] = [value[json_type] for value in attribute_value.pop(LIST)]
 
     @classmethod
     def _get_discriminator_class(cls, attribute_values: Dict[str, Dict[str, Any]]) -> Optional[Type]:
@@ -1174,4 +1213,5 @@ SERIALIZE_CLASS_MAP = {
     float: NumberAttribute(),
     int: NumberAttribute(),
     str: UnicodeAttribute(),
+    bytes: BinaryAttribute(),
 }

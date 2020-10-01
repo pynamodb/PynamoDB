@@ -4,6 +4,7 @@ Release Notes
 Unreleased
 ----------
 * The ``IndexMeta`` class has been removed. Now ``type(Index) == type``.
+* JSON serialization support (``Model.to_json`` and ``Model.from_json``) has been added.
 
 
 v5.1.0
