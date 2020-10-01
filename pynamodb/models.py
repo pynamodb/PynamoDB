@@ -379,11 +379,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return BatchWrite(cls, auto_commit=auto_commit)
 
     def __repr__(self) -> str:
-        serialized = self._serialize(null_check=False)
+        hash_key, range_key = self._get_serialized_keys()
         if self._range_keyname:
-            msg = "{}<{}, {}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
+            msg = "{}<{}, {}>".format(self.Meta.table_name, hash_key, range_key)
         else:
-            msg = "{}<{}>".format(self.Meta.table_name, serialized.get(HASH))
+            msg = "{}<{}>".format(self.Meta.table_name, hash_key)
         return msg
 
     def delete(self, condition: Optional[Condition] = None) -> Any:
@@ -975,16 +975,20 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         Returns the proper arguments for deleting
         """
-        serialized = self._serialize(null_check=False)
-        hash_key = serialized.get(HASH)
-        range_key = serialized.get(RANGE, None)
-        attrs = {
-            self._hash_key_attribute().attr_name: hash_key,
-        }
-        if self._range_keyname is not None:
-            range_keyname = self._range_key_attribute().attr_name
-            attrs[range_keyname] = range_key
+        hash_key, range_key = self._get_serialized_keys()
+        hash_key_attribute = self._hash_key_attribute()
+        range_key_attribute = self._range_key_attribute()
+        attrs = {}
+        if hash_key_attribute:
+            attrs[hash_key_attribute.attr_name] = hash_key
+        if range_key_attribute:
+            attrs[range_key_attribute.attr_name] = range_key
         return attrs
+
+    def _get_serialized_keys(self) -> Tuple[_KeyType, _KeyType]:
+        hash_key = getattr(self, self._hash_keyname) if self._hash_keyname else None
+        range_key = getattr(self, self._range_keyname) if self._range_keyname else None
+        return self._serialize_keys(hash_key, range_key)
 
     @classmethod
     def _batch_get_page(cls, keys_to_get, consistent_read, attributes_to_get):
@@ -1086,7 +1090,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param hash_key: The hash key value
         :param range_key: The range key value
         """
-        hash_key = cls._hash_key_attribute().serialize(hash_key)
+        if hash_key is not None:
+            hash_key = cls._hash_key_attribute().serialize(hash_key)
         if range_key is not None:
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key
