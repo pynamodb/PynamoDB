@@ -1,7 +1,6 @@
 """
 DynamoDB Models for PynamoDB
 """
-import json
 import random
 import time
 import logging
@@ -13,7 +12,7 @@ from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Seque
 from pynamodb.expressions.update import Action
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
 from pynamodb.attributes import (
-    Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
+    Attribute, AttributeContainer, AttributeContainerMeta, TTLAttribute, VersionAttribute
 )
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
@@ -380,7 +379,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return BatchWrite(cls, auto_commit=auto_commit)
 
     def __repr__(self) -> str:
-        table_name = self.Meta.table_name if self.Meta.table_name else 'unknown'
         serialized = self._serialize(null_check=False)
         if self._range_keyname:
             msg = "{}<{}, {}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
@@ -824,59 +822,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 else:
                     raise
 
-    @classmethod
-    def dumps(cls) -> Any:
-        """
-        Returns a JSON representation of this model's table
-        """
-        return json.dumps([item._get_json() for item in cls.scan()])
-
-    @classmethod
-    def dump(cls, filename: str) -> None:
-        """
-        Writes the contents of this model's table as JSON to the given filename
-        """
-        with open(filename, 'w') as out:
-            out.write(cls.dumps())
-
-    @classmethod
-    def loads(cls, data: str) -> None:
-        content = json.loads(data)
-        with cls.batch_write() as batch:
-            for item_data in content:
-                item = cls._from_data(item_data)
-                batch.save(item)
-
-    @classmethod
-    def load(cls, filename: str) -> None:
-        with open(filename, 'r') as inf:
-            cls.loads(inf.read())
-
     # Private API below
-    @classmethod
-    def _from_data(cls, data):
-        """
-        Reconstructs a model object from JSON.
-        """
-        hash_key, attrs = data
-        range_key = attrs.pop('range_key', None)
-        attributes = attrs.pop(snake_to_camel_case(ATTRIBUTES))
-        hash_key_attribute = cls._hash_key_attribute()
-        hash_keyname = hash_key_attribute.attr_name
-        hash_keytype = hash_key_attribute.attr_type
-        attributes[hash_keyname] = {
-            hash_keytype: hash_key
-        }
-        if range_key is not None:
-            range_key_attribute = cls._range_key_attribute()
-            range_keyname = range_key_attribute.attr_name
-            range_keytype = range_key_attribute.attr_type
-            attributes[range_keyname] = {
-                range_keytype: range_key
-            }
-        item = cls(_user_instantiated=False)
-        item._deserialize(attributes)
-        return item
 
     @classmethod
     def _get_schema(cls):
@@ -942,19 +888,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 else:
                     cls._indexes[snake_to_camel_case(LOCAL_SECONDARY_INDEXES)].append(idx)
         return cls._indexes
-
-    def _get_json(self):
-        """
-        Returns a Python object suitable for serialization
-        """
-        kwargs = {}
-        serialized = self._serialize(null_check=False)
-        hash_key = serialized.get(HASH)
-        range_key = serialized.get(RANGE, None)
-        if range_key is not None:
-            kwargs[snake_to_camel_case(RANGE_KEY)] = range_key
-        kwargs[snake_to_camel_case(ATTRIBUTES)] = serialized[snake_to_camel_case(ATTRIBUTES)]
-        return hash_key, kwargs
 
     def _get_save_args(self, attributes=True, null_check=True):
         """

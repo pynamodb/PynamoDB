@@ -213,17 +213,6 @@ the type of data you'd like to stream.
         name = UnicodeAttribute(range_key=True)
         id = UnicodeAttribute(hash_key=True)
 
-Want to backup and restore a table? No problem.
-
-.. code-block:: python
-
-    # Backup the table
-    UserModel.dump("usermodel_backup.json")
-
-    # Restore the table
-    UserModel.load("usermodel_backup.json")
-
-
 Features
 ========
 
@@ -231,7 +220,6 @@ Features
 * An ORM-like interface with query and scan filters
 * Compatible with DynamoDB Local
 * Supports the entire DynamoDB API
-* Full table backup/restore
 * Support for Unicode, Binary, JSON, Number, Set, and UTC Datetime attributes
 * Support for Global and Local Secondary Indexes
 * Provides iterators for working with queries, scans, that are automatically paginated
