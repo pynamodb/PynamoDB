@@ -118,10 +118,9 @@ class BatchWrite(ModelContextManager, Generic[_T]):
         log.debug("%s committing batch operation", self.model)
         put_items = []
         delete_items = []
-        attrs_name = snake_to_camel_case(ATTRIBUTES)
         for item in self.pending_operations:
             if item['action'] == PUT:
-                put_items.append(item['item']._serialize(attr_map=True)[attrs_name])
+                put_items.append(item['item']._serialize())
             elif item['action'] == DELETE:
                 delete_items.append(item['item']._get_keys())
         self.pending_operations = []
@@ -899,14 +898,18 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param null_check: If True, then attributes are checked for null.
         """
         kwargs = {}
-        serialized = self._serialize(null_check=null_check)
-        hash_key = serialized.get(HASH)
-        range_key = serialized.get(RANGE, None)
+        attribute_values = self._serialize(null_check)
+        hash_key_attribute = self._hash_key_attribute()
+        hash_key = attribute_values.pop(hash_key_attribute.attr_name, {}).get(hash_key_attribute.attr_type)
+        range_key = None
+        range_key_attribute = self._range_key_attribute()
+        if range_key_attribute:
+            range_key = attribute_values.pop(range_key_attribute.attr_name, {}).get(range_key_attribute.attr_type)
         args = (hash_key, )
         if range_key is not None:
             kwargs[snake_to_camel_case(RANGE_KEY)] = range_key
         if attributes:
-            kwargs[snake_to_camel_case(ATTRIBUTES)] = serialized[snake_to_camel_case(ATTRIBUTES)]
+            kwargs[snake_to_camel_case(ATTRIBUTES)] = attribute_values
         return args, kwargs
 
     def _handle_version_attribute(self, serialized_attributes, actions=None):
@@ -1043,27 +1046,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                                               aws_secret_access_key=cls.Meta.aws_secret_access_key,
                                               aws_session_token=cls.Meta.aws_session_token)
         return cls._connection
-
-    def _serialize(self, null_check=True, attr_map=False) -> Dict[str, Dict[str, Any]]:
-        """
-        Serializes all model attributes for use with DynamoDB
-
-        :param null_check: If True, then attributes are checked for null
-        :param attr_map: If True, then attributes are returned
-        """
-        attributes = snake_to_camel_case(ATTRIBUTES)
-        attrs: Dict[str, Dict] = {attributes: super()._serialize(null_check)}
-        if not attr_map:
-            hash_key_attribute = self._hash_key_attribute()
-            hash_key_attribute_value = attrs[attributes].pop(hash_key_attribute.attr_name, None)
-            if hash_key_attribute_value is not None:
-                attrs[HASH] = hash_key_attribute_value[hash_key_attribute.attr_type]
-            range_key_attribute = self._range_key_attribute()
-            if range_key_attribute:
-                range_key_attribute_value = attrs[attributes].pop(range_key_attribute.attr_name, None)
-                if range_key_attribute_value is not None:
-                    attrs[RANGE] = range_key_attribute_value[range_key_attribute.attr_type]
-        return attrs
 
     @classmethod
     def _serialize_value(cls, attr, value):

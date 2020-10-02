@@ -37,7 +37,7 @@ from .data import (
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
-    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA, COMPLEX_MODEL_SERIALIZED_TABLE_DATA,
+    BINARY_ATTR_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
     GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
@@ -1390,7 +1390,8 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id.between('id-1', 'id-3')):
-                queried.append(item._serialize().get(RANGE))
+                hash_key, range_key = item._get_serialized_keys()
+                queried.append(range_key)
             self.assertListEqual(
                 [item.get('user_id').get(STRING) for item in items],
                 queried
@@ -1618,7 +1619,8 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             scanned_items = []
             for item in UserModel.scan():
-                scanned_items.append(item._serialize().get(RANGE))
+                hash_key, range_key = item._get_serialized_keys()
+                scanned_items.append(range_key)
             self.assertListEqual(
                 [item.get('user_id').get(STRING) for item in items],
                 scanned_items
@@ -2805,7 +2807,7 @@ class ModelTestCase(TestCase):
         map_serialized = {'M': {'foo': {'S': 'bar'}}}
         instance = ExplicitRawMapModel(map_attr=map_native)
         serialized = instance._serialize()
-        self.assertEqual(serialized['attributes']['map_attr'], map_serialized)
+        self.assertEqual(serialized['map_attr'], map_serialized)
 
     def test_raw_map_serialize_fun_one(self):
         map_native = {
@@ -2821,7 +2823,7 @@ class ModelTestCase(TestCase):
 
         instance = ExplicitRawMapModel(map_attr=map_native)
         serialized = instance._serialize()
-        actual = serialized['attributes']['map_attr']
+        actual = serialized['map_attr']
         self.assertEqual(expected, actual)
 
     def test_raw_map_deserializes(self):
@@ -2882,7 +2884,7 @@ class ModelTestCase(TestCase):
             )
         )
         serialized = instance._serialize()
-        self.assertEqual(serialized['attributes']['sub_attr']['M']['map_field'], map_serialized)
+        self.assertEqual(serialized['sub_attr']['M']['map_field'], map_serialized)
 
     def _get_raw_map_as_sub_map_test_data(self):
         map_native = {
