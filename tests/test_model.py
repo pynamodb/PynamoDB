@@ -37,7 +37,7 @@ from .data import (
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
-    BINARY_ATTR_DATA, SERIALIZED_TABLE_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA, COMPLEX_MODEL_SERIALIZED_TABLE_DATA,
+    BINARY_ATTR_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
     GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
@@ -1390,7 +1390,8 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id.between('id-1', 'id-3')):
-                queried.append(item._serialize().get(RANGE))
+                hash_key, range_key = item._get_serialized_keys()
+                queried.append(range_key)
             self.assertListEqual(
                 [item.get('user_id').get(STRING) for item in items],
                 queried
@@ -1618,7 +1619,8 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             scanned_items = []
             for item in UserModel.scan():
-                scanned_items.append(item._serialize().get(RANGE))
+                hash_key, range_key = item._get_serialized_keys()
+                scanned_items.append(range_key)
             self.assertListEqual(
                 [item.get('user_id').get(STRING) for item in items],
                 scanned_items
@@ -2422,83 +2424,6 @@ class ModelTestCase(TestCase):
         with self.assertRaises(AttributeError):
             OldStyleModel.exists()
 
-    def test_dumps(self):
-        """
-        Model.dumps
-        """
-        with patch(PATCH_METHOD) as req:
-            items = []
-            for idx in range(10):
-                item = copy.copy(GET_MODEL_ITEM_DATA.get(ITEM))
-                item['user_id'] = {STRING: 'id-{}'.format(idx)}
-                item['email'] = {STRING: 'email-{}'.format(random.randint(0, 65536))}
-                item['picture'] = {BINARY: BINARY_ATTR_DATA}
-                items.append(item)
-            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            content = UserModel.dumps()
-            serialized_items = json.loads(content)
-            for original, new_item in zip(items, serialized_items):
-                self.assertEqual(new_item[0], original['user_name'][STRING])
-                self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['zip_code']['N'], original['zip_code']['N'])
-                self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['email']['S'], original['email']['S'])
-                self.assertEqual(new_item[1][snake_to_camel_case(ATTRIBUTES)]['picture']['B'], original['picture']['B'])
-
-    def test_loads(self):
-        """
-        Model.loads
-        """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {}
-            UserModel.loads(json.dumps(SERIALIZED_TABLE_DATA))
-
-        args = {
-            'UserModel': [
-                {
-                    'PutRequest': {
-                        'Item': {
-                            'user_id': {'S': u'id-0'},
-                            'callable_field': {'N': '42'},
-                            'user_name': {'S': u'foo'},
-                            'email': {'S': u'email-7980'},
-                            'picture': {
-                                "B": "aGVsbG8sIHdvcmxk"
-                            },
-                            'zip_code': {'N': '88030'}
-                        }
-                    }
-                },
-                {
-                    'PutRequest': {
-                        'Item': {
-                            'user_id': {'S': u'id-1'},
-                            'callable_field': {'N': '42'},
-                            'user_name': {'S': u'foo'},
-                            'email': {'S': u'email-19770'},
-                            'picture': {
-                                "B": "aGVsbG8sIHdvcmxk"
-                            },
-                            'zip_code': {'N': '88030'}
-                        }
-                    }
-                }
-            ]
-        }
-        self.assert_dict_lists_equal(req.call_args[0][1]['RequestItems']['UserModel'], args['UserModel'])
-
-    def test_loads_complex_model(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {}
-            ComplexModel.loads(json.dumps(COMPLEX_MODEL_SERIALIZED_TABLE_DATA))
-
-        args = {
-            'ComplexModel': [
-                {
-                    'PutRequest': COMPLEX_MODEL_ITEM_DATA
-                }
-            ]
-        }
-        self.assert_dict_lists_equal(req.call_args[0][1]['RequestItems']['ComplexModel'], args['ComplexModel'])
-
     def _get_office_employee(self):
         justin = Person(
             fname='Justin',
@@ -2882,7 +2807,7 @@ class ModelTestCase(TestCase):
         map_serialized = {'M': {'foo': {'S': 'bar'}}}
         instance = ExplicitRawMapModel(map_attr=map_native)
         serialized = instance._serialize()
-        self.assertEqual(serialized['attributes']['map_attr'], map_serialized)
+        self.assertEqual(serialized['map_attr'], map_serialized)
 
     def test_raw_map_serialize_fun_one(self):
         map_native = {
@@ -2898,7 +2823,7 @@ class ModelTestCase(TestCase):
 
         instance = ExplicitRawMapModel(map_attr=map_native)
         serialized = instance._serialize()
-        actual = serialized['attributes']['map_attr']
+        actual = serialized['map_attr']
         self.assertEqual(expected, actual)
 
     def test_raw_map_deserializes(self):
@@ -2959,7 +2884,7 @@ class ModelTestCase(TestCase):
             )
         )
         serialized = instance._serialize()
-        self.assertEqual(serialized['attributes']['sub_attr']['M']['map_field'], map_serialized)
+        self.assertEqual(serialized['sub_attr']['M']['map_field'], map_serialized)
 
     def _get_raw_map_as_sub_map_test_data(self):
         map_native = {

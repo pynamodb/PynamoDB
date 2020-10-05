@@ -1,7 +1,6 @@
 """
 DynamoDB Models for PynamoDB
 """
-import json
 import random
 import time
 import logging
@@ -13,7 +12,7 @@ from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Seque
 from pynamodb.expressions.update import Action
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
 from pynamodb.attributes import (
-    Attribute, AttributeContainer, AttributeContainerMeta, MapAttribute, TTLAttribute, VersionAttribute
+    Attribute, AttributeContainer, AttributeContainerMeta, TTLAttribute, VersionAttribute
 )
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
@@ -119,10 +118,9 @@ class BatchWrite(ModelContextManager, Generic[_T]):
         log.debug("%s committing batch operation", self.model)
         put_items = []
         delete_items = []
-        attrs_name = snake_to_camel_case(ATTRIBUTES)
         for item in self.pending_operations:
             if item['action'] == PUT:
-                put_items.append(item['item']._serialize(attr_map=True)[attrs_name])
+                put_items.append(item['item']._serialize())
             elif item['action'] == DELETE:
                 delete_items.append(item['item']._get_keys())
         self.pending_operations = []
@@ -380,12 +378,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return BatchWrite(cls, auto_commit=auto_commit)
 
     def __repr__(self) -> str:
-        table_name = self.Meta.table_name if self.Meta.table_name else 'unknown'
-        serialized = self._serialize(null_check=False)
+        hash_key, range_key = self._get_serialized_keys()
         if self._range_keyname:
-            msg = "{}<{}, {}>".format(self.Meta.table_name, serialized.get(HASH), serialized.get(RANGE))
+            msg = "{}<{}, {}>".format(self.Meta.table_name, hash_key, range_key)
         else:
-            msg = "{}<{}>".format(self.Meta.table_name, serialized.get(HASH))
+            msg = "{}<{}>".format(self.Meta.table_name, hash_key)
         return msg
 
     def delete(self, condition: Optional[Condition] = None) -> Any:
@@ -824,59 +821,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 else:
                     raise
 
-    @classmethod
-    def dumps(cls) -> Any:
-        """
-        Returns a JSON representation of this model's table
-        """
-        return json.dumps([item._get_json() for item in cls.scan()])
-
-    @classmethod
-    def dump(cls, filename: str) -> None:
-        """
-        Writes the contents of this model's table as JSON to the given filename
-        """
-        with open(filename, 'w') as out:
-            out.write(cls.dumps())
-
-    @classmethod
-    def loads(cls, data: str) -> None:
-        content = json.loads(data)
-        with cls.batch_write() as batch:
-            for item_data in content:
-                item = cls._from_data(item_data)
-                batch.save(item)
-
-    @classmethod
-    def load(cls, filename: str) -> None:
-        with open(filename, 'r') as inf:
-            cls.loads(inf.read())
-
     # Private API below
-    @classmethod
-    def _from_data(cls, data):
-        """
-        Reconstructs a model object from JSON.
-        """
-        hash_key, attrs = data
-        range_key = attrs.pop('range_key', None)
-        attributes = attrs.pop(snake_to_camel_case(ATTRIBUTES))
-        hash_key_attribute = cls._hash_key_attribute()
-        hash_keyname = hash_key_attribute.attr_name
-        hash_keytype = hash_key_attribute.attr_type
-        attributes[hash_keyname] = {
-            hash_keytype: hash_key
-        }
-        if range_key is not None:
-            range_key_attribute = cls._range_key_attribute()
-            range_keyname = range_key_attribute.attr_name
-            range_keytype = range_key_attribute.attr_type
-            attributes[range_keyname] = {
-                range_keytype: range_key
-            }
-        item = cls(_user_instantiated=False)
-        item._deserialize(attributes)
-        return item
 
     @classmethod
     def _get_schema(cls):
@@ -943,19 +888,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                     cls._indexes[snake_to_camel_case(LOCAL_SECONDARY_INDEXES)].append(idx)
         return cls._indexes
 
-    def _get_json(self):
-        """
-        Returns a Python object suitable for serialization
-        """
-        kwargs = {}
-        serialized = self._serialize(null_check=False)
-        hash_key = serialized.get(HASH)
-        range_key = serialized.get(RANGE, None)
-        if range_key is not None:
-            kwargs[snake_to_camel_case(RANGE_KEY)] = range_key
-        kwargs[snake_to_camel_case(ATTRIBUTES)] = serialized[snake_to_camel_case(ATTRIBUTES)]
-        return hash_key, kwargs
-
     def _get_save_args(self, attributes=True, null_check=True):
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
@@ -966,14 +898,18 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param null_check: If True, then attributes are checked for null.
         """
         kwargs = {}
-        serialized = self._serialize(null_check=null_check)
-        hash_key = serialized.get(HASH)
-        range_key = serialized.get(RANGE, None)
+        attribute_values = self._serialize(null_check)
+        hash_key_attribute = self._hash_key_attribute()
+        hash_key = attribute_values.pop(hash_key_attribute.attr_name, {}).get(hash_key_attribute.attr_type)
+        range_key = None
+        range_key_attribute = self._range_key_attribute()
+        if range_key_attribute:
+            range_key = attribute_values.pop(range_key_attribute.attr_name, {}).get(range_key_attribute.attr_type)
         args = (hash_key, )
         if range_key is not None:
             kwargs[snake_to_camel_case(RANGE_KEY)] = range_key
         if attributes:
-            kwargs[snake_to_camel_case(ATTRIBUTES)] = serialized[snake_to_camel_case(ATTRIBUTES)]
+            kwargs[snake_to_camel_case(ATTRIBUTES)] = attribute_values
         return args, kwargs
 
     def _handle_version_attribute(self, serialized_attributes, actions=None):
@@ -1042,16 +978,20 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         Returns the proper arguments for deleting
         """
-        serialized = self._serialize(null_check=False)
-        hash_key = serialized.get(HASH)
-        range_key = serialized.get(RANGE, None)
-        attrs = {
-            self._hash_key_attribute().attr_name: hash_key,
-        }
-        if self._range_keyname is not None:
-            range_keyname = self._range_key_attribute().attr_name
-            attrs[range_keyname] = range_key
+        hash_key, range_key = self._get_serialized_keys()
+        hash_key_attribute = self._hash_key_attribute()
+        range_key_attribute = self._range_key_attribute()
+        attrs = {}
+        if hash_key_attribute:
+            attrs[hash_key_attribute.attr_name] = hash_key
+        if range_key_attribute:
+            attrs[range_key_attribute.attr_name] = range_key
         return attrs
+
+    def _get_serialized_keys(self) -> Tuple[_KeyType, _KeyType]:
+        hash_key = getattr(self, self._hash_keyname) if self._hash_keyname else None
+        range_key = getattr(self, self._range_keyname) if self._range_keyname else None
+        return self._serialize_keys(hash_key, range_key)
 
     @classmethod
     def _batch_get_page(cls, keys_to_get, consistent_read, attributes_to_get):
@@ -1107,27 +1047,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                                               aws_session_token=cls.Meta.aws_session_token)
         return cls._connection
 
-    def _serialize(self, null_check=True, attr_map=False) -> Dict[str, Dict[str, Any]]:
-        """
-        Serializes all model attributes for use with DynamoDB
-
-        :param null_check: If True, then attributes are checked for null
-        :param attr_map: If True, then attributes are returned
-        """
-        attributes = snake_to_camel_case(ATTRIBUTES)
-        attrs: Dict[str, Dict] = {attributes: super()._serialize(null_check)}
-        if not attr_map:
-            hash_key_attribute = self._hash_key_attribute()
-            hash_key_attribute_value = attrs[attributes].pop(hash_key_attribute.attr_name, None)
-            if hash_key_attribute_value is not None:
-                attrs[HASH] = hash_key_attribute_value[hash_key_attribute.attr_type]
-            range_key_attribute = self._range_key_attribute()
-            if range_key_attribute:
-                range_key_attribute_value = attrs[attributes].pop(range_key_attribute.attr_name, None)
-                if range_key_attribute_value is not None:
-                    attrs[RANGE] = range_key_attribute_value[range_key_attribute.attr_type]
-        return attrs
-
     @classmethod
     def _serialize_value(cls, attr, value):
         """
@@ -1153,7 +1072,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param hash_key: The hash key value
         :param range_key: The range key value
         """
-        hash_key = cls._hash_key_attribute().serialize(hash_key)
+        if hash_key is not None:
+            hash_key = cls._hash_key_attribute().serialize(hash_key)
         if range_key is not None:
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key

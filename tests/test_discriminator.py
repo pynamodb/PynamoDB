@@ -45,14 +45,12 @@ class TestDiscriminatorAttribute:
         dtm.value = StringValue(name='foo', value='Hello')
         dtm.values = [NumberValue(name='bar', value=5), RenamedValue(name='baz', value='World')]
         assert dtm._serialize() == {
-            'HASH': 'foo',
-            'attributes': {
-                'value': {'M': {'cls': {'S': 'StringValue'}, 'name': {'S': 'foo'}, 'value': {'S': 'Hello'}}},
-                'values': {'L': [
-                    {'M': {'cls': {'S': 'NumberValue'}, 'name': {'S': 'bar'}, 'value': {'N': '5'}}},
-                    {'M': {'cls': {'S': 'custom_name'}, 'name': {'S': 'baz'}, 'value': {'S': 'World'}}}
-                ]}
-            }
+            'hash_key': {'S': 'foo'},
+            'value': {'M': {'cls': {'S': 'StringValue'}, 'name': {'S': 'foo'}, 'value': {'S': 'Hello'}}},
+            'values': {'L': [
+                {'M': {'cls': {'S': 'NumberValue'}, 'name': {'S': 'bar'}, 'value': {'N': '5'}}},
+                {'M': {'cls': {'S': 'custom_name'}, 'name': {'S': 'baz'}, 'value': {'S': 'World'}}}
+            ]}
         }
 
     def test_deserialize(self):
