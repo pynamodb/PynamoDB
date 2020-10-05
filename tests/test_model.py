@@ -22,7 +22,7 @@ from pynamodb.constants import (
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY,
     UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP, LIST, NUMBER, SCANNED_COUNT,
 )
-from pynamodb.models import Model, ResultSet
+from pynamodb.models import Model
 from pynamodb.indexes import (
     GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
     IncludeProjection, KeysOnlyProjection, Index
@@ -2784,23 +2784,6 @@ class ModelTestCase(TestCase):
             req.return_value = TREE_MODEL_ITEM_DATA
             item = TreeModel.get('123')
             self.assertEqual(item.left.left.left.value, 3)
-
-    def test_result_set_init(self):
-        results = []
-        operations = 1
-        arguments = 'args'
-        rs = ResultSet(results=results, operation=operations, arguments=arguments)
-        self.assertEqual(rs.results, results)
-        self.assertEqual(rs.operation, operations)
-        self.assertEqual(rs.arguments, arguments)
-
-    def test_result_set_iter(self):
-        results = [1, 2, 3]
-        operations = 1
-        arguments = 'args'
-        rs = ResultSet(results=results, operation=operations, arguments=arguments)
-        for k in rs:
-            self.assertTrue(k in results)
 
     def test_explicit_raw_map_serialize_pass(self):
         map_native = {'foo': 'bar'}

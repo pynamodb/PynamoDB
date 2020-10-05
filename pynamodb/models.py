@@ -161,18 +161,6 @@ class DefaultMeta(object):
     pass
 
 
-# TODO(garrettheel): is this used anywhere?
-class ResultSet(Iterable):
-
-    def __init__(self, results, operation, arguments):
-        self.results = results
-        self.operation = operation
-        self.arguments = arguments
-
-    def __iter__(self):
-        return iter(self.results)
-
-
 class MetaModel(AttributeContainerMeta):
     table_name: str
     read_capacity_units: Optional[int]
