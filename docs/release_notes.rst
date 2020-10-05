@@ -21,7 +21,8 @@ Items written using other formats must be rewritten before upgrading.
 
 ** Model Serialization **
 
-The ``Model._serialize`` method has changed and now only returns a dictionary of the DynamoDB attribute values.
+THe ``Model`` class now includes public methods for serializing and deserializing its attributes.
+``Model.serialize`` and ``Model.deserialize`` convert the model to/from a dictionary of DynamoDB attribute values.
 
 Other changes in this release:
 

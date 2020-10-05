@@ -120,7 +120,7 @@ class BatchWrite(ModelContextManager, Generic[_T]):
         delete_items = []
         for item in self.pending_operations:
             if item['action'] == PUT:
-                put_items.append(item['item']._serialize())
+                put_items.append(item['item'].serialize())
             elif item['action'] == DELETE:
                 delete_items.append(item['item']._get_keys())
         self.pending_operations = []
@@ -414,7 +414,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         kwargs.update(actions=actions)
 
         data = self._get_connection().update_item(*args, **kwargs)
-        self._deserialize(data[ATTRIBUTES])
+        self.deserialize(data[ATTRIBUTES])
         return data
 
     def save(self, condition: Optional[Condition] = None) -> Dict[str, Any]:
@@ -443,7 +443,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         item_data = attrs.get(ITEM, None)
         if item_data is None:
             raise self.DoesNotExist("This item does not exist in the table.")
-        self._deserialize(item_data)
+        self.deserialize(item_data)
 
     def get_operation_kwargs_from_instance(
         self,
@@ -532,7 +532,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             raise ValueError("Received no data to construct object")
 
         model = cls(_user_instantiated=False)
-        model._deserialize(data)
+        model.deserialize(data)
         return model
 
     @classmethod
@@ -886,7 +886,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param null_check: If True, then attributes are checked for null.
         """
         kwargs = {}
-        attribute_values = self._serialize(null_check)
+        attribute_values = self.serialize(null_check)
         hash_key_attribute = self._hash_key_attribute()
         hash_key = attribute_values.pop(hash_key_attribute.attr_name, {}).get(hash_key_attribute.attr_type)
         range_key = None

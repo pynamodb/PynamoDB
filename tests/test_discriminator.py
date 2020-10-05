@@ -44,7 +44,7 @@ class TestDiscriminatorAttribute:
         dtm.hash_key = 'foo'
         dtm.value = StringValue(name='foo', value='Hello')
         dtm.values = [NumberValue(name='bar', value=5), RenamedValue(name='baz', value='World')]
-        assert dtm._serialize() == {
+        assert dtm.serialize() == {
             'hash_key': {'S': 'foo'},
             'value': {'M': {'cls': {'S': 'StringValue'}, 'name': {'S': 'foo'}, 'value': {'S': 'Hello'}}},
             'values': {'L': [

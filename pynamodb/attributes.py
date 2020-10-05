@@ -341,7 +341,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
                 raise ValueError("Attribute {} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
 
-    def _serialize(self, null_check=True) -> Dict[str, Dict[str, Any]]:
+    def serialize(self, null_check=True) -> Dict[str, Dict[str, Any]]:
         """
         Serialize attribute values for DynamoDB
         """
@@ -359,7 +359,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
                 attribute_values[attr.attr_name] = {attr.attr_type: attr_value}
         return attribute_values
 
-    def _deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
+    def deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
         """
         Sets attributes sent back from DynamoDB on this object
         """
@@ -917,7 +917,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
                         setattr(instance, name, values[name])
                 values = instance
 
-            return values._serialize()
+            return AttributeContainer.serialize(values)
 
         # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
         # This special case behavior for "raw" attributes should be removed in the future.
@@ -948,7 +948,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
                     discriminator_value = discriminator_attr.get_value(discriminator_attribute_value)
                     cls = discriminator_attr.deserialize(discriminator_value)
             instance = cls()
-            instance._deserialize(values)
+            AttributeContainer.deserialize(instance, values)
             return instance
 
         return {
