@@ -1406,7 +1406,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id < 'id-1'):
-                queried.append(item._serialize())
+                queried.append(item.serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -1418,7 +1418,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id >= 'id-1'):
-                queried.append(item._serialize())
+                queried.append(item.serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -1430,7 +1430,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id <= 'id-1'):
-                queried.append(item._serialize())
+                queried.append(item.serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -1442,7 +1442,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id == 'id-1'):
-                queried.append(item._serialize())
+                queried.append(item.serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -1454,7 +1454,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo', UserModel.user_id.startswith('id')):
-                queried.append(item._serialize())
+                queried.append(item.serialize())
             self.assertTrue(len(queried) == len(items))
 
         with patch(PATCH_METHOD) as req:
@@ -1466,7 +1466,7 @@ class ModelTestCase(TestCase):
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
             queried = []
             for item in UserModel.query('foo'):
-                queried.append(item._serialize())
+                queried.append(item.serialize())
             self.assertTrue(len(queried) == len(items))
 
         def fake_query(*args):
@@ -1512,7 +1512,7 @@ class ModelTestCase(TestCase):
                     'foo',
                     UserModel.user_id.startswith('id'),
                     UserModel.email.contains('@') & UserModel.picture.exists() & UserModel.zip_code.between(2, 3)):
-                queried.append(item._serialize())
+                queried.append(item.serialize())
             params = {
                 'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
                 'FilterExpression': '((contains (#2, :2) AND attribute_exists (#3)) AND #4 BETWEEN :3 AND :4)',
@@ -2066,7 +2066,7 @@ class ModelTestCase(TestCase):
             queried = []
 
             for item in IndexedModel.email_index.query('foo', filter_condition=IndexedModel.user_name.startswith('bar'), limit=2):
-                queried.append(item._serialize())
+                queried.append(item.serialize())
 
             params = {
                 'KeyConditionExpression': '#0 = :0',
@@ -2104,7 +2104,7 @@ class ModelTestCase(TestCase):
                     'foo',
                     filter_condition=LocalIndexedModel.user_name.startswith('bar') & LocalIndexedModel.aliases.contains('baz'),
                     limit=1):
-                queried.append(item._serialize())
+                queried.append(item.serialize())
 
             params = {
                 'KeyConditionExpression': '#0 = :0',
@@ -2145,7 +2145,7 @@ class ModelTestCase(TestCase):
                     'foo',
                     filter_condition=CustomAttrNameModel.overidden_user_name.startswith('bar'),
                     limit=2):
-                queried.append(item._serialize())
+                queried.append(item.serialize())
 
             params = {
                 'KeyConditionExpression': '#0 = :0',
@@ -2789,7 +2789,7 @@ class ModelTestCase(TestCase):
         map_native = {'foo': 'bar'}
         map_serialized = {'M': {'foo': {'S': 'bar'}}}
         instance = ExplicitRawMapModel(map_attr=map_native)
-        serialized = instance._serialize()
+        serialized = instance.serialize()
         self.assertEqual(serialized['map_attr'], map_serialized)
 
     def test_raw_map_serialize_fun_one(self):
@@ -2805,7 +2805,7 @@ class ModelTestCase(TestCase):
                'bool_type': {'BOOL': True}}}
 
         instance = ExplicitRawMapModel(map_attr=map_native)
-        serialized = instance._serialize()
+        serialized = instance.serialize()
         actual = serialized['map_attr']
         self.assertEqual(expected, actual)
 
@@ -2827,7 +2827,7 @@ class ModelTestCase(TestCase):
             }
         }
         instance = ExplicitRawMapModel()
-        instance._deserialize({'map_attr': map_serialized})
+        instance.deserialize({'map_attr': map_serialized})
         actual = instance.map_attr
         for k, v in map_native.items():
             self.assertEqual(v, actual[k])
@@ -2866,7 +2866,7 @@ class ModelTestCase(TestCase):
                 map_field=map_native
             )
         )
-        serialized = instance._serialize()
+        serialized = instance.serialize()
         self.assertEqual(serialized['sub_attr']['M']['map_field'], map_serialized)
 
     def _get_raw_map_as_sub_map_test_data(self):
