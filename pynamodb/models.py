@@ -1009,7 +1009,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
                     cls.__module__, cls.__name__,
                 ),
             )
-        if cls._connection is None:
+        # For now we just check that the connection exists and (in the case of model inheritance)
+        # points to the same table. In the future we should update the connection if any of the attributes differ.
+        if cls._connection is None or cls._connection.table_name != cls.Meta.table_name:
             cls._connection = TableConnection(cls.Meta.table_name,
                                               region=cls.Meta.region,
                                               host=cls.Meta.host,

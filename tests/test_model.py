@@ -3256,3 +3256,18 @@ class ModelInitTestCase(TestCase):
         class ChildModel(ParentModel):
             pass
         self.assertEqual(ParentModel.Meta.table_name, ChildModel.Meta.table_name)
+
+    def test_connection_inheritance(self):
+        class Foo(Model):
+            class Meta:
+                table_name = 'foo'
+        class Bar(Foo):
+            class Meta:
+                table_name = 'bar'
+        class Baz(Foo):
+            pass
+        assert Foo._get_connection() is not Bar._get_connection()
+        assert Foo._get_connection() is Baz._get_connection()
+        self.assertEqual(Foo._get_connection().table_name, Foo.Meta.table_name)
+        self.assertEqual(Bar._get_connection().table_name, Bar.Meta.table_name)
+        self.assertEqual(Baz._get_connection().table_name, Baz.Meta.table_name)
