@@ -2,7 +2,6 @@
 Test model API
 """
 import base64
-import random
 import json
 import copy
 from datetime import datetime
@@ -14,9 +13,7 @@ from botocore.client import ClientError
 import pytest
 
 from .deep_eq import deep_eq
-from pynamodb.util import snake_to_camel_case
 from pynamodb.exceptions import DoesNotExist, TableError, PutError, AttributeDeserializationError
-from pynamodb.types import RANGE
 from pynamodb.constants import (
     ITEM, STRING, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY,
@@ -2424,6 +2421,17 @@ class ModelTestCase(TestCase):
         with self.assertRaises(AttributeError):
             OldStyleModel.exists()
 
+    def test_no_table_name_exception(self):
+        """
+        Display warning for Models without table names
+        """
+        class MissingTableNameModel(Model):
+            class Meta:
+                pass
+            user_name = UnicodeAttribute(hash_key=True)
+        with self.assertRaises(AttributeError):
+            MissingTableNameModel.exists()
+
     def _get_office_employee(self):
         justin = Person(
             fname='Justin',
@@ -3214,6 +3222,24 @@ class ModelInitTestCase(TestCase):
     def test_deserialized_with_invalid_type(self):
         self.assertRaises(AttributeDeserializationError, TTLModel.from_raw_data, {'my_ttl': {'S': '1546300800'}})
 
+    def test_multiple_hash_keys(self):
+        with self.assertRaises(ValueError):
+            class BadHashKeyModel(Model):
+                class Meta:
+                    table_name = 'BadHashKeyModel'
+
+                foo = UnicodeAttribute(hash_key=True)
+                bar = UnicodeAttribute(hash_key=True)
+
+    def test_multiple_range_keys(self):
+        with self.assertRaises(ValueError):
+            class BadRangeKeyModel(Model):
+                class Meta:
+                    table_name = 'BadRangeKeyModel'
+
+                foo = UnicodeAttribute(range_key=True)
+                bar = UnicodeAttribute(range_key=True)
+
     def test_multiple_version_attributes(self):
         with self.assertRaises(ValueError):
             class BadVersionedModel(Model):
@@ -3222,3 +3248,11 @@ class ModelInitTestCase(TestCase):
 
                 version = VersionAttribute()
                 another_version = VersionAttribute()
+
+    def test_inherit_metaclass(self):
+        class ParentModel(Model):
+            class Meta:
+                table_name = 'foo'
+        class ChildModel(ParentModel):
+            pass
+        self.assertEqual(ParentModel.Meta.table_name, ChildModel.Meta.table_name)
