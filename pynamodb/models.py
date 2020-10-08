@@ -12,7 +12,7 @@ from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Seque
 from pynamodb.expressions.update import Action
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
 from pynamodb.attributes import (
-    Attribute, AttributeContainer, AttributeContainerMeta, TTLAttribute, VersionAttribute
+    AttributeContainer, AttributeContainerMeta, TTLAttribute, VersionAttribute
 )
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
@@ -151,10 +151,6 @@ class BatchWrite(Generic[_T]):
             unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
 
 
-class DefaultMeta(object):
-    pass
-
-
 class MetaModel(AttributeContainerMeta):
     table_name: str
     read_capacity_units: Optional[int]
@@ -184,16 +180,25 @@ class MetaModel(AttributeContainerMeta):
         cls = cast(Type['Model'], self)
         for attr_name, attribute in cls.get_attributes().items():
             if attribute.is_hash_key:
+                if cls._hash_keyname and cls._hash_keyname != attr_name:
+                    raise ValueError(f"{cls.__name__} has more than one hash key: {cls._hash_keyname}, {attr_name}")
                 cls._hash_keyname = attr_name
             if attribute.is_range_key:
+                if cls._range_keyname and cls._range_keyname != attr_name:
+                    raise ValueError(f"{cls.__name__} has more than one range key: {cls._range_keyname}, {attr_name}")
                 cls._range_keyname = attr_name
             if isinstance(attribute, VersionAttribute):
-                if cls._version_attribute_name:
+                if cls._version_attribute_name and cls._version_attribute_name != attr_name:
                     raise ValueError(
                         "The model has more than one Version attribute: {}, {}"
                         .format(cls._version_attribute_name, attr_name)
                     )
                 cls._version_attribute_name = attr_name
+
+        ttl_attr_names = [name for name, attr in cls.get_attributes().items() if isinstance(attr, TTLAttribute)]
+        if len(ttl_attr_names) > 1:
+            raise ValueError("{} has more than one TTL attribute: {}".format(
+                cls.__name__, ", ".join(ttl_attr_names)))
 
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
@@ -226,16 +231,6 @@ class MetaModel(AttributeContainerMeta):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
                         attr_obj.Meta.index_name = attr_name
-                elif isinstance(attr_obj, Attribute):
-                    if attr_obj.attr_name is None:
-                        attr_obj.attr_name = attr_name
-
-            ttl_attr_names = [name for name, attr_obj in attrs.items() if isinstance(attr_obj, TTLAttribute)]
-            if len(ttl_attr_names) > 1:
-                raise ValueError("The model has more than one TTL attribute: {}".format(", ".join(ttl_attr_names)))
-
-            if META_CLASS_NAME not in attrs:
-                setattr(cls, META_CLASS_NAME, DefaultMeta)
 
             # create a custom Model.DoesNotExist derived from pynamodb.exceptions.DoesNotExist,
             # so that "except Model.DoesNotExist:" would not catch other models' exceptions
