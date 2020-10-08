@@ -31,8 +31,6 @@ class TableConnection:
         aws_secret_access_key: Optional[str] = None,
         aws_session_token: Optional[str] = None,
     ) -> None:
-        self._hash_keyname = None
-        self._range_keyname = None
         self.table_name = table_name
         self.connection = Connection(region=region,
                                      host=host,

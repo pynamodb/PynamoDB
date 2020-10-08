@@ -1009,7 +1009,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                     cls.__module__, cls.__name__,
                 ),
             )
-        if cls._connection is None:
+        if cls._connection is None or cls._connection.table_name != cls.Meta.table_name:
             cls._connection = TableConnection(cls.Meta.table_name,
                                               region=cls.Meta.region,
                                               host=cls.Meta.host,
