@@ -39,6 +39,7 @@ Other changes in this release:
 * Add the attribute name to error messages when deserialization fails (#815)
 * Add the table name to error messages for transactional operations (#835)
 * Move ``pynamodb.connection.util.pythonic`` to ``pynamodb.util.snake_to_camel_case`` (#753)
+* Remove ``ModelContextManager`` class (#861)
 
 Contributors to this release:
 
