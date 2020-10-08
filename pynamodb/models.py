@@ -44,11 +44,10 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-class ModelContextManager(Generic[_T]):
+class BatchWrite(Generic[_T]):
     """
-    A class for managing batch operations
+    A class for batch writes
     """
-
     def __init__(self, model: Type[_T], auto_commit: bool = True):
         self.model = model
         self.auto_commit = auto_commit
@@ -56,14 +55,6 @@ class ModelContextManager(Generic[_T]):
         self.pending_operations: List[Dict[str, Any]] = []
         self.failed_operations: List[Any] = []
 
-    def __enter__(self):
-        return self
-
-
-class BatchWrite(ModelContextManager, Generic[_T]):
-    """
-    A class for batch writes
-    """
     def save(self, put_item: _T) -> None:
         """
         This adds `put_item` to the list of pending operations to be performed.
@@ -103,6 +94,9 @@ class BatchWrite(ModelContextManager, Generic[_T]):
             else:
                 self.commit()
         self.pending_operations.append({"action": DELETE, "item": del_item})
+
+    def __enter__(self):
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
