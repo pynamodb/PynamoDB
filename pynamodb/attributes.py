@@ -41,6 +41,7 @@ _T = TypeVar('_T')
 _KT = TypeVar('_KT', bound=str)
 _VT = TypeVar('_VT')
 _MT = TypeVar('_MT', bound='MapAttribute')
+_ACT = TypeVar('_ACT', bound = 'AttributeContainer')
 
 _A = TypeVar('_A', bound='Attribute')
 
@@ -259,9 +260,6 @@ class AttributeContainerMeta(GenericMeta):
             raise ValueError("{} has more than one discriminator attribute: {}".format(
                 cls.__name__, ", ".join(discriminators)))
         cls._discriminator = discriminators[0] if discriminators else None
-        # TODO(jpinner) add support for model polymorphism
-        if cls._discriminator and not issubclass(cls, MapAttribute):
-            raise NotImplementedError("Discriminators are not yet supported in model classes.")
         if discriminator_value is not None:
             if not cls._discriminator:
                 raise ValueError("{} does not have a discriminator attribute".format(cls.__name__))
@@ -371,6 +369,22 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             if attribute_value and NULL not in attribute_value:
                 value = attr.deserialize(attr.get_value(attribute_value))
                 setattr(self, name, value)
+
+    @classmethod
+    def _instantiate(cls: Type[_ACT], attribute_values: Dict[str, Dict[str, Any]]) -> _ACT:
+        discriminator_attr = cls._get_discriminator_attribute()
+        if discriminator_attr:
+            discriminator_attribute_value = attribute_values.pop(discriminator_attr.attr_name, None)
+            if discriminator_attribute_value:
+                discriminator_value = discriminator_attr.get_value(discriminator_attribute_value)
+                stored_cls = discriminator_attr.deserialize(discriminator_value)
+                if not issubclass(stored_cls, cls):
+                    raise ValueError("Cannot instantiate a {} from the returned class: {}".format(
+                        cls.__name__, stored_cls.__name__))
+                cls = stored_cls
+        instance = cls(_user_instantiated=False)
+        AttributeContainer.deserialize(instance, attribute_values)
+        return instance
 
     def __eq__(self, other: Any) -> bool:
         # This is required so that MapAttribute can call this method.
@@ -940,16 +954,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         """
         if not self.is_raw():
             # If this is a subclass of a MapAttribute (i.e typed), instantiate an instance
-            cls = type(self)
-            discriminator_attr = cls._get_discriminator_attribute()
-            if discriminator_attr:
-                discriminator_attribute_value = values.pop(discriminator_attr.attr_name, None)
-                if discriminator_attribute_value:
-                    discriminator_value = discriminator_attr.get_value(discriminator_attribute_value)
-                    cls = discriminator_attr.deserialize(discriminator_value)
-            instance = cls()
-            AttributeContainer.deserialize(instance, values)
-            return instance
+            return self._instantiate(values)
 
         return {
             k: DESERIALIZE_CLASS_MAP[attr_type].deserialize(attr_value)
