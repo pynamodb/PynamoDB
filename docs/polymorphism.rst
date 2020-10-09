@@ -59,7 +59,7 @@ Model classes also support polymorphism through the use of discriminators.
 .. code-block:: python
 
     class ParentModel(Model):
-        Meta:
+        class Meta:
             table_name = 'polymorphic_table'
         id = UnicodeAttribute(hash_key=True)
         cls = DiscriminatorAttribute()
@@ -70,6 +70,8 @@ Model classes also support polymorphism through the use of discriminators.
     class BarModel(ParentModel, discriminator='Bar'):
         bar = UnicodeAttribute()
 
+    BarModel(id='Hello', bar='World!').serialize()
+    # {'id': {'S': 'Hello'}, 'cls': {'S': 'Bar'}, 'bar': {'S': 'World!'}}
 .. note::
 
     Read operations that are performed on a class that has a discriminator value are slightly modified to ensure that only instances of the class are returned.
