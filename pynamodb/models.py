@@ -152,31 +152,15 @@ class BatchWrite(Generic[_T]):
 
 
 class MetaModel(AttributeContainerMeta):
-    table_name: str
-    read_capacity_units: Optional[int]
-    write_capacity_units: Optional[int]
-    region: Optional[str]
-    host: Optional[str]
-    connect_timeout_seconds: int
-    read_timeout_seconds: int
-    base_backoff_ms: int
-    max_retry_attempts: int
-    max_pool_connections: int
-    extra_headers: Mapping[str, str]
-    aws_access_key_id: Optional[str]
-    aws_secret_access_key: Optional[str]
-    aws_session_token: Optional[str]
-    billing_mode: Optional[str]
-    stream_view_type: Optional[str]
-
     """
     Model meta class
-
-    This class is just here so that index queries have nice syntax.
-    Model.index.query()
     """
-    def __init__(self, name: str, bases: Any, attrs: Dict[str, Any]) -> None:
-        super().__init__(name, bases, attrs)
+    def __new__(cls, name, bases, namespace, discriminator=None):
+        # Defined so that the discriminator can be set in the class definition.
+        return super().__new__(cls, name, bases, namespace)
+
+    def __init__(self, name, bases, namespace, discriminator=None) -> None:
+        super().__init__(name, bases, namespace, discriminator)
         cls = cast(Type['Model'], self)
         for attr_name, attribute in cls.get_attributes().items():
             if attribute.is_hash_key:
@@ -200,8 +184,8 @@ class MetaModel(AttributeContainerMeta):
             raise ValueError("{} has more than one TTL attribute: {}".format(
                 cls.__name__, ", ".join(ttl_attr_names)))
 
-        if isinstance(attrs, dict):
-            for attr_name, attr_obj in attrs.items():
+        if isinstance(namespace, dict):
+            for attr_name, attr_obj in namespace.items():
                 if attr_name == META_CLASS_NAME:
                     if not hasattr(attr_obj, REGION):
                         setattr(attr_obj, REGION, get_settings_value('region'))
@@ -234,9 +218,9 @@ class MetaModel(AttributeContainerMeta):
 
             # create a custom Model.DoesNotExist derived from pynamodb.exceptions.DoesNotExist,
             # so that "except Model.DoesNotExist:" would not catch other models' exceptions
-            if 'DoesNotExist' not in attrs:
+            if 'DoesNotExist' not in namespace:
                 exception_attrs = {
-                    '__module__': attrs.get('__module__'),
+                    '__module__': namespace.get('__module__'),
                     '__qualname__': f'{cls.__qualname__}.{"DoesNotExist"}',
                 }
                 cls.DoesNotExist = type('DoesNotExist', (DoesNotExist, ), exception_attrs)
@@ -520,9 +504,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if data is None:
             raise ValueError("Received no data to construct object")
 
-        model = cls(_user_instantiated=False)
-        model.deserialize(data)
-        return model
+        return cls._instantiate(data)
 
     @classmethod
     def count(
@@ -555,6 +537,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
+
+        # If this class has a discriminator value, filter the query to only return instances of this class.
+        discriminator_attr = cls._get_discriminator_attribute()
+        if discriminator_attr and discriminator_attr.get_discriminator(cls):
+            filter_condition &= discriminator_attr == cls
 
         query_args = (hash_key,)
         query_kwargs = dict(
@@ -616,6 +603,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
 
+        # If this class has a discriminator value, filter the query to only return instances of this class.
+        discriminator_attr = cls._get_discriminator_attribute()
+        if discriminator_attr and discriminator_attr.get_discriminator(cls):
+            filter_condition &= discriminator_attr == cls
+
         if page_size is None:
             page_size = limit
 
@@ -668,6 +660,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param rate_limit: If set then consumed capacity will be limited to this amount per second
         :param attributes_to_get: If set, specifies the properties to include in the projection expression
         """
+        # If this class has a discriminator value, filter the scan to only return instances of this class.
+        discriminator_attr = cls._get_discriminator_attribute()
+        if discriminator_attr and discriminator_attr.get_discriminator(cls):
+            filter_condition &= discriminator_attr == cls
+
         if page_size is None:
             page_size = limit
 

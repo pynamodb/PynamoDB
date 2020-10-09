@@ -28,13 +28,18 @@ class RenamedValue(TypedValue, discriminator='custom_name'):
     value = UnicodeAttribute()
 
 
-class DiscriminatorTestModel(Model):
+class DiscriminatorTestModel(Model, discriminator='Parent'):
     class Meta:
         host = 'http://localhost:8000'
         table_name = 'test'
     hash_key = UnicodeAttribute(hash_key=True)
     value = TypedValue()
     values = ListAttribute(of=TypedValue)
+    type = DiscriminatorAttribute()
+
+
+class ChildModel(DiscriminatorTestModel, discriminator='Child'):
+    value = UnicodeAttribute()
 
 
 class TestDiscriminatorAttribute:
@@ -46,6 +51,7 @@ class TestDiscriminatorAttribute:
         dtm.values = [NumberValue(name='bar', value=5), RenamedValue(name='baz', value='World')]
         assert dtm.serialize() == {
             'hash_key': {'S': 'foo'},
+            'type': {'S': 'Parent'},
             'value': {'M': {'cls': {'S': 'StringValue'}, 'name': {'S': 'foo'}, 'value': {'S': 'Hello'}}},
             'values': {'L': [
                 {'M': {'cls': {'S': 'NumberValue'}, 'name': {'S': 'bar'}, 'value': {'N': '5'}}},
@@ -56,6 +62,7 @@ class TestDiscriminatorAttribute:
     def test_deserialize(self):
         item = {
             'hash_key': {'S': 'foo'},
+            'type': {'S': 'Parent'},
             'value': {'M': {'cls': {'S': 'StringValue'}, 'name': {'S': 'foo'}, 'value': {'S': 'Hello'}}},
             'values': {'L': [
                 {'M': {'cls': {'S': 'NumberValue'}, 'name': {'S': 'bar'}, 'value': {'N': '5'}}},
@@ -96,8 +103,28 @@ class TestDiscriminatorAttribute:
             class RenamedValue2(TypedValue, discriminator='custom_name'):
                 pass
 
-    def test_model(self):
-        with pytest.raises(NotImplementedError):
-            class DiscriminatedModel(Model):
-                hash_key = UnicodeAttribute(hash_key=True)
-                _cls = DiscriminatorAttribute()
+class TestDiscriminatorModel:
+
+    def test_serialize(self):
+        cm = ChildModel()
+        cm.hash_key = 'foo'
+        cm.value = 'bar'
+        cm.values = []
+        assert cm.serialize() == {
+            'hash_key': {'S': 'foo'},
+            'type': {'S': 'Child'},
+            'value': {'S': 'bar'},
+            'values': {'L': []}
+        }
+
+    def test_deserialize(self):
+        item = {
+            'hash_key': {'S': 'foo'},
+            'type': {'S': 'Child'},
+            'value': {'S': 'bar'},
+            'values': {'L': []}
+        }
+        cm = DiscriminatorTestModel.from_raw_data(item)
+        assert isinstance(cm, ChildModel)
+        assert cm.hash_key == 'foo'
+        assert cm.value == 'bar'
