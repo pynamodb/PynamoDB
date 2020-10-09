@@ -25,7 +25,7 @@ from pynamodb.indexes import (
     IncludeProjection, KeysOnlyProjection, Index
 )
 from pynamodb.attributes import (
-    UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
+    DiscriminatorAttribute, UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
     BooleanAttribute, ListAttribute, TTLAttribute, VersionAttribute)
 from .data import (
@@ -1542,6 +1542,69 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(params, req.call_args[0][1])
             self.assertTrue(len(queried) == len(items))
+
+    def test_query_with_discriminator(self):
+        class ParentModel(Model):
+            class Meta:
+                table_name = 'polymorphic_table'
+            id = UnicodeAttribute(hash_key=True)
+            cls = DiscriminatorAttribute()
+
+        class ChildModel(ParentModel, discriminator='Child'):
+            foo = UnicodeAttribute()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                "Table": {
+                    "AttributeDefinitions": [
+                        {
+                            "AttributeName": "id",
+                            "AttributeType": "S"
+                        }
+                    ],
+                    "CreationDateTime": 1.363729002358E9,
+                    "ItemCount": 0,
+                    "KeySchema": [
+                        {
+                            "AttributeName": "id",
+                            "KeyType": "HASH"
+                        }
+                    ],
+                    "ProvisionedThroughput": {
+                        "NumberOfDecreasesToday": 0,
+                        "ReadCapacityUnits": 5,
+                        "WriteCapacityUnits": 5
+                    },
+                    "TableName": "polymorphic_table",
+                    "TableSizeBytes": 0,
+                    "TableStatus": "ACTIVE"
+                }
+            }
+            ChildModel('hi', foo='there').save()
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {'Count': 0, 'ScannedCount': 0, 'Items': []}
+            for item in ChildModel.query('foo'):
+                pass
+            params = {
+                'KeyConditionExpression': '#0 = :0',
+                'FilterExpression': '#1 = :1',
+                'ExpressionAttributeNames': {
+                    '#0': 'id',
+                    '#1': 'cls'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': u'foo'
+                    },
+                    ':1': {
+                        'S': u'Child'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'polymorphic_table'
+            }
+            self.assertEqual(params, req.call_args[0][1])
 
     def test_scan_limit_with_page_size(self):
         with patch(PATCH_METHOD) as req:
