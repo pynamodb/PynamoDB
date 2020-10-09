@@ -6,8 +6,21 @@ import time
 import logging
 import warnings
 from inspect import getmembers
-from typing import Any, Dict, Generic, Iterable, Iterator, List, Optional, Sequence, Mapping, Type, TypeVar, Text, \
-    Tuple, Union, cast
+from typing import Any
+from typing import Dict
+from typing import Generic
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import Optional
+from typing import Protocol
+from typing import Sequence
+from typing import Text
+from typing import Tuple
+from typing import Type
+from typing import TypeVar
+from typing import Union
+from typing import cast
 
 from pynamodb.expressions.update import Action
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
@@ -151,6 +164,25 @@ class BatchWrite(Generic[_T]):
             unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
 
 
+class MetaProtocol(Protocol):
+    table_name: str
+    read_capacity_units: Optional[int]
+    write_capacity_units: Optional[int]
+    region: Optional[str]
+    host: Optional[str]
+    connect_timeout_seconds: int
+    read_timeout_seconds: int
+    base_backoff_ms: int
+    max_retry_attempts: int
+    max_pool_connections: int
+    extra_headers: Mapping[str, str]
+    aws_access_key_id: Optional[str]
+    aws_secret_access_key: Optional[str]
+    aws_session_token: Optional[str]
+    billing_mode: Optional[str]
+    stream_view_type: Optional[str]
+
+
 class MetaModel(AttributeContainerMeta):
     """
     Model meta class
@@ -244,7 +276,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
     DoesNotExist: Type[DoesNotExist] = DoesNotExist
     _version_attribute_name: Optional[str] = None
 
-    Meta: MetaModel
+    Meta: MetaProtocol
 
     def __init__(
         self,
