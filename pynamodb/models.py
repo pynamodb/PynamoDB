@@ -14,7 +14,6 @@ from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Optional
-from typing import Protocol
 from typing import Sequence
 from typing import Text
 from typing import Tuple
@@ -22,6 +21,11 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 from typing import cast
+
+try:
+    from typing import Protocol
+except ImportError:
+    from typing_extensions import Protocol
 
 from pynamodb.expressions.update import Action
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
