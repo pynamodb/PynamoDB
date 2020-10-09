@@ -5,6 +5,7 @@ import random
 import time
 import logging
 import warnings
+import sys
 from inspect import getmembers
 from typing import Any
 from typing import Dict
@@ -22,9 +23,9 @@ from typing import TypeVar
 from typing import Union
 from typing import cast
 
-try:
+if sys.version_info >= (3, 8):
     from typing import Protocol
-except ImportError:
+else:
     from typing_extensions import Protocol
 
 from pynamodb.expressions.update import Action
