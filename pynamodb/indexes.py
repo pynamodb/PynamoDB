@@ -14,7 +14,6 @@ from pynamodb.attributes import Attribute
 from pynamodb.expressions.condition import Condition
 from pynamodb.pagination import ResultIterator
 from pynamodb.types import HASH, RANGE
-from pynamodb.util import snake_to_camel_case
 
 if TYPE_CHECKING:
     from pynamodb.models import Model
@@ -156,8 +155,8 @@ class Index(Generic[_M], metaclass=IndexMeta):
         schema = []
         for attr_name, attr_cls in cls._get_attributes().items():
             attr_definitions.append({
-                snake_to_camel_case(ATTR_NAME): attr_cls.attr_name,
-                snake_to_camel_case(ATTR_TYPE): attr_cls.attr_type
+                'attribute_name': attr_cls.attr_name,
+                'attribute_type': attr_cls.attr_type
             })
             if attr_cls.is_hash_key:
                 schema.append({
@@ -170,8 +169,8 @@ class Index(Generic[_M], metaclass=IndexMeta):
                     KEY_TYPE: RANGE
                 })
         return {
-            snake_to_camel_case(KEY_SCHEMA): schema,
-            snake_to_camel_case(ATTR_DEFINITIONS): attr_definitions
+            'key_schema': schema,
+            'attribute_definitions': attr_definitions
         }
 
     @classmethod

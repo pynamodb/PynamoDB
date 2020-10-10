@@ -53,7 +53,6 @@ from pynamodb.constants import (
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
     STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE
 )
-from pynamodb.util import snake_to_camel_case
 
 _T = TypeVar('_T', bound='Model')
 _KeyType = Any
@@ -415,11 +414,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if version_condition is not None:
             condition &= version_condition
         kwargs: Dict[str, Any] = {
-            snake_to_camel_case(RETURN_VALUES):  ALL_NEW,
+            'return_values': ALL_NEW,
         }
 
-        if snake_to_camel_case(RANGE_KEY) in save_kwargs:
-            kwargs[snake_to_camel_case(RANGE_KEY)] = save_kwargs[snake_to_camel_case(RANGE_KEY)]
+        if 'range_key' in save_kwargs:
+            kwargs['range_key'] = save_kwargs['range_key']
 
         kwargs.update(condition=condition)
         kwargs.update(actions=actions)
@@ -482,8 +481,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         )
         if not is_update:
             kwargs.update(save_kwargs)
-        elif snake_to_camel_case(RANGE_KEY) in save_kwargs:
-            kwargs[snake_to_camel_case(RANGE_KEY)] = save_kwargs[snake_to_camel_case(RANGE_KEY)]
+        elif 'range_key' in save_kwargs:
+            kwargs['range_key'] = save_kwargs['range_key']
         return self._get_connection().get_operation_kwargs(*args, **kwargs)
 
     @classmethod
@@ -771,32 +770,32 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         if not cls.exists():
             schema = cls._get_schema()
-            if hasattr(cls.Meta, snake_to_camel_case(READ_CAPACITY_UNITS)):
-                schema[snake_to_camel_case(READ_CAPACITY_UNITS)] = cls.Meta.read_capacity_units
-            if hasattr(cls.Meta, snake_to_camel_case(WRITE_CAPACITY_UNITS)):
-                schema[snake_to_camel_case(WRITE_CAPACITY_UNITS)] = cls.Meta.write_capacity_units
-            if hasattr(cls.Meta, snake_to_camel_case(STREAM_VIEW_TYPE)):
-                schema[snake_to_camel_case(STREAM_SPECIFICATION)] = {
-                    snake_to_camel_case(STREAM_ENABLED): True,
-                    snake_to_camel_case(STREAM_VIEW_TYPE): cls.Meta.stream_view_type
+            if hasattr(cls.Meta, 'read_capacity_units'):
+                schema['read_capacity_units'] = cls.Meta.read_capacity_units
+            if hasattr(cls.Meta, 'write_capacity_units'):
+                schema['write_capacity_units'] = cls.Meta.write_capacity_units
+            if hasattr(cls.Meta, 'stream_view_type'):
+                schema['stream_specification'] = {
+                    'stream_enabled': True,
+                    'stream_view_type': cls.Meta.stream_view_type
                 }
-            if hasattr(cls.Meta, snake_to_camel_case(BILLING_MODE)):
-                schema[snake_to_camel_case(BILLING_MODE)] = cls.Meta.billing_mode
+            if hasattr(cls.Meta, 'billing_mode'):
+                schema['billing_mode'] = cls.Meta.billing_mode
             if read_capacity_units is not None:
-                schema[snake_to_camel_case(READ_CAPACITY_UNITS)] = read_capacity_units
+                schema['read_capacity_units'] = read_capacity_units
             if write_capacity_units is not None:
-                schema[snake_to_camel_case(WRITE_CAPACITY_UNITS)] = write_capacity_units
+                schema['write_capacity_units'] = write_capacity_units
             if billing_mode is not None:
-                schema[snake_to_camel_case(BILLING_MODE)] = billing_mode
+                schema['billing_mode'] = billing_mode
             index_data = cls._get_indexes()
-            schema[snake_to_camel_case(GLOBAL_SECONDARY_INDEXES)] = index_data.get(snake_to_camel_case(GLOBAL_SECONDARY_INDEXES))
-            schema[snake_to_camel_case(LOCAL_SECONDARY_INDEXES)] = index_data.get(snake_to_camel_case(LOCAL_SECONDARY_INDEXES))
-            index_attrs = index_data.get(snake_to_camel_case(ATTR_DEFINITIONS))
-            attr_keys = [attr.get(snake_to_camel_case(ATTR_NAME)) for attr in schema.get(snake_to_camel_case(ATTR_DEFINITIONS))]
+            schema['global_secondary_indexes'] = index_data.get('global_secondary_indexes')
+            schema['local_secondary_indexes'] = index_data.get('local_secondary_indexes')
+            index_attrs = index_data.get('attribute_definitions')
+            attr_keys = [attr.get('attribute_name') for attr in schema.get('attribute_definitions')]
             for attr in index_attrs:
-                attr_name = attr.get(snake_to_camel_case(ATTR_NAME))
+                attr_name = attr.get('attribute_name')
                 if attr_name not in attr_keys:
-                    schema[snake_to_camel_case(ATTR_DEFINITIONS)].append(attr)
+                    schema['attribute_definitions'].append(attr)
                     attr_keys.append(attr_name)
             cls._get_connection().create_table(
                 **schema
@@ -841,24 +840,24 @@ class Model(AttributeContainer, metaclass=MetaModel):
         Returns the schema for this table
         """
         schema: Dict[str, List] = {
-            snake_to_camel_case(ATTR_DEFINITIONS): [],
-            snake_to_camel_case(KEY_SCHEMA): []
+            'attribute_definitions': [],
+            'key_schema': []
         }
         for attr_name, attr_cls in cls.get_attributes().items():
             if attr_cls.is_hash_key or attr_cls.is_range_key:
-                schema[snake_to_camel_case(ATTR_DEFINITIONS)].append({
-                    snake_to_camel_case(ATTR_NAME): attr_cls.attr_name,
-                    snake_to_camel_case(ATTR_TYPE): attr_cls.attr_type
+                schema['attribute_definitions'].append({
+                    'attribute_name': attr_cls.attr_name,
+                    'attribute_type': attr_cls.attr_type
                 })
             if attr_cls.is_hash_key:
-                schema[snake_to_camel_case(KEY_SCHEMA)].append({
-                    snake_to_camel_case(KEY_TYPE): HASH,
-                    snake_to_camel_case(ATTR_NAME): attr_cls.attr_name
+                schema['key_schema'].append({
+                    'key_type': HASH,
+                    'attribute_name': attr_cls.attr_name
                 })
             elif attr_cls.is_range_key:
-                schema[snake_to_camel_case(KEY_SCHEMA)].append({
-                    snake_to_camel_case(KEY_TYPE): RANGE,
-                    snake_to_camel_case(ATTR_NAME): attr_cls.attr_name
+                schema['key_schema'].append({
+                    'key_type': RANGE,
+                    'attribute_name': attr_cls.attr_name
                 })
         return schema
 
@@ -869,35 +868,35 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         if cls._indexes is None:
             cls._indexes = {
-                snake_to_camel_case(GLOBAL_SECONDARY_INDEXES): [],
-                snake_to_camel_case(LOCAL_SECONDARY_INDEXES): [],
-                snake_to_camel_case(ATTR_DEFINITIONS): []
+                'global_secondary_indexes': [],
+                'local_secondary_indexes': [],
+                'attribute_definitions': []
             }
             cls._index_classes = {}
             for name, index in getmembers(cls, lambda o: isinstance(o, Index)):
                 cls._index_classes[index.Meta.index_name] = index
                 schema = index._get_schema()
                 idx = {
-                    snake_to_camel_case(INDEX_NAME): index.Meta.index_name,
-                    snake_to_camel_case(KEY_SCHEMA): schema.get(snake_to_camel_case(KEY_SCHEMA)),
-                    snake_to_camel_case(PROJECTION): {
+                    'index_name': index.Meta.index_name,
+                    'key_schema': schema.get('key_schema'),
+                    'projection': {
                         PROJECTION_TYPE: index.Meta.projection.projection_type,
                     },
 
                 }
                 if isinstance(index, GlobalSecondaryIndex):
                     if getattr(cls.Meta, 'billing_mode', None) != PAY_PER_REQUEST_BILLING_MODE:
-                        idx[snake_to_camel_case(PROVISIONED_THROUGHPUT)] = {
+                        idx['provisioned_throughput'] = {
                             READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
                             WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
                         }
-                cls._indexes[snake_to_camel_case(ATTR_DEFINITIONS)].extend(schema.get(snake_to_camel_case(ATTR_DEFINITIONS)))
+                cls._indexes['attribute_definitions'].extend(schema.get('attribute_definitions'))
                 if index.Meta.projection.non_key_attributes:
-                    idx[snake_to_camel_case(PROJECTION)][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
+                    idx['projection'][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
                 if isinstance(index, GlobalSecondaryIndex):
-                    cls._indexes[snake_to_camel_case(GLOBAL_SECONDARY_INDEXES)].append(idx)
+                    cls._indexes['global_secondary_indexes'].append(idx)
                 else:
-                    cls._indexes[snake_to_camel_case(LOCAL_SECONDARY_INDEXES)].append(idx)
+                    cls._indexes['local_secondary_indexes'].append(idx)
         return cls._indexes
 
     def _get_save_args(self, attributes=True, null_check=True):
@@ -919,9 +918,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
             range_key = attribute_values.pop(range_key_attribute.attr_name, {}).get(range_key_attribute.attr_type)
         args = (hash_key, )
         if range_key is not None:
-            kwargs[snake_to_camel_case(RANGE_KEY)] = range_key
+            kwargs['range_key'] = range_key
         if attributes:
-            kwargs[snake_to_camel_case(ATTRIBUTES)] = attribute_values
+            kwargs['attributes'] = attribute_values
         return args, kwargs
 
     def _handle_version_attribute(self, serialized_attributes, actions=None):
@@ -941,16 +940,16 @@ class Model(AttributeContainer, metaclass=MetaModel):
             version_condition = version_attribute == version_attribute_value
             if actions:
                 actions.append(version_attribute.add(1))
-            elif snake_to_camel_case(ATTRIBUTES) in serialized_attributes:
-                serialized_attributes[snake_to_camel_case(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+            elif 'attributes' in serialized_attributes:
+                serialized_attributes['attributes'][version_attribute.attr_name] = self._serialize_value(
                     version_attribute, version_attribute_value + 1
                 )
         else:
             version_condition = version_attribute.does_not_exist()
             if actions:
                 actions.append(version_attribute.set(1))
-            elif snake_to_camel_case(ATTRIBUTES) in serialized_attributes:
-                serialized_attributes[snake_to_camel_case(ATTRIBUTES)][version_attribute.attr_name] = self._serialize_value(
+            elif 'attributes' in serialized_attributes:
+                serialized_attributes['attributes'][version_attribute.attr_name] = self._serialize_value(
                     version_attribute, 1
                 )
 
