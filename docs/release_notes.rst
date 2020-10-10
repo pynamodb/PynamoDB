@@ -38,7 +38,7 @@ Other changes in this release:
 * Remove ``ListAttribute.remove_indexes`` (added in v4.3.2) and document usage of remove for list elements (#838)
 * Add the attribute name to error messages when deserialization fails (#815)
 * Add the table name to error messages for transactional operations (#835)
-* Move ``pynamodb.connection.util.pythonic`` to ``pynamodb.util.snake_to_camel_case`` (#753)
+* Remove ``pynamodb.connection.util.pythonic``
 * Remove ``ModelContextManager`` class (#861)
 
 Contributors to this release:

@@ -2684,7 +2684,7 @@ class ModelTestCase(TestCase):
             self.assertIsNone(item.person.age)
             self.assertIsNone(item.person.is_male)
 
-    def test_model_with_maps_with_snake_to_camel_case_attributes(self):
+    def test_model_with_maps_with_snake_case_attributes(self):
         fake_db = self.database_mocker(
             OfficeEmployee,
             OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
