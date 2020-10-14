@@ -1004,7 +1004,10 @@ class DynamicMapAttribute(MapAttribute):
 
     def __setattr__(self, name, value):
         # Set attributes via the Attribute descriptor if it exists.
-        object.__setattr__(self, name, value) if name in self.get_attributes() else super().__setattr__(name, value)
+        if name in self.get_attributes():
+            object.__setattr__(self, name, value)
+        else:
+            super().__setattr__(name, value)
 
     def serialize(self, values):
         if not isinstance(values, type(self)):

@@ -884,13 +884,13 @@ class TestMapAttribute:
 
 class TestDynamicMapAttribute:
 
-    class TestModel(Model):
+    class CreatedAtTestModel(Model):
         class CreatedAtMap(DynamicMapAttribute):
             created_at = UTCDateTimeAttribute()
         test_map = CreatedAtMap(default=dict)
 
     def test_serialize(self):
-        test_model = TestDynamicMapAttribute.TestModel()
+        test_model = TestDynamicMapAttribute.CreatedAtTestModel()
         test_model.test_map.created_at = datetime(2017, 1, 1, tzinfo=timezone.utc)
         test_model.test_map.foo = 'bar'
         test_model.test_map.empty = None
@@ -906,7 +906,7 @@ class TestDynamicMapAttribute:
             'foo': {'S': 'bar'},
             'empty': {'NULL': True},
         }}}
-        test_model = TestDynamicMapAttribute.TestModel()
+        test_model = TestDynamicMapAttribute.CreatedAtTestModel()
         test_model.deserialize(serialized)
         assert test_model.test_map.created_at == datetime(2017, 1, 1, tzinfo=timezone.utc)
         assert test_model.test_map.foo == 'bar'
