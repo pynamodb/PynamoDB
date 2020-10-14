@@ -936,7 +936,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         version_attribute = self.get_attributes()[self._version_attribute_name]
         version_attribute_value = getattr(self, self._version_attribute_name)
 
-        if version_attribute_value:
+        if version_attribute_value is not None:
             version_condition = version_attribute == version_attribute_value
             if actions:
                 actions.append(version_attribute.add(1))
