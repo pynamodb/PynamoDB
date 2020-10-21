@@ -575,10 +575,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
 
-        # If this class has a discriminator value, filter the query to only return instances of this class.
+        # If this class has a discriminator attribute, filter the query to only return instances of this class.
         discriminator_attr = cls._get_discriminator_attribute()
-        if discriminator_attr and discriminator_attr.get_discriminator(cls):
-            filter_condition &= discriminator_attr == cls
+        if discriminator_attr:
+            filter_condition &= discriminator_attr.is_in(*discriminator_attr.get_registered_subclasses(cls))
 
         query_args = (hash_key,)
         query_kwargs = dict(
@@ -640,10 +640,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
 
-        # If this class has a discriminator value, filter the query to only return instances of this class.
+        # If this class has a discriminator attribute, filter the query to only return instances of this class.
         discriminator_attr = cls._get_discriminator_attribute()
-        if discriminator_attr and discriminator_attr.get_discriminator(cls):
-            filter_condition &= discriminator_attr == cls
+        if discriminator_attr:
+            filter_condition &= discriminator_attr.is_in(*discriminator_attr.get_registered_subclasses(cls))
 
         if page_size is None:
             page_size = limit
@@ -697,10 +697,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param rate_limit: If set then consumed capacity will be limited to this amount per second
         :param attributes_to_get: If set, specifies the properties to include in the projection expression
         """
-        # If this class has a discriminator value, filter the scan to only return instances of this class.
+        # If this class has a discriminator attribute, filter the scan to only return instances of this class.
         discriminator_attr = cls._get_discriminator_attribute()
-        if discriminator_attr and discriminator_attr.get_discriminator(cls):
-            filter_condition &= discriminator_attr == cls
+        if discriminator_attr:
+            filter_condition &= discriminator_attr.is_in(*discriminator_attr.get_registered_subclasses(cls))
 
         if page_size is None:
             page_size = limit
