@@ -1553,6 +1553,10 @@ class ModelTestCase(TestCase):
         class ChildModel(ParentModel, discriminator='Child'):
             foo = UnicodeAttribute()
 
+        # register a model that subclasses Child to ensure queries return model subclasses
+        class GrandchildModel(ChildModel, discriminator='Grandchild'):
+            bar = UnicodeAttribute()
+
         with patch(PATCH_METHOD) as req:
             req.return_value = {
                 "Table": {
@@ -1588,7 +1592,7 @@ class ModelTestCase(TestCase):
                 pass
             params = {
                 'KeyConditionExpression': '#0 = :0',
-                'FilterExpression': '#1 = :1',
+                'FilterExpression': '#1 IN (:1, :2)',
                 'ExpressionAttributeNames': {
                     '#0': 'id',
                     '#1': 'cls'
@@ -1599,6 +1603,9 @@ class ModelTestCase(TestCase):
                     },
                     ':1': {
                         'S': u'Child'
+                    },
+                    ':2': {
+                        'S': u'Grandchild'
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
