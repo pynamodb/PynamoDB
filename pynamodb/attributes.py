@@ -415,6 +415,9 @@ class DiscriminatorAttribute(Attribute[type]):
 
         self._discriminator_map[discriminator] = cls
 
+    def get_registered_subclasses(self, cls: type) -> List[type]:
+        return [k for k in self._class_map.keys() if issubclass(k, cls)]
+
     def get_discriminator(self, cls: type) -> Optional[Any]:
         return self._class_map.get(cls)
 
