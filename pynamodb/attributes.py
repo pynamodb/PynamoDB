@@ -7,6 +7,7 @@ import json
 import time
 import warnings
 from base64 import b64encode, b64decode
+import zlib
 from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
@@ -456,6 +457,25 @@ class BinaryAttribute(Attribute[bytes]):
         Returns a decoded byte string from a base64 encoded value
         """
         return b64decode(value)
+
+
+class CompressedAttribute(Attribute[bytes]):
+    """
+    A zlib-compressed binary attribute
+    """
+    attr_type = BINARY
+
+    def serialize(self, value):
+        """
+        Returns the compressed binary of the value
+        """
+        return zlib.compress(value)
+
+    def deserialize(self, value):
+        """
+        Returns a decoded byte string from a base64 encoded value
+        """
+        return zlib.decompress(value)
 
 
 class BinarySetAttribute(Attribute[Set[bytes]]):

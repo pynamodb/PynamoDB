@@ -7,12 +7,13 @@ from base64 import b64encode
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
+import zlib
 
 from unittest.mock import patch, call
 import pytest
 
 from pynamodb.attributes import (
-    BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
+    BinarySetAttribute, BinaryAttribute, CompressedAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute,
     ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute)
 from pynamodb.constants import (
@@ -30,6 +31,7 @@ class AttributeTestModel(Model):
 
     binary_attr = BinaryAttribute(hash_key=True)
     binary_set_attr = BinarySetAttribute()
+    compressed_attr = CompressedAttribute()
     number_attr = NumberAttribute()
     number_set_attr = NumberSetAttribute()
     unicode_attr = UnicodeAttribute()
@@ -71,6 +73,10 @@ class TestAttributeDescriptor:
         """
         self.instance.binary_set_attr = {b'test', b'test2'}
         assert self.instance.binary_set_attr == {b'test', b'test2'}
+
+    def test_compressed_attr(self):
+        self.instance.compressed_attr = b'test'
+        assert self.instance.compressed_attr == b'test'
 
     def test_number_attr(self):
         """
@@ -253,6 +259,47 @@ class TestBinaryAttribute:
 
         attr = BinarySetAttribute(default={b'foo', b'bar'})
         assert attr.default == {b'foo', b'bar'}
+
+
+class TestCompressedAttribute:
+    """
+    Tests compressed attributes
+    """
+    def test_binary_attribute(self):
+        """
+        CompressedAttribute.default
+        """
+        attr = CompressedAttribute()
+        assert attr is not None
+        assert attr.attr_type == BINARY
+
+        attr = CompressedAttribute(default=b'foo')
+        assert attr.default == b'foo'
+
+    def test_binary_round_trip(self):
+        """
+        CompressedAttribute round trip
+        """
+        attr = CompressedAttribute()
+        value = b'foo'
+        serial = attr.serialize(value)
+        assert attr.deserialize(serial) == value
+
+    def test_binary_serialize(self):
+        """
+        CompressedAttribute.serialize
+        """
+        attr = CompressedAttribute()
+        serial = zlib.compress(bytes('foo'*80, DEFAULT_ENCODING))
+        assert attr.serialize(bytes('foo'*80, DEFAULT_ENCODING)) == serial
+
+    def test_binary_deserialize(self):
+        """
+        CompressedAttribute.deserialize
+        """
+        attr = CompressedAttribute()
+        serial = zlib.compress(bytes('test'*80, DEFAULT_ENCODING))
+        assert attr.deserialize(serial) == bytes('test'*80, DEFAULT_ENCODING)
 
 
 class TestNumberAttribute:

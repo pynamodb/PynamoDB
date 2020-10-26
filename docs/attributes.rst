@@ -194,3 +194,16 @@ These attributes can then be used inside of Model classes just like any other at
         model = UnicodeAttribute(null=True)
 
 `As with a model and its top-level attributes <https://github.com/pynamodb/PynamoDB/blob/master/docs/quickstart.rst#changing-items>`_, a PynamoDB MapAttribute will ignore sub-attributes it does not know about during deserialization. As a result, if the item in DynamoDB contains sub-attributes not declared as properties of the corresponding MapAttribute, save() will cause those sub-attributes to be deleted.
+
+Compressed Attribute
+--------------------
+
+Compressed attributes use the zlib compression included in the Python standard library to more efficiently store binary attributes.
+The compression ratio depends on the data provided, but are `typically between 2:1 and 5:1 <https://www.zlib.net/zlib_tech.html#:~:text=More%20typical%20zlib%20compression%20ratios,%3A1%20to%205%3A.>` for real-world data.
+
+.. code-block:: python
+
+    from pynamodb.attributes import CompressedAttribute
+
+    class CarInfoMap(MapAttribute):
+        blob = CompressedAttribute()
