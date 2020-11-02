@@ -421,7 +421,7 @@ class Connection(object):
                 code = data.get('__type', '')
                 if '#' in code:
                     code = code.rsplit('#', 1)[1]
-                botocore_expected_format = {'Error': {'Message': data.get('message', ''), 'Code': code}}
+                botocore_expected_format = {'Error': {'Message': data.get('message', '') or data.get('Message', ''), 'Code': code}}
                 verbose_properties = {
                     'request_id': headers.get('x-amzn-RequestId')
                 }
