@@ -371,18 +371,22 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
                 setattr(self, name, value)
 
     @classmethod
-    def _instantiate(cls: Type[_ACT], attribute_values: Dict[str, Dict[str, Any]]) -> _ACT:
+    def _pop_discriminator_class(cls, attribute_values: Dict[str, Dict[str, Any]]) -> Optional[Type]:
         discriminator_attr = cls._get_discriminator_attribute()
         if discriminator_attr:
             discriminator_attribute_value = attribute_values.pop(discriminator_attr.attr_name, None)
             if discriminator_attribute_value:
                 discriminator_value = discriminator_attr.get_value(discriminator_attribute_value)
-                stored_cls = discriminator_attr.deserialize(discriminator_value)
-                if not issubclass(stored_cls, cls):
-                    raise ValueError("Cannot instantiate a {} from the returned class: {}".format(
-                        cls.__name__, stored_cls.__name__))
-                cls = stored_cls
-        instance = cls(_user_instantiated=False)
+                return discriminator_attr.deserialize(discriminator_value)
+        return None
+
+    @classmethod
+    def _instantiate(cls: Type[_ACT], attribute_values: Dict[str, Dict[str, Any]]) -> _ACT:
+        stored_cls = cls._pop_discriminator_class(attribute_values)
+        if stored_cls and not issubclass(stored_cls, cls):
+            raise ValueError("Cannot instantiate a {} from the returned class: {}".format(
+                cls.__name__, stored_cls.__name__))
+        instance = (stored_cls or cls)(_user_instantiated=False)
         AttributeContainer.deserialize(instance, attribute_values)
         return instance
 
