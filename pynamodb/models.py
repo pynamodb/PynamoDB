@@ -424,7 +424,12 @@ class Model(AttributeContainer, metaclass=MetaModel):
         kwargs.update(actions=actions)
 
         data = self._get_connection().update_item(*args, **kwargs)
-        self.deserialize(data[ATTRIBUTES])
+        item_data = data[ATTRIBUTES]
+        stored_cls = self._pop_discriminator_class(item_data)
+        if stored_cls and stored_cls != type(self):
+            raise ValueError("Cannot update this item from the returned class: {}".format(
+                stored_cls.__name__))
+        self.deserialize(item_data)
         return data
 
     def save(self, condition: Optional[Condition] = None) -> Dict[str, Any]:
