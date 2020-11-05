@@ -138,4 +138,4 @@ def test_can_inherit_version_attribute(ddb_url) -> None:
                 host = ddb_url
 
             version_invalid = VersionAttribute()
-    assert e.value == ValueError('The model has more than one Version attribute: version, version_invalid')
+    assert str(e.value) == 'The model has more than one Version attribute: version, version_invalid'
