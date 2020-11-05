@@ -424,7 +424,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         kwargs.update(actions=actions)
 
         data = self._get_connection().update_item(*args, **kwargs)
-        self.deserialize(data[ATTRIBUTES])
+        item_data = data[ATTRIBUTES]
+        stored_cls = self._get_discriminator_class(item_data)
+        if stored_cls and stored_cls != type(self):
+            raise ValueError("Cannot update this item from the returned class: {}".format(stored_cls.__name__))
+        self.deserialize(item_data)
         return data
 
     def save(self, condition: Optional[Condition] = None) -> Dict[str, Any]:
@@ -453,6 +457,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         item_data = attrs.get(ITEM, None)
         if item_data is None:
             raise self.DoesNotExist("This item does not exist in the table.")
+        stored_cls = self._get_discriminator_class(item_data)
+        if stored_cls and stored_cls != type(self):
+            raise ValueError("Cannot refresh this item from the returned class: {}".format(stored_cls.__name__))
         self.deserialize(item_data)
 
     def get_operation_kwargs_from_instance(

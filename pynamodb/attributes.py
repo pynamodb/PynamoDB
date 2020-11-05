@@ -312,7 +312,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
     def _set_discriminator(self) -> None:
         discriminator_attr = self._get_discriminator_attribute()
         if discriminator_attr and discriminator_attr.get_discriminator(self.__class__) is not None:
-            self.attribute_values[self._discriminator] = self.__class__  # type: ignore
+            setattr(self, self._discriminator, self.__class__)  # type: ignore
 
     def _set_defaults(self, _user_instantiated: bool = True) -> None:
         """
@@ -371,18 +371,22 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
                 setattr(self, name, value)
 
     @classmethod
-    def _instantiate(cls: Type[_ACT], attribute_values: Dict[str, Dict[str, Any]]) -> _ACT:
+    def _get_discriminator_class(cls, attribute_values: Dict[str, Dict[str, Any]]) -> Optional[Type]:
         discriminator_attr = cls._get_discriminator_attribute()
         if discriminator_attr:
-            discriminator_attribute_value = attribute_values.pop(discriminator_attr.attr_name, None)
+            discriminator_attribute_value = attribute_values.get(discriminator_attr.attr_name, None)
             if discriminator_attribute_value:
                 discriminator_value = discriminator_attr.get_value(discriminator_attribute_value)
-                stored_cls = discriminator_attr.deserialize(discriminator_value)
-                if not issubclass(stored_cls, cls):
-                    raise ValueError("Cannot instantiate a {} from the returned class: {}".format(
-                        cls.__name__, stored_cls.__name__))
-                cls = stored_cls
-        instance = cls(_user_instantiated=False)
+                return discriminator_attr.deserialize(discriminator_value)
+        return None
+
+    @classmethod
+    def _instantiate(cls: Type[_ACT], attribute_values: Dict[str, Dict[str, Any]]) -> _ACT:
+        stored_cls = cls._get_discriminator_class(attribute_values)
+        if stored_cls and not issubclass(stored_cls, cls):
+            raise ValueError("Cannot instantiate a {} from the returned class: {}".format(
+                cls.__name__, stored_cls.__name__))
+        instance = (stored_cls or cls)(_user_instantiated=False)
         AttributeContainer.deserialize(instance, attribute_values)
         return instance
 
@@ -422,7 +426,9 @@ class DiscriminatorAttribute(Attribute[type]):
         return self._class_map.get(cls)
 
     def __set__(self, instance: Any, value: Optional[type]) -> None:
-        raise TypeError("'{}' object does not support item assignment".format(self.__class__.__name__))
+        if type(instance) != value:
+            raise ValueError("The discriminator attribute must be set to the instance type: {}".format(type(instance)))
+        super().__set__(instance, value)
 
     def serialize(self, value):
         """
