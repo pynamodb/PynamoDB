@@ -312,7 +312,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
     def _set_discriminator(self) -> None:
         discriminator_attr = self._get_discriminator_attribute()
         if discriminator_attr and discriminator_attr.get_discriminator(self.__class__) is not None:
-            setattr(self, self._discriminator, self.__class__)
+            setattr(self, self._discriminator, self.__class__)  # type: ignore
 
     def _set_defaults(self, _user_instantiated: bool = True) -> None:
         """
