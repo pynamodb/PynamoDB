@@ -1,11 +1,9 @@
 """
 Integration tests for the model API
 """
-from builtins import ValueError
 
 from datetime import datetime
 
-from examples.indexes import TestModel
 from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
 from pynamodb.attributes import (
