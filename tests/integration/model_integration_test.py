@@ -132,13 +132,15 @@ def test_can_inherit_version_attribute(ddb_url) -> None:
             table_name = 'pynamodb-ci-b'
             host = ddb_url
 
-    class TestModelC(TestModelA):
-        class Meta:
-            region = 'us-east-1'
-            table_name = 'pynamodb-ci-c'
-            host = ddb_url
+    with pytest.raises(ValueError) as e:
+        class TestModelC(TestModelA):
+            class Meta:
+                region = 'us-east-1'
+                table_name = 'pynamodb-ci-c'
+                host = ddb_url
 
-        version_invalid = VersionAttribute()
+            version_invalid = VersionAttribute()
+    assert e.value == "The model has more than one Version attribute: version, version_invalid"
     
     for M in [TestModelA, TestModelB, TestModelC]:
         if not M.exists():
