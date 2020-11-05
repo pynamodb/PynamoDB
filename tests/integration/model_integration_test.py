@@ -123,7 +123,7 @@ def test_can_inherit_version_attribute(ddb_url) -> None:
 
         forum = UnicodeAttribute(hash_key=True)
         thread = UnicodeAttribute(range_key=True)
-        scores = NumberSetAttribute()
+        scores = NumberAttribute()
         version = VersionAttribute()
 
     class TestModelB(TestModelA):
