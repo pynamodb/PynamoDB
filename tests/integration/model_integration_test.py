@@ -132,13 +132,6 @@ def test_can_inherit_version_attribute(ddb_url) -> None:
             table_name = 'pynamodb-ci-b'
             host = ddb_url
 
-    test_item_b = TestModelB(
-        forum='something',
-        thread='another-thing',
-        scores=2,
-    )
-    test_item_b.save()
-
     class TestModelC(TestModelA):
         class Meta:
             region = 'us-east-1'
@@ -146,6 +139,17 @@ def test_can_inherit_version_attribute(ddb_url) -> None:
             host = ddb_url
 
         version_invalid = VersionAttribute()
+    
+    for M in [TestModelA, TestModelB, TestModelC]:
+        if not M.exists():
+            M.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+
+    test_item_b = TestModelB(
+        forum='something',
+        thread='another-thing',
+        scores=2,
+    )
+    test_item_b.save()
 
     with pytest.raises(ValueError) as e:
         test_item_c = TestModelC(
