@@ -140,24 +140,4 @@ def test_can_inherit_version_attribute(ddb_url) -> None:
                 host = ddb_url
 
             version_invalid = VersionAttribute()
-    assert e.value == "The model has more than one Version attribute: version, version_invalid"
-    
-    for M in [TestModelA, TestModelB, TestModelC]:
-        if not M.exists():
-            M.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
-
-    test_item_b = TestModelB(
-        forum='something',
-        thread='another-thing',
-        scores=2,
-    )
-    test_item_b.save()
-
-    with pytest.raises(ValueError) as e:
-        test_item_c = TestModelC(
-            forum='something',
-            thread='another-thing',
-            scores=2,
-        )
-        test_item_c.save()
-    assert e.value == "The model has more than one Version attribute: version, version_invalid"
+    assert e.value == ValueError('The model has more than one Version attribute: version, version_invalid')
