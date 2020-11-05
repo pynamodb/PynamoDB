@@ -139,7 +139,7 @@ def test_can_inherit_version_attribute(ddb_url) -> None:
     )
     test_item_b.save()
 
-    class TestModelC(TestModel):
+    class TestModelC(TestModelA):
         class Meta:
             region = 'us-east-1'
             table_name = 'pynamodb-ci-c'
