@@ -1,7 +1,9 @@
 """
 Integration tests for the model API
 """
+
 from datetime import datetime
+
 from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
 from pynamodb.attributes import (
@@ -102,3 +104,38 @@ def test_model_integration(ddb_url):
 
     print(query_obj.update([TestModel.view.add(1)], condition=TestModel.forum.exists()))
     TestModel.delete_table()
+
+
+
+def test_can_inherit_version_attribute(ddb_url) -> None:
+
+    class TestModelA(Model):
+        """
+        A model for testing
+        """
+
+        class Meta:
+            region = 'us-east-1'
+            table_name = 'pynamodb-ci-a'
+            host = ddb_url
+
+        forum = UnicodeAttribute(hash_key=True)
+        thread = UnicodeAttribute(range_key=True)
+        scores = NumberAttribute()
+        version = VersionAttribute()
+
+    class TestModelB(TestModelA):
+        class Meta:
+            region = 'us-east-1'
+            table_name = 'pynamodb-ci-b'
+            host = ddb_url
+
+    with pytest.raises(ValueError) as e:
+        class TestModelC(TestModelA):
+            class Meta:
+                region = 'us-east-1'
+                table_name = 'pynamodb-ci-c'
+                host = ddb_url
+
+            version_invalid = VersionAttribute()
+    assert str(e.value) == 'The model has more than one Version attribute: version, version_invalid'
