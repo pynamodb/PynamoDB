@@ -120,6 +120,81 @@ class ConnectionTestCase(TestCase):
             kwargs = req.call_args[0][1]
             self.assertEqual(kwargs, params)
 
+    def test_create_table_with_tags(self):
+        conn = TableConnection(self.test_table_name)
+        kwargs = {
+            'read_capacity_units': 1,
+            'write_capacity_units': 1,
+            'attribute_definitions': [
+                {
+                    'attribute_name': 'key1',
+                    'attribute_type': 'S'
+                },
+                {
+                    'attribute_name': 'key2',
+                    'attribute_type': 'S'
+                }
+            ],
+            'key_schema': [
+                {
+                    'attribute_name': 'key1',
+                    'key_type': 'hash'
+                },
+                {
+                    'attribute_name': 'key2',
+                    'key_type': 'range'
+                }
+            ],
+            'tags': {
+                'tag-key1': 'tag-value1',
+                'tag-key2': 'tag-value2',
+            }
+        }
+        params = {
+            'TableName': 'ci-table',
+            'ProvisionedThroughput': {
+                'WriteCapacityUnits': 1,
+                'ReadCapacityUnits': 1
+            },
+            'AttributeDefinitions': [
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'key1'
+                },
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'key2'
+                }
+            ],
+            'KeySchema': [
+                {
+                    'KeyType': 'HASH',
+                    'AttributeName': 'key1'
+                },
+                {
+                    'KeyType': 'RANGE',
+                    'AttributeName': 'key2'
+                }
+            ],
+            'Tags': [
+                {
+                    'Key': 'tag-key1',
+                    'Value': 'tag-value1'
+                },
+                {
+                    'Key': 'tag-key2',
+                    'Value': 'tag-value2'
+                }
+            ]
+        }
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.create_table(
+                **kwargs
+            )
+            kwargs = req.call_args[0][1]
+            self.assertEqual(kwargs, params)
+
     def test_update_time_to_live(self):
         """
         TableConnection.update_time_to_live

@@ -41,7 +41,7 @@ from pynamodb.constants import (
     RETURN_VALUES_ON_CONDITION_FAILURE_VALUES, RETURN_VALUES_ON_CONDITION_FAILURE,
     AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
     PROVISIONED_BILLING_MODE,
-    TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE
+    TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE, TAGS, VALUE
 )
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
@@ -568,7 +568,8 @@ class Connection(object):
         global_secondary_indexes: Optional[Any] = None,
         local_secondary_indexes: Optional[Any] = None,
         stream_specification: Optional[Dict] = None,
-        billing_mode: str = DEFAULT_BILLING_MODE
+        billing_mode: str = DEFAULT_BILLING_MODE,
+        tags: Optional[Dict[str, str]] = None,
     ) -> Dict:
         """
         Performs the CreateTable operation
@@ -637,6 +638,14 @@ class Connection(object):
                 STREAM_ENABLED: stream_specification['stream_enabled'],
                 STREAM_VIEW_TYPE: stream_specification['stream_view_type']
             }
+
+        if tags:
+            operation_kwargs[TAGS] = [
+                {
+                    KEY: k,
+                    VALUE: v
+                } for k, v in tags.items()
+            ]
 
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
