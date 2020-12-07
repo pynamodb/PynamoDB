@@ -4,7 +4,7 @@ import os
 import warnings
 from os import getenv
 
-from typing import Any
+from typing import Any, Optional, Mapping, ClassVar
 
 log = logging.getLogger(__name__)
 
@@ -52,3 +52,22 @@ def get_settings_value(key: str) -> Any:
         return default_settings_dict[key]
 
     return None
+
+
+class OperationSettings:
+    """
+    Settings applicable to an individual operation.
+    When set, the settings in this object supersede the global and model settings.
+    """
+    default: ClassVar['OperationSettings']
+
+    def __init__(self, *, extra_headers: Optional[Mapping[str, str]] = None) -> None:
+        """
+        Initializes operation settings.
+        :param extra_headers: if set, extra headers to add to the HTTP request
+        (replaces extra_headers from the global settings)
+        """
+        self.extra_headers = extra_headers
+
+
+OperationSettings.default = OperationSettings()
