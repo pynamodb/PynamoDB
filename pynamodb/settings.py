@@ -61,11 +61,11 @@ class OperationSettings:
     """
     default: ClassVar['OperationSettings']
 
-    def __init__(self, *, extra_headers: Optional[Mapping[str, str]] = None) -> None:
+    def __init__(self, *, extra_headers: Optional[Mapping[str, Optional[str]]] = None) -> None:
         """
         Initializes operation settings.
-        :param extra_headers: if set, extra headers to add to the HTTP request
-        (replaces extra_headers from the global settings)
+        :param extra_headers: if set, extra headers to add to the HTTP request;
+         if the value is None, the key will not be set (can be used to remove headers set by global settings)
         """
         self.extra_headers = extra_headers
 

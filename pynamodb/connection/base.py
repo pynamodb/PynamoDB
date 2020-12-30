@@ -307,7 +307,7 @@ class Connection(object):
         prepared_request = self.client._endpoint.prepare_request(request)
         if settings.extra_headers is not None:
             prepared_request.headers.update(settings.extra_headers)
-        elif self._extra_headers is not None:
+        if self._extra_headers is not None:
             prepared_request.headers.update(self._extra_headers)
         return prepared_request
 
