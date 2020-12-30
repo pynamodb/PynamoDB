@@ -22,6 +22,7 @@ from pynamodb.constants import (
     PAY_PER_REQUEST_BILLING_MODE)
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
+from pynamodb.settings import OperationSettings
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from .deep_eq import deep_eq
 
@@ -1519,11 +1520,17 @@ class ConnectionTestCase(TestCase):
         create_request_mock = client_mock._endpoint.prepare_request
         create_request_mock.return_value = mock_req
 
-        c = Connection(extra_headers={'foo': 'bar'})
-        c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
+        c = Connection(extra_headers={'foo': 'bar', 'abc': '123'})
+        c._make_api_call(
+            'DescribeTable',
+            {'TableName': 'MyTable'},
+            settings=OperationSettings(extra_headers={'abc': 'xyz'}),
+        )
 
         assert send_mock.call_count == 1
-        assert send_mock.call_args[0][0].headers.get('foo') == 'bar'
+        request = send_mock.call_args[0][0]
+        assert request.headers.get('foo') == 'bar'
+        assert request.headers.get('abc') == 'xyz'
 
     @mock.patch('pynamodb.connection.Connection.client')
     def test_make_api_call_throws_when_retries_exhausted(self, client_mock):

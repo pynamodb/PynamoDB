@@ -348,7 +348,7 @@ class Connection(object):
         except Exception as e:
             log.exception("pre_boto callback threw an exception.")
 
-    def _make_api_call(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings) -> Dict:
+    def _make_api_call(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings = OperationSettings.default) -> Dict:
         """
         This private method is here for two reasons:
         1. It's faster to avoid using botocore's response parsing
