@@ -305,10 +305,10 @@ class Connection(object):
         request = create_request_object(params)
         self._sign_request(request)
         prepared_request = self.client._endpoint.prepare_request(request)
-        if settings.extra_headers is not None:
-            prepared_request.headers.update(settings.extra_headers)
         if self._extra_headers is not None:
             prepared_request.headers.update(self._extra_headers)
+        if settings.extra_headers is not None:
+            prepared_request.headers.update(settings.extra_headers)
         return prepared_request
 
     def dispatch(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings = OperationSettings.default) -> Dict:
