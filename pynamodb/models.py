@@ -402,7 +402,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
             condition &= version_condition
 
         kwargs['condition'] = condition
-        return self._get_connection().delete_item(*args, settings=settings, **kwargs)
+        kwargs['settings'] = settings
+        return self._get_connection().delete_item(*args, **kwargs)
 
     def update(self, actions: Sequence[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
         """
@@ -410,6 +411,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         :param actions: a list of Action updates to apply
         :param condition: an optional Condition on which to update
+        :param settings: per-operation settings
         :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         :raises pynamodb.exceptions.UpdateError: if the `condition` is not met
         """
@@ -424,12 +426,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
             'return_values': ALL_NEW,
             'condition': condition,
             'actions': actions,
+            'settings': settings,
         }
 
         if 'range_key' in save_kwargs:
             kwargs['range_key'] = save_kwargs['range_key']
 
-        data = self._get_connection().update_item(*args, settings=settings, **kwargs)
+        data = self._get_connection().update_item(*args, **kwargs)
         item_data = data[ATTRIBUTES]
         stored_cls = self._get_discriminator_class(item_data)
         if stored_cls and stored_cls != type(self):
@@ -446,7 +449,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if version_condition is not None:
             condition &= version_condition
         kwargs['condition'] = condition
-        data = self._get_connection().put_item(*args, settings=settings, **kwargs)
+        kwargs['settings'] = settings
+        data = self._get_connection().put_item(*args, **kwargs)
         self.update_local_version_attribute()
         return data
 
@@ -455,11 +459,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         Retrieves this object's data from dynamodb and syncs this local object
 
         :param consistent_read: If True, then a consistent read is performed.
+        :param settings: per-operation settings
         :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         """
         args, kwargs = self._get_save_args(attributes=False)
         kwargs.setdefault('consistent_read', consistent_read)
-        attrs = self._get_connection().get_item(*args, settings=settings, **kwargs)
+        kwargs['settings'] = settings
+        attrs = self._get_connection().get_item(*args, **kwargs)
         item_data = attrs.get(ITEM, None)
         if item_data is None:
             raise self.DoesNotExist("This item does not exist in the table.")
@@ -814,7 +820,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             schema['global_secondary_indexes'] = index_data.get('global_secondary_indexes')
             schema['local_secondary_indexes'] = index_data.get('local_secondary_indexes')
             index_attrs = index_data.get('attribute_definitions')
-            attr_keys = [attr.get('attribute_name') for attr in schema.get('attribute_definitions')]
+            attr_keys = [attr.get('attribute_name') for attr in schema['attribute_definitions']]
             for attr in index_attrs:
                 attr_name = attr.get('attribute_name')
                 if attr_name not in attr_keys:

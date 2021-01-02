@@ -466,6 +466,8 @@ class Connection(object):
 
             return self._handle_binary_attributes(data)
 
+        assert False  # unreachable code
+
     @staticmethod
     def _handle_binary_attributes(data):
         """ Simulate botocore's binary attribute handling """
@@ -544,7 +546,7 @@ class Connection(object):
             }
             try:
                 data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
-                self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
+                self._tables[table_name] = MetaTable(data[TABLE_KEY])
             except BotoCoreError as e:
                 raise TableError("Unable to describe table: {}".format(e), e)
             except ClientError as e:
