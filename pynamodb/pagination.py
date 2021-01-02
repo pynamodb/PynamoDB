@@ -112,7 +112,7 @@ class PageIterator(Iterator[_T]):
         if self._rate_limiter:
             self._rate_limiter.acquire()
             self._kwargs['return_consumed_capacity'] = TOTAL
-        page = self._operation(*self._args, settings=settings, **self._kwargs)
+        page = self._operation(*self._args, settings=self._settings, **self._kwargs)
         self._last_evaluated_key = page.get(LAST_EVALUATED_KEY)
         self._total_scanned_count += page[SCANNED_COUNT]
 
