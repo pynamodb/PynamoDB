@@ -67,8 +67,8 @@ class MetaTable(object):
     A pythonic wrapper around table metadata
     """
 
-    def __init__(self, data: Dict) -> None:
-        self.data: Dict = data or {}
+    def __init__(self, data: Optional[Dict]) -> None:
+        self.data = data or {}
         self._range_keyname = None
         self._hash_keyname = None
 
@@ -546,7 +546,7 @@ class Connection(object):
             }
             try:
                 data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
-                self._tables[table_name] = MetaTable(data[TABLE_KEY])
+                self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
             except BotoCoreError as e:
                 raise TableError("Unable to describe table: {}".format(e), e)
             except ClientError as e:
