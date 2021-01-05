@@ -64,8 +64,9 @@ class OperationSettings:
     def __init__(self, *, extra_headers: Optional[Mapping[str, Optional[str]]] = None) -> None:
         """
         Initializes operation settings.
-        :param extra_headers: if set, extra headers to add to the HTTP request;
-         if the value is None, the key will not be set (can be used to remove headers set by global settings)
+        :param extra_headers: if set, extra headers to add to the HTTP request. The headers are merged
+         on top of extra headers derived from settings or models' Meta classes. To delete a header, set its value
+         to `None`.
         """
         self.extra_headers = extra_headers
 
