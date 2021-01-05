@@ -35,6 +35,8 @@ Other changes in this release:
 * Replace the internal attribute type constants with their "short" DynamoDB version (#827)
 * Typed list attributes can now support any Attribute subclass (#833)
 * Add support for empty values in Binary and String attributes (#830)
+* Most API operation methods now accept a ``settings`` argument to customize settings of individual operations.
+  This currently allow adding or overriding HTTP headers. (#887)
 * Remove ``ListAttribute.remove_indexes`` (added in v4.3.2) and document usage of remove for list elements (#838)
 * Add the attribute name to error messages when deserialization fails (#815)
 * Add the table name to error messages for transactional operations (#835)
