@@ -1,10 +1,8 @@
-pytest>=5
+pytest>=6
 pytest-env
 pytest-mock
 
-# only used in .travis.yml
+# only used in CI
 coveralls
 mypy==0.770;python_version>="3.7"
 pytest-cov
-sphinx
-sphinx-rtd-theme
