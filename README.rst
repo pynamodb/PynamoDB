@@ -6,8 +6,8 @@ PynamoDB
     :target: https://pypi.python.org/pypi/pynamodb/
 .. image:: https://img.shields.io/conda/vn/conda-forge/pynamodb.svg
     :target: https://anaconda.org/conda-forge/pynamodb
-.. image:: https://img.shields.io/travis/pynamodb/PynamoDB/master.svg
-    :target: https://travis-ci.org/pynamodb/PynamoDB
+.. image:: https://github.com/pynamodb/PynamoDB/workflows/Tests/badge.svg
+    :target: https://github.com/pynamodb/PynamoDB/actions
 .. image:: https://img.shields.io/coveralls/pynamodb/PynamoDB/master.svg
     :target: https://coveralls.io/r/pynamodb/PynamoDB
 
