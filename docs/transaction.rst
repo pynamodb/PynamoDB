@@ -20,9 +20,9 @@ Suppose you have defined a BankStatement model, like in the example below.
         class Meta:
             table_name = 'BankStatement'
 
-    user_id = UnicodeAttribute(hash_key=True)
-    account_balance = NumberAttribute(default=0)
-    is_active = BooleanAttribute()
+        user_id = UnicodeAttribute(hash_key=True)
+        account_balance = NumberAttribute(default=0)
+        is_active = BooleanAttribute()
 
 
 Transact Writes
