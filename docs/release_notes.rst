@@ -19,6 +19,17 @@ The UTCDateTimeAttribute now strictly requires the date string format '%Y-%m-%dT
 PynamoDB has always written values with this format but previously would accept reading other formats.
 Items written using other formats must be rewritten before upgrading.
 
+**UnicodeAttribute and BinaryAttribute**
+
+In previous versions, when you would assign an empty value to :py:class:`UnicodeAttribute <pynamodb.attributes.UnicodeAttribute>` or :py:class:`BinaryAttribute <pynamodb.attributes.BinaryAttribute>`, it would be akin to assigning `None` to it: if `null=True` then it would be omitted, otherwise an error would be raised.
+
+Since DynamoDB `supports <https://aws.amazon.com/about-aws/whats-new/2020/05/amazon-dynamodb-now-supports-empty-values-for-non-key-string-and-binary-attributes-in-dynamodb-tables/>`_ empty values for String and Binary attributes as of last year, we have reversed this decision, so now an empty
+value is treated like any other value.
+
+This introduces a subtle incompatibility if existing code unintentionally assigns empty values to attributes.
+With PynamoDB 5, those empty values would be persisted, which can affect the shape of the persisted data,
+how it's read back, and how it's seen by other systems.
+
 **Model Serialization**
 
 THe ``Model`` class now includes public methods for serializing and deserializing its attributes.
