@@ -23,7 +23,7 @@ Items written using other formats must be rewritten before upgrading.
 
 In previous versions, assigning an empty value to a :py:class:`UnicodeAttribute <pynamodb.attributes.UnicodeAttribute>` or :py:class:`BinaryAttribute <pynamodb.attributes.BinaryAttribute>` would be akin to assigning `None`: if the attribute was defined with `null=True` then it would be omitted, otherwise an error would be raised.
 
-Since DynamoDB `supports <https://aws.amazon.com/about-aws/whats-new/2020/05/amazon-dynamodb-now-supports-empty-values-for-non-key-string-and-binary-attributes-in-dynamodb-tables/>`_ empty values for String and Binary attributes as of last year, we have reversed this decision, so now an empty
+As of May 2020, DynamoDB `supports <https://aws.amazon.com/about-aws/whats-new/2020/05/amazon-dynamodb-now-supports-empty-values-for-non-key-string-and-binary-attributes-in-dynamodb-tables/>`_ empty values for String and Binary attributes and PynamoDB 5 has been updated accordingly, so now an empty
 value is treated like any other value.
 
 This introduces a subtle incompatibility if existing code unintentionally assigns empty values to attributes.
