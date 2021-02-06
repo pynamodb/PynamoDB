@@ -21,9 +21,9 @@ Items written using other formats must be rewritten before upgrading.
 
 **UnicodeAttribute and BinaryAttribute**
 
-In previous versions, assigning an empty value to a :py:class:`UnicodeAttribute <pynamodb.attributes.UnicodeAttribute>` or :py:class:`BinaryAttribute <pynamodb.attributes.BinaryAttribute>` would be akin to assigning `None`: if the attribute was defined with `null=True` then it would be omitted, otherwise an error would be raised.
+In previous versions, assigning an empty value to a :py:class:`UnicodeAttribute <pynamodb.attributes.UnicodeAttribute>` or :py:class:`BinaryAttribute <pynamodb.attributes.BinaryAttribute>` would be akin to assigning ``None``: if the attribute was defined with ``null=True`` then it would be omitted, otherwise an error would be raised.
 
-As of May 2020, DynamoDB `supports <https://aws.amazon.com/about-aws/whats-new/2020/05/amazon-dynamodb-now-supports-empty-values-for-non-key-string-and-binary-attributes-in-dynamodb-tables/>`_ empty values for String and Binary attributes. This release of PynamoDB starts treats empty values like any other values. This introduces a breaking change for existing code which unintentionally assigns empty values to attributes, as this will affect the shape of the persisted data (the attributes will now be present where previously they were absent) and how models are deserialized (the attributes will be deserialized as empty strings or bytes).
+As of May 2020, DynamoDB `supports <https://aws.amazon.com/about-aws/whats-new/2020/05/amazon-dynamodb-now-supports-empty-values-for-non-key-string-and-binary-attributes-in-dynamodb-tables/>`_ empty values for String and Binary attributes. This release of PynamoDB starts treating empty values like any other values. If existing code unintentionally assigns empty values to StringAttribute or BinaryAttribute, this may be a breaking change: for example, the code may rely on the fact that in previous versions empty strings would be "read back" as ``None`` values when reloaded from the database.
 
 **Model Serialization**
 
