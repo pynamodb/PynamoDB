@@ -4,7 +4,7 @@ Release Notes
 v5.0.0
 ----------
 
-:date: 2020-01-26
+:date: 2021-01-26
 
 This is major release and contains breaking changes. Please read the notes below carefully.
 
