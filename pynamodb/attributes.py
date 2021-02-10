@@ -339,7 +339,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
                 raise ValueError("Attribute {} specified does not exist".format(attr_name))
             setattr(self, attr_name, attr_value)
 
-    def serialize(self, null_check=True) -> Dict[str, Dict[str, Any]]:
+    def _container_serialize(self, null_check: bool = True) -> Dict[str, Dict[str, Any]]:
         """
         Serialize attribute values for DynamoDB
         """
@@ -357,7 +357,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
                 attribute_values[attr.attr_name] = {attr.attr_type: attr_value}
         return attribute_values
 
-    def deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
+    def _container_deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
         """
         Sets attributes sent back from DynamoDB on this object
         """
@@ -387,16 +387,8 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             raise ValueError("Cannot instantiate a {} from the returned class: {}".format(
                 cls.__name__, stored_cls.__name__))
         instance = (stored_cls or cls)(_user_instantiated=False)
-        AttributeContainer.deserialize(instance, attribute_values)
+        AttributeContainer._container_deserialize(instance, attribute_values)
         return instance
-
-    def __eq__(self, other: Any) -> bool:
-        # This is required so that MapAttribute can call this method.
-        return self is other
-
-    def __ne__(self, other: Any) -> bool:
-        # This is required so that MapAttribute can call this method.
-        return self is not other
 
 
 class DiscriminatorAttribute(Attribute[type]):
@@ -835,14 +827,14 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             if isinstance(local_attr, MapAttribute):
                 local_attr._update_attribute_paths(path_segment)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> 'Comparison':  # type: ignore[override]
         if self._is_attribute_container():
-            return AttributeContainer.__eq__(self, other)
+            return self is other  # type: ignore
         return Attribute.__eq__(self, other)
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> 'Comparison':  # type: ignore[override]
         if self._is_attribute_container():
-            return AttributeContainer.__ne__(self, other)
+            return self is not other  # type: ignore
         return Attribute.__ne__(self, other)
 
     def __iter__(self):
@@ -940,7 +932,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
                         setattr(instance, name, values[name])
                 values = instance
 
-            return AttributeContainer.serialize(values)
+            return AttributeContainer._container_serialize(values)
 
         # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
         # This special case behavior for "raw" attributes should be removed in the future.
