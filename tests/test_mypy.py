@@ -203,3 +203,12 @@ def test_index_query_scan(assert_mypy_output):
     model = next(typed_result)
     not_model = next(typed_result)  # E: Incompatible types in assignment (expression has type "MyModel", variable has type "int")  [assignment]
     """)
+
+
+def test_map_attribute_derivation(assert_mypy_output):
+    assert_mypy_output("""
+    from pynamodb.attributes import MapAttribute
+
+    class MyMap(MapAttribute, object):
+        pass
+    """)
