@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+v5.0.1
+----------
+
+:date: 2021-02-10
+
+* Fix type errors when deriving from a MapAttribute and another type (#904)
+
+
 v5.0.0
 ----------
 

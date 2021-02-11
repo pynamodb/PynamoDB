@@ -160,6 +160,7 @@ def test_paths(assert_mypy_output):
     reveal_type(MyModel.my_list[0] == MyModel())  # N: Revealed type is 'pynamodb.expressions.condition.Comparison'
     # the following string indexing is not type checked - not by mypy nor in runtime
     reveal_type(MyModel.my_list[0]['my_sub_attr'] == 'foobar')  # N: Revealed type is 'pynamodb.expressions.condition.Comparison'
+    reveal_type(MyModel.my_map == 'foobar')  # N: Revealed type is 'pynamodb.expressions.condition.Comparison'
     """)
 
 
@@ -202,4 +203,13 @@ def test_index_query_scan(assert_mypy_output):
     typed_result = MyModel.typed_index.scan()
     model = next(typed_result)
     not_model = next(typed_result)  # E: Incompatible types in assignment (expression has type "MyModel", variable has type "int")  [assignment]
+    """)
+
+
+def test_map_attribute_derivation(assert_mypy_output):
+    assert_mypy_output("""
+    from pynamodb.attributes import MapAttribute
+
+    class MyMap(MapAttribute, object):
+        pass
     """)
