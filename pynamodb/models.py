@@ -434,7 +434,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args(condition=condition)
-        data = self._get_connection().put_item(*args, settings=settings, **kwargs)
+        kwargs['settings'] = settings
+        data = self._get_connection().put_item(*args, **kwargs)
         self.update_local_version_attribute()
         return data
 
@@ -489,7 +490,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return_values_on_condition_failure: Optional[str] = None,
     ) -> Dict[str, Any]:
         args, save_kwargs = self._get_save_args(null_check=True, condition=condition)
-        return self._get_connection().get_operation_kwargs(*args, key=ITEM, return_values_on_condition_failure=return_values_on_condition_failure, **save_kwargs)
+        save_kwargs['key'] = ITEM
+        save_kwargs['return_values_on_condition_failure'] = return_values_on_condition_failure
+        return self._get_connection().get_operation_kwargs(*args, **save_kwargs)
 
     @classmethod
     def get_operation_kwargs_from_class(
