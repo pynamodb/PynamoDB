@@ -1120,7 +1120,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             range_key = cls._range_key_attribute().serialize(range_key)
         return hash_key, range_key
 
-    def serialize(self, null_check=True) -> Dict[str, Dict[str, Any]]:
+    def serialize(self, null_check: bool = True) -> Dict[str, Dict[str, Any]]:
         """
         Serialize attribute values for DynamoDB
         """
