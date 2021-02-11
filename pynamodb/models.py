@@ -434,9 +434,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args(condition=condition)
-        print('x' * 80)
-        print(args, kwargs)
-        print('x' * 80)
         data = self._get_connection().put_item(*args, settings=settings, **kwargs)
         self.update_local_version_attribute()
         return data
