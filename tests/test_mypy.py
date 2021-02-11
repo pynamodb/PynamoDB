@@ -160,6 +160,7 @@ def test_paths(assert_mypy_output):
     reveal_type(MyModel.my_list[0] == MyModel())  # N: Revealed type is 'pynamodb.expressions.condition.Comparison'
     # the following string indexing is not type checked - not by mypy nor in runtime
     reveal_type(MyModel.my_list[0]['my_sub_attr'] == 'foobar')  # N: Revealed type is 'pynamodb.expressions.condition.Comparison'
+    reveal_type(MyModel.my_map == 'foobar')  # N: Revealed type is 'pynamodb.expressions.condition.Comparison'
     """)
 
 
