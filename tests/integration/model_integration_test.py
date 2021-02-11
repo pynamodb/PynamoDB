@@ -55,9 +55,9 @@ def test_model_integration(ddb_url):
         scores = NumberSetAttribute()
         version = VersionAttribute()
 
-    if not TestModel.exists():
-        print("Creating table")
-        TestModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+    if TestModel.exists():
+        TestModel.delete_table()
+    TestModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
     obj = TestModel('1', '2')
     obj.save()
@@ -104,7 +104,6 @@ def test_model_integration(ddb_url):
 
     print(query_obj.update([TestModel.view.add(1)], condition=TestModel.forum.exists()))
     TestModel.delete_table()
-
 
 
 def test_can_inherit_version_attribute(ddb_url) -> None:
