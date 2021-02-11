@@ -946,8 +946,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return args, kwargs
 
     def _get_hash_range_key_serialized_values(self) -> Tuple[Any, Optional[Any]]:
-        if not self._hash_keyname:
-            raise RuntimeError
+        if self._hash_keyname is None:
+            raise Exception("The model has no hash key")
 
         attrs = self.get_attributes()
 
