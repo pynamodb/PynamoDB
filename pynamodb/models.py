@@ -301,7 +301,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         if hash_key is not None:
             if self._hash_keyname is None:
-                raise ValueError(f"This model has no hash key, but a hash key value was provided: {range_key}")
+                raise ValueError(f"This model has no hash key, but a hash key value was provided: {hash_key}")
             attributes[self._hash_keyname] = hash_key
         if range_key is not None:
             if self._range_keyname is None:
