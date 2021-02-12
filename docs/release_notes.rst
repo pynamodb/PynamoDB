@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+v5.0.2
+----------
+
+:date: 2021-02-11
+
+* Do not serialize all attributes for updates and deletes (#905)
+
+
 v5.0.1
 ----------
 

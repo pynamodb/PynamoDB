@@ -396,16 +396,14 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         :raises pynamodb.exceptions.DeleteError: If the record can not be deleted
         """
-        args, kwargs = self._get_save_args(attributes=False, null_check=False)
-        version_condition = self._handle_version_attribute(kwargs)
+        hk_value, rk_value = self._get_hash_range_key_serialized_values()
+        version_condition = self._handle_version_attribute()
         if version_condition is not None:
             condition &= version_condition
 
-        kwargs['condition'] = condition
-        kwargs['settings'] = settings
-        return self._get_connection().delete_item(*args, **kwargs)
+        return self._get_connection().delete_item(hk_value, range_key=rk_value, condition=condition, settings=settings)
 
-    def update(self, actions: Sequence[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
+    def update(self, actions: List[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
         """
         Updates an item using the UpdateItem operation.
 
@@ -418,21 +416,12 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if not isinstance(actions, list) or len(actions) == 0:
             raise TypeError("the value of `actions` is expected to be a non-empty list")
 
-        args, save_kwargs = self._get_save_args(null_check=False)
-        version_condition = self._handle_version_attribute(save_kwargs, actions=actions)
+        hk_value, rk_value = self._get_hash_range_key_serialized_values()
+        version_condition = self._handle_version_attribute(actions=actions)
         if version_condition is not None:
             condition &= version_condition
-        kwargs: Dict[str, Any] = {
-            'return_values': ALL_NEW,
-            'condition': condition,
-            'actions': actions,
-            'settings': settings,
-        }
 
-        if 'range_key' in save_kwargs:
-            kwargs['range_key'] = save_kwargs['range_key']
-
-        data = self._get_connection().update_item(*args, **kwargs)
+        data = self._get_connection().update_item(hk_value, range_key=rk_value, return_values=ALL_NEW, condition=condition, actions=actions, settings=settings)
         item_data = data[ATTRIBUTES]
         stored_cls = self._get_discriminator_class(item_data)
         if stored_cls and stored_cls != type(self):
@@ -444,11 +433,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         Save this object to dynamodb
         """
-        args, kwargs = self._get_save_args()
-        version_condition = self._handle_version_attribute(serialized_attributes=kwargs)
-        if version_condition is not None:
-            condition &= version_condition
-        kwargs['condition'] = condition
+        args, kwargs = self._get_save_args(condition=condition)
         kwargs['settings'] = settings
         data = self._get_connection().put_item(*args, **kwargs)
         self.update_local_version_attribute()
@@ -462,10 +447,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param settings: per-operation settings
         :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         """
-        args, kwargs = self._get_save_args(attributes=False)
-        kwargs.setdefault('consistent_read', consistent_read)
-        kwargs['settings'] = settings
-        attrs = self._get_connection().get_item(*args, **kwargs)
+        hk_value, rk_value = self._get_hash_range_key_serialized_values()
+        attrs = self._get_connection().get_item(hk_value, range_key=rk_value, consistent_read=consistent_read, settings=settings)
         item_data = attrs.get(ITEM, None)
         if item_data is None:
             raise self.DoesNotExist("This item does not exist in the table.")
@@ -474,35 +457,42 @@ class Model(AttributeContainer, metaclass=MetaModel):
             raise ValueError("Cannot refresh this item from the returned class: {}".format(stored_cls.__name__))
         self.deserialize(item_data)
 
-    def get_operation_kwargs_from_instance(
+    def get_update_kwargs_from_instance(
         self,
-        key: str = KEY,
-        actions: Optional[Sequence[Action]] = None,
+        actions: List[Action],
         condition: Optional[Condition] = None,
         return_values_on_condition_failure: Optional[str] = None,
     ) -> Dict[str, Any]:
-        is_update = actions is not None
-        is_delete = actions is None and key is KEY
-        args, save_kwargs = self._get_save_args(null_check=not is_update)
+        hk_value, rk_value = self._get_hash_range_key_serialized_values()
 
-        version_condition = self._handle_version_attribute(
-            serialized_attributes={} if is_delete else save_kwargs,
-            actions=actions
-        )
+        version_condition = self._handle_version_attribute(actions=actions)
         if version_condition is not None:
             condition &= version_condition
 
-        kwargs: Dict[str, Any] = dict(
-            key=key,
-            actions=actions,
-            condition=condition,
-            return_values_on_condition_failure=return_values_on_condition_failure
-        )
-        if not is_update:
-            kwargs.update(save_kwargs)
-        elif 'range_key' in save_kwargs:
-            kwargs['range_key'] = save_kwargs['range_key']
-        return self._get_connection().get_operation_kwargs(*args, **kwargs)
+        return self._get_connection().get_operation_kwargs(hk_value, range_key=rk_value, key=KEY, actions=actions, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
+
+    def get_delete_kwargs_from_instance(
+        self,
+        condition: Optional[Condition] = None,
+        return_values_on_condition_failure: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        hk_value, rk_value = self._get_hash_range_key_serialized_values()
+
+        version_condition = self._handle_version_attribute()
+        if version_condition is not None:
+            condition &= version_condition
+
+        return self._get_connection().get_operation_kwargs(hk_value, range_key=rk_value, key=KEY, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
+
+    def get_save_kwargs_from_instance(
+        self,
+        condition: Optional[Condition] = None,
+        return_values_on_condition_failure: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        args, save_kwargs = self._get_save_args(null_check=True, condition=condition)
+        save_kwargs['key'] = ITEM
+        save_kwargs['return_values_on_condition_failure'] = return_values_on_condition_failure
+        return self._get_connection().get_operation_kwargs(*args, **save_kwargs)
 
     @classmethod
     def get_operation_kwargs_from_class(
@@ -928,16 +918,15 @@ class Model(AttributeContainer, metaclass=MetaModel):
                     cls._indexes['local_secondary_indexes'].append(idx)
         return cls._indexes
 
-    def _get_save_args(self, attributes=True, null_check=True):
+    def _get_save_args(self, null_check: bool = True, condition: Optional[Condition] = None) -> Tuple[Iterable[Any], Dict[str, Any]]:
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
 
         This is used for serializing items to be saved, or for serializing just the keys.
 
-        :param attributes: If True, then attributes are included.
         :param null_check: If True, then attributes are checked for null.
+        :param condition: If set, a condition
         """
-        kwargs = {}
         attribute_values = self.serialize(null_check)
         hash_key_attribute = self._hash_key_attribute()
         hash_key = attribute_values.pop(hash_key_attribute.attr_name, {}).get(hash_key_attribute.attr_type)
@@ -946,43 +935,57 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if range_key_attribute:
             range_key = attribute_values.pop(range_key_attribute.attr_name, {}).get(range_key_attribute.attr_type)
         args = (hash_key, )
+        kwargs = {}
         if range_key is not None:
             kwargs['range_key'] = range_key
-        if attributes:
-            kwargs['attributes'] = attribute_values
+        version_condition = self._handle_version_attribute(attributes=attribute_values)
+        if version_condition is not None:
+            condition &= version_condition
+        kwargs['attributes'] = attribute_values
+        kwargs['condition'] = condition
         return args, kwargs
 
-    def _handle_version_attribute(self, serialized_attributes, actions=None):
+    def _get_hash_range_key_serialized_values(self) -> Tuple[Any, Optional[Any]]:
+        if self._hash_keyname is None:
+            raise Exception("The model has no hash key")
+
+        attrs = self.get_attributes()
+
+        hk_value = getattr(self, self._hash_keyname)
+        hk_serialized_value = attrs[self._hash_keyname].serialize(hk_value)
+
+        rk_serialized_value = None
+        if self._range_keyname:
+            rk_value = getattr(self, self._range_keyname)
+            if rk_value is not None:
+                rk_serialized_value = attrs[self._range_keyname].serialize(rk_value)
+
+        return hk_serialized_value, rk_serialized_value
+
+    def _handle_version_attribute(self, *, attributes: Optional[Dict[str, Any]] = None, actions: Optional[List[Action]] = None) -> Optional[Condition]:
         """
         Handles modifying the request to set or increment the version attribute.
-
-        :param serialized_attributes: A dictionary mapping attribute names to serialized values.
-        :param actions: A non-empty list when performing an update, otherwise None.
         """
         if self._version_attribute_name is None:
-            return
+            return None
 
         version_attribute = self.get_attributes()[self._version_attribute_name]
-        version_attribute_value = getattr(self, self._version_attribute_name)
+        value = getattr(self, self._version_attribute_name)
 
-        if version_attribute_value is not None:
-            version_condition = version_attribute == version_attribute_value
-            if actions:
+        if value is not None:
+            condition = version_attribute == value
+            if attributes is not None:
+                attributes[version_attribute.attr_name] = self._serialize_value(version_attribute, value + 1)
+            if actions is not None:
                 actions.append(version_attribute.add(1))
-            elif 'attributes' in serialized_attributes:
-                serialized_attributes['attributes'][version_attribute.attr_name] = self._serialize_value(
-                    version_attribute, version_attribute_value + 1
-                )
         else:
-            version_condition = version_attribute.does_not_exist()
-            if actions:
+            condition = version_attribute.does_not_exist()
+            if attributes is not None:
+                attributes[version_attribute.attr_name] = self._serialize_value(version_attribute, 1)
+            if actions is not None:
                 actions.append(version_attribute.set(1))
-            elif 'attributes' in serialized_attributes:
-                serialized_attributes['attributes'][version_attribute.attr_name] = self._serialize_value(
-                    version_attribute, 1
-                )
 
-        return version_condition
+        return condition
 
     def update_local_version_attribute(self):
         if self._version_attribute_name is not None:

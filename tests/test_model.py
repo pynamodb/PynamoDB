@@ -332,9 +332,15 @@ class OfficeEmployee(Model):
         return 1
 
 
+class CarLocation(MapAttribute):
+    lat = NumberAttribute(null=False)
+    lng = NumberAttribute(null=False)
+
+
 class CarInfoMap(MapAttribute):
     make = UnicodeAttribute(null=False)
     model = UnicodeAttribute(null=True)
+    location = CarLocation(null=True)
 
 
 class CarModel(Model):
@@ -914,6 +920,22 @@ class ModelTestCase(TestCase):
 
             assert item.views is None
             self.assertEqual({'bob'}, item.custom_aliases)
+
+    def test_update_doesnt_do_validation_on_null_attributes(self):
+        self.init_table_meta(CarModel, CAR_MODEL_TABLE_DATA)
+        item = CarModel(12345)
+        item.car_info = CarInfoMap(make='Foo', model='Bar')
+        item.car_info.location = CarLocation()  # two levels deep we have invalid Nones
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    "car_id": {
+                        "N": "12345",
+                    },
+                }
+            }
+            item.update([CarModel.car_id.set(6789)])
 
     def test_save(self):
         """
