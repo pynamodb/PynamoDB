@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+v5.0.3
+----------
+
+:date: 2021-02-14
+
+* Propagate ``Model.serialize``'s ``null_check`` parameter to nested MapAttributes (#908)
+
+
 v5.0.2
 ----------
 
