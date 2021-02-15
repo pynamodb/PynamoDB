@@ -2906,6 +2906,7 @@ class ModelTestCase(TestCase):
         )
         item.serialize(null_check=False)
 
+        # now let's nullify an attribute a few levels deep to test that `null_check` propagates
         item.left.left.left.value = None
         item.serialize(null_check=False)
 
