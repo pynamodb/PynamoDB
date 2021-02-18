@@ -2874,6 +2874,42 @@ class ModelTestCase(TestCase):
             item = BooleanModel.get('justin')
             self.assertTrue(item.is_human)
 
+    def test_serializing_map_with_null_check(self):
+        item = TreeModel(
+            tree_key='test',
+            left=TreeLeaf(
+                value=42,
+                left=TreeLeaf1(
+                    value=42,
+                    left=TreeLeaf2(value=42),
+                    right=TreeLeaf2(value=42),
+                ),
+                right=TreeLeaf1(
+                    value=42,
+                    left=TreeLeaf2(value=42),
+                    right=TreeLeaf2(value=42),
+                ),
+            ),
+            right=TreeLeaf(
+                value=42,
+                left=TreeLeaf1(
+                    value=42,
+                    left=TreeLeaf2(value=42),
+                    right=TreeLeaf2(value=42),
+                ),
+                right=TreeLeaf1(
+                    value=42,
+                    left=TreeLeaf2(value=42),
+                    right=TreeLeaf2(value=42),
+                ),
+            ),
+        )
+        item.serialize(null_check=False)
+
+        # now let's nullify an attribute a few levels deep to test that `null_check` propagates
+        item.left.left.left.value = None
+        item.serialize(null_check=False)
+
     def test_deserializing_map_four_layers_deep_works(self):
         fake_db = self.database_mocker(TreeModel,
                                        TREE_MODEL_TABLE_DATA,

@@ -346,10 +346,16 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         attribute_values: Dict[str, Dict[str, Any]] = {}
         for name, attr in self.get_attributes().items():
             value = getattr(self, name)
-            if isinstance(value, MapAttribute) and not value.validate():
+            if isinstance(value, MapAttribute) and not value.validate(null_check=null_check):
                 raise ValueError("Attribute '{}' is not correctly typed".format(name))
 
-            attr_value = attr.serialize(value) if value is not None else None
+            if value is not None:
+                if isinstance(attr, MapAttribute):
+                    attr_value = attr.serialize(value, null_check=null_check)
+                else:
+                    attr_value = attr.serialize(value)
+            else:
+                attr_value = None
             if null_check and attr_value is None and not attr.null:
                 raise ValueError("Attribute '{}' cannot be None".format(name))
 
@@ -906,8 +912,8 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         else:
             super()._set_attributes(**attrs)
 
-    def is_correctly_typed(self, key, attr):
-        can_be_null = attr.null
+    def is_correctly_typed(self, key, attr, *, null_check: bool = True):
+        can_be_null = attr.null or not null_check
         value = getattr(self, key)
         if can_be_null and value is None:
             return True
@@ -915,10 +921,11 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             raise ValueError("Attribute '{}' cannot be None".format(key))
         return True  # TODO: check that the actual type of `value` meets requirements of `attr`
 
-    def validate(self):
-        return all(self.is_correctly_typed(k, v) for k, v in self.get_attributes().items())
+    def validate(self, *, null_check: bool = False):
+        return all(self.is_correctly_typed(k, v, null_check=null_check)
+                   for k, v in self.get_attributes().items())
 
-    def serialize(self, values):
+    def serialize(self, values, *, null_check: bool = True):
         if not self.is_raw():
             # This is a subclassed MapAttribute that acts as an AttributeContainer.
             # Serialize the values based on the attributes in the class.
@@ -932,7 +939,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
                         setattr(instance, name, values[name])
                 values = instance
 
-            return AttributeContainer._container_serialize(values)
+            return AttributeContainer._container_serialize(values, null_check=null_check)
 
         # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
         # This special case behavior for "raw" attributes should be removed in the future.
