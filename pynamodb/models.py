@@ -29,7 +29,8 @@ else:
     from typing_extensions import Protocol
 
 from pynamodb.expressions.update import Action
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError
+from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError, \
+    AttributeNullError
 from pynamodb.attributes import (
     AttributeContainer, AttributeContainerMeta, TTLAttribute, VersionAttribute
 )
@@ -1104,7 +1105,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         if serialized is None:
             if not attr.null:
-                raise ValueError("Attribute '{}' cannot be None".format(attr.attr_name))
+                raise AttributeNullError(attr.attr_name)
             return {NULL: True}
 
         return {attr.attr_type: serialized}

@@ -127,6 +127,17 @@ class AttributeDeserializationError(TypeError):
         super(AttributeDeserializationError, self).__init__(msg)
 
 
+class AttributeNullError(ValueError):
+    def __init__(self, attr_name: str) -> None:
+        self.attr_path = attr_name
+
+    def __str__(self):
+        return f"Attribute '{self.attr_path}' cannot be None"
+
+    def prepend_path(self, attr_name: str) -> None:
+        self.attr_path = attr_name + '.' + self.attr_path
+
+
 class VerboseClientError(botocore.exceptions.ClientError):
     def __init__(self, error_response: Any, operation_name: str, verbose_properties: Optional[Any] = None):
         """ Modify the message template to include the desired verbose properties """

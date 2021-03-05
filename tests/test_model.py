@@ -2643,8 +2643,9 @@ class ModelTestCase(TestCase):
         car_info = CarInfoMap(model='Envoy')
         item = CarModel(car_id=123, car_info=car_info)
         with patch(PATCH_METHOD):
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValueError) as cm:
                 item.save()
+            assert str(cm.exception) == "Attribute 'car_info.make' cannot be None"
 
     def test_model_works_like_model(self):
         office_employee = self._get_office_employee()
@@ -2678,12 +2679,9 @@ class ModelTestCase(TestCase):
                                  '123')
 
         with patch(PATCH_METHOD, new=fake_db) as req:
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValueError) as cm:
                 CarModel(car_id=2).save()
-            try:
-                CarModel(car_id=2).save()
-            except ValueError as e:
-                assert str(e) == "Attribute 'car_info' cannot be None"
+            assert str(cm.exception) == "Attribute 'car_info' cannot be None"
 
     def test_model_with_maps_retrieve_from_db(self):
         fake_db = self.database_mocker(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
