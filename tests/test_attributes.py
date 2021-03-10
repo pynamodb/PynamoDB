@@ -839,21 +839,21 @@ class TestMapAttribute:
         assert list(t.nested.double_nested.values()) == list(t.nested.double_nested.as_dict().values())
 
         # disallowed
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             ThingModel.nested.get("something")
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             NestedThing.double_nested.get("something")
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             ThingModel.nested.items()
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             NestedThing.double_nested.items()
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             ThingModel.nested.keys()
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             NestedThing.double_nested.keys()
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             ThingModel.nested.values()
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             NestedThing.double_nested.values()
 
     def test_attribute_paths_subclassing(self):

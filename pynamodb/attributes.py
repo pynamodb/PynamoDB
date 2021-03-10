@@ -983,22 +983,22 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
 
     def get(self, item: _KT, default: Any = None) -> Union[_VT, None]:
         if not self._is_attribute_container():
-            raise AssertionError("MapAttribute must be acting as attribute container to MapAttribute.get")
+            raise TypeError("MapAttribute must be acting as attribute container to MapAttribute.get")
         return self.attribute_values.get(item, default)
 
     def items(self):
         if not self._is_attribute_container():
-            raise AssertionError("MapAttribute must be acting as attribute container to MapAttribute.items")
+            raise TypeError("MapAttribute must be acting as attribute container to MapAttribute.items")
         return self.attribute_values.items()
 
     def keys(self):
         if not self._is_attribute_container():
-            raise AssertionError("MapAttribute must be acting as attribute container to MapAttribute.keys")
+            raise TypeError("MapAttribute must be acting as attribute container to MapAttribute.keys")
         return self.attribute_values.keys()
 
     def values(self):
         if not self._is_attribute_container():
-            raise AssertionError("MapAttribute must be acting as attribute container to MapAttribute.values")
+            raise TypeError("MapAttribute must be acting as attribute container to MapAttribute.values")
         return self.attribute_values.values()
 
 
