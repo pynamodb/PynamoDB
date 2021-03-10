@@ -838,6 +838,24 @@ class TestMapAttribute:
             assert v == getattr(t.nested, k)
         assert list(t.nested.double_nested.values()) == list(t.nested.double_nested.as_dict().values())
 
+        # disallowed
+        with pytest.raises(AssertionError):
+            ThingModel.nested.get("something")
+        with pytest.raises(AssertionError):
+            NestedThing.double_nested.get("something")
+        with pytest.raises(AssertionError):
+            ThingModel.nested.items()
+        with pytest.raises(AssertionError):
+            NestedThing.double_nested.items()
+        with pytest.raises(AssertionError):
+            ThingModel.nested.keys()
+        with pytest.raises(AssertionError):
+            NestedThing.double_nested.keys()
+        with pytest.raises(AssertionError):
+            ThingModel.nested.values()
+        with pytest.raises(AssertionError):
+            NestedThing.double_nested.values()
+
     def test_attribute_paths_subclassing(self):
         class SubMapAttribute(MapAttribute):
             foo = UnicodeAttribute(attr_name='dyn_foo')
