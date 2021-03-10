@@ -802,6 +802,42 @@ class TestMapAttribute:
         with pytest.raises(KeyError):
             bad = t.nested['something_else']
 
+    def test_map_dict_api(self):
+        class NestedThing(MapAttribute):
+            double_nested = MapAttribute()
+            double_nested_renamed = MapAttribute(attr_name='something_else')
+
+        class ThingModel(Model):
+            key = NumberAttribute(hash_key=True)
+            nested = NestedThing()
+
+        t = ThingModel(nested=NestedThing(
+            double_nested={'hello': 'world'},
+            double_nested_renamed={'foo': 'bar'})
+        )
+
+        # get
+        assert t.nested.get('non-existent') == None
+        assert t.nested.get('non-existent', 'default') == 'default'
+        assert t.nested.get('double_nested') == t.nested.double_nested
+        assert t.nested.double_nested.get('non-existent') == None
+        assert t.nested.double_nested.get('hello') == 'world'
+
+        # items
+        for k, v in t.nested.items():
+            assert v == getattr(t.nested, k)
+
+        assert list(t.nested.double_nested.items()) == list(t.nested.double_nested.as_dict().items())
+
+        # keys
+        assert list(t.nested.keys()) == list(t.nested.as_dict().keys())
+        assert list(t.nested.double_nested.keys()) == list(t.nested.double_nested.as_dict().keys())
+
+        # values
+        for k, v in zip(t.nested.keys(), t.nested.values()):
+            assert v == getattr(t.nested, k)
+        assert list(t.nested.double_nested.values()) == list(t.nested.double_nested.as_dict().values())
+
     def test_attribute_paths_subclassing(self):
         class SubMapAttribute(MapAttribute):
             foo = UnicodeAttribute(attr_name='dyn_foo')
