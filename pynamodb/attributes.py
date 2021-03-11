@@ -13,7 +13,10 @@ from datetime import timedelta
 from datetime import timezone
 from inspect import getfullargspec
 from inspect import getmembers
-from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload
+from typing import (
+    Any, Callable, Dict, Generic, ItemsView, KeysView, List, Mapping,
+    Optional, Set, TypeVar, Type, Union, ValuesView, overload
+)
 from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
@@ -983,22 +986,22 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
 
     def get(self, item: _KT, default: Any = None) -> Union[_VT, None]:
         if not self._is_attribute_container():
-            raise TypeError("MapAttribute must be acting as attribute container to MapAttribute.get")
+            raise TypeError("MapAttribute must be acting as attribute container to use MapAttribute.get")
         return self.attribute_values.get(item, default)
 
-    def items(self):
+    def items(self) -> ItemsView[_KT, _VT]:
         if not self._is_attribute_container():
-            raise TypeError("MapAttribute must be acting as attribute container to MapAttribute.items")
+            raise TypeError("MapAttribute must be acting as attribute container to use MapAttribute.items")
         return self.attribute_values.items()
 
-    def keys(self):
+    def keys(self) -> KeysView[_KT]:
         if not self._is_attribute_container():
-            raise TypeError("MapAttribute must be acting as attribute container to MapAttribute.keys")
+            raise TypeError("MapAttribute must be acting as attribute container to use MapAttribute.keys")
         return self.attribute_values.keys()
 
-    def values(self):
+    def values(self) -> ValuesView[_VT]:
         if not self._is_attribute_container():
-            raise TypeError("MapAttribute must be acting as attribute container to MapAttribute.values")
+            raise TypeError("MapAttribute must be acting as attribute container to use MapAttribute.values")
         return self.attribute_values.values()
 
 
