@@ -1,6 +1,12 @@
 Release Notes
 =============
 
+Unreleased
+----------
+
+* Null errors should include full attribute path (#915)
+
+
 v5.0.3
 ----------
 
