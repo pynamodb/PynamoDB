@@ -46,6 +46,7 @@ Topics
    contributing
    release_notes
    versioning
+   upgrading_unicodeset
 
 API docs
 ========
