@@ -4,27 +4,89 @@ Contributing
 Pull requests are welcome, forking from the ``master`` branch. If you are new to GitHub, be sure and check out
 GitHub's `Hello World <https://guides.github.com/activities/hello-world/>`_ tutorial.
 
-Make sure that your contribution meets the following requirements:
-* Be thoroughly tested
-* Works on all supported versions of Python
-* Be in the same code style of the existing source code (mostly PEP8)
+
+Environment Setup
+-----------------
+
+You'll need a python3 installation and a virtualenv. There are many ways to manage
+virtualenvs, but a minimal example is shown below.
+
+.. code-block:: bash
+
+  $ virtualenv -p python3 venv && source venv/bin/activate
+  $ pip install -e .[signals] -r requirements-dev.txt
 
 
-Testing
-^^^^^^^
+A java runtime is required to run the integration tests. After installing java, download and untar the
+mock dynamodb server like so:
 
-The PynamoDB source code is thoroughly tested, which helps ensure that with each change made to it, we aren't breaking
-someone's code that relies on PynamoDB. It's not easy, and it's not optional. Changes without proper testing won't be
-accepted.
+.. code-block:: bash
 
-Please write tests to accompany your changes, and verify that the tests pass using all supported version of Python
-by using ``tox``::
+  $ wget --quiet http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest.tar.gz -O /tmp/dynamodb_local_latest.tar.gz
+  $ tar -xzf /tmp/dynamodb_local_latest.tar.gz -C /tmp
 
-    $ tox
+Note that you may want to place files somewhere other than ``/tmp``.
 
-Once you've opened a pull request on GitHub, Travis-ci will run the test suite as well.
 
-By default, certain tests that require a running instance of `DynamoDB Local
-<http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html>`_ will
-not be executed by tox. They will always be executed in Travis-ci. If you wish to run them locally,
-edit ``tox.ini`` to not pass ``'-m ddblocal'`` to ``py.test``.
+Running Tests
+-------------
+
+After installing requirements in environment setup and ensuring your venv is activated, unit tests are run with:
+
+.. code-block:: bash
+
+  $ pytest tests/ -k "not ddblocal"
+
+
+There are also a set of integration tests that require a local dynamodb server to be mocked.
+
+.. code-block:: bash
+
+  $ java -Djava.library.path=/tmp/DynamoDBLocal_lib -jar /tmp/DynamoDBLocal.jar -inMemory -port 8000
+  $ pytest tests/      # in another window
+
+
+Backwards Compatibility
+-----------------------
+
+Particular care should be paid to backwards compatibility when making any change in PynamoDB, especially
+with attributes and serialization/deserialization. Consider data written with an older version of the
+library and whether it can still be read after upgrading.
+
+Where possible, write logic to continue supporting older data for at least one major version to simplify
+the upgrade path. Where that's not possible, create a new version of the attribute with a different name
+and mark the old one as deprecated.
+
+Outside of data compatibility, follow the usual semver rules for API changes and limit breaking changes
+to a major release.
+
+
+Pull Requests
+-------------
+
+Pull requests should:
+
+#. Specify an accurate title and detailed description of the change
+#. Include thorough testing. Unit tests at a minimum, sometimes integration tests
+#. Add test coverage for new code (CI will verify the delta)
+#. Add type annotations to any code modified
+#. Write documentation for new features
+#. Maintain the existing code style (mostly PEP8) and patterns
+
+
+Changelog
+---------
+
+Any non-trivial change should be documented in the
+`release notes <https://pynamodb.readthedocs.io/en/latest/release_notes.html>`_.
+Please include sufficient detail in the PR description, which will be used by
+maintainers to populate the release notes.
+
+
+Documentation
+-------------
+
+Docs are built using `sphinx <https://www.sphinx-doc.org/en/1.5.1/>`_ and
+available on `readthedocs <https://pynamodb.readthedocs.io/>`_. A release
+of the `latest` tag (tracking master) happens automatically on merge via
+a Github webhook.
