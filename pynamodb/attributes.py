@@ -21,7 +21,7 @@ from pynamodb.constants import (
     BINARY, BINARY_SET, BOOLEAN, DATETIME_FORMAT, DEFAULT_ENCODING,
     LIST, MAP, NULL, NUMBER, NUMBER_SET, STRING, STRING_SET
 )
-from pynamodb.exceptions import AttributeDeserializationError
+from pynamodb.exceptions import AttributeDeserializationError, AttributeNullError
 from pynamodb.expressions.operand import Path
 
 
@@ -346,8 +346,12 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         attribute_values: Dict[str, Dict[str, Any]] = {}
         for name, attr in self.get_attributes().items():
             value = getattr(self, name)
-            if isinstance(value, MapAttribute) and not value.validate(null_check=null_check):
-                raise ValueError("Attribute '{}' is not correctly typed".format(name))
+            try:
+                if isinstance(value, MapAttribute) and not value.validate(null_check=null_check):
+                    raise ValueError("Attribute '{}' is not correctly typed".format(name))
+            except AttributeNullError as e:
+                e.prepend_path(name)
+                raise
 
             if value is not None:
                 if isinstance(attr, MapAttribute):
@@ -357,7 +361,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             else:
                 attr_value = None
             if null_check and attr_value is None and not attr.null:
-                raise ValueError("Attribute '{}' cannot be None".format(name))
+                raise AttributeNullError(name)
 
             if attr_value is not None:
                 attribute_values[attr.attr_name] = {attr.attr_type: attr_value}
@@ -918,7 +922,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         if can_be_null and value is None:
             return True
         if getattr(self, key) is None:
-            raise ValueError("Attribute '{}' cannot be None".format(key))
+            raise AttributeNullError(key)
         return True  # TODO: check that the actual type of `value` meets requirements of `attr`
 
     def validate(self, *, null_check: bool = False):
