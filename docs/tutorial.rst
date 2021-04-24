@@ -1,7 +1,7 @@
 Basic Tutorial
 ==============
 
-PynamoDB is attempt to be a Pythonic interface to DynamoDB that supports all of DynamoDB's
+PynamoDB is an attempt to be a Pythonic interface to DynamoDB that supports all of DynamoDB's
 powerful features. This includes support for unicode and binary attributes.
 
 But why stop there? PynamoDB also supports:
