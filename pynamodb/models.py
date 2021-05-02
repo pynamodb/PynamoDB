@@ -784,7 +784,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param wait: If set, then this call will block until the table is ready for use
         :param read_capacity_units: Sets the read capacity units for this table
         :param write_capacity_units: Sets the write capacity units for this table
-        :param billing_mode: Sets the billing mode provisioned (default) or on_demand for this table
+        :param billing_mode: Sets the billing mode 'PROVISIONED' (default) or 'PAY_PER_REQUEST' for this table
         """
         if not cls.exists():
             schema = cls._get_schema()
