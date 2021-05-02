@@ -185,24 +185,24 @@ def test_index_query_scan(assert_mypy_output):
         typed_index = TypedIndex()
 
     # Ensure old code keeps working
-    untyped_result: ResultIterator = MyModel.untyped_index.query(123)
-    model: MyModel = next(untyped_result)
-    not_model: int = next(untyped_result)  # this is legacy behavior so it's "fine"
+    untyped_query_result: ResultIterator = MyModel.untyped_index.query(123)
+    model: MyModel = next(untyped_query_result)
+    not_model: int = next(untyped_query_result)  # this is legacy behavior so it's "fine"
 
     # Allow users to specify which model their indices return
-    typed_result: ResultIterator[MyModel] = MyModel.typed_index.query(123)
-    my_model = next(typed_result)
-    not_model = next(typed_result)  # E: Incompatible types in assignment (expression has type "MyModel", variable has type "int")  [assignment]
+    typed_query_result: ResultIterator[MyModel] = MyModel.typed_index.query(123)
+    my_model = next(typed_query_result)
+    not_model = next(typed_query_result)  # E: Incompatible types in assignment (expression has type "MyModel", variable has type "int")  [assignment]
 
     # Ensure old code keeps working
-    untyped_result = MyModel.untyped_index.scan()
-    model = next(untyped_result)
-    not_model = next(untyped_result)  # this is legacy behavior so it's "fine"
+    untyped_scan_result = MyModel.untyped_index.scan()
+    model = next(untyped_scan_result)
+    not_model = next(untyped_scan_result)  # this is legacy behavior so it's "fine"
 
     # Allow users to specify which model their indices return
-    typed_result = MyModel.typed_index.scan()
-    model = next(typed_result)
-    not_model = next(typed_result)  # E: Incompatible types in assignment (expression has type "MyModel", variable has type "int")  [assignment]
+    typed_scan_result = MyModel.typed_index.scan()
+    model = next(typed_scan_result)
+    not_model = next(typed_scan_result)  # E: Incompatible types in assignment (expression has type "MyModel", variable has type "int")  [assignment]
     """)
 
 
