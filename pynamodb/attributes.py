@@ -356,6 +356,8 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             if value is not None:
                 if isinstance(attr, MapAttribute):
                     attr_value = attr.serialize(value, null_check=null_check)
+                elif isinstance(attr, DiscriminatorAttribute):
+                    attr_value = value
                 else:
                     attr_value = attr.serialize(value)
             else:
