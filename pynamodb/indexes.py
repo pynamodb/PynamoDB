@@ -120,7 +120,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
         consistent_read: Optional[bool] = None,
         rate_limit: Optional[float] = None,
         attributes_to_get: Optional[List[str]] = None,
-    ):
+    ) -> ResultIterator[_M]:
         """
         Scans an index
         """
