@@ -164,6 +164,7 @@ def test_transact_write__error__transaction_cancelled__condition_check_failure(c
     assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
     assert User.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
     assert BankStatement.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
+    assert 'CancellationReasons' in exc_info.value.cause.response
 
 
 @pytest.mark.ddblocal
@@ -351,6 +352,7 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
     assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
     assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
     assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
+    assert 'CancellationReasons' in exc_info.value.cause.response
 
     with pytest.raises(TransactWriteError) as exc_info:
         with TransactWrite(connection=connection) as transaction:
@@ -363,6 +365,7 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
     assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
     assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
     assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
+    assert 'CancellationReasons' in exc_info.value.cause.response
     # Version attribute is not updated on failure.
     assert foo2.version is None
 
@@ -372,3 +375,4 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
     assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
     assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
     assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
+    assert 'CancellationReasons' in exc_info.value.cause.response

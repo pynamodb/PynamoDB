@@ -418,6 +418,10 @@ class Connection(object):
                 if '#' in code:
                     code = code.rsplit('#', 1)[1]
                 botocore_expected_format = {'Error': {'Message': data.get('message', '') or data.get('Message', ''), 'Code': code}}
+
+                if 'CancellationReasons' in data:
+                    botocore_expected_format['CancellationReasons'] = data['CancellationReasons']
+
                 verbose_properties = {
                     'request_id': headers.get('x-amzn-RequestId')
                 }
