@@ -16,21 +16,24 @@ class TableConnection:
     A higher level abstraction over botocore
     """
 
-    def __init__(
-        self,
-        table_name: str,
-        region: Optional[str] = None,
-        host: Optional[str] = None,
-        connect_timeout_seconds: Optional[float] = None,
-        read_timeout_seconds: Optional[float] = None,
-        max_retry_attempts: Optional[int] = None,
-        base_backoff_ms: Optional[int] = None,
-        max_pool_connections: Optional[int] = None,
-        extra_headers: Optional[Mapping[str, str]] = None,
-        aws_access_key_id: Optional[str] = None,
-        aws_secret_access_key: Optional[str] = None,
-        aws_session_token: Optional[str] = None,
-    ) -> None:
+    def __init__(self,
+                 table_name,
+                 region=None,
+                 host=None,
+                 connect_timeout_seconds=None,
+                 read_timeout_seconds=None,
+                 max_retry_attempts=None,
+                 base_backoff_ms=None,
+                 max_pool_connections=None,
+                 extra_headers=None,
+                 aws_access_key_id=None,
+                 aws_secret_access_key=None,
+                 aws_session_token=None,
+                 aws_sts_role_arn=None,
+                 aws_sts_role_session_name=None,
+                 aws_sts_session_expiration=None):
+        self._hash_keyname = None
+        self._range_keyname = None
         self.table_name = table_name
         self.connection = Connection(region=region,
                                      host=host,
@@ -39,7 +42,10 @@ class TableConnection:
                                      max_retry_attempts=max_retry_attempts,
                                      base_backoff_ms=base_backoff_ms,
                                      max_pool_connections=max_pool_connections,
-                                     extra_headers=extra_headers)
+                                     extra_headers=extra_headers,
+                                     aws_sts_role_arn=aws_sts_role_arn,
+                                     aws_sts_role_session_name=aws_sts_role_session_name,
+                                     aws_sts_session_expiration=aws_sts_session_expiration)
 
         if aws_access_key_id and aws_secret_access_key:
             self.connection.session.set_credentials(aws_access_key_id,

@@ -1,6 +1,8 @@
 """
 Lowest level connection
 """
+from datetime import datetime
+
 import json
 import logging
 import random
@@ -54,6 +56,9 @@ from pynamodb.expressions.update import Action, Update
 from pynamodb.settings import get_settings_value, OperationSettings
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
+import pytz
+
+utc=pytz.UTC
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 RATE_LIMITING_ERROR_CODES = ['ProvisionedThroughputExceededException', 'ThrottlingException']
@@ -233,6 +238,15 @@ class MetaTable(object):
                 }
             }
 
+class STSCredentials:
+    def __init__(self, **kwargs):
+        self.access_key = kwargs.get('AccessKeyId')
+        self.secret_key = kwargs.get('SecretAccessKey')
+        self.token = kwargs.get('SessionToken')
+        self.token_expiration = kwargs.get('Expiration', datetime.now(tz=utc))
+
+    def expired(self):
+        return self.token_expiration <= datetime.now(tz=utc)
 
 class Connection(object):
     """
@@ -247,11 +261,21 @@ class Connection(object):
                  max_retry_attempts: Optional[int] = None,
                  base_backoff_ms: Optional[int] = None,
                  max_pool_connections: Optional[int] = None,
-                 extra_headers: Optional[Mapping[str, str]] = None):
+                 extra_headers: Optional[Mapping[str, str]] = None,
+                 aws_sts_role_arn=None, aws_sts_role_session_name=None,
+                 aws_sts_session_expiration=None):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
         self._client = None
+
+        if aws_sts_role_arn is not None:
+            # Initialize empty STS Credentials if STS auth is configured
+            self.sts_session = STSCredentials()
+            self.aws_sts_role_arn = aws_sts_role_arn
+            self.aws_sts_role_session_name = aws_sts_role_session_name
+            self.aws_sts_session_expiration = aws_sts_session_expiration or 3600
+
         if region:
             self.region = region
         else:
@@ -508,6 +532,25 @@ class Connection(object):
                 _convert_binary(attr)
         return data
 
+    def is_sts_session_required(self):
+        if not hasattr(self, 'sts_session'):
+            return False
+
+        if self.sts_session.expired():
+            self.assume_role_session()
+            return True
+
+        return False
+
+    def assume_role_session(self):
+        sts = self.session.create_client('sts')
+        sts_response = sts.assume_role(
+            RoleArn=self.aws_sts_role_arn,
+            RoleSessionName=self.aws_sts_role_session_name or 'PynamoDB',
+            DurationSeconds=self.aws_sts_session_expiration
+        )
+        self.sts_session = STSCredentials(**sts_response['Credentials'])
+    
     @property
     def session(self) -> botocore.session.Session:
         """
@@ -527,13 +570,23 @@ class Connection(object):
         # https://github.com/boto/botocore/blob/4d55c9b4142/botocore/credentials.py#L1016-L1021
         # if the client does not have credentials, we create a new client
         # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
-        if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
+        if not self._client or (self._client._request_signer and not self._client._request_signer._credentials) or self.is_sts_session_required():
             config = botocore.client.Config(
                 parameter_validation=False,  # Disable unnecessary validation for performance
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
                 max_pool_connections=self._max_pool_connections)
-            self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
+
+            credentials = self.sts_session if self.is_sts_session_required() else self.session.get_credentials()
+
+            self._client = self.session.create_client(
+                SERVICE_NAME, 
+                self.region, 
+                endpoint_url=self.host, 
+                config=config,
+                aws_access_key_id=credentials.access_key,
+                aws_secret_access_key=credentials.secret_key,
+                aws_session_token=credentials.token)
         return self._client
 
     def get_meta_table(self, table_name: str, refresh: bool = False):

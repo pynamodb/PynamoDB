@@ -86,8 +86,14 @@ class ConnectionTestCase(TestCase):
 
             session_mock.create_client.assert_has_calls(
                 [
-                    mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY),
-                    mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY),
+                    mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY, 
+                    aws_access_key_id=mock.ANY,
+                    aws_secret_access_key=mock.ANY,
+                    aws_session_token=mock.ANY),
+                    mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY, 
+                    aws_access_key_id=mock.ANY,
+                    aws_secret_access_key=mock.ANY,
+                    aws_session_token=mock.ANY),
                 ],
                 any_order=True
             )
@@ -102,7 +108,14 @@ class ConnectionTestCase(TestCase):
             self.assertIsNotNone(conn.client)
 
             self.assertEqual(
-                session_mock.create_client.mock_calls.count(mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY)),
+                session_mock.create_client.mock_calls.count(mock.call(
+                    'dynamodb', 
+                    'us-east-1', 
+                    endpoint_url=None, 
+                    config=mock.ANY,
+                    aws_access_key_id=mock.ANY,
+                    aws_secret_access_key=mock.ANY,
+                    aws_session_token=mock.ANY)),
                 1
             )
 
