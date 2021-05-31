@@ -273,7 +273,7 @@ class Connection(object):
             # Initialize empty STS Credentials if STS auth is configured
             self.sts_session = STSCredentials()
             self.aws_sts_role_arn = aws_sts_role_arn
-            self.aws_sts_role_session_name = aws_sts_role_session_name
+            self.aws_sts_role_session_name = aws_sts_role_session_name or 'PynamoDB'
             self.aws_sts_session_expiration = aws_sts_session_expiration or 3600
 
         if region:
@@ -538,15 +538,14 @@ class Connection(object):
 
         if self.sts_session.expired():
             self.assume_role_session()
-            return True
 
-        return False
+        return True
 
     def assume_role_session(self):
         sts = self.session.create_client('sts')
         sts_response = sts.assume_role(
             RoleArn=self.aws_sts_role_arn,
-            RoleSessionName=self.aws_sts_role_session_name or 'PynamoDB',
+            RoleSessionName=self.aws_sts_role_session_name,
             DurationSeconds=self.aws_sts_session_expiration
         )
         self.sts_session = STSCredentials(**sts_response['Credentials'])

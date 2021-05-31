@@ -1,7 +1,9 @@
 """
 Tests for the base connection class
 """
+import time
 import base64
+from datetime import datetime, timedelta
 import json
 from unittest import mock, TestCase
 from unittest.mock import patch
@@ -25,6 +27,9 @@ from pynamodb.expressions.update import SetAction
 from pynamodb.settings import OperationSettings
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from .deep_eq import deep_eq
+import pytz
+
+utc=pytz.UTC
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
@@ -1665,3 +1670,57 @@ class ConnectionTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.side_effect = BotoCoreError
             self.assertRaises(TableError, conn.update_time_to_live, 'test table', 'my_ttl')
+
+    def test_sts_assume_role_long_expiration_one_time_client(self):
+        with patch('pynamodb.connection.Connection.session') as session_mock:
+            sts_client = mock.MagicMock()
+            sts_client.assume_role.return_value = { 'Credentials': {'AccessKeyId': '12345', 'SecretAccessKey': '123456789', 'SessionToken': 'abcd', 'Expiration': datetime.now(tz=utc) + timedelta(hours=1) } }
+            session_mock.create_client.return_value = sts_client
+            conn = Connection(
+                aws_sts_role_arn='arn:aws:iam::1234567:role/my-aws-role'
+            )
+
+            self.assertIsNotNone(conn.client)
+            self.assertIsNotNone(conn.client)
+
+            assert sts_client.assume_role.call_count == 1
+            session_mock.create_client.assert_has_calls(
+                [
+                    mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY, 
+                    aws_access_key_id='12345',
+                    aws_secret_access_key='123456789',
+                    aws_session_token='abcd')
+                ]
+            )
+
+    def test_sts_assume_role_short_expiration_two_time_client(self):
+        with patch('pynamodb.connection.Connection.session') as session_mock:
+            sts_client = mock.MagicMock()
+            sts_client.assume_role.side_effect = [
+                { 'Credentials': {'AccessKeyId': '12345', 'SecretAccessKey': '123456789', 'SessionToken': 'abcd', 'Expiration': datetime.now(tz=utc) + timedelta(seconds=10) } },
+                { 'Credentials': {'AccessKeyId': '12345', 'SecretAccessKey': '123456789', 'SessionToken': 'abcd', 'Expiration': datetime.now(tz=utc) + timedelta(seconds=30) } }
+            ]
+            session_mock.create_client.return_value = sts_client
+            conn = Connection(
+                aws_sts_role_arn='arn:aws:iam::1234567:role/my-aws-role'
+            )
+
+            # the session token will expire in 10 second, to expect the second call to assume role is made when asking for a client
+            self.assertIsNotNone(conn.client)
+            time.sleep(10)
+            self.assertIsNotNone(conn.client)
+
+            assert sts_client.assume_role.call_count == 2
+            session_mock.create_client.assert_has_calls(
+                [
+                    mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY, 
+                    aws_access_key_id='12345',
+                    aws_secret_access_key='123456789',
+                    aws_session_token='abcd'),
+                    mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY, 
+                    aws_access_key_id='12345',
+                    aws_secret_access_key='123456789',
+                    aws_session_token='abcd'),
+                ],
+                any_order=True
+            )
