@@ -651,13 +651,15 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         cls._get_indexes()
         if index_name and cls._index_classes:
+            hash_key_attr_name = cls._index_classes[index_name]._hash_key_attribute().attr_name
             hash_key = cls._index_classes[index_name]._hash_key_attribute().serialize(hash_key)
         else:
+            hash_key_attr_name = cls._hash_keyname
             hash_key = cls._serialize_keys(hash_key)[0]
 
         # If this class has a discriminator attribute, filter the query to only return instances of this class.
         discriminator_attr = cls._get_discriminator_attribute()
-        if discriminator_attr:
+        if discriminator_attr and discriminator_attr.attr_name != hash_key_attr_name:
             filter_condition &= discriminator_attr.is_in(*discriminator_attr.get_registered_subclasses(cls))
 
         if page_size is None:
