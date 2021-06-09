@@ -356,16 +356,6 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             if value is not None:
                 if isinstance(attr, MapAttribute):
                     attr_value = attr.serialize(value, null_check=null_check)
-                # The value of a discriminator attribute is the literal value
-                # of the discriminator attribue in Dynamo.
-                # DiscriminatorAttribute.serialize attempts to get this literal
-                # value by looking it up the class map, but the keys in the
-                # class map are the classes themselves, and the values are the
-                # literal values of the attribute. In other words, we can skip
-                # serialization, because the attribute value is effectively
-                # already serialized.
-                elif isinstance(attr, DiscriminatorAttribute):
-                    attr_value = value
                 else:
                     attr_value = attr.serialize(value)
             else:
