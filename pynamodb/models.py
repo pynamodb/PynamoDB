@@ -324,7 +324,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param items: Should be a list of hash keys to retrieve, or a list of
             tuples if range keys are used.
         """
-        items = list(items)
+        items = list(set(items))
         hash_key_attribute = cls._hash_key_attribute()
         range_key_attribute = cls._range_key_attribute()
         keys_to_get: List[Any] = []
