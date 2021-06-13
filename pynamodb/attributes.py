@@ -163,7 +163,7 @@ class Attribute(Generic[_T]):
     def between(self, lower: Any, upper: Any) -> 'Between':
         return Path(self).between(lower, upper)
 
-    def is_in(self, *values: Any) -> 'In':
+    def is_in(self, *values: _T) -> 'In':
         return Path(self).is_in(*values)
 
     def exists(self) -> 'Exists':

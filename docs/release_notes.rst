@@ -5,6 +5,7 @@ Unreleased
 ----------
 
 * Null errors should include full attribute path (#915)
+* Fix type annotation of ``is_in`` conditional expression
 
 
 v5.0.3
