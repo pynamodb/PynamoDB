@@ -1861,21 +1861,22 @@ class ModelTestCase(TestCase):
             item_keys = ['hash-{}'.format(x) for x in range(10)]
             for item in SimpleUserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
+            req.call_args[0][1]['RequestItems']['SimpleModel']['Keys'].sort(key=json.dumps)
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'RequestItems': {
                     'SimpleModel': {
                         'Keys': [
-                            {'user_name': {'S': 'hash-9'}},
-                            {'user_name': {'S': 'hash-8'}},
-                            {'user_name': {'S': 'hash-7'}},
-                            {'user_name': {'S': 'hash-6'}},
-                            {'user_name': {'S': 'hash-5'}},
-                            {'user_name': {'S': 'hash-4'}},
-                            {'user_name': {'S': 'hash-3'}},
-                            {'user_name': {'S': 'hash-2'}},
+                            {'user_name': {'S': 'hash-0'}},
                             {'user_name': {'S': 'hash-1'}},
-                            {'user_name': {'S': 'hash-0'}}
+                            {'user_name': {'S': 'hash-2'}},
+                            {'user_name': {'S': 'hash-3'}},
+                            {'user_name': {'S': 'hash-4'}},
+                            {'user_name': {'S': 'hash-5'}},
+                            {'user_name': {'S': 'hash-6'}},
+                            {'user_name': {'S': 'hash-7'}},
+                            {'user_name': {'S': 'hash-8'}},
+                            {'user_name': {'S': 'hash-9'}},
                         ]
                     }
                 }
