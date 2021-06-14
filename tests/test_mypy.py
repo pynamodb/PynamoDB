@@ -213,3 +213,17 @@ def test_map_attribute_derivation(assert_mypy_output):
     class MyMap(MapAttribute, object):
         pass
     """)
+
+
+def test_is_in(assert_mypy_output):
+    assert_mypy_output("""
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute
+
+    class MyModel(Model):
+        attr = UnicodeAttribute()
+
+    _ = MyModel.attr.is_in('foo', 'bar')
+    _ = MyModel.attr.is_in(123)  # E: Argument 1 to "is_in" of "Attribute" has incompatible type "int"; expected "str"  [arg-type]
+    _ = MyModel.attr.is_in(['foo', 'bar'])  # E: Argument 1 to "is_in" of "Attribute" has incompatible type "List[str]"; expected "str"  [arg-type]
+    """)
