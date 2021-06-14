@@ -1861,8 +1861,7 @@ class ModelTestCase(TestCase):
             item_keys = ['hash-{}'.format(x) for x in range(10)]
             for item in SimpleUserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
-            table = req.call_args[0][1]['RequestItems']['SimpleModel']
-            table['Keys'] = sorted(table['Keys'], key=json.dumps)
+            req.call_args[0][1]['RequestItems']['SimpleModel']['Keys'].sort(key=json.dumps)
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'RequestItems': {
