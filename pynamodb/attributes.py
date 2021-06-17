@@ -702,7 +702,7 @@ class UTCDateTimeAttribute(Attribute[datetime]):
         # This is ~5.8x faster than using strptime and 38x faster than dateutil.parser.parse.
         _int = int  # Hack to prevent global lookups of int, speeds up the function ~10%
         try:
-            # Fix pre-1000 dates serialized on systems where sfrftime doesn't pad w/older PynamoDB versions.
+            # Fix pre-1000 dates serialized on systems where strftime doesn't pad w/older PynamoDB versions.
             date_string = date_string.zfill(31)
             if (len(date_string) != 31 or date_string[4] != '-' or date_string[7] != '-'
                     or date_string[10] != 'T' or date_string[13] != ':' or date_string[16] != ':'
