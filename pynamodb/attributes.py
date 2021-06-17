@@ -685,7 +685,9 @@ class UTCDateTimeAttribute(Attribute[datetime]):
         """
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
-        fmt = value.astimezone(timezone.utc).strftime(DATETIME_FORMAT)
+        # Padding of years under 1000 is inconsistent and depends on system strftime:
+        # https://bugs.python.org/issue13305
+        fmt = value.astimezone(timezone.utc).strftime(DATETIME_FORMAT).zfill(31)
         return fmt
 
     def deserialize(self, value):
@@ -700,6 +702,8 @@ class UTCDateTimeAttribute(Attribute[datetime]):
         # This is ~5.8x faster than using strptime and 38x faster than dateutil.parser.parse.
         _int = int  # Hack to prevent global lookups of int, speeds up the function ~10%
         try:
+            # Fix pre-1000 dates serialized on systems where strftime doesn't pad w/older PynamoDB versions.
+            date_string = date_string.zfill(31)
             if (len(date_string) != 31 or date_string[4] != '-' or date_string[7] != '-'
                     or date_string[10] != 'T' or date_string[13] != ':' or date_string[16] != ':'
                     or date_string[19] != '.' or date_string[26:31] != '+0000'):
