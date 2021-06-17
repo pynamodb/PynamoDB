@@ -146,11 +146,24 @@ class TestUTCDateTimeAttribute:
         """
         assert self.attr.serialize(self.dt) == '2047-01-06T08:21:30.002000+0000'
 
+    def test_utc_date_time_serialize_pre_1000(self):
+        """
+        UTCDateTimeAttribute.serialize
+        """
+        dt = self.dt.replace(year=1)
+        assert self.attr.serialize(dt) == '0001-01-06T08:21:30.002000+0000'
+
     def test_utc_date_time_deserialize(self):
         """
         UTCDateTimeAttribute.deserialize
         """
         assert self.attr.deserialize('2047-01-06T08:21:30.002000+0000') == self.dt
+
+    def test_utc_date_time_deserialize_pre_1000_not_padded(self):
+        """
+        UTCDateTimeAttribute.deserialize
+        """
+        assert self.attr.deserialize('1-01-06T08:21:30.002000+0000') == self.dt.replace(year=1)
 
     @pytest.mark.parametrize(
         "invalid_string",

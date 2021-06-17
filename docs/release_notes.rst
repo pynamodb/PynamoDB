@@ -6,6 +6,7 @@ Unreleased
 
 * Null errors should include full attribute path (#915)
 * Fix type annotation of ``is_in`` conditional expression
+* Fix for serializing and deserializing dates prior to year 1000
 
 
 v5.0.3
