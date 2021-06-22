@@ -227,3 +227,18 @@ def test_is_in(assert_mypy_output):
     _ = MyModel.attr.is_in(123)  # E: Argument 1 to "is_in" of "Attribute" has incompatible type "int"; expected "str"  [arg-type]
     _ = MyModel.attr.is_in(['foo', 'bar'])  # E: Argument 1 to "is_in" of "Attribute" has incompatible type "List[str]"; expected "str"  [arg-type]
     """)
+
+
+def test_append(assert_mypy_output):
+    assert_mypy_output("""
+    from pynamodb.models import Model
+    from pynamodb.attributes import ListAttribute, NumberAttribute
+
+    class MyModel(Model):
+        attr = ListAttribute(of=NumberAttribute)
+
+    MyModel.attr.append(42)  # E: Argument 1 to "append" of "Attribute" has incompatible type "int"; expected "Iterable[Any]"  [arg-type]
+    MyModel.attr.append([42])
+    MyModel.attr.prepend(42)  # E: Argument 1 to "prepend" of "Attribute" has incompatible type "int"; expected "Iterable[Any]"  [arg-type]
+    MyModel.attr.prepend([42])
+    """)
