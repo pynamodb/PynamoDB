@@ -1,6 +1,7 @@
 import importlib.util
 import logging
 import os
+from types import ModuleType
 import warnings
 from os import getenv
 
@@ -21,7 +22,7 @@ default_settings_dict = {
 OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default_settings.py')
 
 
-def _load_module(name, path):
+def _load_module(name: str, path: str) -> Any:
     # https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)

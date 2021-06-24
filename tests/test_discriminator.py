@@ -39,7 +39,7 @@ class DiscriminatorTestModel(Model, discriminator='Parent'):
 
 
 class ChildModel(DiscriminatorTestModel, discriminator='Child'):
-    value = UnicodeAttribute()
+    value = UnicodeAttribute()  # type: ignore
 
 
 class TestDiscriminatorAttribute:

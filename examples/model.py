@@ -6,7 +6,7 @@ http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleTablesAndD
 import logging
 from pynamodb.models import Model
 from pynamodb.attributes import (
-    UnicodeAttribute, NumberAttribute, UnicodeSetAttribute, UTCDateTimeAttribute
+    ListAttribute, UnicodeAttribute, NumberAttribute, UnicodeSetAttribute, UTCDateTimeAttribute
 )
 from datetime import datetime
 
@@ -29,7 +29,7 @@ class Thread(Model):
     answered = NumberAttribute(default=0)
     tags = UnicodeSetAttribute()
     last_post_datetime = UTCDateTimeAttribute(null=True)
-    notes = ListAttribute(default=list)
+    notes: ListAttribute = ListAttribute(default=list)
 
 
 # Delete the table
@@ -60,7 +60,7 @@ with Thread.batch_write() as batch:
     threads = []
     for x in range(100):
         thread = Thread('forum-{0}'.format(x), 'subject-{0}'.format(x))
-        thread.tags = ['tag1', 'tag2']
+        thread.tags = {'tag1', 'tag2'}
         thread.last_post_datetime = datetime.now()
         threads.append(thread)
 
@@ -107,7 +107,7 @@ if not AliasedModel.exists():
     AliasedModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
 # Create a thread
-thread_item = AliasedModel(
+aliased_model = AliasedModel(
     'Some Forum',
     'Some Subject',
     tags=['foo', 'bar'],
@@ -115,36 +115,36 @@ thread_item = AliasedModel(
 )
 
 # Save the thread
-thread_item.save()
+aliased_model.save()
 
 # Batch write operation
 with AliasedModel.batch_write() as batch:
-    threads = []
+    alias_models = []
     for x in range(100):
-        thread = AliasedModel('forum-{0}'.format(x), 'subject-{0}'.format(x))
-        thread.tags = ['tag1', 'tag2']
-        thread.last_post_datetime = datetime.now()
-        threads.append(thread)
+        am = AliasedModel('forum-{0}'.format(x), 'subject-{0}'.format(x))
+        am.tags = {'tag1', 'tag2'}
+        am.last_post_datetime = datetime.now()
+        alias_models.append(am)
 
-    for thread in threads:
-        batch.save(thread)
+    for am in alias_models:
+        batch.save(am)
 
 # Batch get
 item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(100)]
-for item in AliasedModel.batch_get(item_keys):
-    print("Batch get item: {0}".format(item))
+for i in AliasedModel.batch_get(item_keys):
+    print("Batch get item: {0}".format(i))
 
 # Scan
-for item in AliasedModel.scan():
-    print("Scanned item: {0}".format(item))
+for i in AliasedModel.scan():
+    print("Scanned item: {0}".format(i))
 
 # Query
-for item in AliasedModel.query('forum-1', AliasedModel.subject.startswith('subject')):
-    print("Query using aliased attribute: {0}".format(item))
+for i in AliasedModel.query('forum-1', AliasedModel.subject.startswith('subject')):
+    print("Query using aliased attribute: {0}".format(i))
 
 # Query with filters
-for item in Thread.query('forum-1', (Thread.views == 0) | (Thread.replies == 0)):
-    print("Query result: {0}".format(item))
+for j in Thread.query('forum-1', (Thread.views == 0) | (Thread.replies == 0)):
+    print("Query result: {0}".format(j))
 
 
 # Scan with filters

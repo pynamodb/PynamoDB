@@ -66,7 +66,7 @@ class RateLimiter:
         return self._rate_limit
 
     @rate_limit.setter
-    def rate_limit(self, rate_limit: float):
+    def rate_limit(self, rate_limit: float) -> None:
         if rate_limit <= 0:
             raise ValueError("rate_limit must be greater than zero")
         self._rate_limit = rate_limit

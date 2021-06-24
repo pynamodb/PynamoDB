@@ -4,7 +4,7 @@ PynamoDB exceptions
 
 from typing import Any, Optional
 
-import botocore.exceptions
+import botocore.exceptions # type: ignore
 
 
 class PynamoDBException(Exception):
@@ -131,7 +131,7 @@ class AttributeNullError(ValueError):
     def __init__(self, attr_name: str) -> None:
         self.attr_path = attr_name
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Attribute '{self.attr_path}' cannot be None"
 
     def prepend_path(self, attr_name: str) -> None:

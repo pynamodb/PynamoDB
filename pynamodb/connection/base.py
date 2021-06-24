@@ -11,13 +11,13 @@ from base64 import b64decode
 from threading import local
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
-import botocore.client
-import botocore.exceptions
-from botocore.awsrequest import AWSPreparedRequest, create_request_object
-from botocore.client import ClientError
-from botocore.hooks import first_non_none_response
-from botocore.exceptions import BotoCoreError
-from botocore.session import get_session
+import botocore.client # type: ignore
+import botocore.exceptions # type: ignore
+from botocore.awsrequest import AWSPreparedRequest, create_request_object # type: ignore
+from botocore.client import ClientError # type: ignore
+from botocore.hooks import first_non_none_response # type: ignore
+from botocore.exceptions import BotoCoreError # type: ignore
+from botocore.session import get_session # type: ignore
 
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
@@ -102,23 +102,23 @@ class MetaTable(object):
                 raise ValueError("No hash_key found in key schema")
         return self._hash_keyname
 
-    def get_key_names(self, index_name=None):
+    def get_key_names(self, index_name: str=None) -> List[str]:
         """
         Returns the names of the primary key attributes and index key attributes (if index_name is specified)
         """
         key_names = [self.hash_keyname]
         if self.range_keyname:
             key_names.append(self.range_keyname)
-        if index_name is not None:
+        if index_name:
             index_hash_keyname = self.get_index_hash_keyname(index_name)
             if index_hash_keyname not in key_names:
                 key_names.append(index_hash_keyname)
             index_range_keyname = self.get_index_range_keyname(index_name)
-            if index_range_keyname is not None and index_range_keyname not in key_names:
+            if index_range_keyname and index_range_keyname not in key_names:
                 key_names.append(index_range_keyname)
         return key_names
 
-    def has_index_name(self, index_name):
+    def has_index_name(self, index_name: str) -> bool:
         """
         Returns True if the base table has a global or local secondary index with index_name
         """
@@ -145,7 +145,7 @@ class MetaTable(object):
                         return schema_key.get(ATTR_NAME)
         raise ValueError("No hash key attribute for index: {}".format(index_name))
 
-    def get_index_range_keyname(self, index_name):
+    def get_index_range_keyname(self, index_name: str) -> str:
         """
         Returns the name of the hash key for a given index
         """
@@ -161,9 +161,9 @@ class MetaTable(object):
                 for schema_key in index.get(KEY_SCHEMA):
                     if schema_key.get(KEY_TYPE) == RANGE:
                         return schema_key.get(ATTR_NAME)
-        return None
+        return ""
 
-    def get_item_attribute_map(self, attributes: Dict, item_key=ITEM, pythonic_key: bool = True):
+    def get_item_attribute_map(self, attributes: Dict, item_key: Any=ITEM, pythonic_key: bool = True) -> Dict[str, Dict]:
         """
         Builds up a dynamodb compatible AttributeValue map
         """
@@ -197,7 +197,7 @@ class MetaTable(object):
         attr_names = [attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS, [])]
         raise ValueError("No attribute {} in {}".format(attribute_name, attr_names))
 
-    def get_identifier_map(self, hash_key: str, range_key: Optional[str] = None, key: str = KEY):
+    def get_identifier_map(self, hash_key: str, range_key: Optional[str] = None, key: str = KEY) -> Dict[str, Any]:
         """
         Builds the identifier map that is common to several operations
         """
@@ -214,7 +214,7 @@ class MetaTable(object):
             }
         return kwargs
 
-    def get_exclusive_start_key_map(self, exclusive_start_key):
+    def get_exclusive_start_key_map(self, exclusive_start_key: Any) -> Dict:
         """
         Builds the exclusive start key attribute map
         """
@@ -290,7 +290,7 @@ class Connection(object):
     def __repr__(self) -> str:
         return "Connection<{}>".format(self.client.meta.endpoint_url)
 
-    def _sign_request(self, request):
+    def _sign_request(self, request: Any) -> None:
         auth = self.client._request_signer.get_auth_instance(
             self.client._request_signer.signing_name,
             self.client._request_signer.region_name,
@@ -336,13 +336,13 @@ class Connection(object):
             log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
 
-    def send_post_boto_callback(self, operation_name, req_uuid, table_name):
+    def send_post_boto_callback(self, operation_name: str, req_uuid: uuid.UUID, table_name: Optional[Any]) -> None:
         try:
             post_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
         except Exception as e:
             log.exception("post_boto callback threw an exception.")
 
-    def send_pre_boto_callback(self, operation_name, req_uuid, table_name):
+    def send_pre_boto_callback(self, operation_name: str, req_uuid: uuid.UUID, table_name: Optional[Any]) -> None:
         try:
             pre_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
         except Exception as e:
@@ -469,7 +469,7 @@ class Connection(object):
         assert False  # unreachable code
 
     @staticmethod
-    def _handle_binary_attributes(data):
+    def _handle_binary_attributes(data: Dict) -> Dict:
         """ Simulate botocore's binary attribute handling """
         if ITEM in data:
             for attr in data[ITEM].values():
@@ -519,7 +519,7 @@ class Connection(object):
         return self._local.session
 
     @property
-    def client(self):
+    def client(self) -> Any:
         """
         Returns a botocore dynamodb client
         """
@@ -536,7 +536,7 @@ class Connection(object):
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
         return self._client
 
-    def get_meta_table(self, table_name: str, refresh: bool = False):
+    def get_meta_table(self, table_name: str, refresh: bool = False) -> MetaTable:
         """
         Returns a MetaTable
         """
@@ -1263,7 +1263,7 @@ class Connection(object):
         self,
         table_name: str,
         hash_key: str,
-        range_key_condition: Optional[Condition] = None,
+        range_key_condition: Any = None,
         filter_condition: Optional[Any] = None,
         attributes_to_get: Optional[Any] = None,
         consistent_read: bool = False,
@@ -1334,17 +1334,17 @@ class Connection(object):
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {}".format(e), e)
 
-    def _check_condition(self, name, condition):
+    def _check_condition(self, name: str, condition: Optional[Condition]) -> None:
         if condition is not None:
             if not isinstance(condition, Condition):
                 raise ValueError("'{}' must be an instance of Condition".format(name))
 
     @staticmethod
-    def _reverse_dict(d):
+    def _reverse_dict(d: Dict) -> Dict:
         return {v: k for k, v in d.items()}
 
 
-def _convert_binary(attr):
+def _convert_binary(attr: Dict) -> None:
     if BINARY in attr:
         attr[BINARY] = b64decode(attr[BINARY].encode(DEFAULT_ENCODING))
     elif BINARY_SET in attr:

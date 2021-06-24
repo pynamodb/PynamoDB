@@ -1,7 +1,7 @@
 """
 Mock response
 """
-from urllib3 import HTTPResponse
+from urllib3 import HTTPResponse # type: ignore
 
 
 class MockResponse(HTTPResponse):

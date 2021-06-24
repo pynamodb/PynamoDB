@@ -6,9 +6,9 @@ import json
 from unittest import mock, TestCase
 from unittest.mock import patch
 
-import botocore.exceptions
-from botocore.awsrequest import AWSPreparedRequest, AWSRequest, AWSResponse
-from botocore.client import ClientError
+import botocore.exceptions # type: ignore
+from botocore.awsrequest import AWSPreparedRequest, AWSRequest, AWSResponse # type: ignore
+from botocore.client import ClientError # type: ignore
 from botocore.exceptions import BotoCoreError
 
 import pytest

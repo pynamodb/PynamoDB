@@ -37,7 +37,7 @@ class AttributeTestModel(Model):
     datetime_attr = UTCDateTimeAttribute()
     bool_attr = BooleanAttribute()
     json_attr = JSONAttribute()
-    map_attr = MapAttribute()
+    map_attr: MapAttribute = MapAttribute()
     ttl_attr = TTLAttribute()
 
 
@@ -47,7 +47,7 @@ class CustomAttrMap(MapAttribute):
 
 
 class DefaultsMap(MapAttribute):
-    map_field = MapAttribute(default={})
+    map_field: MapAttribute = MapAttribute(default={})
     string_set_field = UnicodeSetAttribute(null=True)
 
 

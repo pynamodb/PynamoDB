@@ -29,7 +29,7 @@ class IndexMeta(GenericMeta):
     This class is here to allow for an index `Meta` class
     that contains the index settings
     """
-    def __init__(self, name, bases, attrs, *args, **kwargs):
+    def __init__(self, name: str, bases: Any, attrs: Dict, *args: Any, **kwargs: Dict[str, Any]) -> None:
         super().__init__(name, bases, attrs, *args, **kwargs)  # type: ignore
         if isinstance(attrs, dict):
             for attr_name, attr_obj in attrs.items():
@@ -138,7 +138,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
         )
 
     @classmethod
-    def _hash_key_attribute(cls):
+    def _hash_key_attribute(cls) -> Any:
         """
         Returns the attribute class for the hash key
         """
@@ -174,7 +174,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
         }
 
     @classmethod
-    def _get_attributes(cls):
+    def _get_attributes(cls) -> Any:
         """
         Returns the list of attributes for this class
         """

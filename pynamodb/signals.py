@@ -5,11 +5,13 @@ falls silently back to a noop.
 This implementation was taken from Flask:
 https://github.com/pallets/flask/blob/master/flask/signals.py
 """
+from typing import Any
+
 signals_available = False
 
 
 class _FakeNamespace(object):
-    def signal(self, name, doc=None):
+    def signal(self, name: str, doc: Any =None) -> Any:
         return _FakeSignal(name, doc)
 
 
@@ -21,11 +23,11 @@ class _FakeSignal(object):
     will just ignore the arguments and do nothing instead.
     """
 
-    def __init__(self, name, doc=None):
+    def __init__(self, name: str, doc: Any =None) -> None:
         self.name = name
         self.__doc__ = doc
 
-    def _fail(self, *args, **kwargs):
+    def _fail(self, *args: Any, **kwargs: Any) -> None:
         raise RuntimeError('signalling support is unavailable '
                            'because the blinker library is '
                            'not installed.')
@@ -37,7 +39,7 @@ class _FakeSignal(object):
 
 
 try:
-    from blinker import Namespace
+    from blinker import Namespace # type: ignore
     signals_available = True
 except ImportError: # pragma: no cover
     Namespace = _FakeNamespace

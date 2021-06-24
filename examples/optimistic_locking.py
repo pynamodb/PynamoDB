@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from typing import Any
 from uuid import uuid4
 from botocore.client import ClientError
 
@@ -13,10 +14,10 @@ class OfficeEmployeeMap(MapAttribute):
     office_employee_id = UnicodeAttribute()
     person = UnicodeAttribute()
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return isinstance(other, OfficeEmployeeMap) and self.person == other.person
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(vars(self))
 
 
@@ -37,7 +38,7 @@ if not Office.exists():
 
 
 @contextmanager
-def assert_condition_check_fails():
+def assert_condition_check_fails() -> None:
     try:
         yield
     except (PutError, UpdateError, DeleteError) as e:
@@ -46,7 +47,8 @@ def assert_condition_check_fails():
     except TransactWriteError as e:
         assert isinstance(e.cause, ClientError)
         assert e.cause_response_code == "TransactionCanceledException"
-        assert "ConditionalCheckFailed" in e.cause_response_message
+        if e.cause_response_message is not None:
+            assert "ConditionalCheckFailed" in e.cause_response_message
     else:
         raise AssertionError("The version attribute conditional check should have failed.")
 

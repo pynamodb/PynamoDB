@@ -10,10 +10,10 @@ class Color(object):
     """
     This class is used to demonstrate the PickleAttribute below
     """
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         self.name = name
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "<Color: {}>".format(self.name)
 
 
@@ -22,14 +22,14 @@ class PickleAttribute(BinaryAttribute):
     This class will serializer/deserialize any picklable Python object.
     The value will be stored as a binary attribute in DynamoDB.
     """
-    def serialize(self, value):
+    def serialize(self, value: bytes) -> str:
         """
         The super class takes the binary string returned from pickle.dumps
         and encodes it for storage in DynamoDB
         """
         return super(PickleAttribute, self).serialize(pickle.dumps(value))
 
-    def deserialize(self, value):
+    def deserialize(self, value: str) -> bytes:
         return pickle.loads(super(PickleAttribute, self).deserialize(value))
 
 
@@ -44,7 +44,7 @@ class CustomAttributeModel(Model):
         write_capacity_units = 1
 
     id = UnicodeAttribute(hash_key=True)
-    obj = PickleAttribute()
+    obj = Color('blue')
 
 
 # Create the example table

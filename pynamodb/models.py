@@ -32,7 +32,7 @@ from pynamodb.expressions.update import Action
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError, \
     AttributeNullError
 from pynamodb.attributes import (
-    AttributeContainer, AttributeContainerMeta, TTLAttribute, VersionAttribute
+    Attribute, AttributeContainer, AttributeContainerMeta, TTLAttribute, VersionAttribute
 )
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
@@ -115,10 +115,10 @@ class BatchWrite(Generic[_T]):
                 self.commit()
         self.pending_operations.append({"action": DELETE, "item": del_item})
 
-    def __enter__(self):
+    def __enter__(self) -> Any:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """
         This ensures that all pending operations are committed when
         the context is exited
@@ -197,11 +197,11 @@ class MetaModel(AttributeContainerMeta):
     """
     Model meta class
     """
-    def __new__(cls, name, bases, namespace, discriminator=None):
+    def __new__(cls, name: str, bases: Any, namespace: Any, discriminator: Any =None) -> Any:
         # Defined so that the discriminator can be set in the class definition.
         return super().__new__(cls, name, bases, namespace)
 
-    def __init__(self, name, bases, namespace, discriminator=None) -> None:
+    def __init__(self, name: str, bases: Any, namespace: Any, discriminator: Any =None) -> None:
         super().__init__(name, bases, namespace, discriminator)
         cls = cast(Type['Model'], self)
         for attr_name, attribute in cls.get_attributes().items():
@@ -273,7 +273,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
     Defines a `PynamoDB` Model
 
     This model is backed by a table in DynamoDB.
-    You can create the table by with the ``create_table`` method.
+    You can create the table by the ``create_table`` method.
     """
 
     # These attributes are named to avoid colliding with user defined
@@ -344,17 +344,18 @@ class Model(AttributeContainer, metaclass=MetaModel):
                     else:
                         keys_to_get = []
             item = items.pop()
-            if range_key_attribute:
-                hash_key, range_key = cls._serialize_keys(item[0], item[1])  # type: ignore
-                keys_to_get.append({
-                    hash_key_attribute.attr_name: hash_key,
-                    range_key_attribute.attr_name: range_key
-                })
-            else:
-                hash_key = cls._serialize_keys(item)[0]
-                keys_to_get.append({
-                    hash_key_attribute.attr_name: hash_key
-                })
+            if hash_key_attribute:
+                if range_key_attribute:
+                    hash_key, range_key = cls._serialize_keys(item[0], item[1])  # type: ignore
+                    keys_to_get.append({
+                        hash_key_attribute.attr_name: hash_key,
+                        range_key_attribute.attr_name: range_key
+                    })
+                else:
+                    hash_key = cls._serialize_keys(item)[0]
+                    keys_to_get.append({
+                        hash_key_attribute.attr_name: hash_key
+                    })
 
         while keys_to_get:
             page, unprocessed_keys = cls._batch_get_page(
@@ -400,7 +401,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
         version_condition = self._handle_version_attribute()
         if version_condition is not None:
-            condition &= version_condition
+            if condition is not None:
+                condition &= version_condition
+            else:
+                condition = version_condition
 
         return self._get_connection().delete_item(hk_value, range_key=rk_value, condition=condition, settings=settings)
 
@@ -420,7 +424,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
         version_condition = self._handle_version_attribute(actions=actions)
         if version_condition is not None:
-            condition &= version_condition
+            if condition is not None:
+                condition &= version_condition
+            else:
+                condition = version_condition
 
         data = self._get_connection().update_item(hk_value, range_key=rk_value, return_values=ALL_NEW, condition=condition, actions=actions, settings=settings)
         item_data = data[ATTRIBUTES]
@@ -468,7 +475,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         version_condition = self._handle_version_attribute(actions=actions)
         if version_condition is not None:
-            condition &= version_condition
+            if condition is not None:
+                condition &= version_condition
+            else:
+                condition = version_condition
 
         return self._get_connection().get_operation_kwargs(hk_value, range_key=rk_value, key=KEY, actions=actions, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
 
@@ -481,8 +491,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         version_condition = self._handle_version_attribute()
         if version_condition is not None:
-            condition &= version_condition
-
+            if condition is not None:
+                condition &= version_condition
+            else:
+                condition = version_condition
         return self._get_connection().get_operation_kwargs(hk_value, range_key=rk_value, key=KEY, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
 
     def get_save_kwargs_from_instance(
@@ -590,7 +602,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         # If this class has a discriminator attribute, filter the query to only return instances of this class.
         discriminator_attr = cls._get_discriminator_attribute()
-        if discriminator_attr:
+        if discriminator_attr and filter_condition:
             filter_condition &= discriminator_attr.is_in(*discriminator_attr.get_registered_subclasses(cls))
 
         query_args = (hash_key,)
@@ -658,7 +670,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         # If this class has a discriminator attribute, filter the query to only return instances of this class.
         discriminator_attr = cls._get_discriminator_attribute()
         if discriminator_attr:
-            filter_condition &= discriminator_attr.is_in(*discriminator_attr.get_registered_subclasses(cls))
+            disc_attr_in = discriminator_attr.is_in(*discriminator_attr.get_registered_subclasses(cls))
+            if filter_condition:
+                filter_condition &= disc_attr_in
+            else:
+                filter_condition = disc_attr_in
 
         if page_size is None:
             page_size = limit
@@ -716,7 +732,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         # If this class has a discriminator attribute, filter the scan to only return instances of this class.
         discriminator_attr = cls._get_discriminator_attribute()
-        if discriminator_attr:
+        if filter_condition and discriminator_attr:
             filter_condition &= discriminator_attr.is_in(*discriminator_attr.get_registered_subclasses(cls))
 
         if page_size is None:
@@ -930,7 +946,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         attribute_values = self.serialize(null_check)
         hash_key_attribute = self._hash_key_attribute()
-        hash_key = attribute_values.pop(hash_key_attribute.attr_name, {}).get(hash_key_attribute.attr_type)
+        hash_key = None
+        if hash_key_attribute:
+            hash_key = attribute_values.pop(hash_key_attribute.attr_name, {}).get(hash_key_attribute.attr_type)
         range_key = None
         range_key_attribute = self._range_key_attribute()
         if range_key_attribute:
@@ -941,7 +959,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
             kwargs['range_key'] = range_key
         version_condition = self._handle_version_attribute(attributes=attribute_values)
         if version_condition is not None:
-            condition &= version_condition
+            if condition is not None:
+                condition &= version_condition
+            else:
+                condition = version_condition
         kwargs['attributes'] = attribute_values
         kwargs['condition'] = condition
         return args, kwargs
@@ -988,27 +1009,27 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         return condition
 
-    def update_local_version_attribute(self):
+    def update_local_version_attribute(self) -> None:
         if self._version_attribute_name is not None:
             value = getattr(self, self._version_attribute_name, None) or 0
             setattr(self, self._version_attribute_name, value + 1)
 
     @classmethod
-    def _hash_key_attribute(cls):
+    def _hash_key_attribute(cls) -> Optional[Attribute]:
         """
         Returns the attribute class for the hash key
         """
         return cls.get_attributes()[cls._hash_keyname] if cls._hash_keyname else None
 
     @classmethod
-    def _range_key_attribute(cls):
+    def _range_key_attribute(cls) -> Optional[Attribute]:
         """
         Returns the attribute class for the range key
         """
         return cls.get_attributes()[cls._range_keyname] if cls._range_keyname else None
 
     @classmethod
-    def _ttl_attribute(cls):
+    def _ttl_attribute(cls) -> Optional[TTLAttribute]:
         """
         Returns the ttl attribute for this table
         """
@@ -1018,7 +1039,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 return attr_obj
         return None
 
-    def _get_keys(self):
+    def _get_keys(self) -> Dict:
         """
         Returns the proper arguments for deleting
         """
@@ -1038,7 +1059,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return self._serialize_keys(hash_key, range_key)
 
     @classmethod
-    def _batch_get_page(cls, keys_to_get, consistent_read, attributes_to_get, settings: OperationSettings):
+    def _batch_get_page(cls, keys_to_get: List, consistent_read: Optional[bool], attributes_to_get: Any, settings: OperationSettings) -> Any:
         """
         Returns a single page from BatchGetItem
         Also returns any unprocessed items
@@ -1094,7 +1115,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return cls._connection
 
     @classmethod
-    def _serialize_value(cls, attr, value):
+    def _serialize_value(cls, attr: Attribute, value: Any) -> Dict:
         """
         Serializes a value for use with DynamoDB
 
@@ -1111,7 +1132,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return {attr.attr_type: serialized}
 
     @classmethod
-    def _serialize_keys(cls, hash_key, range_key=None) -> Tuple[_KeyType, _KeyType]:
+    def _serialize_keys(cls, hash_key: Any, range_key: Any=None) -> Tuple[_KeyType, _KeyType]:
         """
         Serializes the hash and range keys
 
@@ -1119,9 +1140,14 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param range_key: The range key value
         """
         if hash_key is not None:
-            hash_key = cls._hash_key_attribute().serialize(hash_key)
+            _hash_key_attribute = cls._hash_key_attribute()
+            if _hash_key_attribute:
+                hash_key = _hash_key_attribute.serialize(hash_key)
         if range_key is not None:
-            range_key = cls._range_key_attribute().serialize(range_key)
+            _range_key_attribute = cls._range_key_attribute()
+            if _range_key_attribute:
+                range_key = _range_key_attribute.serialize(range_key)
+
         return hash_key, range_key
 
     def serialize(self, null_check: bool = True) -> Dict[str, Dict[str, Any]]:

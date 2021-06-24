@@ -1,4 +1,4 @@
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError # type: ignore
 
 from pynamodb.exceptions import PutError
 

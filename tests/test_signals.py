@@ -6,7 +6,7 @@ from pynamodb.signals import _FakeNamespace
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 
 try:
-    import blinker
+    import blinker # type: ignore
 except ImportError:
     blinker = None
 

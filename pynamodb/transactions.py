@@ -19,13 +19,13 @@ class Transaction:
         self._connection = connection
         self._return_consumed_capacity = return_consumed_capacity
 
-    def _commit(self):
+    def _commit(self) -> None:
         raise NotImplementedError()
 
     def __enter__(self) -> 'Transaction':
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if exc_type is None and exc_val is None and exc_tb is None:
             self._commit()
 
@@ -34,7 +34,7 @@ class TransactGet(Generic[_M], Transaction):
 
     _results: Optional[List] = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         self._get_items: List[Dict] = []
         self._futures: List[_ModelFuture] = []
         super(TransactGet, self).__init__(*args, **kwargs)
@@ -89,7 +89,7 @@ class TransactWrite(Transaction):
         self._update_items: List[Dict] = []
         self._models_for_version_attribute_update: List[Any] = []
 
-    def condition_check(self, model_cls: Type[_M], hash_key: _KeyType, range_key: Optional[_KeyType] = None, condition: Optional[Condition] = None):
+    def condition_check(self, model_cls: Type[_M], hash_key: _KeyType, range_key: Optional[_KeyType] = None, condition: Optional[Condition] = None) -> None:
         if condition is None:
             raise TypeError('`condition` cannot be None')
         operation_kwargs = model_cls.get_operation_kwargs_from_class(

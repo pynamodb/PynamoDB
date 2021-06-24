@@ -9,7 +9,7 @@ from datetime import timedelta
 from datetime import timezone
 from unittest import TestCase
 
-from botocore.client import ClientError
+from botocore.client import ClientError  # type: ignore
 import pytest
 
 from .deep_eq import deep_eq
@@ -373,7 +373,7 @@ class GroceryList(Model):
         table_name = 'GroceryListModel'
 
     store_name = UnicodeAttribute(hash_key=True)
-    groceries = ListAttribute()
+    groceries: ListAttribute = ListAttribute()
 
 
 class Office(Model):
@@ -421,13 +421,13 @@ class ExplicitRawMapModel(Model):
     class Meta:
         table_name = 'ExplicitRawMapModel'
     map_id = NumberAttribute(hash_key=True, default=123)
-    map_attr = MapAttribute()
+    map_attr: MapAttribute = MapAttribute()
 
 
 class MapAttrSubClassWithRawMapAttr(MapAttribute):
     num_field = NumberAttribute()
     str_field = UnicodeAttribute()
-    map_field = MapAttribute()
+    map_field: MapAttribute = MapAttribute()
 
 
 class ExplicitRawMapAsMemberOfSubClass(Model):

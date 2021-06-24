@@ -33,10 +33,10 @@ class _Operand:
         values = [self._serialize_value(value, placeholder_names, expression_attribute_values) for value in self.values]
         return self.format_string.format(*values)
 
-    def _serialize_value(self, value, placeholder_names, expression_attribute_values):
+    def _serialize_value(self, value: Any, placeholder_names: Dict[str, str], expression_attribute_values: Dict[str, str]) -> Any:
         return value.serialize(placeholder_names, expression_attribute_values)
 
-    def _to_operand(self, value: Union['_Operand', 'Attribute', Any]):
+    def _to_operand(self, value: Union['_Operand', 'Attribute', Any]) -> Any:
         if isinstance(value, _Operand):
             return value
         from pynamodb.attributes import Attribute, MapAttribute  # prevent circular import -- Attribute imports Path
@@ -44,10 +44,10 @@ class _Operand:
             return self._to_value(value)
         return Path(value) if isinstance(value, Attribute) else self._to_value(value)
 
-    def _to_value(self, value):
+    def _to_value(self, value: Union['_Operand', 'Attribute', Any]) -> Any:
         return Value(value)
 
-    def _type_check(self, *types):
+    def _type_check(self, *types: Any) -> None:
         if self.attr_type and self.attr_type not in types:
             raise ValueError("The data type of '{}' must be one of {}".format(self, list(types)))
 
@@ -88,16 +88,16 @@ class _NumericOperand(_Operand):
     A base class for Operands that can be used in the increment and decrement SET update actions.
     """
 
-    def __add__(self, other):
+    def __add__(self, other: Any) -> '_Increment':
         return _Increment(self, self._to_operand(other))
 
-    def __radd__(self, other):
+    def __radd__(self, other: Any) -> '_Increment':
         return _Increment(self._to_operand(other), self)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Any) -> '_Decrement':
         return _Decrement(self, self._to_operand(other))
 
-    def __rsub__(self, other):
+    def __rsub__(self, other: Any) -> '_Decrement':
         return _Decrement(self._to_operand(other), self)
 
 
@@ -125,7 +125,7 @@ class _Size(_ConditionOperand):
             path = Path(path)
         super(_Size, self).__init__(path)
 
-    def _to_operand(self, value):
+    def _to_operand(self, value: Any) -> '_ConditionOperand':
         operand = super(_Size, self)._to_operand(value)
         operand._type_check(NUMBER)
         return operand
@@ -201,14 +201,14 @@ class Value(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         super(Value, self).__init__({self.attr_type: value})
 
     @property
-    def value(self):
+    def value(self) -> Any:
         return self.values[0]
 
-    def _serialize_value(self, value, placeholder_names, expression_attribute_values):
+    def _serialize_value(self, value: Any, placeholder_names: Dict[str, str], expression_attribute_values: Dict[str, str]) -> str:
         return get_value_placeholder(value, expression_attribute_values)
 
     @staticmethod
-    def __serialize(value, attribute=None):
+    def __serialize(value: Any, attribute: Any=None) -> tuple:
         if attribute is None:
             return Value.__serialize_based_on_type(value)
         if attribute.attr_type == LIST and not isinstance(value, list):
@@ -221,7 +221,7 @@ class Value(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         return attribute.attr_type, attribute.serialize(value)
 
     @staticmethod
-    def __serialize_based_on_type(value):
+    def __serialize_based_on_type(value: Any) -> tuple:
         from pynamodb.attributes import _get_class_for_serialize
         attr_class = _get_class_for_serialize(value)
         return attr_class.attr_type, attr_class.serialize(value)
@@ -252,7 +252,7 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     def path(self) -> List[str]:
         return self.values[0]
 
-    def __iter__(self):
+    def __iter__(self) -> None:
         # Because we define __getitem__ Path is considered an iterable
         raise TypeError("'{}' object is not iterable".format(self.__class__.__name__))
 
@@ -275,7 +275,7 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
             return Path(self.path + [item])
         raise TypeError("item must be an integer or string, not {}".format(type(item).__name__))
 
-    def __or__(self, other):
+    def __or__(self, other: Union['_Operand', 'Attribute', Any]) -> '_IfNotExists':
         return _IfNotExists(self, self._to_operand(other))
 
     def set(self, value: Any) -> SetAction:
@@ -321,7 +321,7 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
             item = {attr_type[0]: attr_value[0]}
         return Contains(self, self._to_operand(item))
 
-    def _serialize_value(self, value, placeholder_names, expression_attribute_values):
+    def _serialize_value(self, value: Union[str, List[str]], placeholder_names: Dict[str,str], expression_attribute_values: Dict[str,str]) -> str:
         return substitute_names(value, placeholder_names)
 
     def _to_value(self, value: Any) -> Value:
