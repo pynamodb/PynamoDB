@@ -1,6 +1,7 @@
 import pytest
 
 from pynamodb.attributes import DiscriminatorAttribute
+from pynamodb.attributes import DynamicMapAttribute
 from pynamodb.attributes import ListAttribute
 from pynamodb.attributes import MapAttribute
 from pynamodb.attributes import NumberAttribute
@@ -39,6 +40,23 @@ class DiscriminatorTestModel(Model, discriminator='Parent'):
 
 
 class ChildModel(DiscriminatorTestModel, discriminator='Child'):
+    value = UnicodeAttribute()
+
+
+class DynamicSubclassedMapAttribute(DynamicMapAttribute):
+    string_attr = UnicodeAttribute()
+
+
+class DynamicMapDiscriminatorTestModel(Model, discriminator='Parent'):
+    class Meta:
+        host = 'http://localhost:8000'
+        table_name = 'test'
+    hash_key = UnicodeAttribute(hash_key=True)
+    value = DynamicSubclassedMapAttribute(default=dict)
+    type = DiscriminatorAttribute()
+
+
+class DynamicMapDiscriminatorChildTestModel(DynamicMapDiscriminatorTestModel, discriminator='Child'):
     value = UnicodeAttribute()
 
 
@@ -128,3 +146,51 @@ class TestDiscriminatorModel:
         assert isinstance(cm, ChildModel)
         assert cm.hash_key == 'foo'
         assert cm.value == 'bar'
+
+
+class TestDynamicDiscriminatorModel:
+
+    def test_serialize_parent(self):
+        m = DynamicMapDiscriminatorTestModel()
+        m.hash_key = 'foo'
+        m.value.string_attr = 'foostr'
+        m.value.bar_attribute = 3
+        assert m.serialize() == {
+            'hash_key': {'S': 'foo'},
+            'type': {'S': 'Parent'},
+            'value': {'M': {'string_attr': {'S': 'foostr'}, 'bar_attribute': {'N': '3'}}},
+        }
+
+    def test_deserialize_parent(self):
+        item = {
+            'hash_key': {'S': 'foo'},
+            'type': {'S': 'Parent'},
+            'value': {
+                'M': {'string_attr': {'S': 'foostr'}, 'bar_attribute': {'N': '3'}}
+            }
+        }
+        m = DynamicMapDiscriminatorTestModel.from_raw_data(item)
+        assert m.hash_key == 'foo'
+        assert m.value
+        assert m.value.string_attr == 'foostr'
+        assert m.value.bar_attribute == 3
+
+    def test_serialize_child(self):
+        m = DynamicMapDiscriminatorChildTestModel()
+        m.hash_key = 'foo'
+        m.value = 'string val'
+        assert m.serialize() == {
+            'hash_key': {'S': 'foo'},
+            'type': {'S': 'Child'},
+            'value': {'S': 'string val'}
+        }
+
+    def test_deserialize_child(self):
+        item = {
+            'hash_key': {'S': 'foo'},
+            'type': {'S': 'Child'},
+            'value': {'S': 'string val'}
+        }
+        m = DynamicMapDiscriminatorChildTestModel.from_raw_data(item)
+        assert m.hash_key == 'foo'
+        assert m.value == 'string val'
