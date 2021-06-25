@@ -193,6 +193,8 @@ These attributes can then be used inside of Model classes just like any other at
         make = UnicodeAttribute(null=False)
         model = UnicodeAttribute(null=True)
 
+`As with a model and its top-level attributes <https://github.com/pynamodb/PynamoDB/blob/master/docs/quickstart.rst#changing-items>`_, a PynamoDB MapAttribute will ignore sub-attributes it does not know about during deserialization. As a result, if the item in DynamoDB contains sub-attributes not declared as properties of the corresponding MapAttribute, save() will cause those sub-attributes to be deleted.
+
 ``DynamicMapAttribute`` is a subclass of ``MapAttribute`` which allows you to mix and match defined attributes and undefined attributes.
 
 .. code-block:: python
@@ -206,4 +208,3 @@ These attributes can then be used inside of Model classes just like any other at
     car = CarInfo(make='Make-A', model='Model-A', year=1975)
     other_car = CarInfo(make='Make-A', model='Model-A', year=1975, seats=3)
 
-`As with a model and its top-level attributes <https://github.com/pynamodb/PynamoDB/blob/master/docs/quickstart.rst#changing-items>`_, a PynamoDB MapAttribute will ignore sub-attributes it does not know about during deserialization. As a result, if the item in DynamoDB contains sub-attributes not declared as properties of the corresponding MapAttribute, save() will cause those sub-attributes to be deleted.
