@@ -1009,14 +1009,14 @@ class DynamicMapAttribute(MapAttribute):
         else:
             super().__setattr__(name, value)
 
-    def serialize(self, values):
+    def serialize(self, values, *, null_check: bool = True):
         if not isinstance(values, type(self)):
             # Copy the values onto an instance of the class for serialization.
             instance = type(self)()
             instance.attribute_values = {}  # clear any defaults
             instance._set_attributes(**values)
             values = instance
-        rval = AttributeContainer.serialize(values)
+        rval = AttributeContainer._container_serialize(values, null_check=null_check)
         for attr_name in values:
             if attr_name not in self.get_attributes():
                 v = values[attr_name]
