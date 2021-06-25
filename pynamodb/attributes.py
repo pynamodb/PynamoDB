@@ -862,20 +862,20 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         # If this instance is being used as an Attribute, treat item access like the map dereference operator.
         # This provides equivalence between DynamoDB's nested attribute access for map elements (MyMap.nestedField)
         # and Python's item access for dictionaries (MyMap['nestedField']).
-        if self.is_raw():
-            return Path(self.attr_path + [str(item)])  # type: ignore
-        elif item in self._attributes:  # type: ignore
+        if item in self.get_attributes():
             return getattr(self, item)
+        elif self.is_raw():
+            return Path(self.attr_path + [str(item)])  # type: ignore
         else:
             raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, item))
 
     def __setitem__(self, item, value):
         if not self._is_attribute_container():
             raise TypeError("'{}' object does not support item assignment".format(self.__class__.__name__))
-        if self.is_raw():
-            self.attribute_values[item] = value
-        elif item in self._attributes:  # type: ignore
+        if item in self.get_attributes():
             setattr(self, item, value)
+        elif self.is_raw():
+            self.attribute_values[item] = value
         else:
             raise AttributeError("'{}' has no attribute '{}'".format(self.__class__.__name__, item))
 
@@ -933,6 +933,22 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         return all(self.is_correctly_typed(k, v, null_check=null_check)
                    for k, v in self.get_attributes().items())
 
+    def _serialize_undeclared_attributes(self, values, container: Dict):
+        # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
+        # This special case behavior for "raw" attributes should be removed in the future.
+        for attr_name in values:
+            if attr_name not in self.get_attributes():
+                v = values[attr_name]
+                attr_class = _get_class_for_serialize(v)
+                attr_type = attr_class.attr_type
+                attr_value = attr_class.serialize(v)
+                if attr_value is None:
+                    # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
+                    attr_type = NULL
+                    attr_value = True
+                container[attr_name] = {attr_type: attr_value}
+        return container
+
     def serialize(self, values, *, null_check: bool = True):
         if not self.is_raw():
             # This is a subclassed MapAttribute that acts as an AttributeContainer.
@@ -949,20 +965,8 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
 
             return AttributeContainer._container_serialize(values, null_check=null_check)
 
-        # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
-        # This special case behavior for "raw" attributes should be removed in the future.
-        rval = {}
-        for attr_name in values:
-            v = values[attr_name]
-            attr_class = _get_class_for_serialize(v)
-            attr_type = attr_class.attr_type
-            attr_value = attr_class.serialize(v)
-            if attr_value is None:
-                # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
-                attr_type = NULL
-                attr_value = True
-            rval[attr_name] = {attr_type: attr_value}
-        return rval
+        # For a "raw" MapAttribute all fields are undeclared
+        return self._serialize_undeclared_attributes(values, {})
 
     def deserialize(self, values):
         """
@@ -986,6 +990,62 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         for key, value in self.attribute_values.items():
             result[key] = value.as_dict() if isinstance(value, MapAttribute) else value
         return result
+
+
+class DynamicMapAttribute(MapAttribute):
+    """
+    A map attribute that supports declaring attributes (like an AttributeContainer) but will also store
+    any other values that are set on it (like a raw MapAttribute).
+
+    >>> class MyDynamicMapAttribute(DynamicMapAttribute):
+    >>>     a_date_time = UTCDateTimeAttribute()  # raw map attributes cannot serialize/deserialize datetime values
+    >>>
+    >>> dynamic_map = MyDynamicMapAttribute()
+    >>> dynamic_map.a_date_time = datetime.utcnow()
+    >>> dynamic_map.a_number = 5
+    >>> dynamic_map.serialize()  # {'a_date_time': {'S': 'xxx'}, 'a_number': {'N': '5'}}
+    """
+
+    def __setattr__(self, name, value):
+        # Set attributes via the Attribute descriptor if it exists.
+        if name in self.get_attributes():
+            object.__setattr__(self, name, value)
+        else:
+            super().__setattr__(name, value)
+
+    def serialize(self, values, *, null_check: bool = True):
+        if not isinstance(values, type(self)):
+            # Copy the values onto an instance of the class for serialization.
+            instance = type(self)()
+            instance.attribute_values = {}  # clear any defaults
+            instance._set_attributes(**values)
+            values = instance
+
+        # this serializes the class defined attributes.
+        # we do this first because we have type checks that validate the data
+        rval = AttributeContainer._container_serialize(values, null_check=null_check)
+
+        # this serializes the dynamically defined attributes
+        # we have no real type safety here so we have to dynamically construct the type to write to dynamo
+        self._serialize_undeclared_attributes(values, rval)
+
+        return rval
+
+    def deserialize(self, values):
+        # this deserializes the class defined attributes
+        # we do this first so that the we populate the defined object attributes fields properly with type safety
+        instance = self._instantiate(values)
+        # this deserializes the dynamically defined attributes
+        for attr_name, value in values.items():
+            if instance._dynamo_to_python_attr(attr_name) not in instance.get_attributes():
+                attr_type, attr_value = next(iter(value.items()))
+                instance[attr_name] = DESERIALIZE_CLASS_MAP[attr_type].deserialize(attr_value)
+        return instance
+
+    @classmethod
+    def is_raw(cls):
+        # All subclasses of DynamicMapAttribute should be treated like "raw" map attributes.
+        return True
 
 
 def _get_class_for_serialize(value):

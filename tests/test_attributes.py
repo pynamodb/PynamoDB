@@ -12,7 +12,7 @@ from unittest.mock import patch, call
 import pytest
 
 from pynamodb.attributes import (
-    BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
+    BinarySetAttribute, BinaryAttribute, DynamicMapAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute,
     ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute)
 from pynamodb.constants import (
@@ -880,6 +880,37 @@ class TestMapAttribute:
         outer_map_attribute = OuterMapAttribute(inner_map={'foo': 'bar'})
         serialized = outer_map_attribute.serialize(outer_map_attribute)
         assert serialized == {'inner_map': {'M': {'foo': {'S': 'bar'}}}}
+
+
+class TestDynamicMapAttribute:
+
+    class CreatedAtTestModel(Model):
+        class CreatedAtMap(DynamicMapAttribute):
+            created_at = UTCDateTimeAttribute()
+        test_map = CreatedAtMap(default=dict)
+
+    def test_serialize(self):
+        test_model = TestDynamicMapAttribute.CreatedAtTestModel()
+        test_model.test_map.created_at = datetime(2017, 1, 1, tzinfo=timezone.utc)
+        test_model.test_map.foo = 'bar'
+        test_model.test_map.empty = None
+        assert test_model.serialize() == {'test_map': {'M': {
+            'created_at': {'S': '2017-01-01T00:00:00.000000+0000'},
+            'foo': {'S': 'bar'},
+            'empty': {'NULL': True},
+        }}}
+
+    def test_deserialize(self):
+        serialized = {'test_map': {'M': {
+            'created_at': {'S': '2017-01-01T00:00:00.000000+0000'},
+            'foo': {'S': 'bar'},
+            'empty': {'NULL': True},
+        }}}
+        test_model = TestDynamicMapAttribute.CreatedAtTestModel()
+        test_model.deserialize(serialized)
+        assert test_model.test_map.created_at == datetime(2017, 1, 1, tzinfo=timezone.utc)
+        assert test_model.test_map.foo == 'bar'
+        assert test_model.test_map.empty is None
 
 
 class TestListAttribute:
