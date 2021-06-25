@@ -933,6 +933,22 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         return all(self.is_correctly_typed(k, v, null_check=null_check)
                    for k, v in self.get_attributes().items())
 
+    def _serialize_undeclared_attributes(self, values, container: Dict):
+        # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
+        # This special case behavior for "raw" attributes should be removed in the future.
+        for attr_name in values:
+            if attr_name not in self.get_attributes():
+                v = values[attr_name]
+                attr_class = _get_class_for_serialize(v)
+                attr_type = attr_class.attr_type
+                attr_value = attr_class.serialize(v)
+                if attr_value is None:
+                    # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
+                    attr_type = NULL
+                    attr_value = True
+                container[attr_name] = {attr_type: attr_value}
+        return container
+
     def serialize(self, values, *, null_check: bool = True):
         if not self.is_raw():
             # This is a subclassed MapAttribute that acts as an AttributeContainer.
@@ -949,20 +965,8 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
 
             return AttributeContainer._container_serialize(values, null_check=null_check)
 
-        # Continue to serialize NULL values in "raw" map attributes for backwards compatibility.
-        # This special case behavior for "raw" attributes should be removed in the future.
-        rval = {}
-        for attr_name in values:
-            v = values[attr_name]
-            attr_class = _get_class_for_serialize(v)
-            attr_type = attr_class.attr_type
-            attr_value = attr_class.serialize(v)
-            if attr_value is None:
-                # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
-                attr_type = NULL
-                attr_value = True
-            rval[attr_name] = {attr_type: attr_value}
-        return rval
+        # For a "raw" MapAttribute all fields are undeclared
+        return self._serialize_undeclared_attributes(values, {})
 
     def deserialize(self, values):
         """
@@ -1016,22 +1020,15 @@ class DynamicMapAttribute(MapAttribute):
             instance.attribute_values = {}  # clear any defaults
             instance._set_attributes(**values)
             values = instance
+
         # this serializes the class defined attributes.
         # we do this first because we have type checks that validate the data
         rval = AttributeContainer._container_serialize(values, null_check=null_check)
+
         # this serializes the dynamically defined attributes
         # we have no real type safety here so we have to dynamically construct the type to write to dynamo
-        for attr_name in values:
-            if attr_name not in self.get_attributes():
-                v = values[attr_name]
-                attr_class = _get_class_for_serialize(v)
-                attr_type = attr_class.attr_type
-                attr_value = attr_class.serialize(v)
-                if attr_value is None:
-                    # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
-                    attr_type = NULL
-                    attr_value = True
-                rval[attr_name] = {attr_type: attr_value}
+        self._serialize_undeclared_attributes(values, rval)
+
         return rval
 
     def deserialize(self, values):
