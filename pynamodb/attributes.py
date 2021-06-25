@@ -1016,7 +1016,11 @@ class DynamicMapAttribute(MapAttribute):
             instance.attribute_values = {}  # clear any defaults
             instance._set_attributes(**values)
             values = instance
+        # this serializes the class defined attributes.
+        # we do this first because we have type checks that validate the data
         rval = AttributeContainer._container_serialize(values, null_check=null_check)
+        # this serializes the dynamically defined attributes
+        # we have no real type safety here so we have to dynamically construct the type to write to dynamo
         for attr_name in values:
             if attr_name not in self.get_attributes():
                 v = values[attr_name]
@@ -1031,7 +1035,10 @@ class DynamicMapAttribute(MapAttribute):
         return rval
 
     def deserialize(self, values):
+        # this deserializes the class defined attributes
+        # we do this first so that the we populate the defined object attributes fields properly with type safety
         instance = self._instantiate(values)
+        # this deserializes the dynamically defined attributes
         for attr_name, value in values.items():
             if instance._dynamo_to_python_attr(attr_name) not in instance.get_attributes():
                 attr_type, attr_value = next(iter(value.items()))
