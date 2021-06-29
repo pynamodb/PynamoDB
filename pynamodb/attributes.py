@@ -13,7 +13,7 @@ from datetime import timedelta
 from datetime import timezone
 from inspect import getfullargspec
 from inspect import getmembers
-from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload
+from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload, Iterable
 from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
@@ -198,10 +198,10 @@ class Attribute(Generic[_T]):
     def __or__(self, other: Any) -> '_IfNotExists':
         return Path(self).__or__(other)
 
-    def append(self, other: Any) -> '_ListAppend':
+    def append(self, other: Iterable) -> '_ListAppend':
         return Path(self).append(other)
 
-    def prepend(self, other: Any) -> '_ListAppend':
+    def prepend(self, other: Iterable) -> '_ListAppend':
         return Path(self).prepend(other)
 
     def set(self, value: Any) -> 'SetAction':
