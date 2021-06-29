@@ -1,9 +1,9 @@
 PynamoDB Examples
 =================
 
-An directory of examples is available with the PynamoDB source on `GitHub <https://github.com/pynamodb/PynamoDB/tree/master/examples>`__.
-The examples are configured to use `http://localhost:8000` as the DynamoDB endpoint. For information on how to run DynamoDB locally,
-see : :ref:`local`.
+A directory of examples is available with the PynamoDB source on `GitHub <https://github.com/pynamodb/PynamoDB/tree/master/examples>`__.
+The examples are configured to use ``http://localhost:8000`` as the DynamoDB endpoint. For information on how to run DynamoDB locally,
+see :ref:`local`.
 
 .. note::
 
