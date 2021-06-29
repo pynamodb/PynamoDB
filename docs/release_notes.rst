@@ -11,7 +11,7 @@ v5.1.0
 
 :date: 2021-06-29
 
-* Introduce ``DynamicMapAttribute`` (#868)
+* Introduce ``DynamicMapAttribute`` to enable partially defining attributes on a ``MapAttribute`` (#868)
 * Quality of life improvements: Type annotations, better comment, more resilient test (#934, #936, #948)
 * Fix type annotation of ``is_in`` conditional expression (#947)
 * Null errors should include full attribute path (#915)
