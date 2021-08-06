@@ -1,4 +1,4 @@
-from typing import Tuple, TypeVar, Type, Any, List, Optional, Dict, Union, Text, Generic
+from typing import Sequence, Tuple, TypeVar, Type, Any, List, Optional, Dict, Union, Text, Generic
 
 from pynamodb.connection import Connection
 from pynamodb.constants import ITEM, RESPONSES
@@ -7,6 +7,7 @@ from pynamodb.expressions.update import Action
 from pynamodb.models import Model, _ModelFuture, _KeyType
 
 _M = TypeVar('_M', bound=Model)
+_T = TypeVar('_T', bound='Transaction')
 
 
 class Transaction:
@@ -22,7 +23,7 @@ class Transaction:
     def _commit(self):
         raise NotImplementedError()
 
-    def __enter__(self) -> 'Transaction':
+    def __enter__(self: _T) -> _T:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -111,7 +112,7 @@ class TransactWrite(Transaction):
         self._put_items.append(operation_kwargs)
         self._models_for_version_attribute_update.append(model)
 
-    def update(self, model: _M, actions: List[Action], condition: Optional[Condition] = None, return_values: Optional[str] = None) -> None:
+    def update(self, model: _M, actions: Sequence[Action], condition: Optional[Condition] = None, return_values: Optional[str] = None) -> None:
         operation_kwargs = model.get_update_kwargs_from_instance(
             actions=actions,
             condition=condition,

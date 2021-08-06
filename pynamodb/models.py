@@ -404,7 +404,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         return self._get_connection().delete_item(hk_value, range_key=rk_value, condition=condition, settings=settings)
 
-    def update(self, actions: List[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
+    def update(self, actions: Sequence[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
         """
         Updates an item using the UpdateItem operation.
 
