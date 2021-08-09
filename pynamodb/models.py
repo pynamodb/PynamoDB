@@ -618,7 +618,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return result_iterator.total_count
 
     @classmethod
-    def query(
+    async def query(
         cls: Type[_T],
         hash_key: _KeyType,
         range_key_condition: Optional[Condition] = None,
@@ -686,7 +686,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         )
 
     @classmethod
-    def scan(
+    async def scan(
         cls: Type[_T],
         filter_condition: Optional[Condition] = None,
         segment: Optional[int] = None,
@@ -745,32 +745,32 @@ class Model(AttributeContainer, metaclass=MetaModel):
         )
 
     @classmethod
-    def exists(cls: Type[_T]) -> bool:
+    async def exists(cls: Type[_T]) -> bool:
         """
         Returns True if this table exists, False otherwise
         """
         try:
-            cls._get_connection().describe_table()
+            await cls._get_connection().describe_table_async()
             return True
         except TableDoesNotExist:
             return False
 
     @classmethod
-    def delete_table(cls) -> Any:
+    async def delete_table(cls) -> Any:
         """
         Delete the table for this model
         """
-        return cls._get_connection().delete_table()
+        return await cls._get_connection().delete_table_async()
 
     @classmethod
-    def describe_table(cls) -> Any:
+    async def describe_table(cls) -> Any:
         """
         Returns the result of a DescribeTable operation on this model's table
         """
-        return cls._get_connection().describe_table()
+        return await cls._get_connection().describe_table_async()
 
     @classmethod
-    def create_table(
+    async def create_table(
         cls,
         wait: bool = False,
         read_capacity_units: Optional[int] = None,
@@ -822,7 +822,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             )
         if wait:
             while True:
-                status = cls._get_connection().describe_table()
+                status = await cls._get_connection().describe_table_async()
                 if status:
                     data = status.get(TABLE_STATUS)
                     if data == ACTIVE:
@@ -835,7 +835,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         cls.update_ttl(ignore_update_ttl_errors)
 
     @classmethod
-    def update_ttl(cls, ignore_update_ttl_errors: bool) -> None:
+    async def update_ttl(cls, ignore_update_ttl_errors: bool) -> None:
         """
         Attempt to update the TTL on the table.
         Certain implementations (eg: dynalite) do not support updating TTLs and will fail.
@@ -845,7 +845,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             # Some dynamoDB implementations (eg: dynalite) do not support updating TTLs so
             # this will fail.  It's fine for this to fail in those cases.
             try:
-                cls._get_connection().update_time_to_live(ttl_attribute.attr_name)
+                await cls._get_connection().update_time_to_live_async(ttl_attribute.attr_name)
             except Exception:
                 if ignore_update_ttl_errors:
                     log.info("Unable to update the TTL for {}".format(cls.Meta.table_name))
