@@ -1,6 +1,7 @@
 """
 Lowest level connection
 """
+import asyncio
 import json
 import logging
 import random
@@ -9,7 +10,7 @@ import time
 import uuid
 from base64 import b64decode
 from threading import local
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 import botocore.client
 import botocore.exceptions
@@ -18,6 +19,14 @@ from botocore.client import ClientError
 from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
+
+
+import aiobotocore.session
+from aiobotocore.client import AioBaseClient
+from aiobotocore.session import get_session as get_async_session
+
+
+from pynamodb.async_util import wrap_secretly_sync_async_fn
 
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
@@ -234,7 +243,18 @@ class MetaTable(object):
             }
 
 
-class Connection(object):
+class ConnectionMeta(type):
+    def __init__(self, name, bases, attrs):
+        super().__init__(name, bases, attrs)
+
+        for attr_name, attr_value in attrs.items():
+            if attr_name.endswith('_async') and asyncio.iscoroutinefunction(attr_value):
+                wrapped_fn = wrap_secretly_sync_async_fn(attr_value)
+                wrapped_fn.__name__ = wrapped_fn.__name__.rstrip('_async')
+                setattr(self, wrapped_fn.__name__, wrapped_fn)
+
+
+class Connection(metaclass=ConnectionMeta):
     """
     A higher level abstraction over botocore
     """
@@ -290,28 +310,31 @@ class Connection(object):
     def __repr__(self) -> str:
         return "Connection<{}>".format(self.client.meta.endpoint_url)
 
-    def _sign_request(self, request):
-        auth = self.client._request_signer.get_auth_instance(
-            self.client._request_signer.signing_name,
-            self.client._request_signer.region_name,
-            self.client._request_signer.signature_version)
+    async def _sign_request(self, client, request):
+        auth = client._request_signer.get_auth_instance(
+            client._request_signer.signing_name,
+            client._request_signer.region_name,
+            client._request_signer.signature_version)
+        if asyncio.iscoroutine(auth):
+            auth = await auth
         auth.add_auth(request)
 
-    def _create_prepared_request(
+    async def _create_prepared_request(
         self,
+        client,
         params: Dict,
         settings: OperationSettings,
     ) -> AWSPreparedRequest:
         request = create_request_object(params)
-        self._sign_request(request)
-        prepared_request = self.client._endpoint.prepare_request(request)
+        await self._sign_request(client, request)
+        prepared_request = client._endpoint.prepare_request(request)
         if self._extra_headers is not None:
             prepared_request.headers.update(self._extra_headers)
         if settings.extra_headers is not None:
             prepared_request.headers.update(settings.extra_headers)
         return prepared_request
 
-    def dispatch(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings = OperationSettings.default) -> Dict:
+    async def dispatch(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings = OperationSettings.default) -> Dict:
         """
         Dispatches `operation_name` with arguments `operation_kwargs`
 
@@ -326,7 +349,11 @@ class Connection(object):
         req_uuid = uuid.uuid4()
 
         self.send_pre_boto_callback(operation_name, req_uuid, table_name)
-        data = self._make_api_call(operation_name, operation_kwargs, settings)
+
+        data = await self._make_api_call(operation_name, operation_kwargs)
+        if asyncio.iscoroutine(data):
+            data = await cast(Any, data)
+
         self.send_post_boto_callback(operation_name, req_uuid, table_name)
 
         if data and CONSUMED_CAPACITY in data:
@@ -348,7 +375,7 @@ class Connection(object):
         except Exception as e:
             log.exception("pre_boto callback threw an exception.")
 
-    def _make_api_call(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings = OperationSettings.default) -> Dict:
+    async def _make_api_call(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings = OperationSettings.default) -> Dict:
         """
         This private method is here for two reasons:
         1. It's faster to avoid using botocore's response parsing
@@ -375,7 +402,7 @@ class Connection(object):
                     prepared_request.reset_stream()
 
                 # Create a new request for each retry (including a new signature).
-                prepared_request = self._create_prepared_request(request_dict, settings)
+                prepared_request = await self._create_prepared_request(self.client, request_dict, settings)
 
                 # Implement the before-send event from botocore
                 event_name = 'before-send.dynamodb.{}'.format(operation_model.name)
@@ -383,16 +410,13 @@ class Connection(object):
                 event_response = first_non_none_response(event_responses)
 
                 if event_response is None:
+                    # TODO(async): This will need to be awaited
                     http_response = self.client._endpoint.http_session.send(prepared_request)
                 else:
                     http_response = event_response
                     is_last_attempt_for_exceptions = True  # don't retry if we have an event response
 
-                # json.loads accepts bytes in >= 3.6.0
-                if sys.version_info < (3, 6, 0):
-                    data = json.loads(http_response.text)
-                else:
-                    data = json.loads(http_response.content)
+                data = json.loads(http_response.content)
             except (ValueError, botocore.exceptions.HTTPClientError, botocore.exceptions.ConnectionError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
@@ -536,7 +560,7 @@ class Connection(object):
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
         return self._client
 
-    def get_meta_table(self, table_name: str, refresh: bool = False):
+    async def get_meta_table_async(self, table_name: str, refresh: bool = False):
         """
         Returns a MetaTable
         """
@@ -545,7 +569,7 @@ class Connection(object):
                 TABLE_NAME: table_name
             }
             try:
-                data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
+                data = await self.dispatch(DESCRIBE_TABLE, operation_kwargs)
                 self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
             except BotoCoreError as e:
                 raise TableError("Unable to describe table: {}".format(e), e)
@@ -556,7 +580,7 @@ class Connection(object):
                     raise
         return self._tables[table_name]
 
-    def create_table(
+    async def create_table_async(
         self,
         table_name: str,
         attribute_definitions: Optional[Any] = None,
@@ -646,12 +670,12 @@ class Connection(object):
             ]
 
         try:
-            data = self.dispatch(CREATE_TABLE, operation_kwargs)
+            data = await self.dispatch(CREATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to create table: {}".format(e), e)
         return data
 
-    def update_time_to_live(self, table_name: str, ttl_attribute_name: str) -> Dict:
+    async def update_time_to_live_async(self, table_name: str, ttl_attribute_name: str) -> Dict:
         """
         Performs the UpdateTimeToLive operation
         """
@@ -663,11 +687,11 @@ class Connection(object):
             }
         }
         try:
-            return self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
+            return await self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to update TTL on table: {}".format(e), e)
 
-    def delete_table(self, table_name: str) -> Dict:
+    async def delete_table_async(self, table_name: str) -> Dict:
         """
         Performs the DeleteTable operation
         """
@@ -675,12 +699,12 @@ class Connection(object):
             TABLE_NAME: table_name
         }
         try:
-            data = self.dispatch(DELETE_TABLE, operation_kwargs)
+            data = await self.dispatch(DELETE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to delete table: {}".format(e), e)
         return data
 
-    def update_table(
+    async def update_table_async(
         self,
         table_name: str,
         read_capacity_units: Optional[int] = None,
@@ -714,11 +738,11 @@ class Connection(object):
                 })
             operation_kwargs[GLOBAL_SECONDARY_INDEX_UPDATES] = global_secondary_indexes_list
         try:
-            return self.dispatch(UPDATE_TABLE, operation_kwargs)
+            return await self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Failed to update table: {}".format(e), e)
 
-    def list_tables(
+    async def list_tables_async(
         self,
         exclusive_start_table_name: Optional[str] = None,
         limit: Optional[int] = None,
@@ -736,23 +760,23 @@ class Connection(object):
                 LIMIT: limit
             })
         try:
-            return self.dispatch(LIST_TABLES, operation_kwargs)
+            return await self.dispatch(LIST_TABLES, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TableError("Unable to list tables: {}".format(e), e)
 
-    def describe_table(self, table_name: str) -> Dict:
+    async def describe_table_async(self, table_name: str) -> Dict:
         """
         Performs the DescribeTable operation
         """
         try:
-            tbl = self.get_meta_table(table_name, refresh=True)
+            tbl = await self.get_meta_table_async(table_name, refresh=True)
             if tbl:
                 return tbl.data
         except ValueError:
             pass
         raise TableDoesNotExist(table_name)
 
-    def get_item_attribute_map(
+    async def get_item_attribute_map(
         self,
         table_name: str,
         attributes: Any,
@@ -762,7 +786,7 @@ class Connection(object):
         """
         Builds up a dynamodb compatible AttributeValue map
         """
-        tbl = self.get_meta_table(table_name)
+        tbl = await self.get_meta_table_async(table_name)
         if tbl is None:
             raise TableError("No such table {}".format(table_name))
         return tbl.get_item_attribute_map(
@@ -770,7 +794,7 @@ class Connection(object):
             item_key=item_key,
             pythonic_key=pythonic_key)
 
-    def parse_attribute(
+    async def parse_attribute(
         self,
         attribute: Any,
         return_type: bool = False
@@ -792,7 +816,7 @@ class Connection(object):
                 return None, attribute
             return attribute
 
-    def get_attribute_type(
+    async def get_attribute_type(
         self,
         table_name: str,
         attribute_name: str,
@@ -802,12 +826,12 @@ class Connection(object):
         Returns the proper attribute type for a given attribute name
         :param value: The attribute value an be supplied just in case the type is already included
         """
-        tbl = self.get_meta_table(table_name)
+        tbl = await self.get_meta_table_async(table_name)
         if tbl is None:
             raise TableError("No such table {}".format(table_name))
         return tbl.get_attribute_type(attribute_name, value=value)
 
-    def get_identifier_map(
+    async def get_identifier_map(
         self,
         table_name: str,
         hash_key: str,
@@ -817,7 +841,7 @@ class Connection(object):
         """
         Builds the identifier map that is common to several operations
         """
-        tbl = self.get_meta_table(table_name)
+        tbl = await self.get_meta_table_async(table_name)
         if tbl is None:
             raise TableError("No such table {}".format(table_name))
         return tbl.get_identifier_map(hash_key, range_key=range_key, key=key)
@@ -868,16 +892,16 @@ class Connection(object):
             RETURN_ITEM_COLL_METRICS: str(return_item_collection_metrics).upper()
         }
 
-    def get_exclusive_start_key_map(self, table_name: str, exclusive_start_key: str) -> Dict:
+    async def get_exclusive_start_key_map(self, table_name: str, exclusive_start_key: str) -> Dict:
         """
         Builds the exclusive start key attribute map
         """
-        tbl = self.get_meta_table(table_name)
+        tbl = await self.get_meta_table_async(table_name)
         if tbl is None:
             raise TableError("No such table {}".format(table_name))
         return tbl.get_exclusive_start_key_map(exclusive_start_key)
 
-    def get_operation_kwargs(
+    async def get_operation_kwargs(
         self,
         table_name: str,
         hash_key: str,
@@ -900,9 +924,9 @@ class Connection(object):
         expression_attribute_values: Dict[str, Any] = {}
 
         operation_kwargs[TABLE_NAME] = table_name
-        operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=key))
+        operation_kwargs.update(await self.get_identifier_map(table_name, hash_key, range_key, key=key))
         if attributes and operation_kwargs.get(ITEM) is not None:
-            attrs = self.get_item_attribute_map(table_name, attributes)
+            attrs = await self.get_item_attribute_map(table_name, attributes)
             operation_kwargs[ITEM].update(attrs[ITEM])
         if attributes_to_get is not None:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
@@ -932,7 +956,7 @@ class Connection(object):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
         return operation_kwargs
 
-    def delete_item(
+    async def delete_item(
         self,
         table_name: str,
         hash_key: str,
@@ -946,7 +970,7 @@ class Connection(object):
         """
         Performs the DeleteItem operation and returns the result
         """
-        operation_kwargs = self.get_operation_kwargs(
+        operation_kwargs = await self.get_operation_kwargs(
             table_name,
             hash_key,
             range_key=range_key,
@@ -956,11 +980,11 @@ class Connection(object):
             return_item_collection_metrics=return_item_collection_metrics
         )
         try:
-            return self.dispatch(DELETE_ITEM, operation_kwargs, settings)
+            return await self.dispatch(DELETE_ITEM, operation_kwargs, settings)
         except BOTOCORE_EXCEPTIONS as e:
             raise DeleteError("Failed to delete item: {}".format(e), e)
 
-    def update_item(
+    async def update_item(
         self,
         table_name: str,
         hash_key: str,
@@ -978,7 +1002,7 @@ class Connection(object):
         if not actions:
             raise ValueError("'actions' cannot be empty")
 
-        operation_kwargs = self.get_operation_kwargs(
+        operation_kwargs = await self.get_operation_kwargs(
             table_name=table_name,
             hash_key=hash_key,
             range_key=range_key,
@@ -989,11 +1013,11 @@ class Connection(object):
             return_item_collection_metrics=return_item_collection_metrics,
         )
         try:
-            return self.dispatch(UPDATE_ITEM, operation_kwargs, settings)
+            return await self.dispatch(UPDATE_ITEM, operation_kwargs, settings)
         except BOTOCORE_EXCEPTIONS as e:
             raise UpdateError("Failed to update item: {}".format(e), e)
 
-    def put_item(
+    async def put_item(
         self,
         table_name: str,
         hash_key: str,
@@ -1008,7 +1032,7 @@ class Connection(object):
         """
         Performs the PutItem operation and returns the result
         """
-        operation_kwargs = self.get_operation_kwargs(
+        operation_kwargs = await self.get_operation_kwargs(
             table_name=table_name,
             hash_key=hash_key,
             range_key=range_key,
@@ -1020,7 +1044,7 @@ class Connection(object):
             return_item_collection_metrics=return_item_collection_metrics
         )
         try:
-            return self.dispatch(PUT_ITEM, operation_kwargs, settings)
+            return await self.dispatch(PUT_ITEM, operation_kwargs, settings)
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to put item: {}".format(e), e)
 
@@ -1040,7 +1064,7 @@ class Connection(object):
 
         return operation_kwargs
 
-    def transact_write_items(
+    async def transact_write_items(
         self,
         condition_check_items: Sequence[Dict],
         delete_items: Sequence[Dict],
@@ -1076,11 +1100,11 @@ class Connection(object):
         operation_kwargs[TRANSACT_ITEMS] = transact_items
 
         try:
-            return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs, settings)
+            return await self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs, settings)
         except BOTOCORE_EXCEPTIONS as e:
             raise TransactWriteError("Failed to write transaction items", e)
 
-    def transact_get_items(
+    async def transact_get_items(
         self,
         get_items: Sequence[Dict],
         return_consumed_capacity: Optional[str] = None,
@@ -1095,11 +1119,11 @@ class Connection(object):
         ]
 
         try:
-            return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs, settings)
+            return await self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs, settings)
         except BOTOCORE_EXCEPTIONS as e:
             raise TransactGetError("Failed to get transaction items", e)
 
-    def batch_write_item(
+    async def batch_write_item(
         self,
         table_name: str,
         put_items: Optional[Any] = None,
@@ -1136,11 +1160,11 @@ class Connection(object):
                 })
         operation_kwargs[REQUEST_ITEMS][table_name] = delete_items_list + put_items_list
         try:
-            return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs, settings)
+            return await self.dispatch(BATCH_WRITE_ITEM, operation_kwargs, settings)
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to batch write items: {}".format(e), e)
 
-    def batch_get_item(
+    async def batch_get_item(
         self,
         table_name: str,
         keys: Sequence[str],
@@ -1174,15 +1198,15 @@ class Connection(object):
         keys_map: Dict[str, List] = {KEYS: []}
         for key in keys:
             keys_map[KEYS].append(
-                self.get_item_attribute_map(table_name, key)[ITEM]
+                (await self.get_item_attribute_map(table_name, key))[ITEM]
             )
         operation_kwargs[REQUEST_ITEMS][table_name].update(keys_map)
         try:
-            return self.dispatch(BATCH_GET_ITEM, operation_kwargs, settings)
+            return await self.dispatch(BATCH_GET_ITEM, operation_kwargs, settings)
         except BOTOCORE_EXCEPTIONS as e:
             raise GetError("Failed to batch get items: {}".format(e), e)
 
-    def get_item(
+    async def get_item(
         self,
         table_name: str,
         hash_key: str,
@@ -1194,7 +1218,7 @@ class Connection(object):
         """
         Performs the GetItem operation and returns the result
         """
-        operation_kwargs = self.get_operation_kwargs(
+        operation_kwargs = await self.get_operation_kwargs(
             table_name=table_name,
             hash_key=hash_key,
             range_key=range_key,
@@ -1202,11 +1226,11 @@ class Connection(object):
             attributes_to_get=attributes_to_get
         )
         try:
-            return self.dispatch(GET_ITEM, operation_kwargs, settings)
+            return await self.dispatch(GET_ITEM, operation_kwargs, settings)
         except BOTOCORE_EXCEPTIONS as e:
             raise GetError("Failed to get item: {}".format(e), e)
 
-    def scan(
+    async def scan(
         self,
         table_name: str,
         filter_condition: Optional[Any] = None,
@@ -1242,7 +1266,7 @@ class Connection(object):
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if exclusive_start_key:
-            operation_kwargs.update(self.get_exclusive_start_key_map(table_name, exclusive_start_key))
+            operation_kwargs.update(await self.get_exclusive_start_key_map(table_name, exclusive_start_key))
         if segment is not None:
             operation_kwargs[SEGMENT] = segment
         if total_segments:
@@ -1255,11 +1279,11 @@ class Connection(object):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
 
         try:
-            return self.dispatch(SCAN, operation_kwargs, settings)
+            return await self.dispatch(SCAN, operation_kwargs, settings)
         except BOTOCORE_EXCEPTIONS as e:
             raise ScanError("Failed to scan table: {}".format(e), e)
 
-    def query(
+    async def query(
         self,
         table_name: str,
         hash_key: str,
@@ -1285,7 +1309,7 @@ class Connection(object):
         name_placeholders: Dict[str, str] = {}
         expression_attribute_values: Dict[str, Any] = {}
 
-        tbl = self.get_meta_table(table_name)
+        tbl = await self.get_meta_table_async(table_name)
         if tbl is None:
             raise TableError("No such table: {}".format(table_name))
         if index_name:
@@ -1311,7 +1335,7 @@ class Connection(object):
         if consistent_read:
             operation_kwargs[CONSISTENT_READ] = True
         if exclusive_start_key:
-            operation_kwargs.update(self.get_exclusive_start_key_map(table_name, exclusive_start_key))
+            operation_kwargs.update(await self.get_exclusive_start_key_map(table_name, exclusive_start_key))
         if index_name:
             operation_kwargs[INDEX_NAME] = index_name
         if limit is not None:
@@ -1330,7 +1354,7 @@ class Connection(object):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
 
         try:
-            return self.dispatch(QUERY, operation_kwargs, settings)
+            return await self.dispatch(QUERY, operation_kwargs, settings)
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {}".format(e), e)
 
@@ -1342,6 +1366,129 @@ class Connection(object):
     @staticmethod
     def _reverse_dict(d):
         return {v: k for k, v in d.items()}
+
+
+# Uses aiobotocore instead of urllib3/botocore
+class AsyncConnection(Connection):
+    @property
+    def session(self) -> aiobotocore.session.AioSession:
+        """
+        Returns a valid async aiobotocore session
+        """
+        # botocore client creation is not thread safe as of v1.2.5+ (see issue #153)
+        if getattr(self._local, 'async_session', None) is None:
+            self._local.async_session = get_async_session()
+        return self._local.async_session
+
+    @property
+    def client(self) -> AioBaseClient:
+        """
+        Returns an aiobotocore dynamodb client
+        """
+        return super().client
+
+    async def _make_api_call(self, operation_name, operation_kwargs):
+        # TODO: dedup with super
+        async with self.client as client:
+            operation_model = client._service_model.operation_model(operation_name)
+            request_dict = await client._convert_to_request_dict(
+                operation_kwargs,
+                operation_model,
+            )
+
+            for i in range(0, self._max_retry_attempts_exception + 1):
+                attempt_number = i + 1
+                is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
+
+                http_response = None
+                prepared_request = None
+                try:
+                    if prepared_request is not None:
+                        # If there is a stream associated with the request, we need
+                        # to reset it before attempting to send the request again.
+                        # This will ensure that we resend the entire contents of the
+                        # body.
+                        prepared_request.reset_stream()
+
+                    # Create a new request for each retry (including a new signature).
+                    prepared_request = await self._create_prepared_request(client, request_dict, operation_model)
+
+                    # Implement the before-send event from botocore
+                    event_name = 'before-send.dynamodb.{}'.format(operation_model.name)
+                    event_responses = await client._endpoint._event_emitter.emit(event_name, request=prepared_request)
+                    event_response = first_non_none_response(event_responses)
+
+                    if event_response is None:
+                        http_response = await client._endpoint._send(prepared_request)
+                    else:
+                        http_response = event_response
+                        is_last_attempt_for_exceptions = True  # don't retry if we have an event response
+
+                    data = json.loads(http_response.content)
+                except (ValueError, botocore.exceptions.HTTPClientError, botocore.exceptions.ConnectionError) as e:
+                    if is_last_attempt_for_exceptions:
+                        log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
+                        if http_response:
+                            e.args += (http_response.text,)
+                        raise
+                    else:
+                        # No backoff for fast-fail exceptions that likely failed at the frontend
+                        log.debug(
+                            'Retry needed for (%s) after attempt %s, retryable %s caught: %s',
+                            operation_name,
+                            attempt_number,
+                            e.__class__.__name__,
+                            e
+                        )
+                        continue
+
+                status_code = http_response.status_code
+                headers = http_response.headers
+                if status_code >= 300:
+                    # Extract error code from __type
+                    code = data.get('__type', '')
+                    if '#' in code:
+                        code = code.rsplit('#', 1)[1]
+                    botocore_expected_format = {'Error': {'Message': data.get('message', ''), 'Code': code}}
+                    verbose_properties = {
+                        'request_id': headers.get('x-amzn-RequestId')
+                    }
+
+                    if 'RequestItems' in operation_kwargs:
+                        # Batch operations can hit multiple tables, report them comma separated
+                        verbose_properties['table_name'] = ','.join(operation_kwargs['RequestItems'])
+                    else:
+                        verbose_properties['table_name'] = operation_kwargs.get('TableName')
+
+                    try:
+                        raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
+                    except VerboseClientError as e:
+                        if is_last_attempt_for_exceptions:
+                            log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
+                            raise
+                        elif status_code < 500 and code not in RATE_LIMITING_ERROR_CODES:
+                            # We don't retry on a ConditionalCheckFailedException or other 4xx (except for
+                            # throughput related errors) because we assume they will fail in perpetuity.
+                            # Retrying when there is already contention could cause other problems
+                            # in part due to unnecessary consumption of throughput.
+                            raise
+                        else:
+                            # We use fully-jittered exponentially-backed-off retries:
+                            #  https://www.awsarchitectureblog.com/2015/03/backoff.html
+                            sleep_time_ms = random.randint(0, self._base_backoff_ms * (2 ** i))
+                            log.debug(
+                                'Retry with backoff needed for (%s) after attempt %s,'
+                                'sleeping for %s milliseconds, retryable %s caught: %s',
+                                operation_name,
+                                attempt_number,
+                                sleep_time_ms,
+                                e.__class__.__name__,
+                                e
+                            )
+                            await asyncio.sleep(sleep_time_ms / 1000.0)
+                            continue
+
+                return self._handle_binary_attributes(data)
 
 
 def _convert_binary(attr):
