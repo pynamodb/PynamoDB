@@ -795,7 +795,7 @@ class Connection(metaclass=ConnectionMeta):
             item_key=item_key,
             pythonic_key=pythonic_key)
 
-    async def parse_attribute(
+    def parse_attribute(
         self,
         attribute: Any,
         return_type: bool = False
@@ -1320,7 +1320,7 @@ class Connection(metaclass=ConnectionMeta):
         else:
             hash_keyname = tbl.hash_keyname
 
-        hash_condition_value = {self.get_attribute_type(table_name, hash_keyname, hash_key): self.parse_attribute(hash_key)}
+        hash_condition_value = {await self.get_attribute_type(table_name, hash_keyname, hash_key): self.parse_attribute(hash_key)}
         key_condition = Path([hash_keyname]) == hash_condition_value
         if range_key_condition is not None:
             key_condition &= range_key_condition
