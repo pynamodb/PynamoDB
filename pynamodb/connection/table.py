@@ -17,8 +17,9 @@ class TableMeta(type):
         super().__init__(name, bases, attrs)
 
         for attr_name, attr_value in attrs.items():
-            if attr_name.endswith('_async') and asyncio.iscoroutinefunction(attr_value):
-                setattr(self, attr_name.rstrip("_async"), wrap_secretly_sync_async_fn(attr_value))
+            suffix = "_async"
+            if attr_name.endswith(suffix) and asyncio.iscoroutinefunction(attr_value):
+                setattr(self, attr_name[:-len(suffix)], wrap_secretly_sync_async_fn(attr_value))
 
 
 class TableConnection(metaclass=TableMeta):

@@ -248,9 +248,10 @@ class ConnectionMeta(type):
         super().__init__(name, bases, attrs)
 
         for attr_name, attr_value in attrs.items():
-            if attr_name.endswith('_async') and asyncio.iscoroutinefunction(attr_value):
+            suffix = "_async"
+            if attr_name.endswith(suffix) and asyncio.iscoroutinefunction(attr_value):
                 wrapped_fn = wrap_secretly_sync_async_fn(attr_value)
-                wrapped_fn.__name__ = wrapped_fn.__name__.rstrip('_async')
+                wrapped_fn.__name__ = wrapped_fn.__name__[:-len(suffix)]
                 setattr(self, wrapped_fn.__name__, wrapped_fn)
 
 
