@@ -7,7 +7,7 @@ import asyncio
 from pynamodb.async_util import wrap_secretly_sync_async_fn
 from typing import Any, Dict, Mapping, Optional, Sequence
 
-from pynamodb.connection.base import AsyncConnection, MetaTable, OperationSettings
+from pynamodb.connection.base import Connection, MetaTable, OperationSettings
 from pynamodb.constants import DEFAULT_BILLING_MODE, KEY
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.update import Action
@@ -43,7 +43,7 @@ class TableConnection(metaclass=TableMeta):
     ) -> None:
         self.table_name = table_name
 
-        self.connection = AsyncConnection(region=region,
+        self.connection = Connection(region=region,
                                      host=host,
                                      connect_timeout_seconds=connect_timeout_seconds,
                                      read_timeout_seconds=read_timeout_seconds,

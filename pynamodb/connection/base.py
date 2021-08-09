@@ -308,7 +308,7 @@ class Connection(metaclass=ConnectionMeta):
             self._extra_headers = get_settings_value('extra_headers')
 
     def __repr__(self) -> str:
-        return "Connection<{}>".format(self.client.meta.endpoint_url)
+        return "Connection<{}>".format("BLOOP")
 
     async def _sign_request(self, client, request):
         auth = client._request_signer.get_auth_instance(
@@ -381,8 +381,9 @@ class Connection(metaclass=ConnectionMeta):
         1. It's faster to avoid using botocore's response parsing
         2. It provides a place to monkey patch HTTP requests for unit testing
         """
-        operation_model = self.client._service_model.operation_model(operation_name)
-        request_dict = await self.client._convert_to_request_dict(
+        client = await self.client
+        operation_model = client._service_model.operation_model(operation_name)
+        request_dict = await client._convert_to_request_dict(
             operation_kwargs,
             operation_model,
         )
@@ -402,16 +403,15 @@ class Connection(metaclass=ConnectionMeta):
                     prepared_request.reset_stream()
 
                 # Create a new request for each retry (including a new signature).
-                prepared_request = await self._create_prepared_request(self.client, request_dict, settings)
+                prepared_request = await self._create_prepared_request(client, request_dict, settings)
 
                 # Implement the before-send event from botocore
                 event_name = 'before-send.dynamodb.{}'.format(operation_model.name)
-                event_responses = self.client._endpoint._event_emitter.emit(event_name, request=prepared_request)
+                event_responses = await client._endpoint._event_emitter.emit(event_name, request=prepared_request)
                 event_response = first_non_none_response(event_responses)
 
                 if event_response is None:
-                    # TODO(async): This will need to be awaited
-                    http_response = self.client._endpoint.http_session.send(prepared_request)
+                    http_response = await client._endpoint._send(prepared_request)
                 else:
                     http_response = event_response
                     is_last_attempt_for_exceptions = True  # don't retry if we have an event response
@@ -543,7 +543,7 @@ class Connection(metaclass=ConnectionMeta):
         return self._local.async_session
 
     @property
-    def client(self) -> AioBaseClient:
+    async def client(self) -> AioBaseClient:
         """
         Returns a botocore dynamodb client
         """
@@ -557,8 +557,7 @@ class Connection(metaclass=ConnectionMeta):
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
                 max_pool_connections=self._max_pool_connections)
-            # FIXME: bad
-            self._client = asyncio.run(self.session._create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config))
+            self._client = await self.session._create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
         return self._client
 
     async def get_meta_table_async(self, table_name: str, refresh: bool = False):
