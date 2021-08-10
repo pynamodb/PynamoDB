@@ -18,7 +18,6 @@ from botocore.awsrequest import AWSPreparedRequest, create_request_object
 from botocore.client import ClientError
 from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
-from botocore.session import get_session
 
 
 import aiobotocore.session
