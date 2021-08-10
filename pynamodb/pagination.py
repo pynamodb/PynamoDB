@@ -98,12 +98,12 @@ class PageIterator(AsyncIterator[_T]):
             self._rate_limiter = RateLimiter(rate_limit)
         self._settings = settings
 
-    async def __aiter__(self) -> AsyncIterator[_T]:
+    def __aiter__(self) -> AsyncIterator[_T]:
         return self
 
     async def __anext__(self) -> _T:
         if self._last_evaluated_key is None and not self._first_iteration:
-            raise StopIteration()
+            raise StopAsyncIteration()
 
         self._first_iteration = False
 
@@ -179,12 +179,12 @@ class ResultIterator(AsyncIterator[_T]):
         self._index = 0 if self._items else self._count
         self._total_count += self._count
 
-    async def __aiter__(self) -> AsyncIterator[_T]:
+    def __aiter__(self) -> AsyncIterator[_T]:
         return self
 
     async def __anext__(self) -> _T:
         if self._limit == 0:
-            raise StopIteration
+            raise StopAsyncIteration
 
         if self._first_iteration:
             self._first_iteration = False

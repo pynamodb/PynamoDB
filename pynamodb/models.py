@@ -75,7 +75,7 @@ class BatchWrite(Generic[_T]):
         self.failed_operations: List[Any] = []
         self.settings = settings
 
-    def save(self, put_item: _T) -> None:
+    async def save(self, put_item: _T) -> None:
         """
         This adds `put_item` to the list of pending operations to be performed.
 
@@ -92,10 +92,10 @@ class BatchWrite(Generic[_T]):
             if not self.auto_commit:
                 raise ValueError("DynamoDB allows a maximum of 25 batch operations")
             else:
-                self.commit()
+                await self.commit()
         self.pending_operations.append({"action": PUT, "item": put_item})
 
-    def delete(self, del_item: _T) -> None:
+    async def delete(self, del_item: _T) -> None:
         """
         This adds `del_item` to the list of pending operations to be performed.
 
@@ -112,20 +112,20 @@ class BatchWrite(Generic[_T]):
             if not self.auto_commit:
                 raise ValueError("DynamoDB allows a maximum of 25 batch operations")
             else:
-                self.commit()
+                await self.commit()
         self.pending_operations.append({"action": DELETE, "item": del_item})
 
-    def __enter__(self):
+    async def __aenter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         """
         This ensures that all pending operations are committed when
         the context is exited
         """
-        return self.commit()
+        return await self.commit()
 
-    def commit(self) -> None:
+    async def commit(self) -> None:
         """
         Writes all of the changes that are pending
         """
@@ -140,7 +140,7 @@ class BatchWrite(Generic[_T]):
         self.pending_operations = []
         if not len(put_items) and not len(delete_items):
             return
-        data = self.model._get_connection().batch_write_item(
+        data = await self.model._get_connection().batch_write_item_async(
             put_items=put_items,
             delete_items=delete_items,
             settings=self.settings,
@@ -165,7 +165,7 @@ class BatchWrite(Generic[_T]):
                     delete_items.append(item.get(DELETE_REQUEST).get(KEY))  # type: ignore
             log.info("Resending %d unprocessed keys for batch operation after %d seconds sleep",
                      len(unprocessed_items), sleep_time)
-            data = self.model._get_connection().batch_write_item(
+            data = await self.model._get_connection().batch_write_item_async(
                 put_items=put_items,
                 delete_items=delete_items,
                 settings=self.settings,
@@ -311,7 +311,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         super(Model, self).__init__(_user_instantiated=_user_instantiated, **attributes)
 
     @classmethod
-    def batch_get(
+    async def batch_get(
         cls: Type[_T],
         items: Iterable[Union[_KeyType, Iterable[_KeyType]]],
         consistent_read: Optional[bool] = None,
@@ -331,7 +331,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         while items:
             if len(keys_to_get) == BATCH_GET_PAGE_LIMIT:
                 while keys_to_get:
-                    page, unprocessed_keys = cls._batch_get_page(
+                    page, unprocessed_keys = await cls._batch_get_page(
                         keys_to_get,
                         consistent_read=consistent_read,
                         attributes_to_get=attributes_to_get,
@@ -357,7 +357,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 })
 
         while keys_to_get:
-            page, unprocessed_keys = cls._batch_get_page(
+            page, unprocessed_keys = await cls._batch_get_page(
                 keys_to_get,
                 consistent_read=consistent_read,
                 attributes_to_get=attributes_to_get,
@@ -404,7 +404,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         return self._get_connection().delete_item(hk_value, range_key=rk_value, condition=condition, settings=settings)
 
-    def update(self, actions: List[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
+    async def update(self, actions: List[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
         """
         Updates an item using the UpdateItem operation.
 
@@ -422,7 +422,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if version_condition is not None:
             condition &= version_condition
 
-        data = self._get_connection().update_item(hk_value, range_key=rk_value, return_values=ALL_NEW, condition=condition, actions=actions, settings=settings)
+        data = await self._get_connection().update_item_async(hk_value, range_key=rk_value, return_values=ALL_NEW, condition=condition, actions=actions, settings=settings)
         item_data = data[ATTRIBUTES]
         stored_cls = self._get_discriminator_class(item_data)
         if stored_cls and stored_cls != type(self):
@@ -430,17 +430,17 @@ class Model(AttributeContainer, metaclass=MetaModel):
         self.deserialize(item_data)
         return data
 
-    def save(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Dict[str, Any]:
+    async def save(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Dict[str, Any]:
         """
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args(condition=condition)
         kwargs['settings'] = settings
-        data = self._get_connection().put_item(*args, **kwargs)
+        data = await self._get_connection().put_item_async(*args, **kwargs)
         self.update_local_version_attribute()
         return data
 
-    def refresh(self, consistent_read: bool = False, settings: OperationSettings = OperationSettings.default) -> None:
+    async def refresh(self, consistent_read: bool = False, settings: OperationSettings = OperationSettings.default) -> None:
         """
         Retrieves this object's data from dynamodb and syncs this local object
 
@@ -449,7 +449,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         """
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
-        attrs = self._get_connection().get_item(hk_value, range_key=rk_value, consistent_read=consistent_read, settings=settings)
+        attrs = await self._get_connection().get_item_async(hk_value, range_key=rk_value, consistent_read=consistent_read, settings=settings)
         item_data = attrs.get(ITEM, None)
         if item_data is None:
             raise self.DoesNotExist("This item does not exist in the table.")
@@ -458,7 +458,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             raise ValueError("Cannot refresh this item from the returned class: {}".format(stored_cls.__name__))
         self.deserialize(item_data)
 
-    def get_update_kwargs_from_instance(
+    async def get_update_kwargs_from_instance(
         self,
         actions: List[Action],
         condition: Optional[Condition] = None,
@@ -470,9 +470,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if version_condition is not None:
             condition &= version_condition
 
-        return self._get_connection().get_operation_kwargs(hk_value, range_key=rk_value, key=KEY, actions=actions, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
+        return await self._get_connection().get_operation_kwargs_async(hk_value, range_key=rk_value, key=KEY, actions=actions, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
 
-    def get_delete_kwargs_from_instance(
+    async def get_delete_kwargs_from_instance(
         self,
         condition: Optional[Condition] = None,
         return_values_on_condition_failure: Optional[str] = None,
@@ -483,9 +483,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if version_condition is not None:
             condition &= version_condition
 
-        return self._get_connection().get_operation_kwargs(hk_value, range_key=rk_value, key=KEY, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
+        return await self._get_connection().get_operation_kwargs_async(hk_value, range_key=rk_value, key=KEY, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
 
-    def get_save_kwargs_from_instance(
+    async def get_save_kwargs_from_instance(
         self,
         condition: Optional[Condition] = None,
         return_values_on_condition_failure: Optional[str] = None,
@@ -493,24 +493,24 @@ class Model(AttributeContainer, metaclass=MetaModel):
         args, save_kwargs = self._get_save_args(null_check=True, condition=condition)
         save_kwargs['key'] = ITEM
         save_kwargs['return_values_on_condition_failure'] = return_values_on_condition_failure
-        return self._get_connection().get_operation_kwargs(*args, **save_kwargs)
+        return await self._get_connection().get_operation_kwargs_async(*args, **save_kwargs)
 
     @classmethod
-    def get_operation_kwargs_from_class(
+    async def get_operation_kwargs_from_class(
         cls,
         hash_key: str,
         range_key: Optional[_KeyType] = None,
         condition: Optional[Condition] = None,
     ) -> Dict[str, Any]:
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
-        return cls._get_connection().get_operation_kwargs(
+        return await cls._get_connection().get_operation_kwargs_async(
             hash_key=hash_key,
             range_key=range_key,
             condition=condition
         )
 
     @classmethod
-    def get(
+    async def get(
         cls: Type[_T],
         hash_key: _KeyType,
         range_key: Optional[_KeyType] = None,
@@ -529,7 +529,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
 
-        data = cls._get_connection().get_item(
+        data = await cls._get_connection().get_item_async(
             hash_key,
             range_key=range_key,
             consistent_read=consistent_read,
@@ -556,7 +556,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return cls._instantiate(data)
 
     @classmethod
-    def count(
+    async def count(
         cls: Type[_T],
         hash_key: Optional[_KeyType] = None,
         range_key_condition: Optional[Condition] = None,
@@ -580,7 +580,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if hash_key is None:
             if filter_condition is not None:
                 raise ValueError('A hash_key must be given to use filters')
-            return cls.describe_table().get(ITEM_COUNT)
+            return await cls.describe_table().get_async(ITEM_COUNT)
 
         cls._get_indexes()
         if cls._index_classes and index_name:
@@ -604,7 +604,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         )
 
         result_iterator: ResultIterator[_T] = ResultIterator(
-            cls._get_connection().query,
+            cls._get_connection().query_async,
             query_args,
             query_kwargs,
             limit=limit,
@@ -613,12 +613,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         )
 
         # iterate through results
-        list(result_iterator)
+        async for i in result_iterator:
+            pass
 
         return result_iterator.total_count
 
     @classmethod
-    async def query(
+    def query(
         cls: Type[_T],
         hash_key: _KeyType,
         range_key_condition: Optional[Condition] = None,
@@ -676,7 +677,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         )
 
         return ResultIterator(
-            cls._get_connection().query,
+            cls._get_connection().query_async,
             query_args,
             query_kwargs,
             map_fn=cls.from_raw_data,
@@ -686,7 +687,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         )
 
     @classmethod
-    async def scan(
+    def scan(
         cls: Type[_T],
         filter_condition: Optional[Condition] = None,
         segment: Optional[int] = None,
@@ -817,7 +818,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 if attr_name not in attr_keys:
                     schema['attribute_definitions'].append(attr)
                     attr_keys.append(attr_name)
-            cls._get_connection().create_table(
+            await cls._get_connection().create_table_async(
                 **schema
             )
         if wait:
@@ -832,7 +833,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 else:
                     raise TableError("No TableStatus returned for table")
 
-        cls.update_ttl(ignore_update_ttl_errors)
+        await cls.update_ttl(ignore_update_ttl_errors)
 
     @classmethod
     async def update_ttl(cls, ignore_update_ttl_errors: bool) -> None:
@@ -1038,7 +1039,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return self._serialize_keys(hash_key, range_key)
 
     @classmethod
-    def _batch_get_page(cls, keys_to_get, consistent_read, attributes_to_get, settings: OperationSettings):
+    async def _batch_get_page(cls, keys_to_get, consistent_read, attributes_to_get, settings: OperationSettings):
         """
         Returns a single page from BatchGetItem
         Also returns any unprocessed items
@@ -1048,7 +1049,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param attributes_to_get: A list of attributes to return
         """
         log.debug("Fetching a BatchGetItem page")
-        data = cls._get_connection().batch_get_item(
+        data = await cls._get_connection().batch_get_item_async(
             keys_to_get, consistent_read=consistent_read, attributes_to_get=attributes_to_get, settings=settings,
         )
         item_data = data.get(RESPONSES).get(cls.Meta.table_name)  # type: ignore
