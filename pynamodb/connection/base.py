@@ -1150,13 +1150,13 @@ class Connection(metaclass=ConnectionMeta):
         if put_items:
             for item in put_items:
                 put_items_list.append({
-                    PUT_REQUEST: self.get_item_attribute_map(table_name, item, pythonic_key=False)
+                    PUT_REQUEST: await self.get_item_attribute_map(table_name, item, pythonic_key=False)
                 })
         delete_items_list = []
         if delete_items:
             for item in delete_items:
                 delete_items_list.append({
-                    DELETE_REQUEST: self.get_item_attribute_map(table_name, item, item_key=KEY, pythonic_key=False)
+                    DELETE_REQUEST: await self.get_item_attribute_map(table_name, item, item_key=KEY, pythonic_key=False)
                 })
         operation_kwargs[REQUEST_ITEMS][table_name] = delete_items_list + put_items_list
         try:
