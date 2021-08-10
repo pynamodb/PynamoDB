@@ -21,6 +21,7 @@ from botocore.exceptions import BotoCoreError
 
 
 import aiobotocore.session
+from aiobotocore.config import AioConfig
 from aiobotocore.client import AioBaseClient
 from aiobotocore.session import get_session as get_async_session
 
@@ -552,7 +553,7 @@ class Connection(metaclass=ConnectionMeta):
         # if the client does not have credentials, we create a new client
         # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
         if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
-            config = botocore.client.Config(
+            config = AioConfig(
                 parameter_validation=False,  # Disable unnecessary validation for performance
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
