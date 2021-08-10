@@ -7,7 +7,7 @@ import logging
 import warnings
 import sys
 from inspect import getmembers
-from typing import Any
+from typing import Any, AsyncIterator
 from typing import Dict
 from typing import Generic
 from typing import Iterable
@@ -317,7 +317,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         consistent_read: Optional[bool] = None,
         attributes_to_get: Optional[Sequence[str]] = None,
         settings: OperationSettings = OperationSettings.default
-    ) -> Iterator[_T]:
+    ) -> AsyncIterator[_T]:
         """
         BatchGetItem for this model
 
@@ -391,7 +391,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             msg = "{}<{}>".format(self.Meta.table_name, hash_key)
         return msg
 
-    def delete(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
+    async def delete(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
         """
         Deletes this object from dynamodb
 
@@ -402,7 +402,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if version_condition is not None:
             condition &= version_condition
 
-        return self._get_connection().delete_item(hk_value, range_key=rk_value, condition=condition, settings=settings)
+        return await self._get_connection().delete_item_async(hk_value, range_key=rk_value, condition=condition, settings=settings)
 
     async def update(self, actions: List[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
         """
@@ -580,7 +580,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if hash_key is None:
             if filter_condition is not None:
                 raise ValueError('A hash_key must be given to use filters')
-            return await cls.describe_table().get_async(ITEM_COUNT)
+            return (await cls.describe_table()).get(ITEM_COUNT)
 
         cls._get_indexes()
         if cls._index_classes and index_name:
@@ -736,7 +736,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         )
 
         return ResultIterator(
-            cls._get_connection().scan,
+            cls._get_connection().scan_async,
             scan_args,
             scan_kwargs,
             map_fn=cls.from_raw_data,
