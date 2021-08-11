@@ -360,9 +360,10 @@ class Connection(object):
             operation_model,
         )
 
-        for i in range(0, self._max_retry_attempts_exception + 1):
+        # FIXME: actually remove the loop if we decide to keep this patch
+        for i in range(0, 1):
             attempt_number = i + 1
-            is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
+            is_last_attempt_for_exceptions = True
 
             http_response = None
             prepared_request = None
@@ -532,7 +533,9 @@ class Connection(object):
                 parameter_validation=False,  # Disable unnecessary validation for performance
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
-                max_pool_connections=self._max_pool_connections)
+                max_pool_connections=self._max_pool_connections,
+                retries={'mode': 'standard', 'max_attempts': self._max_retry_attempts_exception},
+                )
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
         return self._client
 
