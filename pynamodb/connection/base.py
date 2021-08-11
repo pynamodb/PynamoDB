@@ -1219,6 +1219,7 @@ class Connection(object):
         consistent_read: Optional[bool] = None,
         index_name: Optional[str] = None,
         settings: OperationSettings = OperationSettings.default,
+        select: Optional[str] = None,
     ) -> Dict:
         """
         Performs the scan operation
@@ -1232,6 +1233,11 @@ class Connection(object):
         if filter_condition is not None:
             filter_expression = filter_condition.serialize(name_placeholders, expression_attribute_values)
             operation_kwargs[FILTER_EXPRESSION] = filter_expression
+        if select is not None:
+            select = select.upper()
+            if select not in SELECT_VALUES:
+                raise ValueError("{} must be one of {}".format(SELECT, SELECT_VALUES))
+            operation_kwargs[SELECT] = select
         if attributes_to_get is not None:
             projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
@@ -1319,9 +1325,10 @@ class Connection(object):
         if return_consumed_capacity:
             operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if select:
-            if select.upper() not in SELECT_VALUES:
+            select = select.upper()
+            if select not in SELECT_VALUES:
                 raise ValueError("{} must be one of {}".format(SELECT, SELECT_VALUES))
-            operation_kwargs[SELECT] = str(select).upper()
+            operation_kwargs[SELECT] = select
         if scan_index_forward is not None:
             operation_kwargs[SCAN_INDEX_FORWARD] = scan_index_forward
         if name_placeholders:

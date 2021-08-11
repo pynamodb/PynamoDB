@@ -1392,6 +1392,26 @@ class ModelTestCase(TestCase):
             self.assertEqual(results_iter.total_count, 10)
             self.assertEqual(results_iter.page_iter.total_scanned_count, 10)
 
+    def test_query_with_select(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = MODEL_TABLE_DATA
+            UserModel('foo', 'bar')
+
+        with patch(PATCH_METHOD) as req:
+            items = []
+
+            req.side_effect = [
+                {'Count': 0, 'ScannedCount': 0, 'Items': items},
+            ]
+            results_iter = UserModel.query('foo', limit=10, page_size=10, select='ALL_ATTRIBUTES')
+
+            results = list(results_iter)
+            self.assertEqual(len(results), 0)
+            self.assertEqual(len(req.mock_calls), 1)
+            self.assertEqual(req.mock_calls[0].args[1]['Select'], 'ALL_ATTRIBUTES')
+            self.assertEqual(results_iter.total_count, 0)
+            self.assertEqual(results_iter.page_iter.total_scanned_count, 0)
+
     def test_query(self):
         """
         Model.query
@@ -1749,8 +1769,7 @@ class ModelTestCase(TestCase):
                 item['user_id'] = {STRING: 'id-{0}'.format(idx)}
                 items.append(item)
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            for item in UserModel.scan(
-                    attributes_to_get=['email']):
+            for item in UserModel.scan(attributes_to_get=['email'], select='SPECIFIC_ATTRIBUTES'):
                 self.assertIsNotNone(item)
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
@@ -1758,6 +1777,7 @@ class ModelTestCase(TestCase):
                 'ExpressionAttributeNames': {
                     '#0': 'email'
                 },
+                'Select': 'SPECIFIC_ATTRIBUTES',
                 'TableName': 'UserModel'
             }
             self.assertEqual(params, req.call_args[0][1])

@@ -1,6 +1,7 @@
 """
 Pynamodb constants
 """
+from typing import Final
 
 # Operations
 TRANSACT_WRITE_ITEMS = 'TransactWriteItems'
@@ -152,10 +153,10 @@ LAST_EVALUATED_KEY = 'LastEvaluatedKey'
 
 # These are the valid select values for the Scan operation
 # See: http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html#DDB-Scan-request-Select
-ALL_ATTRIBUTES = 'ALL_ATTRIBUTES'
-ALL_PROJECTED_ATTRIBUTES = 'ALL_PROJECTED_ATTRIBUTES'
-SPECIFIC_ATTRIBUTES = 'SPECIFIC_ATTRIBUTES'
-COUNT = 'COUNT'
+ALL_ATTRIBUTES: Final = 'ALL_ATTRIBUTES'
+ALL_PROJECTED_ATTRIBUTES: Final = 'ALL_PROJECTED_ATTRIBUTES'
+SPECIFIC_ATTRIBUTES: Final = 'SPECIFIC_ATTRIBUTES'
+COUNT: Final = 'COUNT'
 SELECT_VALUES = [ALL_ATTRIBUTES, ALL_PROJECTED_ATTRIBUTES, SPECIFIC_ATTRIBUTES, COUNT]
 
 # These are the valid comparison operators for the Scan operation
