@@ -76,6 +76,23 @@ Conditions expressions using nested list and map attributes can be created with 
     print(Container.my_map['foo'].exists() | Container.my_list[0].contains('bar'))
 
 
+Conditions can be composited using & (AND) and | (OR) operators. For the & (AND) operator, the left-hand side
+operand can be ``None`` to allow easier chaining of filter conditions:
+
+.. code-block:: python
+
+  condition = None
+
+  if query.name:
+    condition &= Person.name == query.name
+
+  if query.age:
+    condition &= Person.age == query.age
+
+  results = Person.query(..., filter_condition=condition)
+
+
+
 Conditional Model.save
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -110,6 +127,7 @@ This example will delete the item, only if its `views` attribute is equal to 0.
 .. code-block:: python
 
     print(thread_item.delete(Thread.views == 0))
+
 
 Conditional Operation Failures
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
