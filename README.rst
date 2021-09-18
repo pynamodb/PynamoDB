@@ -86,11 +86,6 @@ Examples of ways to query your table with filter conditions:
     for user in UserModel.query("Denver", UserModel.email=="djohn@company.org"):
         print(user.first_name)
 
-.. code-block:: python
-
-    for user in UserModel.query("Denver", UserModel.email=="djohn@company.org"):
-        print(user.first_name)
-
 Retrieve an existing user:
 
 .. code-block:: python
