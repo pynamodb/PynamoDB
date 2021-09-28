@@ -191,6 +191,9 @@ class MetaProtocol(Protocol):
     billing_mode: Optional[str]
     tags: Optional[Dict[str, str]]
     stream_view_type: Optional[str]
+    aws_sts_role_arn: Optional[str]
+    aws_sts_role_session_name: Optional[str]
+    aws_sts_session_expiration: Optional[int]
 
 
 class MetaModel(AttributeContainerMeta):
@@ -253,6 +256,12 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'aws_secret_access_key', None)
                     if not hasattr(attr_obj, 'aws_session_token'):
                         setattr(attr_obj, 'aws_session_token', None)
+                    if not hasattr(attr_obj, 'aws_sts_role_arn'):
+                        setattr(attr_obj, 'aws_sts_role_arn', None)
+                    if not hasattr(attr_obj, 'aws_sts_role_session_name'):
+                        setattr(attr_obj, 'aws_sts_role_session_name', None)
+                    if not hasattr(attr_obj, 'aws_sts_session_expiration'):
+                        setattr(attr_obj, 'aws_sts_session_expiration', None)
                 elif isinstance(attr_obj, Index):
                     attr_obj.Meta.model = cls
                     if not hasattr(attr_obj.Meta, "index_name"):
@@ -1079,18 +1088,23 @@ class Model(AttributeContainer, metaclass=MetaModel):
         # For now we just check that the connection exists and (in the case of model inheritance)
         # points to the same table. In the future we should update the connection if any of the attributes differ.
         if cls._connection is None or cls._connection.table_name != cls.Meta.table_name:
-            cls._connection = TableConnection(cls.Meta.table_name,
-                                              region=cls.Meta.region,
-                                              host=cls.Meta.host,
-                                              connect_timeout_seconds=cls.Meta.connect_timeout_seconds,
-                                              read_timeout_seconds=cls.Meta.read_timeout_seconds,
-                                              max_retry_attempts=cls.Meta.max_retry_attempts,
-                                              base_backoff_ms=cls.Meta.base_backoff_ms,
-                                              max_pool_connections=cls.Meta.max_pool_connections,
-                                              extra_headers=cls.Meta.extra_headers,
-                                              aws_access_key_id=cls.Meta.aws_access_key_id,
-                                              aws_secret_access_key=cls.Meta.aws_secret_access_key,
-                                              aws_session_token=cls.Meta.aws_session_token)
+            cls._connection = TableConnection(
+                cls.Meta.table_name,
+                region=cls.Meta.region,
+                host=cls.Meta.host,
+                connect_timeout_seconds=cls.Meta.connect_timeout_seconds,
+                read_timeout_seconds=cls.Meta.read_timeout_seconds,
+                max_retry_attempts=cls.Meta.max_retry_attempts,
+                base_backoff_ms=cls.Meta.base_backoff_ms,
+                max_pool_connections=cls.Meta.max_pool_connections,
+                extra_headers=cls.Meta.extra_headers,
+                aws_access_key_id=cls.Meta.aws_access_key_id,
+                aws_secret_access_key=cls.Meta.aws_secret_access_key,
+                aws_session_token=cls.Meta.aws_session_token,
+                aws_sts_role_arn=cls.Meta.aws_sts_role_arn,
+                aws_sts_role_session_name=cls.Meta.aws_sts_role_session_name,
+                aws_sts_session_expiration=cls.Meta.aws_sts_session_expiration
+            )
         return cls._connection
 
     @classmethod
