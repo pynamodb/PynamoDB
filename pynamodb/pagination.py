@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Dict, Iterable, Iterator, TypeVar, Optional
+from typing import Any, AsyncIterator, Callable, Coroutine, Dict, Iterable, Iterator, TypeVar, Optional
 
 from pynamodb.constants import (CAMEL_COUNT, ITEMS, LAST_EVALUATED_KEY, SCANNED_COUNT,
                                 CONSUMED_CAPACITY, TOTAL, CAPACITY_UNITS)
@@ -72,7 +72,7 @@ class RateLimiter:
         self._rate_limit = rate_limit
 
 
-class PageIterator(Iterator[_T]):
+class PageIterator(AsyncIterator[_T]):
     """
     PageIterator handles Query and Scan result pagination.
 
@@ -81,7 +81,7 @@ class PageIterator(Iterator[_T]):
     """
     def __init__(
         self,
-        operation: Callable,
+        operation: Callable[..., Coroutine[Any, Any, Any]],
         args: Any,
         kwargs: Dict[str, Any],
         rate_limit: Optional[float] = None,
@@ -98,12 +98,12 @@ class PageIterator(Iterator[_T]):
             self._rate_limiter = RateLimiter(rate_limit)
         self._settings = settings
 
-    def __iter__(self) -> Iterator[_T]:
+    def __aiter__(self) -> AsyncIterator[_T]:
         return self
 
-    def __next__(self) -> _T:
+    async def __anext__(self) -> _T:
         if self._last_evaluated_key is None and not self._first_iteration:
-            raise StopIteration()
+            raise StopAsyncIteration()
 
         self._first_iteration = False
 
@@ -112,7 +112,7 @@ class PageIterator(Iterator[_T]):
         if self._rate_limiter:
             self._rate_limiter.acquire()
             self._kwargs['return_consumed_capacity'] = TOTAL
-        page = self._operation(*self._args, settings=self._settings, **self._kwargs)
+        page = await self._operation(*self._args, settings=self._settings, **self._kwargs)
         self._last_evaluated_key = page.get(LAST_EVALUATED_KEY)
         self._total_scanned_count += page[SCANNED_COUNT]
 
@@ -121,9 +121,6 @@ class PageIterator(Iterator[_T]):
             self._rate_limiter.consume(consumed_capacity)
 
         return page
-
-    def next(self) -> _T:
-        return self.__next__()
 
     @property
     def key_names(self) -> Iterable[str]:
@@ -152,7 +149,7 @@ class PageIterator(Iterator[_T]):
         return self._total_scanned_count
 
 
-class ResultIterator(Iterator[_T]):
+class ResultIterator(AsyncIterator[_T]):
     """
     ResultIterator handles Query and Scan item pagination.
 
@@ -175,26 +172,26 @@ class ResultIterator(Iterator[_T]):
         self._limit = limit
         self._total_count = 0
 
-    def _get_next_page(self) -> None:
-        page = next(self.page_iter)
+    async def _get_next_page(self) -> None:
+        page = await self.page_iter.__anext__()
         self._count = page[CAMEL_COUNT]
         self._items = page.get(ITEMS)  # not returned if 'Select' is set to 'COUNT'
         self._index = 0 if self._items else self._count
         self._total_count += self._count
 
-    def __iter__(self) -> Iterator[_T]:
+    def __aiter__(self) -> AsyncIterator[_T]:
         return self
 
-    def __next__(self) -> _T:
+    async def __anext__(self) -> _T:
         if self._limit == 0:
-            raise StopIteration
+            raise StopAsyncIteration
 
         if self._first_iteration:
             self._first_iteration = False
-            self._get_next_page()
+            await self._get_next_page()
 
         while self._index == self._count:
-            self._get_next_page()
+            await self._get_next_page()
 
         item = self._items[self._index]
         self._index += 1
@@ -203,9 +200,6 @@ class ResultIterator(Iterator[_T]):
         if self._map_fn:
             item = self._map_fn(item)
         return item
-
-    def next(self) -> _T:
-        return self.__next__()
 
     @property
     def last_evaluated_key(self) -> Optional[Dict[str, Dict[str, Any]]]:
