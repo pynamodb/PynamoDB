@@ -61,6 +61,6 @@ You can use `rate-limit` when counting items in your table:
 .. code-block:: python
 
     # Using only 15 RCU per second
-    count = User.count(rate_limit = 15)
+    count = User.count(rate_limit=15)
     print("Count : {}".format(count))
     
