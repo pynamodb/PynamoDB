@@ -231,6 +231,7 @@ class TableConnection:
         consistent_read: Optional[bool] = None,
         index_name: Optional[str] = None,
         settings: OperationSettings = OperationSettings.default,
+        select: Optional[str] = None,
     ) -> Dict:
         """
         Performs the scan operation
@@ -238,6 +239,7 @@ class TableConnection:
         return self.connection.scan(
             self.table_name,
             filter_condition=filter_condition,
+            select=select,
             attributes_to_get=attributes_to_get,
             limit=limit,
             return_consumed_capacity=return_consumed_capacity,

@@ -7,7 +7,7 @@ import logging
 import warnings
 import sys
 from inspect import getmembers
-from typing import Any
+from typing import Any, Literal
 from typing import Dict
 from typing import Generic
 from typing import Iterable
@@ -632,6 +632,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         page_size: Optional[int] = None,
         rate_limit: Optional[float] = None,
         settings: OperationSettings = OperationSettings.default,
+        select: Optional[Literal['ALL_ATTRIBUTES', 'ALL_PROJECTED_ATTRIBUTES', 'COUNT', 'SPECIFIC_ATTRIBUTES']] = None,
     ) -> ResultIterator[_T]:
         """
         Provides a high level query API
@@ -646,6 +647,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
             Controls descending or ascending results
         :param last_evaluated_key: If set, provides the starting point for query.
         :param attributes_to_get: If set, only returns these elements
+        :param select: If set, specifies which attributes to return;
+            if SPECIFIC_ATTRIBUTES is set, the attributes_to_get parameter must be passed
         :param page_size: Page size of the query to DynamoDB
         :param rate_limit: If set then consumed capacity will be limited to this amount per second
         """
@@ -673,6 +676,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             scan_index_forward=scan_index_forward,
             limit=page_size,
             attributes_to_get=attributes_to_get,
+            select=select,
         )
 
         return ResultIterator(
@@ -699,6 +703,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         rate_limit: Optional[float] = None,
         attributes_to_get: Optional[Sequence[str]] = None,
         settings: OperationSettings = OperationSettings.default,
+        select: Optional[Literal['ALL_ATTRIBUTES', 'ALL_PROJECTED_ATTRIBUTES', 'COUNT', 'SPECIFIC_ATTRIBUTES']] = None,
     ) -> ResultIterator[_T]:
         """
         Iterates through all items in the table
@@ -731,7 +736,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
             total_segments=total_segments,
             consistent_read=consistent_read,
             index_name=index_name,
-            attributes_to_get=attributes_to_get
+            attributes_to_get=attributes_to_get,
+            select=select,
         )
 
         return ResultIterator(

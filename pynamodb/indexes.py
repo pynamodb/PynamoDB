@@ -2,7 +2,7 @@
 PynamoDB Indexes
 """
 from inspect import getmembers
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Literal
 from typing import TYPE_CHECKING
 
 from pynamodb._compat import GenericMeta
@@ -90,6 +90,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
         attributes_to_get: Optional[List[str]] = None,
         page_size: Optional[int] = None,
         rate_limit: Optional[float] = None,
+        select: Optional[Literal['ALL_ATTRIBUTES', 'ALL_PROJECTED_ATTRIBUTES', 'COUNT', 'SPECIFIC_ATTRIBUTES']] = None,
     ) -> ResultIterator[_M]:
         """
         Queries an index
@@ -106,6 +107,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
             attributes_to_get=attributes_to_get,
             page_size=page_size,
             rate_limit=rate_limit,
+            select=select,
         )
 
     @classmethod
@@ -120,6 +122,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
         consistent_read: Optional[bool] = None,
         rate_limit: Optional[float] = None,
         attributes_to_get: Optional[List[str]] = None,
+        select: Optional[Literal['ALL_ATTRIBUTES', 'ALL_PROJECTED_ATTRIBUTES', 'COUNT', 'SPECIFIC_ATTRIBUTES']] = None,
     ) -> ResultIterator[_M]:
         """
         Scans an index
@@ -135,6 +138,7 @@ class Index(Generic[_M], metaclass=IndexMeta):
             index_name=cls.Meta.index_name,
             rate_limit=rate_limit,
             attributes_to_get=attributes_to_get,
+            select=select,
         )
 
     @classmethod
