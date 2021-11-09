@@ -66,12 +66,13 @@ The Scope of the Library
 
 The purpose of this library is to provide a Pythonic ODM layer on top of DynamoDB to be used
 in server applications' runtime, i.e. to enable their various application logic and features.
+While striving for the library to be useful, we're also trying to "do one thing well". For this reason:
 
 - Database administration tasks are out of scope, and while PynamoDB has functions for
   operations like CreateTable, CreateIndex and DeleteTable, it's because they are useful
   for interacting with dynamodb-local and moto's DynamoDB backend from within test code.
   
-  For this reason, functionality such as enabling PITR backups, restoring from such backups,
+  For this reason, features such as enabling PITR backups, restoring from such backups,
   updating indices, etc. are intentionally absent. For getting started and operating
   on a small scale, AWS Console and the AWS Command Line Interface (awscli) can be used.
   For larger scale, infrastructure provisioning by dedicated tools (such as CloudFormation
@@ -86,7 +87,7 @@ in server applications' runtime, i.e. to enable their various application logic 
   as strings is doubtlessly something many applications have had a need for, but as long as it doesn't
   exercise any core DynamoDB functionality (e.g. in the case of a UUID attribute, there isn't
   a dedicated DynamoDB data type or API feature for storing UUIDs), we would recommend relegating
-  such functionality to auxillary libraries. One such library is [pynamodb-attributes](https://github.com/lyft/pynamodb-attributes).
+  such functionality to auxillary libraries. One such library is `pynamodb-attributes <https://github.com/lyft/pynamodb-attributes>`_.
 
 
 Pull Requests
