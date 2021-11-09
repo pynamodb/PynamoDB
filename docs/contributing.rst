@@ -74,8 +74,8 @@ in server applications' runtime, i.e. to enable their various application logic 
   For this reason, functionality such as enabling PITR backups, restoring from such backups,
   updating indices, etc. are intentionally absent. For getting started and operating
   on a small scale, AWS Console and the AWS Command Line Interface (awscli) can be used.
-  For larger scale operation, infrastructure provisioning solutions such as CloudFormation
-  and Terraform would be vastly preferable over anything PynamoDB may offer.
+  For larger scale, infrastructure provisioning by dedicated tools (such as CloudFormation
+  or Terraform) would be vastly preferable over anything PynamoDB could offer.
   
   Per security best practices, we recommend running your application's runtime with an IAM role
   having the least privileges necessary for it to function (which likely excludes any database
