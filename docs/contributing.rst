@@ -64,7 +64,7 @@ to a major release.
 The Scope of the Library
 ------------------------
 
-The purpose of this library is to provide a Pythonic ORM layer on top of DynamoDB to be used
+The purpose of this library is to provide a Pythonic ODM layer on top of DynamoDB to be used
 in server applications' runtime, i.e. to enable their various application logic and features.
 
 - Database administration tasks are out of scope, and while PynamoDB has functions for
