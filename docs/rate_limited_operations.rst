@@ -37,7 +37,7 @@ Here is an example using `rate-limit` in while scaning the `User` model
 .. code-block:: python
 
     # Using only 5 RCU per second
-    for user in User.scan(rate_limit = 5):
+    for user in User.scan(rate_limit=5):
         print("User id: {}, name: {}".format(user.id, user.name))
 
 
@@ -61,6 +61,6 @@ You can use `rate-limit` when counting items in your table:
 .. code-block:: python
 
     # Using only 15 RCU per second
-    count = User.count(rate_limit = 15):
+    count = User.count(rate_limit=15)
     print("Count : {}".format(count))
     
