@@ -271,7 +271,8 @@ class MetaModel(AttributeContainerMeta):
         """
         cls._indexes = {}
         for name, index in getmembers(cls, lambda o: isinstance(o, Index)):
-            index.Meta.model = cls
+            if not hasattr(index.Meta, "model"):
+                index.Meta.model = cls
             if not hasattr(index.Meta, "index_name"):
                 index.Meta.index_name = name
             cls._indexes[index.Meta.index_name] = index
