@@ -892,7 +892,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         Returns a list of the secondary indexes
         """
-        index_data = {
+        index_data: Dict[str, List[Any]] = {
             'global_secondary_indexes': [],
             'local_secondary_indexes': [],
             'attribute_definitions': []
@@ -901,7 +901,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             schema = index._get_schema()
             idx = {
                 'index_name': index.Meta.index_name,
-                'key_schema': schema.get('key_schema'),
+                'key_schema': schema['key_schema'],
                 'projection': {
                     PROJECTION_TYPE: index.Meta.projection.projection_type,
                 },
@@ -912,7 +912,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                         READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
                         WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
                     }
-            index_data['attribute_definitions'].extend(schema.get('attribute_definitions'))
+            index_data['attribute_definitions'].extend(schema['attribute_definitions'])
             if index.Meta.projection.non_key_attributes:
                 idx['projection'][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
             if isinstance(index, GlobalSecondaryIndex):
