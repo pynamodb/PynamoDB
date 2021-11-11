@@ -7,6 +7,7 @@ from pynamodb.expressions.update import Action
 from pynamodb.models import Model, _ModelFuture, _KeyType
 
 _M = TypeVar('_M', bound=Model)
+_TTransaction = TypeVar('_TTransaction', bound='Transaction')
 
 
 class Transaction:
@@ -22,7 +23,7 @@ class Transaction:
     def _commit(self):
         raise NotImplementedError()
 
-    def __enter__(self) -> 'Transaction':
+    def __enter__(self: _TTransaction) -> _TTransaction:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

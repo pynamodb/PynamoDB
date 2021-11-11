@@ -242,3 +242,10 @@ def test_append(assert_mypy_output):
     MyModel.attr.prepend(42)  # E: Argument 1 to "prepend" of "Attribute" has incompatible type "int"; expected "Iterable[Any]"  [arg-type]
     MyModel.attr.prepend([42])
     """)
+
+def test_transactions(assert_mypy_output):
+    assert_mypy_output("""
+    from pynamodb.transactions import TransactWrite
+    with TransactWrite() as tx:
+        reveal_type(tx)  # N: Revealed type is 'pynamodb.transactions.TransactWrite*'
+    """)
