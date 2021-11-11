@@ -7,6 +7,7 @@ import time
 import logging
 import warnings
 import sys
+from copy import deepcopy
 from inspect import getmembers
 from typing import Any
 from typing import Dict
@@ -274,6 +275,10 @@ class MetaModel(AttributeContainerMeta):
         """
         cls._indexes = {}
         for name, index in getmembers(cls, lambda o: isinstance(o, Index)):
+            # Store a local reference to the containing Model class on a copy of the index to support polymorphism.
+            index = deepcopy(index)
+            index._model = cls
+            setattr(cls, name, index)
             cls._indexes[index.Meta.index_name] = index
 
 

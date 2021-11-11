@@ -27,6 +27,7 @@ class Index(Generic[_M]):
     Base class for secondary indexes
     """
     Meta: Any = None
+    _model: _M
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
@@ -43,14 +44,13 @@ class Index(Generic[_M]):
             raise ValueError("No projection defined, define a projection for this class")
 
     def __set_name__(self, owner: Type[_M], name: str):
-        if not hasattr(self.Meta, "model"):
-            self.Meta.model = owner
+        if not hasattr(type(self), "_model"):
+            type(self)._model = owner
         if not hasattr(self.Meta, "index_name"):
             self.Meta.index_name = name
 
-    @classmethod
     def count(
-        cls,
+        self,
         hash_key: _KeyType,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
@@ -61,19 +61,18 @@ class Index(Generic[_M]):
         """
         Count on an index
         """
-        return cls.Meta.model.count(
+        return self._model.count(
             hash_key,
             range_key_condition=range_key_condition,
             filter_condition=filter_condition,
-            index_name=cls.Meta.index_name,
+            index_name=self.Meta.index_name,
             consistent_read=consistent_read,
             limit=limit,
             rate_limit=rate_limit,
         )
 
-    @classmethod
     def query(
-        cls,
+        self,
         hash_key: _KeyType,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
@@ -88,12 +87,12 @@ class Index(Generic[_M]):
         """
         Queries an index
         """
-        return cls.Meta.model.query(
+        return self._model.query(
             hash_key,
             range_key_condition=range_key_condition,
             filter_condition=filter_condition,
             consistent_read=consistent_read,
-            index_name=cls.Meta.index_name,
+            index_name=self.Meta.index_name,
             scan_index_forward=scan_index_forward,
             limit=limit,
             last_evaluated_key=last_evaluated_key,
@@ -102,9 +101,8 @@ class Index(Generic[_M]):
             rate_limit=rate_limit,
         )
 
-    @classmethod
     def scan(
-        cls,
+        self,
         filter_condition: Optional[Condition] = None,
         segment: Optional[int] = None,
         total_segments: Optional[int] = None,
@@ -118,7 +116,7 @@ class Index(Generic[_M]):
         """
         Scans an index
         """
-        return cls.Meta.model.scan(
+        return self._model.scan(
             filter_condition=filter_condition,
             segment=segment,
             total_segments=total_segments,
@@ -126,7 +124,7 @@ class Index(Generic[_M]):
             last_evaluated_key=last_evaluated_key,
             page_size=page_size,
             consistent_read=consistent_read,
-            index_name=cls.Meta.index_name,
+            index_name=self.Meta.index_name,
             rate_limit=rate_limit,
             attributes_to_get=attributes_to_get,
         )
@@ -191,7 +189,7 @@ class LocalSecondaryIndex(Index[_M]):
     pass
 
 
-class Projection(object):
+class Projection:
     """
     A class for presenting projections
     """
