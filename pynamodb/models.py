@@ -6,7 +6,6 @@ import time
 import logging
 import warnings
 import sys
-from itertools import chain
 from inspect import getmembers
 from typing import Any
 from typing import Dict
@@ -886,7 +885,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             else:
                 schema['local_secondary_indexes'].append(index_schema)
         attr_names = {key_schema[ATTR_NAME]
-                      for index_schema in chain(schema['global_secondary_indexes'], schema['local_secondary_indexes'])
+                      for index_schema in (*schema['global_secondary_indexes'], *schema['local_secondary_indexes'])
                       for key_schema in index_schema['key_schema']}
         attr_keys = {attr.get('attribute_name') for attr in schema['attribute_definitions']}
         for attr_name in attr_names:
