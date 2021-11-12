@@ -814,16 +814,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 schema['write_capacity_units'] = write_capacity_units
             if billing_mode is not None:
                 schema['billing_mode'] = billing_mode
-            index_data = cls._get_indexes()
-            schema['global_secondary_indexes'] = index_data.get('global_secondary_indexes')
-            schema['local_secondary_indexes'] = index_data.get('local_secondary_indexes')
-            index_attrs = index_data.get('attribute_definitions')
-            attr_keys = [attr.get('attribute_name') for attr in schema['attribute_definitions']]
-            for attr in index_attrs:
-                attr_name = attr.get('attribute_name')
-                if attr_name not in attr_keys:
-                    schema['attribute_definitions'].append(attr)
-                    attr_keys.append(attr_name)
             cls._get_connection().create_table(
                 **schema
             )
@@ -868,7 +858,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         schema: Dict[str, List] = {
             'attribute_definitions': [],
-            'key_schema': []
+            'key_schema': [],
+            'global_secondary_indexes': [],
+            'local_secondary_indexes': [],
         }
         for attr_name, attr_cls in cls.get_attributes().items():
             if attr_cls.is_hash_key or attr_cls.is_range_key:
@@ -886,41 +878,24 @@ class Model(AttributeContainer, metaclass=MetaModel):
                     'key_type': RANGE,
                     'attribute_name': attr_cls.attr_name
                 })
-        return schema
-
-    @classmethod
-    def _get_indexes(cls):
-        """
-        Returns a list of the secondary indexes
-        """
-        index_data: Dict[str, List[Any]] = {
-            'global_secondary_indexes': [],
-            'local_secondary_indexes': [],
-            'attribute_definitions': []
-        }
-        for name, index in cls._indexes.items():
-            schema = index._get_schema()
-            idx = {
-                'index_name': index.Meta.index_name,
-                'key_schema': schema['key_schema'],
-                'projection': {
-                    PROJECTION_TYPE: index.Meta.projection.projection_type,
-                },
-            }
+        for index in cls._indexes.values():
+            index_schema = index._get_schema()
             if isinstance(index, GlobalSecondaryIndex):
-                if getattr(cls.Meta, 'billing_mode', None) != PAY_PER_REQUEST_BILLING_MODE:
-                    idx['provisioned_throughput'] = {
-                        READ_CAPACITY_UNITS: index.Meta.read_capacity_units,
-                        WRITE_CAPACITY_UNITS: index.Meta.write_capacity_units
-                    }
-            index_data['attribute_definitions'].extend(schema['attribute_definitions'])
-            if index.Meta.projection.non_key_attributes:
-                idx['projection'][NON_KEY_ATTRIBUTES] = index.Meta.projection.non_key_attributes
-            if isinstance(index, GlobalSecondaryIndex):
-                index_data['global_secondary_indexes'].append(idx)
+                schema['global_secondary_indexes'].append(index_schema)
             else:
-                index_data['local_secondary_indexes'].append(idx)
-        return index_data
+                schema['local_secondary_indexes'].append(index_schema)
+        attr_names = {key_schema[ATTR_NAME]
+                      for index_schema in (*schema['global_secondary_indexes'], *schema['local_secondary_indexes'])
+                      for key_schema in index_schema['key_schema']}
+        attr_keys = {attr.get('attribute_name') for attr in schema['attribute_definitions']}
+        for attr_name in attr_names:
+            if attr_name not in attr_keys:
+                attr_cls = cls.get_attributes()[cls._dynamo_to_python_attr(attr_name)]
+                schema['attribute_definitions'].append({
+                    'attribute_name': attr_cls.attr_name,
+                    'attribute_type': attr_cls.attr_type
+                })
+        return schema
 
     def _get_save_args(self, null_check: bool = True, condition: Optional[Condition] = None) -> Tuple[Iterable[Any], Dict[str, Any]]:
         """
