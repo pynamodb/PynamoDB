@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 from pynamodb._compat import GenericMeta
 from pynamodb.constants import (
     INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, KEY_SCHEMA,
-    ATTR_DEFINITIONS, META_CLASS_NAME
+    ATTR_DEFINITIONS, META_CLASS_NAME, PROJECTION_TYPE, NON_KEY_ATTRIBUTES,
+    PAY_PER_REQUEST_BILLING_MODE, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
 )
 from pynamodb.attributes import Attribute
 from pynamodb.expressions.condition import Condition
@@ -151,27 +152,27 @@ class Index(Generic[_M], metaclass=IndexMeta):
         """
         Returns the schema for this index
         """
-        attr_definitions = []
-        schema = []
+        schema = {
+            'index_name': cls.Meta.index_name,
+            'key_schema': [],
+            'projection': {
+                PROJECTION_TYPE: cls.Meta.projection.projection_type,
+            },
+        }
         for attr_name, attr_cls in cls._get_attributes().items():
-            attr_definitions.append({
-                'attribute_name': attr_cls.attr_name,
-                'attribute_type': attr_cls.attr_type
-            })
             if attr_cls.is_hash_key:
-                schema.append({
+                schema['key_schema'].append({
                     ATTR_NAME: attr_cls.attr_name,
                     KEY_TYPE: HASH
                 })
             elif attr_cls.is_range_key:
-                schema.append({
+                schema['key_schema'].append({
                     ATTR_NAME: attr_cls.attr_name,
                     KEY_TYPE: RANGE
                 })
-        return {
-            'key_schema': schema,
-            'attribute_definitions': attr_definitions
-        }
+        if cls.Meta.projection.non_key_attributes:
+            schema['projection'][NON_KEY_ATTRIBUTES] = cls.Meta.projection.non_key_attributes
+        return schema
 
     @classmethod
     def _get_attributes(cls):
@@ -189,7 +190,16 @@ class GlobalSecondaryIndex(Index[_M]):
     """
     A global secondary index
     """
-    pass
+
+    @classmethod
+    def _get_schema(cls) -> Dict:
+        schema = super()._get_schema()
+        if getattr(cls.Meta, 'billing_mode', None) != PAY_PER_REQUEST_BILLING_MODE:
+            schema['provisioned_throughput'] = {
+                READ_CAPACITY_UNITS: cls.Meta.read_capacity_units,
+                WRITE_CAPACITY_UNITS: cls.Meta.write_capacity_units
+            }
+        return schema
 
 
 class LocalSecondaryIndex(Index[_M]):

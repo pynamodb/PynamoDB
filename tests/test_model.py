@@ -2359,18 +2359,22 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             IndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
-            params = {
-                'AttributeDefinitions': [
-                    {'attribute_name': 'email', 'attribute_type': 'S'},
-                    {'attribute_name': 'numbers', 'attribute_type': 'NS'}
-                ],
-                'KeySchema': [
-                    {'AttributeName': 'numbers', 'KeyType': 'RANGE'},
-                    {'AttributeName': 'email', 'KeyType': 'HASH'}
-                ]
-            }
-            schema = IndexedModel.email_index._get_schema()
             args = req.call_args[0][1]
+            self.assert_dict_lists_equal(
+                args['AttributeDefinitions'],
+                [
+                    {'AttributeName': 'user_name', 'AttributeType': 'S'},
+                    {'AttributeName': 'email', 'AttributeType': 'S'},
+                    {'AttributeName': 'numbers', 'AttributeType': 'NS'}
+                ]
+            )
+            self.assert_dict_lists_equal(
+                args['GlobalSecondaryIndexes'][0]['KeySchema'],
+                [
+                    {'AttributeName': 'email', 'KeyType': 'HASH'},
+                    {'AttributeName': 'numbers', 'KeyType': 'RANGE'}
+                ]
+            )
             self.assertEqual(
                 args['GlobalSecondaryIndexes'][0]['ProvisionedThroughput'],
                 {
@@ -2378,8 +2382,6 @@ class ModelTestCase(TestCase):
                     'WriteCapacityUnits': 1
                 }
             )
-            self.assert_dict_lists_equal(schema['key_schema'], params['KeySchema'])
-            self.assert_dict_lists_equal(schema['attribute_definitions'], params['AttributeDefinitions'])
 
     def test_local_index(self):
         """
@@ -2395,7 +2397,7 @@ class ModelTestCase(TestCase):
             req.return_value = LOCAL_INDEX_TABLE_DATA
             LocalIndexedModel('foo')
 
-        schema = IndexedModel._get_indexes()
+        schema = IndexedModel._get_schema()
 
         expected = {
             'local_secondary_indexes': [
@@ -2426,8 +2428,7 @@ class ModelTestCase(TestCase):
                 }
             ],
             'attribute_definitions': [
-                {'attribute_type': 'S', 'attribute_name': 'email'},
-                {'attribute_type': 'NS', 'attribute_name': 'numbers'},
+                {'attribute_type': 'S', 'attribute_name': 'user_name'},
                 {'attribute_type': 'S', 'attribute_name': 'email'},
                 {'attribute_type': 'NS', 'attribute_name': 'numbers'}
             ]
@@ -2475,7 +2476,6 @@ class ModelTestCase(TestCase):
             }
             schema = LocalIndexedModel.email_index._get_schema()
             args = req.call_args[0][1]
-            self.assert_dict_lists_equal(schema['attribute_definitions'], params['AttributeDefinitions'])
             self.assert_dict_lists_equal(schema['key_schema'], params['KeySchema'])
             self.assertTrue('ProvisionedThroughput' not in args['LocalSecondaryIndexes'][0])
 
