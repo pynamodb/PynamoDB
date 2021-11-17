@@ -805,8 +805,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
     def _make_attribute(self):
         # WARNING! This function is only intended to be called from the __set_name__ function.
         if not self._is_attribute_container():
-            # This instance has already been initialized by another AttributeContainer class.
-            return False
+            raise AssertionError("MapAttribute._make_attribute called on an initialized instance")
         # During initialization the kwargs were stored in `attribute_kwargs`. Remove them and re-initialize the class.
         kwargs = self.attribute_kwargs
         del self.attribute_kwargs
@@ -818,7 +817,6 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             # we have to store the local copy directly into __dict__ to prevent calling attr.__set__.
             # Use deepcopy so that `attr_path` and any local attributes are also copied.
             self.__dict__[name] = deepcopy(attr)
-        return True
 
     def _update_attribute_paths(self, path_segment):
         # WARNING! This function is only intended to be called from the __set_name__ function.
@@ -900,15 +898,13 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         return super().__set__(instance, value)  # type: ignore
 
     def __set_name__(self, owner: Type[Any], name: str) -> None:
-        initialized = False
         if issubclass(owner, AttributeContainer):
             # MapAttribute instances that are class attributes of an AttributeContainer class
             # should behave like an Attribute instance and not an AttributeContainer instance.
-            initialized = self._make_attribute()
+            self._make_attribute()
 
-        super().__set_name__(owner, name)
+            super().__set_name__(owner, name)
 
-        if initialized:
             # To support creating expressions from nested attributes, MapAttribute instances
             # store local copies of the attributes in cls._attributes with `attr_path` set.
             # Prepend the `attr_path` lists with the dynamo attribute name.
