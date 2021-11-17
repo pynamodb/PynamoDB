@@ -3,7 +3,7 @@ Release Notes
 
 Unreleased
 ----------
-
+* The ``IndexMeta`` class has been removed. Now ``type(Index) == type``.
 
 
 v5.1.0
