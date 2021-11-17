@@ -73,7 +73,7 @@ class Attribute(Generic[_T]):
         self.is_hash_key = hash_key
         self.is_range_key = range_key
 
-        # AttributeContainerMeta._initialize_attributes will ensure this is a string
+        # __set_name__ will ensure this is a string
         self.attr_path: List[str] = [attr_name]  # type: ignore
 
     @property
@@ -105,6 +105,9 @@ class Attribute(Generic[_T]):
             return instance.attribute_values.get(attr_name, None)
         else:
             return self
+
+    def __set_name__(self, owner: Type[Any], name: str) -> None:
+        self.attr_name = self.attr_name or name
 
     def _is_map_attribute_class_object(self, instance: 'Attribute') -> bool:
         return isinstance(instance, MapAttribute) and not instance._is_attribute_container()
@@ -236,23 +239,9 @@ class AttributeContainerMeta(GenericMeta):
         cls._dynamo_to_python_attrs = {}
 
         for name, attribute in getmembers(cls, lambda o: isinstance(o, Attribute)):
-            initialized = False
-            if isinstance(attribute, MapAttribute):
-                # MapAttribute instances that are class attributes of an AttributeContainer class
-                # should behave like an Attribute instance and not an AttributeContainer instance.
-                initialized = attribute._make_attribute()
-
             cls._attributes[name] = attribute
-            if attribute.attr_name is None:
-                attribute.attr_name = name
             if attribute.attr_name != name:
                 cls._dynamo_to_python_attrs[attribute.attr_name] = name
-
-            if initialized and isinstance(attribute, MapAttribute):
-                # To support creating expressions from nested attributes, MapAttribute instances
-                # store local copies of the attributes in cls._attributes with `attr_path` set.
-                # Prepend the `attr_path` lists with the dynamo attribute name.
-                attribute._update_attribute_paths(attribute.attr_name)
 
         # Register the class with the discriminator if necessary.
         discriminators = [name for name, attr in cls._attributes.items() if isinstance(attr, DiscriminatorAttribute)]
@@ -779,7 +768,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
     does not behave as both an Attribute AND an AttributeContainer. Rather an instance of MapAttribute behaves
     EITHER as an Attribute OR as an AttributeContainer, depending on where it was instantiated.
 
-    So, how do we create this dichotomous behavior? Using the AttributeContainerMeta metaclass.
+    So, how do we create this dichotomous behavior?
     All MapAttribute instances are initialized as AttributeContainers only. During construction of
     AttributeContainer classes (subclasses of MapAttribute and Model), any instances that are class attributes
     are transformed from AttributeContainers to Attributes (via the `_make_attribute` method call).
@@ -793,7 +782,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         self.attribute_kwargs = {arg: attributes.pop(arg) for arg in self.attribute_args if arg in attributes}
 
         # Assume all instances should behave like an AttributeContainer. Instances that are intended to be
-        # used as Attributes will be transformed by AttributeContainerMeta during creation of the containing class.
+        # used as Attributes will be transformed during creation of the containing class.
         # Because of this do not use MRO or cooperative multiple inheritance, call the parent class directly.
         AttributeContainer.__init__(self, **attributes)
 
@@ -814,10 +803,9 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         return 'attribute_values' in self.__dict__
 
     def _make_attribute(self):
-        # WARNING! This function is only intended to be called from the AttributeContainerMeta metaclass.
+        # WARNING! This function is only intended to be called from the __set_name__ function.
         if not self._is_attribute_container():
-            # This instance has already been initialized by another AttributeContainer class.
-            return False
+            raise AssertionError("MapAttribute._make_attribute called on an initialized instance")
         # During initialization the kwargs were stored in `attribute_kwargs`. Remove them and re-initialize the class.
         kwargs = self.attribute_kwargs
         del self.attribute_kwargs
@@ -829,10 +817,9 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             # we have to store the local copy directly into __dict__ to prevent calling attr.__set__.
             # Use deepcopy so that `attr_path` and any local attributes are also copied.
             self.__dict__[name] = deepcopy(attr)
-        return True
 
     def _update_attribute_paths(self, path_segment):
-        # WARNING! This function is only intended to be called from the AttributeContainerMeta metaclass.
+        # WARNING! This function is only intended to be called from the __set_name__ function.
         if self._is_attribute_container():
             raise AssertionError("MapAttribute._update_attribute_paths called before MapAttribute._make_attribute")
         for name in self.get_attributes().keys():
@@ -909,6 +896,19 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
         if isinstance(value, collections.abc.Mapping):
             value = type(self)(**value)  # type: ignore
         return super().__set__(instance, value)  # type: ignore
+
+    def __set_name__(self, owner: Type[Any], name: str) -> None:
+        if issubclass(owner, AttributeContainer):
+            # MapAttribute instances that are class attributes of an AttributeContainer class
+            # should behave like an Attribute instance and not an AttributeContainer instance.
+            self._make_attribute()
+
+            super().__set_name__(owner, name)
+
+            # To support creating expressions from nested attributes, MapAttribute instances
+            # store local copies of the attributes in cls._attributes with `attr_path` set.
+            # Prepend the `attr_path` lists with the dynamo attribute name.
+            self._update_attribute_paths(self.attr_name)
 
     def _set_attributes(self, **attrs):
         """
