@@ -2528,6 +2528,40 @@ class ModelTestCase(TestCase):
         with self.assertRaises(AttributeError):
             MissingTableNameModel.exists()
 
+    def test_to_json(self):
+        """
+        Model.to_json
+        """
+        user = UserModel()
+        user.custom_user_name = 'foo'
+        user.user_id = 'bar'
+        user.picture = base64.b64decode(BINARY_ATTR_DATA)
+        user.zip_code = 88030
+        json_user = json.loads(user.to_json())
+        self.assertEqual(json_user['user_name'], user.custom_user_name)  # uses custom attribute name
+        self.assertEqual(json_user['user_id'], user.user_id)
+        self.assertEqual(json_user['picture'], BINARY_ATTR_DATA)
+        self.assertEqual(json_user['zip_code'], user.zip_code)
+        self.assertEqual(json_user['email'], 'needs_email')  # set to default value
+
+    def test_from_json(self):
+        """
+        Model.from_json
+        """
+        json_user = {
+            'user_name': 'foo',
+            'user_id': 'bar',
+            'picture': BINARY_ATTR_DATA,
+            'zip_code': 88030,
+        }
+        user = UserModel()
+        user.from_json(json.dumps(json_user))
+        self.assertEqual(user.custom_user_name, json_user['user_name'])  # uses custom attribute name
+        self.assertEqual(user.user_id, json_user['user_id'])
+        self.assertEqual(user.picture, base64.b64decode(json_user['picture']))
+        self.assertEqual(user.zip_code, json_user['zip_code'])
+        self.assertEqual(user.email, 'needs_email')  # set to default value
+
     def _get_office_employee(self):
         justin = Person(
             fname='Justin',

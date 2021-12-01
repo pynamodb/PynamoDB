@@ -1,6 +1,7 @@
 """
 pynamodb attributes tests
 """
+import calendar
 import json
 
 from base64 import b64encode
@@ -13,10 +14,10 @@ import pytest
 
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, DynamicMapAttribute, NumberSetAttribute, NumberAttribute,
-    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute,
+    UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute, NullAttribute,
     ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute)
 from pynamodb.constants import (
-    DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
+    DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, BOOLEAN,
 )
 from pynamodb.models import Model
@@ -39,6 +40,7 @@ class AttributeTestModel(Model):
     json_attr = JSONAttribute()
     map_attr = MapAttribute()
     ttl_attr = TTLAttribute()
+    null_attr = NullAttribute(null=True)
 
 
 class CustomAttrMap(MapAttribute):
@@ -1062,3 +1064,119 @@ class TestVersionAttribute:
         assert attr.deserialize('1') == 1
         assert attr.deserialize('3.141') == 3
         assert attr.deserialize('12345678909876543211234234324234') == 12345678909876543211234234324234
+
+
+class TestAttributeContainer:
+    def test_to_json(self):
+        now = datetime.now(tz=timezone.utc)
+        now_formatted = now.strftime(DATETIME_FORMAT)
+        now_unix_ts = calendar.timegm(now.utctimetuple())
+        test_model = AttributeTestModel()
+        test_model.binary_attr = b'foo'
+        test_model.binary_set_attr = {b'bar'}
+        test_model.number_attr = 1
+        test_model.number_set_attr = {0, 0.5, 1}
+        test_model.unicode_attr = 'foo'
+        test_model.unicode_set_attr = {'baz'}
+        test_model.datetime_attr = now
+        test_model.bool_attr = True
+        test_model.json_attr = {'foo': 'bar'}
+        test_model.map_attr = {'foo': 'bar'}
+        test_model.ttl_attr = now
+        test_model.null_attr = True
+        assert test_model.to_json() == (
+            '{'
+            '"binary_attr": "Zm9v", '
+            '"binary_set_attr": ["YmFy"], '
+            '"bool_attr": true, '
+            '"datetime_attr": "' + now_formatted + '", '
+            '"json_attr": "{\\"foo\\": \\"bar\\"}", '
+            '"map_attr": {"foo": "bar"}, '
+            '"null_attr": null, '
+            '"number_attr": 1, '
+            '"number_set_attr": [0, 0.5, 1], '
+            '"ttl_attr": ' + str(now_unix_ts) + ', '
+            '"unicode_attr": "foo", '
+            '"unicode_set_attr": ["baz"]'
+            '}')
+
+    def test_from_json(self):
+        now = datetime.now(tz=timezone.utc)
+        now_formatted = now.strftime(DATETIME_FORMAT)
+        now_unix_ts = calendar.timegm(now.utctimetuple())
+        json_string = (
+            '{'
+            '"binary_attr": "Zm9v", '
+            '"binary_set_attr": ["YmFy"], '
+            '"bool_attr": true, '
+            '"datetime_attr": "' + now_formatted + '", '
+            '"json_attr": "{\\"foo\\": \\"bar\\"}", '
+            '"map_attr": {"foo": "bar"}, '
+            '"null_attr": null, '
+            '"number_attr": 1, '
+            '"number_set_attr": [0, 0.5, 1], '
+            '"ttl_attr": ' + str(now_unix_ts) + ', '
+            '"unicode_attr": "foo", '
+            '"unicode_set_attr": ["baz"]'
+            '}')
+        test_model = AttributeTestModel()
+        test_model.from_json(json_string)
+        assert test_model.binary_attr == b'foo'
+        assert test_model.binary_set_attr == {b'bar'}
+        assert test_model.number_attr == 1
+        assert test_model.number_set_attr == {0, 0.5, 1}
+        assert test_model.unicode_attr == 'foo'
+        assert test_model.unicode_set_attr == {'baz'}
+        assert test_model.datetime_attr == now
+        assert test_model.bool_attr is True
+        assert test_model.json_attr == {'foo': 'bar'}
+        assert test_model.map_attr.foo == 'bar'
+        assert test_model.ttl_attr == now.replace(microsecond=0)
+        assert test_model.null_attr is None
+
+    def test_to_json_complex(self):
+        class MyMap(MapAttribute):
+            foo = UnicodeSetAttribute(attr_name='bar')
+
+        class ListTestModel(Model):
+            class Meta:
+                host = 'http://localhost:8000'
+                table_name = 'test'
+            unicode_attr = UnicodeAttribute(hash_key=True)
+            list_attr = ListAttribute(of=NumberSetAttribute)
+            list_map_attr = ListAttribute(of=MyMap)
+
+        list_test_model = ListTestModel()
+        list_test_model.unicode_attr = 'foo'
+        list_test_model.list_attr = [{0, 1, 2}]
+        list_test_model.list_map_attr = [MyMap(foo={'baz'})]
+        assert list_test_model.to_json() == (
+            '{'
+            '"list_attr": [[0, 1, 2]], '
+            '"list_map_attr": [{"bar": ["baz"]}], '
+            '"unicode_attr": "foo"'
+            '}')
+
+    def test_from_json_complex(self):
+        class MyMap(MapAttribute):
+            foo = UnicodeSetAttribute(attr_name='bar')
+
+        class ListTestModel(Model):
+            class Meta:
+                host = 'http://localhost:8000'
+                table_name = 'test'
+            unicode_attr = UnicodeAttribute(hash_key=True)
+            list_attr = ListAttribute(of=NumberSetAttribute)
+            list_map_attr = ListAttribute(of=MyMap)
+
+        json_string = (
+            '{'
+            '"list_attr": [[0, 1, 2]], '
+            '"list_map_attr": [{"bar": ["baz"]}], '
+            '"unicode_attr": "foo"'
+            '}')
+        list_test_model = ListTestModel()
+        list_test_model.from_json(json_string)
+        assert list_test_model.unicode_attr == 'foo'
+        assert list_test_model.list_attr == [{0, 1, 2}]
+        assert list_test_model.list_map_attr[0].foo == {'baz'}

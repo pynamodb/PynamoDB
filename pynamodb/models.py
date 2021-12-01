@@ -1,6 +1,7 @@
 """
 DynamoDB Models for PynamoDB
 """
+import json
 import random
 import time
 import logging
@@ -54,6 +55,8 @@ from pynamodb.constants import (
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
     STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE, TAGS
 )
+from pynamodb.util import attribute_value_to_json
+from pynamodb.util import json_to_attribute_value
 
 _T = TypeVar('_T', bound='Model')
 _KeyType = Any
@@ -846,7 +849,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                     raise
 
     # Private API below
-
     @classmethod
     def _get_schema(cls) -> Dict[str, Any]:
         """
@@ -1109,6 +1111,14 @@ class Model(AttributeContainer, metaclass=MetaModel):
         Sets attributes sent back from DynamoDB on this object
         """
         return self._container_deserialize(attribute_values=attribute_values)
+
+    def to_json(self) -> str:
+        return json.dumps({k: attribute_value_to_json(v) for k, v in self.serialize().items()})
+
+    def from_json(self, s: str) -> None:
+        attribute_values = {k: json_to_attribute_value(v) for k, v in json.loads(s).items()}
+        self._update_attribute_types(attribute_values)
+        self.deserialize(attribute_values)
 
 
 class _ModelFuture(Generic[_T]):
