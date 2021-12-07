@@ -13,7 +13,7 @@ default_settings_dict = {
     'read_timeout_seconds': 30,
     'max_retry_attempts': 3,
     'base_backoff_ms': 25,
-    'region': 'us-east-1',
+    'region': None,
     'max_pool_connections': 10,
     'extra_headers': None,
 }

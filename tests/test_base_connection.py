@@ -18,7 +18,7 @@ from pynamodb.connection.base import MetaTable
 from pynamodb.exceptions import (
     TableError, DeleteError, PutError, ScanError, GetError, UpdateError, TableDoesNotExist)
 from pynamodb.constants import (
-    DEFAULT_REGION, UNPROCESSED_ITEMS, STRING, BINARY, DEFAULT_ENCODING, TABLE_KEY,
+    UNPROCESSED_ITEMS, STRING, BINARY, DEFAULT_ENCODING, TABLE_KEY,
     PAY_PER_REQUEST_BILLING_MODE)
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
@@ -62,7 +62,7 @@ class ConnectionTestCase(TestCase):
 
     def setUp(self):
         self.test_table_name = 'ci-table'
-        self.region = DEFAULT_REGION
+        self.region = 'us-east-1'
 
     def test_create_connection(self):
         """
@@ -86,8 +86,8 @@ class ConnectionTestCase(TestCase):
 
             session_mock.create_client.assert_has_calls(
                 [
-                    mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY),
-                    mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY),
+                    mock.call('dynamodb', None, endpoint_url=None, config=mock.ANY),
+                    mock.call('dynamodb', None, endpoint_url=None, config=mock.ANY),
                 ],
                 any_order=True
             )
@@ -102,7 +102,19 @@ class ConnectionTestCase(TestCase):
             self.assertIsNotNone(conn.client)
 
             self.assertEqual(
-                session_mock.create_client.mock_calls.count(mock.call('dynamodb', 'us-east-1', endpoint_url=None, config=mock.ANY)),
+                session_mock.create_client.mock_calls.count(mock.call('dynamodb', None, endpoint_url=None, config=mock.ANY)),
+                1
+            )
+    
+    def test_client_is_passed_region_when_set(self):
+        with patch('pynamodb.connection.Connection.session') as session_mock:
+            session_mock.create_client.return_value._request_signer._credentials = True
+            conn = Connection(self.region)
+
+            self.assertIsNotNone(conn.client)
+
+            self.assertEqual(
+                session_mock.create_client.mock_calls.count(mock.call('dynamodb', self.region, endpoint_url=None, config=mock.ANY)),
                 1
             )
 
