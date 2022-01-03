@@ -2,6 +2,11 @@
 Note: The expected error strings may change in a future version of mypy.
       Please update as needed.
 """
+import platform
+import pytest
+
+
+pytestmark = pytest.mark.skipif(platform.python_implementation() != "CPython", reason="tests take > 5 minutes to run on pypy")
 
 
 def test_model(assert_mypy_output):
@@ -12,7 +17,7 @@ def test_model(assert_mypy_output):
     class MyModel(Model):
         pass
 
-    reveal_type(MyModel.count('hash', Path('a').between(1, 3)))  # N: Revealed type is 'builtins.int'
+    reveal_type(MyModel.count('hash', Path('a').between(1, 3)))  # N: Revealed type is "builtins.int"
     """)
 
 
@@ -42,9 +47,9 @@ def test_pagination(assert_mypy_output):
 
     result_iterator = MyModel.query(123)
     for model in result_iterator:
-        reveal_type(model)  # N: Revealed type is '__main__.MyModel*'
+        reveal_type(model)  # N: Revealed type is "__main__.MyModel*"
     if result_iterator.last_evaluated_key:
-        reveal_type(result_iterator.last_evaluated_key['my_attr'])  # N: Revealed type is 'builtins.dict*[builtins.str, Any]'
+        reveal_type(result_iterator.last_evaluated_key['my_attr'])  # N: Revealed type is "builtins.dict*[builtins.str, Any]"
     """)
 
 
@@ -76,8 +81,8 @@ def test_number_attribute(assert_mypy_output):
     class MyModel(Model):
         my_attr = NumberAttribute()
 
-    reveal_type(MyModel.my_attr)  # N: Revealed type is 'pynamodb.attributes.NumberAttribute'
-    reveal_type(MyModel().my_attr)  # N: Revealed type is 'builtins.float*'
+    reveal_type(MyModel.my_attr)  # N: Revealed type is "pynamodb.attributes.NumberAttribute"
+    reveal_type(MyModel().my_attr)  # N: Revealed type is "builtins.float*"
     """)
 
 
@@ -89,8 +94,8 @@ def test_unicode_attribute(assert_mypy_output):
     class MyModel(Model):
         my_attr = UnicodeAttribute()
 
-    reveal_type(MyModel.my_attr)  # N: Revealed type is 'pynamodb.attributes.UnicodeAttribute'
-    reveal_type(MyModel().my_attr)  # N: Revealed type is 'builtins.str*'
+    reveal_type(MyModel.my_attr)  # N: Revealed type is "pynamodb.attributes.UnicodeAttribute"
+    reveal_type(MyModel().my_attr)  # N: Revealed type is "builtins.str*"
     """)
 
 
@@ -108,18 +113,18 @@ def test_map_attribute(assert_mypy_output):
     class MyModel(Model):
         m1 = MyMap()
 
-    reveal_type(MyModel.m1)  # N: Revealed type is '__main__.MyMap'
-    reveal_type(MyModel().m1)  # N: Revealed type is '__main__.MyMap'
-    reveal_type(MyModel.m1.m2)  # N: Revealed type is '__main__.MySubMap'
-    reveal_type(MyModel().m1.m2)  # N: Revealed type is '__main__.MySubMap'
-    reveal_type(MyModel.m1.m2.s)  # N: Revealed type is 'builtins.str*'
-    reveal_type(MyModel().m1.m2.s)  # N: Revealed type is 'builtins.str*'
+    reveal_type(MyModel.m1)  # N: Revealed type is "__main__.MyMap"
+    reveal_type(MyModel().m1)  # N: Revealed type is "__main__.MyMap"
+    reveal_type(MyModel.m1.m2)  # N: Revealed type is "__main__.MySubMap"
+    reveal_type(MyModel().m1.m2)  # N: Revealed type is "__main__.MySubMap"
+    reveal_type(MyModel.m1.m2.s)  # N: Revealed type is "builtins.str*"
+    reveal_type(MyModel().m1.m2.s)  # N: Revealed type is "builtins.str*"
 
-    reveal_type(MyMap.m2)  # N: Revealed type is '__main__.MySubMap'
-    reveal_type(MyMap().m2)  # N: Revealed type is '__main__.MySubMap'
+    reveal_type(MyMap.m2)  # N: Revealed type is "__main__.MySubMap"
+    reveal_type(MyMap().m2)  # N: Revealed type is "__main__.MySubMap"
 
-    reveal_type(MySubMap.s)  # N: Revealed type is 'pynamodb.attributes.UnicodeAttribute'
-    reveal_type(MySubMap().s)  # N: Revealed type is 'builtins.str*'
+    reveal_type(MySubMap.s)  # N: Revealed type is "pynamodb.attributes.UnicodeAttribute"
+    reveal_type(MySubMap().s)  # N: Revealed type is "builtins.str*"
     """)
 
 
@@ -133,14 +138,14 @@ def test_list_attribute(assert_mypy_output):
 
     class MyModel(Model):
         my_list = ListAttribute(of=MyMap)
-        my_untyped_list = ListAttribute()  # E: Need type annotation for 'my_untyped_list'  [var-annotated]
+        my_untyped_list = ListAttribute()  # E: Need type annotation for "my_untyped_list"  [var-annotated]
 
-    reveal_type(MyModel.my_list)  # N: Revealed type is 'pynamodb.attributes.ListAttribute[__main__.MyMap]'
-    reveal_type(MyModel().my_list)  # N: Revealed type is 'builtins.list*[__main__.MyMap*]'
-    reveal_type(MyModel().my_list[0].my_sub_attr)  # N: Revealed type is 'builtins.str*'
+    reveal_type(MyModel.my_list)  # N: Revealed type is "pynamodb.attributes.ListAttribute[__main__.MyMap]"
+    reveal_type(MyModel().my_list)  # N: Revealed type is "builtins.list*[__main__.MyMap*]"
+    reveal_type(MyModel().my_list[0].my_sub_attr)  # N: Revealed type is "builtins.str*"
 
     # Untyped lists are not well supported yet
-    reveal_type(MyModel().my_untyped_list[0].my_sub_attr)  # N: Revealed type is 'Any'
+    reveal_type(MyModel().my_untyped_list[0].my_sub_attr)  # N: Revealed type is "Any"
     """)
 
 
@@ -156,11 +161,11 @@ def test_paths(assert_mypy_output):
         my_list = ListAttribute(of=MyMap)
         my_map = MyMap()
 
-    reveal_type(MyModel.my_list[0])  # N: Revealed type is 'pynamodb.expressions.operand.Path'
-    reveal_type(MyModel.my_list[0] == MyModel())  # N: Revealed type is 'pynamodb.expressions.condition.Comparison'
+    reveal_type(MyModel.my_list[0])  # N: Revealed type is "pynamodb.expressions.operand.Path"
+    reveal_type(MyModel.my_list[0] == MyModel())  # N: Revealed type is "pynamodb.expressions.condition.Comparison"
     # the following string indexing is not type checked - not by mypy nor in runtime
-    reveal_type(MyModel.my_list[0]['my_sub_attr'] == 'foobar')  # N: Revealed type is 'pynamodb.expressions.condition.Comparison'
-    reveal_type(MyModel.my_map == 'foobar')  # N: Revealed type is 'pynamodb.expressions.condition.Comparison'
+    reveal_type(MyModel.my_list[0]['my_sub_attr'] == 'foobar')  # N: Revealed type is "pynamodb.expressions.condition.Comparison"
+    reveal_type(MyModel.my_map == 'foobar')  # N: Revealed type is "pynamodb.expressions.condition.Comparison"
     """)
 
 
@@ -247,5 +252,5 @@ def test_transactions(assert_mypy_output):
     assert_mypy_output("""
     from pynamodb.transactions import TransactWrite
     with TransactWrite() as tx:
-        reveal_type(tx)  # N: Revealed type is 'pynamodb.transactions.TransactWrite*'
+        reveal_type(tx)  # N: Revealed type is "pynamodb.transactions.TransactWrite*"
     """)

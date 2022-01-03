@@ -6,7 +6,7 @@ http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleTablesAndD
 import logging
 from pynamodb.models import Model
 from pynamodb.attributes import (
-    UnicodeAttribute, NumberAttribute, UnicodeSetAttribute, UTCDateTimeAttribute
+    ListAttribute, UnicodeAttribute, NumberAttribute, UnicodeSetAttribute, UTCDateTimeAttribute
 )
 from datetime import datetime
 

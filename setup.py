@@ -9,7 +9,7 @@ install_requires = [
 setup(
     name='pynamodb',
     version=__import__('pynamodb').__version__,
-    packages=find_packages(exclude=('tests', 'tests.integration',)),
+    packages=find_packages(exclude=('examples', 'tests', 'tests.integration',)),
     url='http://jlafon.io/pynamodb.html',
     author='Jharrod LaFon',
     author_email='jlafon@eyesopen.com',
@@ -18,16 +18,17 @@ setup(
     zip_safe=False,
     license='MIT',
     keywords='python dynamodb amazon',
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=install_requires,
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Programming Language :: Python',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'License :: OSI Approved :: MIT License',
     ],
     extras_require={

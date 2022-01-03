@@ -3,6 +3,7 @@ Release Notes
 
 Unreleased
 ----------
+* Python 3.6 is no longer supported.
 * The ``IndexMeta`` class has been removed. Now ``type(Index) == type``.
 * JSON serialization support (``Model.to_json`` and ``Model.from_json``) has been added.
 
