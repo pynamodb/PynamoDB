@@ -41,13 +41,13 @@ if not TestModel.exists():
     TestModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
 # Create an item
-item = TestModel('forum-example', 'thread-example')
-item.view = 1
-item.save()
+test_item = TestModel('forum-example', 'thread-example')
+test_item.view = 1
+test_item.save()
 
 # Indexes can be queried easily using the index's hash key
-for item in TestModel.view_index.query(1):
-    print("Item queried from index: {0}".format(item))
+for test_item in TestModel.view_index.query(1):
+    print("Item queried from index: {0}".format(test_item))
 
 
 class GamePlayerOpponentIndex(LocalSecondaryIndex):

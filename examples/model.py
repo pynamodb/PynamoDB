@@ -29,7 +29,7 @@ class Thread(Model):
     answered = NumberAttribute(default=0)
     tags = UnicodeSetAttribute()
     last_post_datetime = UTCDateTimeAttribute(null=True)
-    notes = ListAttribute(default=list)
+    notes = ListAttribute(default=list)  # type: ignore  # todo: add ability for basic list types
 
 
 # Delete the table
@@ -60,7 +60,7 @@ with Thread.batch_write() as batch:
     threads = []
     for x in range(100):
         thread = Thread('forum-{0}'.format(x), 'subject-{0}'.format(x))
-        thread.tags = ['tag1', 'tag2']
+        thread.tags = {'tag1', 'tag2'}
         thread.last_post_datetime = datetime.now()
         threads.append(thread)
 
@@ -106,41 +106,41 @@ class AliasedModel(Model):
 if not AliasedModel.exists():
     AliasedModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
-# Create a thread
-thread_item = AliasedModel(
+# Create an aliased model
+aliased_item = AliasedModel(
     'Some Forum',
     'Some Subject',
     tags=['foo', 'bar'],
     last_post_datetime=datetime.now()
 )
 
-# Save the thread
-thread_item.save()
+# Save the aliased model
+aliased_item.save()
 
 # Batch write operation
 with AliasedModel.batch_write() as batch:
-    threads = []
+    aliased_items = []
     for x in range(100):
-        thread = AliasedModel('forum-{0}'.format(x), 'subject-{0}'.format(x))
-        thread.tags = ['tag1', 'tag2']
-        thread.last_post_datetime = datetime.now()
-        threads.append(thread)
+        aliased_item = AliasedModel('forum-{0}'.format(x), 'subject-{0}'.format(x))
+        aliased_item.tags = {'tag1', 'tag2'}
+        aliased_item.last_post_datetime = datetime.now()
+        aliased_items.append(aliased_item)
 
-    for thread in threads:
-        batch.save(thread)
+    for aliased_item in aliased_items:
+        batch.save(aliased_item)
 
 # Batch get
 item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(100)]
-for item in AliasedModel.batch_get(item_keys):
-    print("Batch get item: {0}".format(item))
+for aliased_item in AliasedModel.batch_get(item_keys):
+    print("Batch get item: {0}".format(aliased_item))
 
 # Scan
-for item in AliasedModel.scan():
-    print("Scanned item: {0}".format(item))
+for aliased_item in AliasedModel.scan():
+    print("Scanned item: {0}".format(aliased_item))
 
 # Query
-for item in AliasedModel.query('forum-1', AliasedModel.subject.startswith('subject')):
-    print("Query using aliased attribute: {0}".format(item))
+for aliased_item in AliasedModel.query('forum-1', AliasedModel.subject.startswith('subject')):
+    print("Query using aliased attribute: {0}".format(aliased_item))
 
 # Query with filters
 for item in Thread.query('forum-1', (Thread.views == 0) | (Thread.replies == 0)):
