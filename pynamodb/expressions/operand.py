@@ -57,10 +57,10 @@ class _ConditionOperand(_Operand):
     A base class for Operands that can be used in Condition Expression comparisons.
     """
 
-    def __eq__(self, other: Any) -> Comparison:  # type: ignore
+    def __eq__(self, other: Any) -> Comparison:  # type: ignore[override]
         return Comparison('=', self, self._to_operand(other))
 
-    def __ne__(self, other: Any) -> Comparison:  # type: ignore
+    def __ne__(self, other: Any) -> Comparison:  # type: ignore[override]
         return Comparison('<>', self, self._to_operand(other))
 
     def __lt__(self, other: Any) -> Comparison:

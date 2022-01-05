@@ -142,14 +142,14 @@ class Attribute(Generic[_T]):
         raise TypeError("'{}' object is not iterable".format(self.__class__.__name__))
 
     # Condition Expression Support
-    def __eq__(self, other: Any) -> 'Comparison':  # type: ignore
+    def __eq__(self, other: Any) -> 'Comparison':  # type: ignore[override]
         if isinstance(other, MapAttribute) and other._is_attribute_container():
             return Path(self).__eq__(other)
         if other is None or isinstance(other, Attribute):  # handle object identity comparison
             return self is other  # type: ignore
         return Path(self).__eq__(other)
 
-    def __ne__(self, other: Any) -> 'Comparison':  # type: ignore
+    def __ne__(self, other: Any) -> 'Comparison':  # type: ignore[override]
         if isinstance(other, MapAttribute) and other._is_attribute_container():
             return Path(self).__ne__(other)
         if other is None or isinstance(other, Attribute):  # handle object identity comparison
