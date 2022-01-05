@@ -3,7 +3,11 @@ Release Notes
 
 Unreleased
 ----------
+
+This is a major release and contains breaking changes. Please read the notes below carefully.
+
 * Python 3.6 is no longer supported.
+* Index count, query, and scan methods are now instance methods.
 
 
 v5.2.0
