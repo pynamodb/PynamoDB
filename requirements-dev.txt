@@ -4,5 +4,5 @@ pytest-mock
 
 # only used in CI
 coveralls
-mypy==0.770;python_version>="3.7"
+mypy==0.930
 pytest-cov

@@ -183,7 +183,7 @@ the type of data you'd like to stream.
 Features
 ========
 
-* Python >= 3.6 support
+* Python >= 3.7 support
 * An ORM-like interface with query and scan filters
 * Compatible with DynamoDB Local
 * Supports the entire DynamoDB API

@@ -46,6 +46,7 @@ def assert_condition_check_fails():
     except TransactWriteError as e:
         assert isinstance(e.cause, ClientError)
         assert e.cause_response_code == "TransactionCanceledException"
+        assert e.cause_response_message is not None
         assert "ConditionalCheckFailed" in e.cause_response_message
     else:
         raise AssertionError("The version attribute conditional check should have failed.")

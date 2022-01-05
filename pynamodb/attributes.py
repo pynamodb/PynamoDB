@@ -16,7 +16,6 @@ from inspect import getmembers
 from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload, Iterable
 from typing import TYPE_CHECKING
 
-from pynamodb._compat import GenericMeta
 from pynamodb.constants import BINARY
 from pynamodb.constants import BINARY_SET
 from pynamodb.constants import BOOLEAN
@@ -229,7 +228,7 @@ class Attribute(Generic[_T]):
         return Path(self).delete(*values)
 
 
-class AttributeContainerMeta(GenericMeta):
+class AttributeContainerMeta(type):
 
     def __new__(cls, name, bases, namespace, discriminator=None):
         # Defined so that the discriminator can be set in the class definition.

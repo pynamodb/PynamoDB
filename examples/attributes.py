@@ -53,7 +53,7 @@ if not CustomAttributeModel.exists():
 
 
 instance = CustomAttributeModel()
-instance.obj = Color('red')
+instance.obj = Color('red')  # type: ignore
 instance.id = 'red'
 instance.save()
 

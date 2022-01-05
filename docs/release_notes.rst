@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Unreleased
+----------
+* Python 3.6 is no longer supported.
+
+
 v5.2.0
 ----------
 * The ``IndexMeta`` class has been removed. Now ``type(Index) == type`` (#998)
