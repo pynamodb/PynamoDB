@@ -4,7 +4,6 @@ Test suite for the table class
 from unittest import TestCase
 
 from pynamodb.connection import TableConnection
-from pynamodb.constants import DEFAULT_REGION
 from pynamodb.expressions.operand import Path
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
 from .response import HttpOK
@@ -21,7 +20,7 @@ class ConnectionTestCase(TestCase):
 
     def setUp(self):
         self.test_table_name = 'ci-table'
-        self.region = DEFAULT_REGION
+        self.region = 'us-east-1'
 
     def test_create_connection(self):
         """

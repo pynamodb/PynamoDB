@@ -519,7 +519,7 @@ class ModelTestCase(TestCase):
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
 
         # Test for default region
-        assert UserModel.Meta.region == 'us-east-1'
+        assert UserModel.Meta.region == None
         assert UserModel.Meta.connect_timeout_seconds, 15
         assert UserModel.Meta.read_timeout_seconds == 30
         assert UserModel.Meta.max_retry_attempts == 3
@@ -535,8 +535,8 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD) as req:
             req.return_value = MODEL_TABLE_DATA
             UserModel.create_table(read_capacity_units=2, write_capacity_units=2)
-            # The default region is us-east-1
-            self.assertEqual(UserModel._connection.connection.region, 'us-east-1')
+            # The default region is determined by botocore
+            self.assertEqual(UserModel._connection.connection.region, None)
 
         # A table with a specified region
         self.assertEqual(RegionSpecificModel.Meta.region, 'us-west-1')
