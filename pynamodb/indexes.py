@@ -44,8 +44,6 @@ class Index(Generic[_M]):
             raise ValueError("No projection defined, define a projection for this class")
 
     def __set_name__(self, owner: Type[_M], name: str):
-        if not hasattr(type(self), "_model"):
-            type(self)._model = owner
         if not hasattr(self.Meta, "index_name"):
             self.Meta.index_name = name
 
