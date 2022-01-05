@@ -244,7 +244,7 @@ class ConditionExpressionTestCase(TestCase):
         assert self.expression_attribute_values == {':0': {'N': '3'}}
 
     def test_sizes(self):
-        condition: Condition = size(self.attribute) == size(Path('bar'))
+        condition = size(self.attribute) == size(Path('bar'))
         expression = condition.serialize(self.placeholder_names, self.expression_attribute_values)
         assert expression == "size (#0) = size (#1)"
         assert self.placeholder_names == {'foo': '#0', 'bar': '#1'}
@@ -334,7 +334,7 @@ class ConditionExpressionTestCase(TestCase):
         my_map_attribute._make_attribute()
         my_map_attribute._update_attribute_paths(my_map_attribute.attr_name)
 
-        condition: Condition = my_map_attribute == MapAttribute(bar='baz')
+        condition = my_map_attribute == MapAttribute(bar='baz')
         expression = condition.serialize(self.placeholder_names, self.expression_attribute_values)
         assert expression == "#0 = :0"
         assert self.placeholder_names == {'foo': '#0'}
