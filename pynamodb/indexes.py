@@ -76,7 +76,7 @@ class Index(Generic[_M]):
         hash_key: _KeyType,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
-        consistent_read: Optional[bool] = False,
+        consistent_read: bool = False,
         scan_index_forward: Optional[bool] = None,
         limit: Optional[int] = None,
         last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = None,
