@@ -340,6 +340,18 @@ class ConditionExpressionTestCase(TestCase):
         assert self.placeholder_names == {'foo': '#0'}
         assert self.expression_attribute_values == {':0': {'M': {'bar': {'S': 'baz'}}}}
 
+    def test_map_comparison_rhs(self):
+        # Simulate initialization from inside an AttributeContainer
+        my_map_attribute = MapAttribute[str, str](attr_name='foo')
+        my_map_attribute._make_attribute()
+        my_map_attribute._update_attribute_paths(my_map_attribute.attr_name)
+
+        condition = MapAttribute(bar='baz') == my_map_attribute
+        expression = condition.serialize(self.placeholder_names, self.expression_attribute_values)
+        assert expression == "#0 = :0"
+        assert self.placeholder_names == {'foo': '#0'}
+        assert self.expression_attribute_values == {':0': {'M': {'bar': {'S': 'baz'}}}}
+
     def test_list_comparison(self):
         condition = ListAttribute(attr_name='foo') == ['bar', 'baz']
         expression = condition.serialize(self.placeholder_names, self.expression_attribute_values)
@@ -408,6 +420,13 @@ class ConditionExpressionTestCase(TestCase):
 
         with self.assertRaises(AttributeError):
             _ = my_map_attribute['missing_attribute'] == 'baz'
+
+    def test_attribute_comparison(self):
+        condition = self.attribute == UnicodeAttribute(attr_name='bar')
+        expression = condition.serialize(self.placeholder_names, self.expression_attribute_values)
+        assert expression == "#0 = #1"
+        assert self.placeholder_names == {'foo': '#0', 'bar': '#1'}
+        assert self.expression_attribute_values == {}
 
 
 class UpdateExpressionTestCase(TestCase):
