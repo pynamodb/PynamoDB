@@ -143,17 +143,9 @@ class Attribute(Generic[_T]):
 
     # Condition Expression Support
     def __eq__(self, other: Any) -> 'Comparison':  # type: ignore[override]
-        if isinstance(other, MapAttribute) and other._is_attribute_container():
-            return Path(self).__eq__(other)
-        if other is None or isinstance(other, Attribute):  # handle object identity comparison
-            return self is other  # type: ignore
         return Path(self).__eq__(other)
 
     def __ne__(self, other: Any) -> 'Comparison':  # type: ignore[override]
-        if isinstance(other, MapAttribute) and other._is_attribute_container():
-            return Path(self).__ne__(other)
-        if other is None or isinstance(other, Attribute):  # handle object identity comparison
-            return self is not other  # type: ignore
         return Path(self).__ne__(other)
 
     def __lt__(self, other: Any) -> 'Comparison':
@@ -868,13 +860,33 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
 
     def __eq__(self, other: Any) -> 'Comparison':  # type: ignore[override]
         if self._is_attribute_container():
-            return self is other  # type: ignore
+            return NotImplemented
         return Attribute.__eq__(self, other)
 
     def __ne__(self, other: Any) -> 'Comparison':  # type: ignore[override]
         if self._is_attribute_container():
-            return self is not other  # type: ignore
+            return NotImplemented
         return Attribute.__ne__(self, other)
+
+    def __lt__(self, other: Any) -> 'Comparison':
+        if self._is_attribute_container():
+            return NotImplemented
+        return Attribute.__lt__(self, other)
+
+    def __le__(self, other: Any) -> 'Comparison':
+        if self._is_attribute_container():
+            return NotImplemented
+        return Attribute.__le__(self, other)
+
+    def __gt__(self, other: Any) -> 'Comparison':
+        if self._is_attribute_container():
+            return NotImplemented
+        return Attribute.__gt__(self, other)
+
+    def __ge__(self, other: Any) -> 'Comparison':
+        if self._is_attribute_container():
+            return NotImplemented
+        return Attribute.__ge__(self, other)
 
     def __iter__(self):
         if self._is_attribute_container():
