@@ -503,7 +503,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         condition: Optional[Condition] = None,
         return_values_on_condition_failure: Optional[str] = None,
     ) -> Dict[str, Any]:
-        args, save_kwargs = self._get_save_args(null_check=True, condition=condition)
+        args, save_kwargs = self._get_save_args(condition=condition)
         save_kwargs['key'] = ITEM
         save_kwargs['return_values_on_condition_failure'] = return_values_on_condition_failure
         return self._get_connection().get_operation_kwargs(*args, **save_kwargs)
@@ -900,16 +900,15 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 })
         return schema
 
-    def _get_save_args(self, null_check: bool = True, condition: Optional[Condition] = None) -> Tuple[Iterable[Any], Dict[str, Any]]:
+    def _get_save_args(self, condition: Optional[Condition] = None) -> Tuple[Iterable[Any], Dict[str, Any]]:
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
 
-        This is used for serializing items to be saved, or for serializing just the keys.
+        This is used for serializing items to be saved.
 
-        :param null_check: If True, then attributes are checked for null.
         :param condition: If set, a condition
         """
-        attribute_values = self.serialize(null_check)
+        attribute_values = self.serialize(null_check=True)
         hash_key_attribute = self._hash_key_attribute()
         hash_key = attribute_values.pop(hash_key_attribute.attr_name, {}).get(hash_key_attribute.attr_type)
         range_key = None
