@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from pynamodb.constants import (
     INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, KEY_SCHEMA,
     ATTR_DEFINITIONS, PROJECTION_TYPE, NON_KEY_ATTRIBUTES,
-    PAY_PER_REQUEST_BILLING_MODE, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
+    READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
 )
 from pynamodb.attributes import Attribute
 from pynamodb.expressions.condition import Condition
@@ -172,11 +172,12 @@ class GlobalSecondaryIndex(Index[_M]):
     @classmethod
     def _get_schema(cls) -> Dict:
         schema = super()._get_schema()
-        if getattr(cls.Meta, 'billing_mode', None) != PAY_PER_REQUEST_BILLING_MODE:
-            schema['provisioned_throughput'] = {
-                READ_CAPACITY_UNITS: cls.Meta.read_capacity_units,
-                WRITE_CAPACITY_UNITS: cls.Meta.write_capacity_units
-            }
+        provisioned_throughput = {}
+        if hasattr(cls.Meta, 'read_capacity_units'):
+            provisioned_throughput[READ_CAPACITY_UNITS] = cls.Meta.read_capacity_units
+        if hasattr(cls.Meta, 'write_capacity_units'):
+            provisioned_throughput[WRITE_CAPACITY_UNITS] = cls.Meta.write_capacity_units
+        schema['provisioned_throughput'] = provisioned_throughput
         return schema
 
 
