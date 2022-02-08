@@ -879,6 +879,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         for index in cls._indexes.values():
             index_schema = index._get_schema()
             if isinstance(index, GlobalSecondaryIndex):
+                if getattr(cls.Meta, 'billing_mode', None) == PAY_PER_REQUEST_BILLING_MODE:
+                    index_schema.pop('provisioned_throughput', None)
                 schema['global_secondary_indexes'].append(index_schema)
             else:
                 schema['local_secondary_indexes'].append(index_schema)
