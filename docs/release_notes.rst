@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+v5.2.1
+----------
+* Fix issue from 5.2.0 with attempting to set GSI provisioned throughput on PAY_PER_REQUEST billing mode (#1018)
+
+
 v5.2.0
 ----------
 * The ``IndexMeta`` class has been removed. Now ``type(Index) == type`` (#998)
