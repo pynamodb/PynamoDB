@@ -10,6 +10,11 @@ This is a major release and contains breaking changes. Please read the notes bel
 * Index count, query, and scan methods are now instance methods.
 
 
+v5.2.1
+----------
+* Fix issue from 5.2.0 with attempting to set GSI provisioned throughput on PAY_PER_REQUEST billing mode (#1018)
+
+
 v5.2.0
 ----------
 * The ``IndexMeta`` class has been removed. Now ``type(Index) == type`` (#998)
