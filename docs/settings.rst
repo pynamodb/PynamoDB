@@ -70,6 +70,14 @@ proxy before forwarding along. Failure to strip these headers before sending to 
 will result in an ``InvalidSignatureException`` due to request signing.
 
 
+host
+------
+
+Default: automatically constructed by boto to account for region
+
+The URL endpoint for DynamoDB. This can be used to use a local implementation of DynamoDB such as DynamoDB Local or dynalite.
+
+
 Overriding settings
 ~~~~~~~~~~~~~~~~~~~
 
