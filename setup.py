@@ -11,6 +11,9 @@ setup(
     version=__import__('pynamodb').__version__,
     packages=find_packages(exclude=('examples', 'tests', 'tests.integration',)),
     url='http://jlafon.io/pynamodb.html',
+    project_urls={
+        'Source': 'https://github.com/pynamodb/PynamoDB',
+    },
     author='Jharrod LaFon',
     author_email='jlafon@eyesopen.com',
     description='A Pythonic Interface to DynamoDB',
