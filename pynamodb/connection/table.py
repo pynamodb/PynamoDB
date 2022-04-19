@@ -32,19 +32,28 @@ class TableConnection:
         aws_session_token: Optional[str] = None,
     ) -> None:
         self.table_name = table_name
-        self.connection = Connection(region=region,
-                                     host=host,
-                                     connect_timeout_seconds=connect_timeout_seconds,
-                                     read_timeout_seconds=read_timeout_seconds,
-                                     max_retry_attempts=max_retry_attempts,
-                                     base_backoff_ms=base_backoff_ms,
-                                     max_pool_connections=max_pool_connections,
-                                     extra_headers=extra_headers)
+        self.aws_access_key_id = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
+        self.aws_session_token = aws_session_token
+        self._connection = Connection(region=region,
+                                      host=host,
+                                      connect_timeout_seconds=connect_timeout_seconds,
+                                      read_timeout_seconds=read_timeout_seconds,
+                                      max_retry_attempts=max_retry_attempts,
+                                      base_backoff_ms=base_backoff_ms,
+                                      max_pool_connections=max_pool_connections,
+                                      extra_headers=extra_headers)
 
-        if aws_access_key_id and aws_secret_access_key:
-            self.connection.session.set_credentials(aws_access_key_id,
-                                                    aws_secret_access_key,
-                                                    aws_session_token)
+    @property
+    def connection(self) -> Connection:
+        """
+        Returns a Connection
+        """
+        if self.aws_access_key_id and self.aws_secret_access_key and self._connection.session._credentials is None:
+            self._connection.session.set_credentials(self.aws_access_key_id,
+                                                     self.aws_secret_access_key,
+                                                     self.aws_session_token)
+        return self._connection
 
     def get_meta_table(self, refresh: bool = False) -> MetaTable:
         """
