@@ -256,7 +256,6 @@ class Connection(object):
         self.host = host
         self._local = local()
         self._client = None
-        self._dax_support = bool(dax_write_endpoints or dax_read_endpoints)
 
         if region:
             self.region = region
@@ -295,11 +294,13 @@ class Connection(object):
 
         if dax_write_endpoints is None:
             dax_write_endpoints = get_settings_value('dax_write_endpoints')
-        self._dax_write_client = None if not dax_write_endpoints else DaxClient(endpoints=dax_write_endpoints, region_name=self.region)
 
         if dax_read_endpoints is None:
             dax_read_endpoints = get_settings_value('dax_read_endpoints')
+
+        self._dax_support = bool(dax_write_endpoints or dax_read_endpoints)
         self._dax_read_client = None if not dax_read_endpoints else DaxClient(endpoints=dax_read_endpoints, region_name=self.region)
+        self._dax_write_client = None if not dax_write_endpoints else DaxClient(endpoints=dax_write_endpoints, region_name=self.region)
 
         if fallback_to_dynamodb is not None:
             self._fallback_to_dynamodb = fallback_to_dynamodb
