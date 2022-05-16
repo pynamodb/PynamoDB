@@ -16,6 +16,9 @@ default_settings_dict = {
     'region': None,
     'max_pool_connections': 10,
     'extra_headers': None,
+    'dax_write_endpoints': [],
+    'dax_read_endpoints': [],
+    'fallback_to_dynamodb': False
 }
 
 OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default_settings.py')
