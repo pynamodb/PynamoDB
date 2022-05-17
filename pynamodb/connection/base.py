@@ -249,9 +249,9 @@ class Connection(object):
                  base_backoff_ms: Optional[int] = None,
                  max_pool_connections: Optional[int] = None,
                  extra_headers: Optional[Mapping[str, str]] = None,
-                 dax_write_endpoints: Optional[List[str]]=None,
-                 dax_read_endpoints: Optional[List[str]]=None,
-                 fallback_to_dynamodb: Optional[bool]=False):
+                 dax_write_endpoints: Optional[List[str]] = None,
+                 dax_read_endpoints: Optional[List[str]] = None,
+                 fallback_to_dynamodb: Optional[bool] = False):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()

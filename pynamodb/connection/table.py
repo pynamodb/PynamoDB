@@ -30,9 +30,9 @@ class TableConnection:
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
         aws_session_token: Optional[str] = None,
-        dax_write_endpoints: Optional[List[str]]=None,
-        dax_read_endpoints: Optional[List[str]]=None,
-        fallback_to_dynamodb: Optional[bool]=False
+        dax_write_endpoints: Optional[List[str]] = None,
+        dax_read_endpoints: Optional[List[str]] = None,
+        fallback_to_dynamodb: Optional[bool] = False
     ) -> None:
         self.table_name = table_name
         self.connection = Connection(region=region,
