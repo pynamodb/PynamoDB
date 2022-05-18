@@ -1,3 +1,4 @@
+amazon-dax-client>=2.0.0,<3.0.0
 pytest>=6
 pytest-env
 pytest-mock

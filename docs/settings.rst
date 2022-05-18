@@ -78,6 +78,26 @@ Default: automatically constructed by boto to account for region
 The URL endpoint for DynamoDB. This can be used to use a local implementation of DynamoDB such as DynamoDB Local or dynalite.
 
 
+dax_write_endpoints
+------------------
+
+Default: ``[]``
+
+Connect to DAX endpoints for write operations.
+
+Supported Operations: PutItem, DeleteItem, UpdateItem, BatchWriteItem
+
+
+dax_read_endpoints
+------------------
+
+Default: ``[]``
+
+Connect to DAX endpoints for read operations.
+
+Supported Operations: GetItem, Scan, BatchGetItem, Query
+
+
 Overriding settings
 ~~~~~~~~~~~~~~~~~~~
 
