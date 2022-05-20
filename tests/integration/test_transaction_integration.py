@@ -3,16 +3,16 @@ from datetime import datetime
 
 import pytest
 
-from pynamodb.connection import Connection
-from pynamodb.exceptions import DoesNotExist, TransactWriteError, TransactGetError, InvalidStateError
+from pynamodax.connection import Connection
+from pynamodax.exceptions import DoesNotExist, TransactWriteError, TransactGetError, InvalidStateError
 
 
-from pynamodb.attributes import (
+from pynamodax.attributes import (
     NumberAttribute, UnicodeAttribute, UTCDateTimeAttribute, BooleanAttribute, VersionAttribute
 )
-from pynamodb.transactions import TransactGet, TransactWrite
+from pynamodax.transactions import TransactGet, TransactWrite
 
-from pynamodb.models import Model
+from pynamodax.models import Model
 
 IDEMPOTENT_PARAMETER_MISMATCH = 'IdempotentParameterMismatchException'
 PROVISIONED_THROUGHPUT_EXCEEDED = 'ProvisionedThroughputExceededException'

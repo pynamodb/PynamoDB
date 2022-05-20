@@ -1,7 +1,7 @@
 """
 Examples using a connection
 """
-from pynamodb.connection import Connection
+from pynamodax.connection import Connection
 
 # Get a connection
 conn = Connection(host='http://localhost:8000')

@@ -1,10 +1,10 @@
 from typing import Tuple, TypeVar, Type, Any, List, Optional, Dict, Union, Text, Generic
 
-from pynamodb.connection import Connection
-from pynamodb.constants import ITEM, RESPONSES
-from pynamodb.expressions.condition import Condition
-from pynamodb.expressions.update import Action
-from pynamodb.models import Model, _ModelFuture, _KeyType
+from pynamodax.connection import Connection
+from pynamodax.constants import ITEM, RESPONSES
+from pynamodax.expressions.condition import Condition
+from pynamodax.expressions.update import Action
+from pynamodax.models import Model, _ModelFuture, _KeyType
 
 _M = TypeVar('_M', bound=Model)
 _TTransaction = TypeVar('_TTransaction', bound='Transaction')

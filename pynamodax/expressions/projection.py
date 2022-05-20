@@ -2,9 +2,9 @@ from typing import Dict
 from typing import List
 from typing import Union
 
-from pynamodb.attributes import Attribute
-from pynamodb.expressions.operand import Path
-from pynamodb.expressions.util import substitute_names
+from pynamodax.attributes import Attribute
+from pynamodax.expressions.operand import Path
+from pynamodax.expressions.util import substitute_names
 
 
 def create_projection_expression(attributes_to_get, placeholders: Dict[str, str]) -> str:

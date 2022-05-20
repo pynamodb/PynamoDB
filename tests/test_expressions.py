@@ -2,11 +2,11 @@ from typing import Any
 from typing import Dict
 from unittest import TestCase
 
-from pynamodb.attributes import ListAttribute, MapAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
-from pynamodb.expressions.condition import Condition, size
-from pynamodb.expressions.operand import Path, Value
-from pynamodb.expressions.projection import create_projection_expression
-from pynamodb.expressions.update import Action, Update
+from pynamodax.attributes import ListAttribute, MapAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
+from pynamodax.expressions.condition import Condition, size
+from pynamodax.expressions.operand import Path, Value
+from pynamodax.expressions.projection import create_projection_expression
+from pynamodax.expressions.update import Action, Update
 
 
 class PathTestCase(TestCase):

@@ -4,8 +4,8 @@ An example using Amazon's Thread example for motivation
 http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleTablesAndData.html
 """
 import logging
-from pynamodb.models import Model
-from pynamodb.attributes import (
+from pynamodax.models import Model
+from pynamodax.attributes import (
     ListAttribute, UnicodeAttribute, NumberAttribute, UnicodeSetAttribute, UTCDateTimeAttribute
 )
 from datetime import datetime

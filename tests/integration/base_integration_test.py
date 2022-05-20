@@ -3,12 +3,12 @@ Runs tests against dynamodb
 """
 import time
 
-from pynamodb.connection import Connection
-from pynamodb.constants import PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
-from pynamodb.expressions.condition import BeginsWith, NotExists
-from pynamodb.expressions.operand import Path, Value
-from pynamodb.exceptions import TableDoesNotExist
-from pynamodb.types import STRING, HASH, RANGE, NUMBER
+from pynamodax.connection import Connection
+from pynamodax.constants import PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
+from pynamodax.expressions.condition import BeginsWith, NotExists
+from pynamodax.expressions.operand import Path, Value
+from pynamodax.exceptions import TableDoesNotExist
+from pynamodax.types import STRING, HASH, RANGE, NUMBER
 
 import pytest
 

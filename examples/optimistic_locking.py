@@ -2,11 +2,11 @@ from contextlib import contextmanager
 from uuid import uuid4
 from botocore.client import ClientError
 
-from pynamodb.connection import Connection
-from pynamodb.attributes import ListAttribute, MapAttribute, UnicodeAttribute, VersionAttribute
-from pynamodb.exceptions import PutError, UpdateError, TransactWriteError, DeleteError, DoesNotExist
-from pynamodb.models import Model
-from pynamodb.transactions import TransactWrite
+from pynamodax.connection import Connection
+from pynamodax.attributes import ListAttribute, MapAttribute, UnicodeAttribute, VersionAttribute
+from pynamodax.exceptions import PutError, UpdateError, TransactWriteError, DeleteError, DoesNotExist
+from pynamodax.models import Model
+from pynamodax.transactions import TransactWrite
 
 
 class OfficeEmployeeMap(MapAttribute):

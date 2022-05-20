@@ -1,7 +1,7 @@
 """
 Example use of the TableConnection API
 """
-from pynamodb.connection import TableConnection
+from pynamodax.connection import TableConnection
 
 # Get a table connection
 table = TableConnection('Thread', host='http://localhost:8000')

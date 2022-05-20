@@ -5,10 +5,10 @@ PynamoDB Connection classes
 
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
-from pynamodb.connection.base import Connection, MetaTable, OperationSettings
-from pynamodb.constants import DEFAULT_BILLING_MODE, KEY
-from pynamodb.expressions.condition import Condition
-from pynamodb.expressions.update import Action
+from pynamodax.connection.base import Connection, MetaTable, OperationSettings
+from pynamodax.constants import DEFAULT_BILLING_MODE, KEY
+from pynamodax.expressions.condition import Condition
+from pynamodax.expressions.update import Action
 
 
 class TableConnection:

@@ -16,31 +16,31 @@ from inspect import getmembers
 from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload, Iterable
 from typing import TYPE_CHECKING
 
-from pynamodb.constants import BINARY
-from pynamodb.constants import BINARY_SET
-from pynamodb.constants import BOOLEAN
-from pynamodb.constants import DATETIME_FORMAT
-from pynamodb.constants import DEFAULT_ENCODING
-from pynamodb.constants import LIST
-from pynamodb.constants import MAP
-from pynamodb.constants import NULL
-from pynamodb.constants import NUMBER
-from pynamodb.constants import NUMBER_SET
-from pynamodb.constants import STRING
-from pynamodb.constants import STRING_SET
-from pynamodb.exceptions import AttributeDeserializationError
-from pynamodb.exceptions import AttributeNullError
-from pynamodb.expressions.operand import Path
+from pynamodax.constants import BINARY
+from pynamodax.constants import BINARY_SET
+from pynamodax.constants import BOOLEAN
+from pynamodax.constants import DATETIME_FORMAT
+from pynamodax.constants import DEFAULT_ENCODING
+from pynamodax.constants import LIST
+from pynamodax.constants import MAP
+from pynamodax.constants import NULL
+from pynamodax.constants import NUMBER
+from pynamodax.constants import NUMBER_SET
+from pynamodax.constants import STRING
+from pynamodax.constants import STRING_SET
+from pynamodax.exceptions import AttributeDeserializationError
+from pynamodax.exceptions import AttributeNullError
+from pynamodax.expressions.operand import Path
 
 
 if TYPE_CHECKING:
-    from pynamodb.expressions.condition import (
+    from pynamodax.expressions.condition import (
         BeginsWith, Between, Comparison, Contains, NotExists, Exists, In
     )
-    from pynamodb.expressions.operand import (
+    from pynamodax.expressions.operand import (
         _Decrement, _IfNotExists, _Increment, _ListAppend
     )
-    from pynamodb.expressions.update import (
+    from pynamodax.expressions.update import (
         AddAction, DeleteAction, RemoveAction, SetAction
     )
 

@@ -5,16 +5,16 @@ import json
 from typing import Any
 from typing import Dict
 
-from pynamodb.constants import BINARY
-from pynamodb.constants import BINARY_SET
-from pynamodb.constants import BOOLEAN
-from pynamodb.constants import LIST
-from pynamodb.constants import MAP
-from pynamodb.constants import NULL
-from pynamodb.constants import NUMBER
-from pynamodb.constants import NUMBER_SET
-from pynamodb.constants import STRING
-from pynamodb.constants import STRING_SET
+from pynamodax.constants import BINARY
+from pynamodax.constants import BINARY_SET
+from pynamodax.constants import BOOLEAN
+from pynamodax.constants import LIST
+from pynamodax.constants import MAP
+from pynamodax.constants import NULL
+from pynamodax.constants import NUMBER
+from pynamodax.constants import NUMBER_SET
+from pynamodax.constants import STRING
+from pynamodax.constants import STRING_SET
 
 
 def attribute_value_to_json(attribute_value: Dict[str, Any]) -> Any:

@@ -1,5 +1,5 @@
-from pynamodb.attributes import ListAttribute, MapAttribute, NumberAttribute, UnicodeAttribute
-from pynamodb.models import Model
+from pynamodax.attributes import ListAttribute, MapAttribute, NumberAttribute, UnicodeAttribute
+from pynamodax.models import Model
 
 
 class Location(MapAttribute):

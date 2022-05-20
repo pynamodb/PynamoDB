@@ -1,19 +1,19 @@
 from typing import Any, Dict, List, Optional, Union
 from typing import TYPE_CHECKING
 
-from pynamodb.constants import (
+from pynamodax.constants import (
     ATTRIBUTE_TYPES, BINARY_SET, LIST, MAP, NUMBER, NUMBER_SET, STRING, STRING_SET
 )
-from pynamodb.expressions.condition import (
+from pynamodax.expressions.condition import (
     BeginsWith, Between, Comparison, Contains, Exists, In, IsType, NotExists
 )
-from pynamodb.expressions.update import (
+from pynamodax.expressions.update import (
     AddAction, DeleteAction, RemoveAction, SetAction
 )
-from pynamodb.expressions.util import get_path_segments, get_value_placeholder, substitute_names
+from pynamodax.expressions.util import get_path_segments, get_value_placeholder, substitute_names
 
 if TYPE_CHECKING:
-    from pynamodb.attributes import Attribute
+    from pynamodax.attributes import Attribute
 
 
 class _Operand:
@@ -39,7 +39,7 @@ class _Operand:
     def _to_operand(self, value: Union['_Operand', 'Attribute', Any]):
         if isinstance(value, _Operand):
             return value
-        from pynamodb.attributes import Attribute, MapAttribute  # prevent circular import -- Attribute imports Path
+        from pynamodax.attributes import Attribute, MapAttribute  # prevent circular import -- Attribute imports Path
         if isinstance(value, MapAttribute) and value._is_attribute_container():
             return self._to_value(value)
         return Path(value) if isinstance(value, Attribute) else self._to_value(value)
@@ -222,7 +222,7 @@ class Value(_NumericOperand, _ListAppendOperand, _ConditionOperand):
 
     @staticmethod
     def __serialize_based_on_type(value):
-        from pynamodb.attributes import _get_class_for_serialize
+        from pynamodax.attributes import _get_class_for_serialize
         attr_class = _get_class_for_serialize(value)
         return attr_class.attr_type, attr_class.serialize(value)
 
@@ -234,7 +234,7 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     format_string = '{0}'
 
     def __init__(self, attribute_or_path: Union['Attribute', str, List[str]]) -> None:
-        from pynamodb.attributes import Attribute  # prevent circular import -- Attribute imports Path
+        from pynamodax.attributes import Attribute  # prevent circular import -- Attribute imports Path
         path: Union[str, List[str]]
         if isinstance(attribute_or_path, Attribute):
             self.attribute = attribute_or_path

@@ -1,9 +1,9 @@
 import time
 from typing import Any, Callable, Dict, Iterable, Iterator, TypeVar, Optional
 
-from pynamodb.constants import (CAMEL_COUNT, ITEMS, LAST_EVALUATED_KEY, SCANNED_COUNT,
-                                CONSUMED_CAPACITY, TOTAL, CAPACITY_UNITS)
-from pynamodb.settings import OperationSettings
+from pynamodax.constants import (CAMEL_COUNT, ITEMS, LAST_EVALUATED_KEY, SCANNED_COUNT,
+                                 CONSUMED_CAPACITY, TOTAL, CAPACITY_UNITS)
+from pynamodax.settings import OperationSettings
 
 _T = TypeVar('_T')
 

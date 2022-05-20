@@ -13,16 +13,16 @@ from botocore.exceptions import BotoCoreError
 
 import pytest
 
-from pynamodb.connection import Connection
-from pynamodb.connection.base import MetaTable
-from pynamodb.exceptions import (
+from pynamodax.connection import Connection
+from pynamodax.connection.base import MetaTable
+from pynamodax.exceptions import (
     TableError, DeleteError, PutError, ScanError, GetError, UpdateError, TableDoesNotExist)
-from pynamodb.constants import (
+from pynamodax.constants import (
     UNPROCESSED_ITEMS, STRING, BINARY, DEFAULT_ENCODING, TABLE_KEY,
     PAY_PER_REQUEST_BILLING_MODE)
-from pynamodb.expressions.operand import Path, Value
-from pynamodb.expressions.update import SetAction
-from pynamodb.settings import OperationSettings
+from pynamodax.expressions.operand import Path, Value
+from pynamodax.expressions.update import SetAction
+from pynamodax.settings import OperationSettings
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 from .deep_eq import deep_eq
 

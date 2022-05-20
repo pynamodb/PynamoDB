@@ -3,8 +3,8 @@ Test suite for the table class
 """
 from unittest import TestCase
 
-from pynamodb.connection import TableConnection
-from pynamodb.expressions.operand import Path
+from pynamodax.connection import TableConnection
+from pynamodax.expressions.operand import Path
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
 from .response import HttpOK
 

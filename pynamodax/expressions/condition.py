@@ -3,7 +3,7 @@ from typing import Dict
 
 # match dynamo function syntax: size(path)
 def size(path):
-    from pynamodb.expressions.operand import _Size
+    from pynamodax.expressions.operand import _Size
     return _Size(path)
 
 

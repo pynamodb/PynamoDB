@@ -4,15 +4,15 @@ from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
 
-from pynamodb.constants import BINARY_SET
-from pynamodb.constants import NUMBER
-from pynamodb.constants import NUMBER_SET
-from pynamodb.constants import STRING_SET
+from pynamodax.constants import BINARY_SET
+from pynamodax.constants import NUMBER
+from pynamodax.constants import NUMBER_SET
+from pynamodax.constants import STRING_SET
 
 if TYPE_CHECKING:
-    from pynamodb.expressions.operand import _Operand
-    from pynamodb.expressions.operand import Path
-    from pynamodb.expressions.operand import Value
+    from pynamodax.expressions.operand import _Operand
+    from pynamodax.expressions.operand import Path
+    from pynamodax.expressions.operand import Value
 
 
 class Action:

@@ -19,7 +19,7 @@ from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 
-from pynamodb.constants import (
+from pynamodax.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES,
     EXCLUSIVE_START_KEY, SCAN_INDEX_FORWARD, ATTR_DEFINITIONS,
@@ -43,18 +43,18 @@ from pynamodb.constants import (
     PROVISIONED_BILLING_MODE,
     TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE, TAGS, VALUE
 )
-from pynamodb.exceptions import (
+from pynamodax.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError,
     TransactGetError, TransactWriteError)
-from pynamodb.expressions.condition import Condition
-from pynamodb.connection.dax import DaxClient, OP_READ, OP_WRITE
-from pynamodb.expressions.operand import Path
-from pynamodb.expressions.projection import create_projection_expression
-from pynamodb.expressions.update import Action, Update
-from pynamodb.settings import get_settings_value, OperationSettings
-from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
-from pynamodb.types import HASH, RANGE
+from pynamodax.expressions.condition import Condition
+from pynamodax.connection.dax import DaxClient, OP_READ, OP_WRITE
+from pynamodax.expressions.operand import Path
+from pynamodax.expressions.projection import create_projection_expression
+from pynamodax.expressions.update import Action, Update
+from pynamodax.settings import get_settings_value, OperationSettings
+from pynamodax.signals import pre_dynamodb_send, post_dynamodb_send
+from pynamodax.types import HASH, RANGE
 
 BOTOCORE_EXCEPTIONS = (BotoCoreError, ClientError)
 RATE_LIMITING_ERROR_CODES = ['ProvisionedThroughputExceededException', 'ThrottlingException']
