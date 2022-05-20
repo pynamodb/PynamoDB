@@ -1,9 +1,9 @@
 import pytest
-from pynamodb.attributes import NumberAttribute, UnicodeAttribute, VersionAttribute
+from pynamodax.attributes import NumberAttribute, UnicodeAttribute, VersionAttribute
 
-from pynamodb.connection import Connection
-from pynamodb.transactions import Transaction, TransactGet, TransactWrite
-from pynamodb.models import Model
+from pynamodax.connection import Connection
+from pynamodax.transactions import Transaction, TransactGet, TransactWrite
+from pynamodax.models import Model
 from tests.test_base_connection import PATCH_METHOD
 
 from unittest.mock import patch

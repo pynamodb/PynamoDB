@@ -2,8 +2,8 @@
 A PynamoDB example using a custom attribute
 """
 import pickle
-from pynamodb.attributes import BinaryAttribute, UnicodeAttribute
-from pynamodb.models import Model
+from pynamodax.attributes import BinaryAttribute, UnicodeAttribute
+from pynamodax.models import Model
 
 
 class Color(object):

@@ -30,19 +30,19 @@ if sys.version_info >= (3, 8):
 else:
     from typing_extensions import Protocol
 
-from pynamodb.expressions.update import Action
-from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError, \
+from pynamodax.expressions.update import Action
+from pynamodax.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError, \
     AttributeNullError
-from pynamodb.attributes import (
+from pynamodax.attributes import (
     AttributeContainer, AttributeContainerMeta, TTLAttribute, VersionAttribute
 )
-from pynamodb.connection.table import TableConnection
-from pynamodb.expressions.condition import Condition
-from pynamodb.types import HASH, RANGE
-from pynamodb.indexes import Index, GlobalSecondaryIndex
-from pynamodb.pagination import ResultIterator
-from pynamodb.settings import get_settings_value, OperationSettings
-from pynamodb.constants import (
+from pynamodax.connection.table import TableConnection
+from pynamodax.expressions.condition import Condition
+from pynamodax.types import HASH, RANGE
+from pynamodax.indexes import Index, GlobalSecondaryIndex
+from pynamodax.pagination import ResultIterator
+from pynamodax.settings import get_settings_value, OperationSettings
+from pynamodax.constants import (
     ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
     RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES,
@@ -56,8 +56,8 @@ from pynamodb.constants import (
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
     STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE, TAGS
 )
-from pynamodb.util import attribute_value_to_json
-from pynamodb.util import json_to_attribute_value
+from pynamodax.util import attribute_value_to_json
+from pynamodax.util import json_to_attribute_value
 
 _T = TypeVar('_T', bound='Model')
 _KeyType = Any

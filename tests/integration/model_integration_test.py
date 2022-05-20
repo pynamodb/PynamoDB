@@ -4,9 +4,9 @@ Integration tests for the model API
 
 from datetime import datetime
 
-from pynamodb.models import Model
-from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
-from pynamodb.attributes import (
+from pynamodax.models import Model
+from pynamodax.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
+from pynamodax.attributes import (
     UnicodeAttribute, BinaryAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute,
     VersionAttribute)
 

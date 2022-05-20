@@ -1,12 +1,12 @@
 import pytest
 
-from pynamodb.attributes import DiscriminatorAttribute
-from pynamodb.attributes import DynamicMapAttribute
-from pynamodb.attributes import ListAttribute
-from pynamodb.attributes import MapAttribute
-from pynamodb.attributes import NumberAttribute
-from pynamodb.attributes import UnicodeAttribute
-from pynamodb.models import Model
+from pynamodax.attributes import DiscriminatorAttribute
+from pynamodax.attributes import DynamicMapAttribute
+from pynamodax.attributes import ListAttribute
+from pynamodax.attributes import MapAttribute
+from pynamodax.attributes import NumberAttribute
+from pynamodax.attributes import UnicodeAttribute
+from pynamodax.models import Model
 
 
 class_name = lambda cls: cls.__name__

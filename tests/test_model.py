@@ -13,18 +13,18 @@ from botocore.client import ClientError
 import pytest
 
 from .deep_eq import deep_eq
-from pynamodb.exceptions import DoesNotExist, TableError, PutError, AttributeDeserializationError
-from pynamodb.constants import (
+from pynamodax.exceptions import DoesNotExist, TableError, PutError, AttributeDeserializationError
+from pynamodax.constants import (
     ITEM, STRING, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY,
     UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP, LIST, NUMBER, SCANNED_COUNT,
 )
-from pynamodb.models import Model
-from pynamodb.indexes import (
+from pynamodax.models import Model
+from pynamodax.indexes import (
     GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection,
     IncludeProjection, KeysOnlyProjection, Index
 )
-from pynamodb.attributes import (
+from pynamodax.attributes import (
     DiscriminatorAttribute, UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
     BooleanAttribute, ListAttribute, TTLAttribute, VersionAttribute)

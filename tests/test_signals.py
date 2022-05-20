@@ -1,9 +1,9 @@
 import unittest.mock
 import pytest
 
-from pynamodb.connection import Connection
-from pynamodb.signals import _FakeNamespace
-from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
+from pynamodax.connection import Connection
+from pynamodax.signals import _FakeNamespace
+from pynamodax.signals import pre_dynamodb_send, post_dynamodb_send
 
 try:
     import blinker

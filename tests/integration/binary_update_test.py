@@ -1,7 +1,7 @@
 import pytest
 
-from pynamodb.attributes import UnicodeAttribute, BinaryAttribute, BinarySetAttribute
-from pynamodb.models import Model
+from pynamodax.attributes import UnicodeAttribute, BinaryAttribute, BinarySetAttribute
+from pynamodax.models import Model
 
 
 @pytest.mark.ddblocal

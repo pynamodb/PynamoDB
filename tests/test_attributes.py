@@ -12,15 +12,15 @@ from datetime import timezone
 from unittest.mock import patch, call
 import pytest
 
-from pynamodb.attributes import (
+from pynamodax.attributes import (
     BinarySetAttribute, BinaryAttribute, DynamicMapAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute, NullAttribute,
     ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute)
-from pynamodb.constants import (
+from pynamodax.constants import (
     DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, BOOLEAN,
 )
-from pynamodb.models import Model
+from pynamodax.models import Model
 
 
 class AttributeTestModel(Model):

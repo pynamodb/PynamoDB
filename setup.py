@@ -7,8 +7,8 @@ install_requires = [
 ]
 
 setup(
-    name='pynamodb',
-    version=__import__('pynamodb').__version__,
+    name='pynamodax',
+    version=__import__('pynamodax').__version__,
     packages=find_packages(exclude=('examples', 'tests', 'tests.integration',)),
     url='http://jlafon.io/pynamodb.html',
     project_urls={
@@ -20,7 +20,7 @@ setup(
     long_description=open('README.rst').read(),
     zip_safe=False,
     license='MIT',
-    keywords='python dynamodb amazon',
+    keywords='python dynamodb amazon dax',
     python_requires=">=3.7",
     install_requires=install_requires,
     classifiers=[
@@ -38,5 +38,5 @@ setup(
         'signals': ['blinker>=1.3,<2.0'],
         'dax': ['amazon-dax-client>=2.0.0,<3.0.0']
     },
-    package_data={'pynamodb': ['py.typed']},
+    package_data={'pynamodax': ['py.typed']},
 )

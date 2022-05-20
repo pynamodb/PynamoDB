@@ -1,6 +1,6 @@
 from botocore.exceptions import ClientError
 
-from pynamodb.exceptions import PutError
+from pynamodax.exceptions import PutError
 
 
 def test_get_cause_response_code():

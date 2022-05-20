@@ -2,12 +2,12 @@
 Run tests against dynamodb using the table abstraction
 """
 import time
-from pynamodb.constants import PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
-from pynamodb.connection import TableConnection
-from pynamodb.expressions.condition import BeginsWith, NotExists
-from pynamodb.expressions.operand import Path, Value
-from pynamodb.exceptions import TableDoesNotExist
-from pynamodb.types import STRING, HASH, RANGE, NUMBER
+from pynamodax.constants import PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
+from pynamodax.connection import TableConnection
+from pynamodax.expressions.condition import BeginsWith, NotExists
+from pynamodax.expressions.operand import Path, Value
+from pynamodax.exceptions import TableDoesNotExist
+from pynamodax.types import STRING, HASH, RANGE, NUMBER
 
 import pytest
 
