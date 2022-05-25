@@ -17,7 +17,7 @@ from pynamodb.exceptions import DoesNotExist, TableError, PutError, AttributeDes
 from pynamodb.constants import (
     ITEM, STRING, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY,
-    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP, LIST, NUMBER, SCANNED_COUNT,
+    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP, LIST, NUMBER, SCANNED_COUNT, ALL_NEW, NONE
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -920,6 +920,28 @@ class ModelTestCase(TestCase):
 
             assert item.views is None
             self.assertEqual({'bob'}, item.custom_aliases)
+
+    def test_update_readback(self):
+        self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
+        item = SimpleUserModel(user_name='foo', is_active=True, email='original@example.com', signature='foo', views=100)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item.update(
+                actions=[SimpleUserModel.email.set('changed@example.com')],
+                read_back=NONE)
+            params = {
+                'TableName': 'SimpleModel',
+                'Key': {'user_name': {'S': 'foo'}},
+                'ReturnValues': 'NONE',
+                'UpdateExpression': 'SET #0 = :0',
+                'ExpressionAttributeNames': {'#0': 'email'},
+                'ExpressionAttributeValues': {':0': {'S': 'changed@example.com'}},
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            args = req.call_args[0][1]
+            deep_eq(args, params, _assert=True)
+            assert item.email == 'original@example.com'
 
     def test_update_doesnt_do_validation_on_null_attributes(self):
         self.init_table_meta(CarModel, CAR_MODEL_TABLE_DATA)
