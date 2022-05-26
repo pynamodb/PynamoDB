@@ -439,7 +439,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if not isinstance(actions, list) or len(actions) == 0:
             raise TypeError("the value of `actions` is expected to be a non-empty list")
         if read_back not in (ALL_NEW, NONE):
-            raise ValueError("expected `read_back` to be `ALL_NEW` or `NONE`, but was: {}".format(return_values))
+            raise ValueError("expected `read_back` to be `ALL_NEW` or `NONE`, but was: {}".format(read_back))
 
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
         version_condition = self._handle_version_attribute(actions=actions)
