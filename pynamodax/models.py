@@ -57,11 +57,11 @@ from pynamodax.constants import (
     STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE, TAGS
 )
 from pynamodax.util import attribute_value_to_json
+from pynamodax.encoding import DECODER, ENCODER
 from pynamodax.util import json_to_attribute_value
 
 _T = TypeVar('_T', bound='Model')
 _KeyType = Any
-
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -1134,6 +1134,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         attribute_values = {k: json_to_attribute_value(v) for k, v in json.loads(s).items()}
         self._update_attribute_types(attribute_values)
         self.deserialize(attribute_values)
+
+    @classmethod
+    def from_dict(cls, model_as_dict: dict):
+        return DECODER.decode(cls, model_as_dict)
+
+    def dict(self):
+        return ENCODER.encode(self)
 
 
 class _ModelFuture(Generic[_T]):

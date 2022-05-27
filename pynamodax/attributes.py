@@ -1041,6 +1041,9 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
             result[key] = value.as_dict() if isinstance(value, MapAttribute) else value
         return result
 
+    def dict(self):  # Helper to standardize the method for converting object to dict
+        return self.as_dict()
+
 
 class DynamicMapAttribute(MapAttribute):
     """
