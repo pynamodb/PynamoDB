@@ -31,11 +31,11 @@ class Transaction:
             self._commit()
 
 
-class TransactGet(Generic[_M], Transaction):
+class TransactGet(Transaction):
 
     _results: Optional[List] = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._get_items: List[Dict] = []
         self._futures: List[_ModelFuture] = []
         super(TransactGet, self).__init__(*args, **kwargs)

@@ -248,9 +248,30 @@ def test_append(assert_mypy_output):
     MyModel.attr.prepend([42])
     """)
 
-def test_transactions(assert_mypy_output):
+def test_transact_write(assert_mypy_output):
     assert_mypy_output("""
     from pynamodb.transactions import TransactWrite
     with TransactWrite() as tx:
         reveal_type(tx)  # N: Revealed type is "pynamodb.transactions.TransactWrite*"
+    """)
+
+def test_transact_get(assert_mypy_output):
+    assert_mypy_output("""
+    from pynamodb.transactions import TransactGet
+    from pynamodb.models import Model
+
+    class FirstModel(Model):
+        pass
+
+    class SecondModel(Model):
+        pass
+
+    with TransactGet() as tx:
+        reveal_type(tx)  # N: Revealed type is "pynamodb.transactions.TransactGet*"
+        reveal_type(tx.get(FirstModel, "pk"))  # N: Revealed type is "pynamodb.models._ModelFuture[__main__.FirstModel*]"
+        reveal_type(tx.get(SecondModel, "pk"))  # N: Revealed type is "pynamodb.models._ModelFuture[__main__.SecondModel*]"
+        
+        second_model_instance_future = tx.get(SecondModel, "pk")
+
+    first_model_instance: FirstModel = second_model_instance_future.get()  # E: Incompatible types in assignment (expression has type "SecondModel", variable has type "FirstModel")  [assignment]
     """)
