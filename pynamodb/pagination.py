@@ -105,14 +105,13 @@ class PageIterator(Iterator[_T]):
         if self._last_evaluated_key is None and not self._first_iteration:
             raise StopIteration()
 
-        self._first_iteration = False
-
         self._kwargs['exclusive_start_key'] = self._last_evaluated_key
 
         if self._rate_limiter:
             self._rate_limiter.acquire()
             self._kwargs['return_consumed_capacity'] = TOTAL
         page = self._operation(*self._args, settings=self._settings, **self._kwargs)
+        self._first_iteration = False
         self._last_evaluated_key = page.get(LAST_EVALUATED_KEY)
         self._total_scanned_count += page[SCANNED_COUNT]
 
@@ -190,7 +189,6 @@ class ResultIterator(Iterator[_T]):
             raise StopIteration
 
         if self._first_iteration:
-            self._first_iteration = False
             self._get_next_page()
 
         while self._index == self._count:
