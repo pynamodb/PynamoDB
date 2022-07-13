@@ -338,17 +338,18 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             try:
                 if isinstance(value, MapAttribute) and not value.validate(null_check=null_check):
                     raise ValueError("Attribute '{}' is not correctly typed".format(name))
+
+                if value is not None:
+                    if isinstance(attr, MapAttribute):
+                        attr_value = attr.serialize(value, null_check=null_check)
+                    else:
+                        attr_value = attr.serialize(value)
+                else:
+                    attr_value = None
             except AttributeNullError as e:
                 e.prepend_path(name)
                 raise
 
-            if value is not None:
-                if isinstance(attr, MapAttribute):
-                    attr_value = attr.serialize(value, null_check=null_check)
-                else:
-                    attr_value = attr.serialize(value)
-            else:
-                attr_value = None
             if null_check and attr_value is None and not attr.null:
                 raise AttributeNullError(name)
 
@@ -1139,12 +1140,16 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         Encode the given list of objects into a list of AttributeValue types.
         """
         rval = []
-        for v in values:
+        for idx, v in enumerate(values):
             attr_class = self._get_serialize_class(v)
             if self.element_type and v is not None and not isinstance(attr_class, self.element_type):
                 raise ValueError("List elements must be of type: {}".format(self.element_type.__name__))
             attr_type = attr_class.attr_type
-            attr_value = attr_class.serialize(v)
+            try:
+                attr_value = attr_class.serialize(v)
+            except AttributeNullError as e:
+                e.prepend_path(f'[{idx}]')
+                raise
             if attr_value is None:
                 # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
                 attr_type = NULL

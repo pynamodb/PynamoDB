@@ -2685,6 +2685,21 @@ class ModelTestCase(TestCase):
                 item.save()
             assert str(cm.exception) == "Attribute 'car_info.make' cannot be None"
 
+    def test_model_with_invalid_data_does_not_validate__list_attr(self):
+        self.init_table_meta(Office, OFFICE_MODEL_TABLE_DATA)
+        office = Office(office_id=3, address=Location(lat=37.77461, lng=-122.3957216, name='Lyft HQ'))
+        employee = OfficeEmployeeMap(
+            office_employee_id=123,
+            person=Person(is_male=False),
+            office_location=Location(lat=37.77461, lng=-122.3957216, name='Lyft HQ'),
+        )
+        office.employees = [employee]
+        employee.fname = None
+        with patch(PATCH_METHOD):
+            with self.assertRaises(ValueError) as cm:
+                office.save()
+            assert str(cm.exception) == "Attribute 'employees.[0].person.fname' cannot be None"
+
     def test_model_works_like_model(self):
         office_employee = self._get_office_employee()
         self.assertTrue(office_employee.person)
