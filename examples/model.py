@@ -143,7 +143,7 @@ for aliased_item in AliasedModel.query('forum-1', AliasedModel.subject.startswit
     print("Query using aliased attribute: {0}".format(aliased_item))
 
 # Query with filters
-for item in Thread.query('forum-1', (Thread.views == 0) | (Thread.replies == 0)):
+for item in Thread.query('forum-1', filter_condition=(Thread.views == 0) | (Thread.replies == 0)):
     print("Query result: {0}".format(item))
 
 
@@ -184,12 +184,6 @@ print(thread_item.update(actions=[
     Thread.last_post_datetime.set(datetime.now()),
 ]))
 
-# DynamoDB will delete the item, only if the views attribute is equal to one
-try:
-    print(thread_item.delete(Thread.views == 1))
-except:
-    pass
-
 # Remove an item's attribute
 print(thread_item.update(actions=[
     Thread.tags.remove()
@@ -202,8 +196,14 @@ print(thread_item.update(actions=[
     )
 ]))
 
+# DynamoDB will delete the item, only if the views attribute is equal to one
+try:
+    print(thread_item.delete(Thread.views == 1))
+except:
+    pass
+
 # Backup/restore example
-# Print the size of the table
+# Print the size of the table (note that this is async/eventually consistent)
 print("Table size: {}".format(Thread.describe_table().get('ItemCount')))
 
 # Optionally Delete all table items
