@@ -26,7 +26,7 @@ Arguments         Description
 *sender*          The object that fired that method.
 *operation_name*  The string name of the DynamoDB action
 *table_name*      The name of the table the operation is called upon.
-*req_uuid*        A unique identifer so subscribers can correlate the before and after events.
+*req_uuid*        A unique identifier so subscribers can correlate the before and after events.
 ================  ===========
 
 To subscribe to a signal, the user needs to import the signal object and connect your callback, like so.
