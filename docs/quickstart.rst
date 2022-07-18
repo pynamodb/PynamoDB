@@ -89,7 +89,7 @@ Use of `update()` (in its simplest form) looks like this::
 a consequence, even if you modify only one attribute prior to calling
 `save()`, the entire object is re-written. Any modifications done to
 the same user by other processes will be lost, even if made to other
-attributues that you did not change. To avoid this, use `update()` to
+attributes that you did not change. To avoid this, use `update()` to
 perform more fine grained updates or see the
 :ref:`conditional_operations` for how to avoid race conditions
 entirely.

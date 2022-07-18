@@ -183,7 +183,7 @@ Here is an example of an attribute that can be empty:
 By default, PynamoDB assumes that the attribute name used on a Model has the same
 name in DynamoDB. For example, if you define a `UnicodeAttribute` called 'username' then
 PynamoDB will use 'username' as the field name for that attribute when interacting with DynamoDB.
-If you wish to have custom attribute names, they can be overidden. One such use case is the ability to
+If you wish to have custom attribute names, they can be overridden. One such use case is the ability to
 use human readable attribute names in PynamoDB that are stored in DynamoDB using shorter, terse attribute
 to save space.
 
@@ -215,7 +215,7 @@ PynamoDB comes with several built in attribute types for convenience, which incl
 * :py:class:`JSONAttribute <pynamodb.attributes.JSONAttribute>`
 * :py:class:`MapAttribute <pynamodb.attributes.MapAttribute>`
 
-All of these built in attributes handle serializing and deserializng themselves.
+All of these built in attributes handle serializing and deserializing themselves.
 
 Creating the table
 ------------------
