@@ -2676,14 +2676,20 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD):
             item.save()
 
-    def test_model_with_invalid_data_does_not_validate(self):
-        self.init_table_meta(CarModel, CAR_MODEL_TABLE_DATA)
-        car_info = CarInfoMap(model='Envoy')
-        item = CarModel(car_id=123, car_info=car_info)
+    def test_model_with_invalid_data_does_not_validate__list_attr(self):
+        self.init_table_meta(Office, OFFICE_MODEL_TABLE_DATA)
+        office = Office(office_id=3, address=Location(lat=37.77461, lng=-122.3957216, name='Lyft HQ'))
+        employee = OfficeEmployeeMap(
+            office_employee_id=123,
+            person=Person(is_male=False),
+            office_location=Location(lat=37.77461, lng=-122.3957216, name='Lyft HQ'),
+        )
+        office.employees = [employee]
+        employee.fname = None
         with patch(PATCH_METHOD):
             with self.assertRaises(ValueError) as cm:
-                item.save()
-            assert str(cm.exception) == "Attribute 'car_info.make' cannot be None"
+                office.save()
+            assert str(cm.exception) == "Attribute 'employees.[0].person.fname' cannot be None"
 
     def test_model_works_like_model(self):
         office_employee = self._get_office_employee()
@@ -2940,11 +2946,15 @@ class ModelTestCase(TestCase):
                 ),
             ),
         )
-        item.serialize(null_check=False)
+        item.serialize(null_check=True)
 
         # now let's nullify an attribute a few levels deep to test that `null_check` propagates
         item.left.left.left.value = None
         item.serialize(null_check=False)
+
+        # now with null check
+        with pytest.raises(Exception, match="Attribute 'left.left.left.value' cannot be None"):
+            item.serialize(null_check=True)
 
     def test_deserializing_map_four_layers_deep_works(self):
         fake_db = self.database_mocker(TreeModel,

@@ -4,5 +4,6 @@ pytest-mock
 
 # only used in CI
 coveralls
-mypy==0.930
+mypy==0.961
+typing-extensions==4.3.0
 pytest-cov

@@ -32,7 +32,7 @@ Suppose that you have defined a `User` Model for the examples below.
         name = UnicodeAttribute(range_key=True)
 
 
-Here is an example using `rate-limit` in while scaning the `User` model
+Here is an example using `rate-limit` in while scanning the `User` model
 
 .. code-block:: python
 

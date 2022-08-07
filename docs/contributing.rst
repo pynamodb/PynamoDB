@@ -87,7 +87,7 @@ While striving for the library to be useful, we're also trying to "do one thing 
   as strings is doubtlessly something many applications have had a need for, but as long as it doesn't
   exercise any core DynamoDB functionality (e.g. in the case of a UUID attribute, there isn't
   a dedicated DynamoDB data type or API feature for storing UUIDs), we would recommend relegating
-  such functionality to auxillary libraries. One such library is `pynamodb-attributes <https://github.com/lyft/pynamodb-attributes>`_.
+  such functionality to auxiliary libraries. One such library is `pynamodb-attributes <https://github.com/lyft/pynamodb-attributes>`_.
 
 
 Pull Requests
