@@ -1118,13 +1118,19 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         return self._container_deserialize(attribute_values=attribute_values)
 
-    def to_json(self) -> str:
-        return json.dumps({k: attribute_value_to_json(v) for k, v in self.serialize().items()})
+    def to_dict(self) -> Dict[str, Any]:
+        return {k: attribute_value_to_json(v) for k, v in self.serialize().items()}
 
-    def from_json(self, s: str) -> None:
-        attribute_values = {k: json_to_attribute_value(v) for k, v in json.loads(s).items()}
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
+
+    def from_dict(self, d: Dict[str, Any]) -> None:
+        attribute_values = {k: json_to_attribute_value(v) for k, v in d.items()}
         self._update_attribute_types(attribute_values)
         self.deserialize(attribute_values)
+
+    def from_json(self, s: str) -> None:
+        self.from_dict(json.loads(s))
 
 
 class _ModelFuture(Generic[_T]):
