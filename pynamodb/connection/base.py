@@ -352,142 +352,7 @@ class Connection(object):
             log.exception("pre_boto callback threw an exception.")
 
     def _make_api_call(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings = OperationSettings.default) -> Dict:
-        """
-        This private method is here for two reasons:
-        1. It's faster to avoid using botocore's response parsing
-        2. It provides a place to monkey patch HTTP requests for unit testing
-        """
-        operation_model = self.client._service_model.operation_model(operation_name)
-        if self._convert_to_request_dict__endpoint_url:
-            request_context = {
-                'client_region': self.region,
-                'client_config': self.client.meta.config,
-                'has_streaming_input': operation_model.has_streaming_input,
-                'auth_type': operation_model.auth_type,
-            }
-            endpoint_url, additional_headers = self.client._resolve_endpoint_ruleset(
-                operation_model, operation_kwargs, request_context
-            )
-            request_dict = self.client._convert_to_request_dict(
-                api_params=operation_kwargs,
-                operation_model=operation_model,
-                endpoint_url=endpoint_url,
-                context=request_context,
-                headers=additional_headers,
-            )
-        else:
-            request_dict = self.client._convert_to_request_dict(
-                operation_kwargs,
-                operation_model,
-            )
-
-        for i in range(0, self._max_retry_attempts_exception + 1):
-            attempt_number = i + 1
-            is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
-
-            http_response = None
-            prepared_request = None
-            try:
-                if prepared_request is not None:
-                    # If there is a stream associated with the request, we need
-                    # to reset it before attempting to send the request again.
-                    # This will ensure that we resend the entire contents of the
-                    # body.
-                    prepared_request.reset_stream()
-
-                # Create a new request for each retry (including a new signature).
-                prepared_request = self._create_prepared_request(request_dict, settings)
-
-                # Implement the before-send event from botocore
-                event_name = 'before-send.dynamodb.{}'.format(operation_model.name)
-                event_responses = self.client._endpoint._event_emitter.emit(event_name, request=prepared_request)
-                event_response = first_non_none_response(event_responses)
-
-                if event_response is None:
-                    http_response = self.client._endpoint.http_session.send(prepared_request)
-                else:
-                    http_response = event_response
-                    is_last_attempt_for_exceptions = True  # don't retry if we have an event response
-
-                # json.loads accepts bytes in >= 3.6.0
-                if sys.version_info < (3, 6, 0):
-                    data = json.loads(http_response.text)
-                else:
-                    data = json.loads(http_response.content)
-            except (ValueError, botocore.exceptions.HTTPClientError, botocore.exceptions.ConnectionError) as e:
-                if is_last_attempt_for_exceptions:
-                    log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
-                    if http_response:
-                        e.args += (http_response.text,)
-                    raise
-                else:
-                    # No backoff for fast-fail exceptions that likely failed at the frontend
-                    log.debug(
-                        'Retry needed for (%s) after attempt %s, retryable %s caught: %s',
-                        operation_name,
-                        attempt_number,
-                        e.__class__.__name__,
-                        e
-                    )
-                    continue
-
-            status_code = http_response.status_code
-            headers = http_response.headers
-            if status_code >= 300:
-                # Extract error code from __type
-                code = data.get('__type', '')
-                if '#' in code:
-                    code = code.rsplit('#', 1)[1]
-                botocore_expected_format = {'Error': {'Message': data.get('message', '') or data.get('Message', ''), 'Code': code}}
-                verbose_properties = {
-                    'request_id': headers.get('x-amzn-RequestId')
-                }
-
-                if REQUEST_ITEMS in operation_kwargs:
-                    # Batch operations can hit multiple tables, report them comma separated
-                    verbose_properties['table_name'] = ','.join(operation_kwargs[REQUEST_ITEMS])
-                elif TRANSACT_ITEMS in operation_kwargs:
-                    # Transactional operations can also hit multiple tables, or have multiple updates within
-                    # the same table
-                    table_names = []
-                    for item in operation_kwargs[TRANSACT_ITEMS]:
-                        for op in item.values():
-                            table_names.append(op[TABLE_NAME])
-                    verbose_properties['table_name'] = ','.join(table_names)
-                else:
-                    verbose_properties['table_name'] = operation_kwargs.get(TABLE_NAME)
-
-                try:
-                    raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
-                except VerboseClientError as e:
-                    if is_last_attempt_for_exceptions:
-                        log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
-                        raise
-                    elif status_code < 500 and code not in RATE_LIMITING_ERROR_CODES:
-                        # We don't retry on a ConditionalCheckFailedException or other 4xx (except for
-                        # throughput related errors) because we assume they will fail in perpetuity.
-                        # Retrying when there is already contention could cause other problems
-                        # in part due to unnecessary consumption of throughput.
-                        raise
-                    else:
-                        # We use fully-jittered exponentially-backed-off retries:
-                        #  https://www.awsarchitectureblog.com/2015/03/backoff.html
-                        sleep_time_ms = random.randint(0, self._base_backoff_ms * (2 ** i))
-                        log.debug(
-                            'Retry with backoff needed for (%s) after attempt %s,'
-                            'sleeping for %s milliseconds, retryable %s caught: %s',
-                            operation_name,
-                            attempt_number,
-                            sleep_time_ms,
-                            e.__class__.__name__,
-                            e
-                        )
-                        time.sleep(sleep_time_ms / 1000.0)
-                        continue
-
-            return self._handle_binary_attributes(data)
-
-        assert False  # unreachable code
+        return self.client._make_api_call(operation_name, operation_kwargs)
 
     @staticmethod
     def _handle_binary_attributes(data):
@@ -554,9 +419,12 @@ class Connection(object):
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
                 max_pool_connections=self._max_pool_connections,
+                retries={
+                    'total_max_attempts': 1 + self._max_retry_attempts_exception,
+                    'mode': 'standard',
+                }
             )
-            self._client = cast(BotocoreBaseClientPrivate, self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config))
-            self._convert_to_request_dict__endpoint_url = 'endpoint_url' in inspect.signature(self._client._convert_to_request_dict).parameters
+            self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
         return self._client
 
     def get_meta_table(self, table_name: str, refresh: bool = False):
