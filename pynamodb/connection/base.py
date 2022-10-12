@@ -1,12 +1,7 @@
 """
 Lowest level connection
 """
-import inspect
-import json
 import logging
-import random
-import sys
-import time
 import uuid
 from base64 import b64decode
 from threading import local
@@ -16,7 +11,6 @@ import botocore.client
 import botocore.exceptions
 from botocore.awsrequest import AWSPreparedRequest, create_request_object
 from botocore.client import ClientError
-from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 
@@ -32,18 +26,14 @@ from pynamodb.constants import (
     PUT_ITEM, SELECT, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
-    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
-    CONSUMED_CAPACITY, CAPACITY_UNITS, ATTRIBUTE_TYPES,
-    ITEMS, DEFAULT_ENCODING, BINARY, BINARY_SET, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
-    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
-    EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
-    CONDITION_EXPRESSION, FILTER_EXPRESSION,
+    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, CONSUMED_CAPACITY, CAPACITY_UNITS,
+    ATTRIBUTE_TYPES, DEFAULT_ENCODING, BINARY, BINARY_SET, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
+    EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, CONDITION_EXPRESSION, FILTER_EXPRESSION,
     TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS, CLIENT_REQUEST_TOKEN, TRANSACT_ITEMS, TRANSACT_CONDITION_CHECK,
     TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE, TRANSACT_UPDATE, UPDATE_EXPRESSION,
     RETURN_VALUES_ON_CONDITION_FAILURE_VALUES, RETURN_VALUES_ON_CONDITION_FAILURE,
     AVAILABLE_BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE,
-    PROVISIONED_BILLING_MODE,
-    TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE, TAGS, VALUE
+    PROVISIONED_BILLING_MODE, TIME_TO_LIVE_SPECIFICATION, ENABLED, UPDATE_TIME_TO_LIVE, TAGS, VALUE
 )
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
@@ -353,46 +343,6 @@ class Connection(object):
 
     def _make_api_call(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings = OperationSettings.default) -> Dict:
         return self.client._make_api_call(operation_name, operation_kwargs)
-
-    @staticmethod
-    def _handle_binary_attributes(data):
-        """ Simulate botocore's binary attribute handling """
-        if ITEM in data:
-            for attr in data[ITEM].values():
-                _convert_binary(attr)
-        if ITEMS in data:
-            for item in data[ITEMS]:
-                for attr in item.values():
-                    _convert_binary(attr)
-        if RESPONSES in data:
-            if isinstance(data[RESPONSES], list):
-                for item in data[RESPONSES]:
-                    for attr in item.values():
-                        _convert_binary(attr)
-            else:
-                for item_list in data[RESPONSES].values():
-                    for item in item_list:
-                        for attr in item.values():
-                            _convert_binary(attr)
-        if LAST_EVALUATED_KEY in data:
-            for attr in data[LAST_EVALUATED_KEY].values():
-                _convert_binary(attr)
-        if UNPROCESSED_KEYS in data:
-            for table_data in data[UNPROCESSED_KEYS].values():
-                for item in table_data[KEYS]:
-                    for attr in item.values():
-                        _convert_binary(attr)
-        if UNPROCESSED_ITEMS in data:
-            for table_unprocessed_requests in data[UNPROCESSED_ITEMS].values():
-                for request in table_unprocessed_requests:
-                    for item_mapping in request.values():
-                        for item in item_mapping.values():
-                            for attr in item.values():
-                                _convert_binary(attr)
-        if ATTRIBUTES in data:
-            for attr in data[ATTRIBUTES].values():
-                _convert_binary(attr)
-        return data
 
     @property
     def session(self) -> botocore.session.Session:

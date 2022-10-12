@@ -6,12 +6,9 @@ import io
 import json
 from unittest import mock
 from unittest.mock import patch
-from unittest.mock import ANY
 
 import botocore.exceptions
-import botocore.httpsession
-import urllib3
-from botocore.awsrequest import AWSPreparedRequest, AWSRequest, AWSResponse
+from botocore.awsrequest import AWSResponse
 from botocore.client import ClientError
 from botocore.exceptions import BotoCoreError
 
@@ -28,7 +25,6 @@ from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
 from pynamodb.settings import OperationSettings
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
-from .deep_eq import deep_eq
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 TEST_TABLE_NAME = 'ci-table'
@@ -1515,74 +1511,41 @@ def test_connection_make_api_call__throws_retry_disabled(send_mock):
     assert len(send_mock.mock_calls) == 1
 
 
-def test_connection_handle_binary_attributes__unprocessed_items():
+@mock.patch('botocore.httpsession.URLLib3Session.send')
+def test_connection_make_api_call__binary_attributes(send_mock):
     binary_blob = b'\x00\xFF\x00\xFF'
-
-    unprocessed_items = []
-    for _ in range(0, 5):
-        unprocessed_items.append({
-            'PutRequest': {
-                'Item': {
-                    'name': {STRING: 'daniel'},
-                    'picture': {BINARY: base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
+    resp_text = json.dumps({
+        UNPROCESSED_ITEMS: {
+            'someTable': [{
+                'PutRequest': {
+                    'Item': {
+                        'name': {STRING: 'daniel'},
+                        'picture': {BINARY: base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)},
+                    }
                 }
-            }
-        })
+            }],
+        }
+    })
 
-    expected_unprocessed_items = []
-    for _ in range(0, 5):
-        expected_unprocessed_items.append({
-            'PutRequest': {
-                'Item': {
-                    'name': {STRING: 'daniel'},
-                    'picture': {BINARY: binary_blob}
-                }
-            }
-        })
-
-    assert (
-        Connection._handle_binary_attributes({UNPROCESSED_ITEMS: {'someTable': unprocessed_items}}) ==
-        {UNPROCESSED_ITEMS: {'someTable': expected_unprocessed_items}}
+    resp = mock.Mock(
+        spec=AWSResponse,
+        status_code=200,
+        headers={},
+        content=resp_text.encode(),
     )
 
+    send_mock.return_value = resp
 
-def test_connection_handle_binary_attributes__unprocessed_keys():
-    binary_blob = b'\x00\xFF\x00\xFF'
-    unprocessed_keys = {
-        'UnprocessedKeys': {
-            'MyTable': {
-                'AttributesToGet': ['ForumName'],
-                'Keys': [
-                    {
-                        'ForumName': {'S': 'FooForum'},
-                        'Subject': {'B': base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
-                    },
-                    {
-                        'ForumName': {'S': 'FooForum'},
-                        'Subject': {'S': 'thread-1'}
-                    }
-                ],
-                'ConsistentRead': False
-            },
-            'MyOtherTable': {
-                'AttributesToGet': ['ForumName'],
-                'Keys': [
-                    {
-                        'ForumName': {'S': 'FooForum'},
-                        'Subject': {'B': base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
-                    },
-                    {
-                        'ForumName': {'S': 'FooForum'},
-                        'Subject': {'S': 'thread-1'}
-                    }
-                ],
-                'ConsistentRead': False
+    resp = Connection()._make_api_call('BatchWriteItem', {})
+
+    assert resp['UnprocessedItems']['someTable'] == [{
+        'PutRequest': {
+            'Item': {
+                'name': {STRING: 'daniel'},
+                'picture': {BINARY: binary_blob}
             }
         }
-    }
-    data = Connection._handle_binary_attributes(unprocessed_keys)
-    assert data['UnprocessedKeys']['MyTable']['Keys'][0]['Subject']['B'] == binary_blob
-    assert data['UnprocessedKeys']['MyOtherTable']['Keys'][0]['Subject']['B'] == binary_blob
+    }]
 
 
 def test_connection_update_time_to_live__fail():
