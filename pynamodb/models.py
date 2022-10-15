@@ -1109,27 +1109,46 @@ class Model(AttributeContainer, metaclass=MetaModel):
     def serialize(self, null_check: bool = True) -> Dict[str, Dict[str, Any]]:
         """
         Serialize attribute values for DynamoDB
+        See the `to_dict` method to get a non-DynamoDB dict
         """
         return self._container_serialize(null_check=null_check)
 
     def deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
         """
         Sets attributes sent back from DynamoDB on this object
+        See the `from_dict` method to fill in attributes from a non-DynamoDB dict
         """
         return self._container_deserialize(attribute_values=attribute_values)
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts the contents of this instance into a regular Python dict.
+        See the `serialize` method if you need the DynamoDB formated dict
+        """
         return {k: attribute_value_to_json(v) for k, v in self.serialize().items()}
 
     def to_json(self) -> str:
+        """
+        Converts the contents of this instance into a regular Python dict.
+        See the `serialize` method if you need the DynamoDB formated dict
+        """
         return json.dumps(self.to_dict())
 
     def from_dict(self, d: Dict[str, Any]) -> None:
-        attribute_values = {k: json_to_attribute_value(v) for k, v in d.items()}
+        """
+        Fills in properties on this instance from the provided regular python dict
+        See the `deserialize` method if the input is in DynamoDB format
+        """
+        attribute_values = {
+            k: json_to_attribute_value(v) for k, v in d.items()}
         self._update_attribute_types(attribute_values)
         self.deserialize(attribute_values)
 
     def from_json(self, s: str) -> None:
+        """
+        Fills in properties on this instance from the provided regular json string
+        See the `deserialize` method if the input is in DynamoDB format
+        """
         self.from_dict(json.loads(s))
 
 
