@@ -1108,36 +1108,38 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
     def serialize(self, null_check: bool = True) -> Dict[str, Dict[str, Any]]:
         """
-        Serialize attribute values for DynamoDB
-        See the `to_dict` method to get a non-DynamoDB dict
+        Serialize attribute values for DynamoDB API.
+        See :func:`~pynamodb.models.Model.to_dict` for a simple JSON-serializable dict.
         """
         return self._container_serialize(null_check=null_check)
 
     def deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
         """
-        Sets attributes sent back from DynamoDB on this object
-        See the `from_dict` method to fill in attributes from a non-DynamoDB dict
+        Sets attributes sent back from DynamoDB on this object.
+        Use :func:`~pynamodb.models.Model.from_dict` to set attributes from a dict
+        previously produced by :func:`~pynamodb.models.Model.to_dict`.
         """
         return self._container_deserialize(attribute_values=attribute_values)
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Converts the contents of this instance into a regular Python dict.
-        See the `serialize` method if you need the DynamoDB formated dict
+        Returns the contents of this instance as a JSON-serializable dict.
+        See :func:`~pynamodb.models.Model.serialize` if you need to serialize
+        into a DynamoDB record.
         """
         return {k: attribute_value_to_json(v) for k, v in self.serialize().items()}
 
     def to_json(self) -> str:
         """
-        Converts the contents of this instance into a regular Python dict.
-        See the `serialize` method if you need the DynamoDB formated dict
+        Returns the contents of this instance as serialized JSON (not in DynamoDB Record format).
         """
         return json.dumps(self.to_dict())
 
     def from_dict(self, d: Dict[str, Any]) -> None:
         """
-        Fills in properties on this instance from the provided regular python dict
-        See the `deserialize` method if the input is in DynamoDB format
+        Sets attributes from a dict previously produced by :func:`~pynamodb.models.Model.to_dict`.
+        Use :func:`~pynamodb.models.Model.deserialize` if the dict is a DynamoDB Record
+        (e.g. from a DynamoDB API response or DynamoDB Streams).
         """
         attribute_values = {
             k: json_to_attribute_value(v) for k, v in d.items()}
@@ -1146,8 +1148,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
     def from_json(self, s: str) -> None:
         """
-        Fills in properties on this instance from the provided regular json string
-        See the `deserialize` method if the input is in DynamoDB format
+        Sets attributes from a dict previously produced by :func:`~pynamodb.models.Model.to_json`.
         """
         self.from_dict(json.loads(s))
 
