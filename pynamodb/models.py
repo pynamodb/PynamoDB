@@ -1108,23 +1108,49 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
     def serialize(self, null_check: bool = True) -> Dict[str, Dict[str, Any]]:
         """
-        Serialize attribute values for DynamoDB
+        Serialize attribute values for DynamoDB API.
+        See :func:`~pynamodb.models.Model.to_dict` for a simple JSON-serializable dict.
         """
         return self._container_serialize(null_check=null_check)
 
     def deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
         """
-        Sets attributes sent back from DynamoDB on this object
+        Sets attributes sent back from DynamoDB on this object.
+        Use :func:`~pynamodb.models.Model.from_dict` to set attributes from a dict
+        previously produced by :func:`~pynamodb.models.Model.to_dict`.
         """
         return self._container_deserialize(attribute_values=attribute_values)
 
-    def to_json(self) -> str:
-        return json.dumps({k: attribute_value_to_json(v) for k, v in self.serialize().items()})
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns the contents of this instance as a JSON-serializable dict.
+        See :func:`~pynamodb.models.Model.serialize` if you need to serialize
+        into a DynamoDB record.
+        """
+        return {k: attribute_value_to_json(v) for k, v in self.serialize().items()}
 
-    def from_json(self, s: str) -> None:
-        attribute_values = {k: json_to_attribute_value(v) for k, v in json.loads(s).items()}
+    def to_json(self) -> str:
+        """
+        Returns the contents of this instance as serialized JSON (not in DynamoDB Record format).
+        """
+        return json.dumps(self.to_dict())
+
+    def from_dict(self, d: Dict[str, Any]) -> None:
+        """
+        Sets attributes from a dict previously produced by :func:`~pynamodb.models.Model.to_dict`.
+        Use :func:`~pynamodb.models.Model.deserialize` if the dict is a DynamoDB Record
+        (e.g. from a DynamoDB API response or DynamoDB Streams).
+        """
+        attribute_values = {
+            k: json_to_attribute_value(v) for k, v in d.items()}
         self._update_attribute_types(attribute_values)
         self.deserialize(attribute_values)
+
+    def from_json(self, s: str) -> None:
+        """
+        Sets attributes from a dict previously produced by :func:`~pynamodb.models.Model.to_json`.
+        """
+        self.from_dict(json.loads(s))
 
 
 class _ModelFuture(Generic[_T]):
