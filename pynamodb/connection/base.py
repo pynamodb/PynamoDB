@@ -48,6 +48,7 @@ from pynamodb.exceptions import (
     VerboseClientError,
     TransactGetError, TransactWriteError)
 from pynamodb.expressions.condition import Condition
+from pynamodb.connection.dax import DaxClient, OP_READ, OP_WRITE
 from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
 from pynamodb.expressions.update import Action, Update
@@ -247,11 +248,15 @@ class Connection(object):
                  max_retry_attempts: Optional[int] = None,
                  base_backoff_ms: Optional[int] = None,
                  max_pool_connections: Optional[int] = None,
-                 extra_headers: Optional[Mapping[str, str]] = None):
+                 extra_headers: Optional[Mapping[str, str]] = None,
+                 dax_write_endpoints: Optional[List[str]] = None,
+                 dax_read_endpoints: Optional[List[str]] = None,
+                 fallback_to_dynamodb: Optional[bool] = False):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
         self._client = None
+
         if region:
             self.region = region
         else:
@@ -286,6 +291,21 @@ class Connection(object):
             self._extra_headers = extra_headers
         else:
             self._extra_headers = get_settings_value('extra_headers')
+
+        if dax_write_endpoints is None:
+            dax_write_endpoints = get_settings_value('dax_write_endpoints')
+
+        if dax_read_endpoints is None:
+            dax_read_endpoints = get_settings_value('dax_read_endpoints')
+
+        self._dax_support = bool(dax_write_endpoints or dax_read_endpoints)
+        self._dax_read_client = None if not dax_read_endpoints else DaxClient(endpoints=dax_read_endpoints, region_name=self.region)
+        self._dax_write_client = None if not dax_write_endpoints else DaxClient(endpoints=dax_write_endpoints, region_name=self.region)
+
+        if fallback_to_dynamodb is not None:
+            self._fallback_to_dynamodb = fallback_to_dynamodb
+        else:
+            self._fallback_to_dynamodb = get_settings_value('fallback_to_dynamodb')
 
     def __repr__(self) -> str:
         return "Connection<{}>".format(self.client.meta.endpoint_url)
@@ -354,6 +374,18 @@ class Connection(object):
         1. It's faster to avoid using botocore's response parsing
         2. It provides a place to monkey patch HTTP requests for unit testing
         """
+        if self._dax_support:
+            from amazondax.DaxError import DaxClientError
+
+            try:
+                if operation_name in OP_WRITE and self._dax_write_client:
+                    return self._dax_write_client.dispatch(operation_name, operation_kwargs)
+                elif operation_name in OP_READ and self._dax_read_client:
+                    return self._dax_read_client.dispatch(operation_name, operation_kwargs)
+            except DaxClientError:
+                if not self._fallback_to_dynamodb:
+                    raise
+
         operation_model = self.client._service_model.operation_model(operation_name)
         request_dict = self.client._convert_to_request_dict(
             operation_kwargs,
