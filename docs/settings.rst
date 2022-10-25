@@ -34,15 +34,6 @@ The number of times to retry certain failed DynamoDB API calls. The most common 
 retries include ``ProvisionedThroughputExceededException`` and ``5xx`` errors.
 
 
-base_backoff_ms
----------------
-
-Default: ``25``
-
-The base number of milliseconds used for `exponential backoff and jitter
-<https://www.awsarchitectureblog.com/2015/03/backoff.html>`_ on retries.
-
-
 region
 ------
 

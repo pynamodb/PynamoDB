@@ -236,7 +236,6 @@ class Connection(object):
                  read_timeout_seconds: Optional[float] = None,
                  connect_timeout_seconds: Optional[float] = None,
                  max_retry_attempts: Optional[int] = None,
-                 base_backoff_ms: Optional[int] = None,
                  max_pool_connections: Optional[int] = None,
                  extra_headers: Optional[Mapping[str, str]] = None):
         self._tables: Dict[str, MetaTable] = {}
@@ -263,11 +262,6 @@ class Connection(object):
             self._max_retry_attempts_exception = max_retry_attempts
         else:
             self._max_retry_attempts_exception = get_settings_value('max_retry_attempts')
-
-        if base_backoff_ms is not None:
-            self._base_backoff_ms = base_backoff_ms
-        else:
-            self._base_backoff_ms = get_settings_value('base_backoff_ms')
 
         if max_pool_connections is not None:
             self._max_pool_connections = max_pool_connections

@@ -1541,9 +1541,8 @@ def test_connection_make_api_call__throws_retry_disabled(send_mock):
     send_mock.side_effect = [
         botocore.exceptions.ReadTimeoutError(endpoint_url='http://lyft.com'),
     ]
-    c = Connection(read_timeout_seconds=11, base_backoff_ms=3, max_retry_attempts=0)
+    c = Connection(read_timeout_seconds=11, max_retry_attempts=0)
 
-    assert c._base_backoff_ms == 3
     with pytest.raises(botocore.exceptions.ReadTimeoutError):
         c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
 

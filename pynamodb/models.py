@@ -152,8 +152,9 @@ class BatchWrite(Generic[_T]):
         retries = 0
         unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
         while unprocessed_items:
-            sleep_time = random.randint(0, self.model.Meta.base_backoff_ms * (2 ** retries)) / 1000
-            time.sleep(sleep_time)
+            # TODO: we should consider using exponential backoff here
+            # TODO: it is somewhat unintuitive that we retry unprocessed items max_retry_attempts times,
+            # since each `batch_write_item` operation is also subject to max_retry_attempts
             retries += 1
             if retries >= self.model.Meta.max_retry_attempts:
                 self.failed_operations = unprocessed_items
@@ -165,8 +166,7 @@ class BatchWrite(Generic[_T]):
                     put_items.append(item.get(PUT_REQUEST).get(ITEM))  # type: ignore
                 elif DELETE_REQUEST in item:
                     delete_items.append(item.get(DELETE_REQUEST).get(KEY))  # type: ignore
-            log.info("Resending %d unprocessed keys for batch operation after %d seconds sleep",
-                     len(unprocessed_items), sleep_time)
+            log.info("Resending %d unprocessed keys for batch operation (retry %d)", len(unprocessed_items), retries)
             data = self.model._get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items,
@@ -182,7 +182,6 @@ class MetaProtocol(Protocol):
     host: Optional[str]
     connect_timeout_seconds: int
     read_timeout_seconds: int
-    base_backoff_ms: int
     max_retry_attempts: int
     max_pool_connections: int
     extra_headers: Mapping[str, str]
@@ -241,8 +240,6 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'connect_timeout_seconds', get_settings_value('connect_timeout_seconds'))
                     if not hasattr(attr_obj, 'read_timeout_seconds'):
                         setattr(attr_obj, 'read_timeout_seconds', get_settings_value('read_timeout_seconds'))
-                    if not hasattr(attr_obj, 'base_backoff_ms'):
-                        setattr(attr_obj, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
                     if not hasattr(attr_obj, 'max_retry_attempts'):
                         setattr(attr_obj, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
                     if not hasattr(attr_obj, 'max_pool_connections'):
@@ -1052,7 +1049,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                                               connect_timeout_seconds=cls.Meta.connect_timeout_seconds,
                                               read_timeout_seconds=cls.Meta.read_timeout_seconds,
                                               max_retry_attempts=cls.Meta.max_retry_attempts,
-                                              base_backoff_ms=cls.Meta.base_backoff_ms,
                                               max_pool_connections=cls.Meta.max_pool_connections,
                                               extra_headers=cls.Meta.extra_headers,
                                               aws_access_key_id=cls.Meta.aws_access_key_id,

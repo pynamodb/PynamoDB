@@ -24,7 +24,6 @@ class TableConnection:
         connect_timeout_seconds: Optional[float] = None,
         read_timeout_seconds: Optional[float] = None,
         max_retry_attempts: Optional[int] = None,
-        base_backoff_ms: Optional[int] = None,
         max_pool_connections: Optional[int] = None,
         extra_headers: Optional[Mapping[str, str]] = None,
         aws_access_key_id: Optional[str] = None,
@@ -37,7 +36,6 @@ class TableConnection:
                                      connect_timeout_seconds=connect_timeout_seconds,
                                      read_timeout_seconds=read_timeout_seconds,
                                      max_retry_attempts=max_retry_attempts,
-                                     base_backoff_ms=base_backoff_ms,
                                      max_pool_connections=max_pool_connections,
                                      extra_headers=extra_headers)
 
