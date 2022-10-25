@@ -1,6 +1,7 @@
 """
 Lowest level connection
 """
+import inspect
 import json
 import logging
 import random
@@ -9,7 +10,7 @@ import time
 import uuid
 from base64 import b64decode
 from threading import local
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 import botocore.client
 import botocore.exceptions
@@ -19,6 +20,7 @@ from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 
+from pynamodb.connection._botocore_private import BotocoreBaseClientPrivate
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES,
@@ -251,7 +253,8 @@ class Connection(object):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
-        self._client = None
+        self._client: Optional[BotocoreBaseClientPrivate] = None
+        self._convert_to_request_dict_kwargs: Dict[str, Any] = {}
         if region:
             self.region = region
         else:
@@ -358,6 +361,7 @@ class Connection(object):
         request_dict = self.client._convert_to_request_dict(
             operation_kwargs,
             operation_model,
+            **self._convert_to_request_dict_kwargs,
         )
 
         for i in range(0, self._max_retry_attempts_exception + 1):
@@ -519,7 +523,7 @@ class Connection(object):
         return self._local.session
 
     @property
-    def client(self):
+    def client(self) -> BotocoreBaseClientPrivate:
         """
         Returns a botocore dynamodb client
         """
@@ -533,7 +537,10 @@ class Connection(object):
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
                 max_pool_connections=self._max_pool_connections)
-            self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
+            self._client = cast(BotocoreBaseClientPrivate, self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config))
+            self._convert_to_request_dict_kwargs = {}
+            if 'endpoint_url' in inspect.signature(self._client._convert_to_request_dict).parameters:
+                self._convert_to_request_dict_kwargs['endpoint_url'] = self.host
         return self._client
 
     def get_meta_table(self, table_name: str, refresh: bool = False):
