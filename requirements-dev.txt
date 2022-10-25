@@ -9,4 +9,4 @@ typing-extensions==4.3.0
 pytest-cov
 
 # used for type-checking
-boto3-stubs[dynamodb]
+botocore-stubs
