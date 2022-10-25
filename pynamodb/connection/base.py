@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 import botocore.client
 import botocore.exceptions
-from botocore.awsrequest import AWSPreparedRequest, create_request_object
 from botocore.client import ClientError
 from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
@@ -43,7 +42,7 @@ from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
 from pynamodb.expressions.update import Action, Update
-from pynamodb.settings import get_settings_value, OperationSettings
+from pynamodb.settings import get_settings_value
 from pynamodb.signals import pre_dynamodb_send, post_dynamodb_send
 from pynamodb.types import HASH, RANGE
 
@@ -283,28 +282,7 @@ class Connection(object):
     def __repr__(self) -> str:
         return "Connection<{}>".format(self.client.meta.endpoint_url)
 
-    def _sign_request(self, request):
-        auth = self.client._request_signer.get_auth_instance(
-            self.client._request_signer.signing_name,
-            self.client._request_signer.region_name,
-            self.client._request_signer.signature_version)
-        auth.add_auth(request)
-
-    def _create_prepared_request(
-        self,
-        params: Dict,
-        settings: OperationSettings,
-    ) -> AWSPreparedRequest:
-        request = create_request_object(params)
-        self._sign_request(request)
-        prepared_request = self.client._endpoint.prepare_request(request)
-        if self._extra_headers is not None:
-            prepared_request.headers.update(self._extra_headers)
-        if settings.extra_headers is not None:
-            prepared_request.headers.update(settings.extra_headers)
-        return prepared_request
-
-    def dispatch(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings = OperationSettings.default) -> Dict:
+    def dispatch(self, operation_name: str, operation_kwargs: Dict) -> Dict:
         """
         Dispatches `operation_name` with arguments `operation_kwargs`
 
@@ -319,7 +297,7 @@ class Connection(object):
         req_uuid = uuid.uuid4()
 
         self.send_pre_boto_callback(operation_name, req_uuid, table_name)
-        data = self._make_api_call(operation_name, operation_kwargs, settings)
+        data = self._make_api_call(operation_name, operation_kwargs)
         self.send_post_boto_callback(operation_name, req_uuid, table_name)
 
         if data and CONSUMED_CAPACITY in data:
@@ -332,17 +310,47 @@ class Connection(object):
     def send_post_boto_callback(self, operation_name, req_uuid, table_name):
         try:
             post_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
-        except Exception as e:
+        except Exception:
             log.exception("post_boto callback threw an exception.")
 
     def send_pre_boto_callback(self, operation_name, req_uuid, table_name):
         try:
             pre_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
-        except Exception as e:
+        except Exception:
             log.exception("pre_boto callback threw an exception.")
 
-    def _make_api_call(self, operation_name: str, operation_kwargs: Dict, settings: OperationSettings = OperationSettings.default) -> Dict:
-        return self.client._make_api_call(operation_name, operation_kwargs)
+    def _before_sign(self, request, **_) -> None:
+        if self._extra_headers is not None:
+            for k, v in self._extra_headers.items():
+                request.headers.add_header(k, v)
+
+    def _make_api_call(self, operation_name: str, operation_kwargs: Dict) -> Dict:
+        try:
+            return self.client._make_api_call(operation_name, operation_kwargs)
+        except ClientError as e:
+            resp_metadata = e.response.get('ResponseMetadata', {}).get('HTTPHeaders', {})
+
+            botocore_props = {'Error': e.response.get('Error', {})}
+            verbose_props = {
+                'request_id': resp_metadata.get('x-amzn-requestid', ''),
+                'table_name': self._get_table_name_for_error_context(operation_kwargs),
+            }
+            raise VerboseClientError(botocore_props, operation_name, verbose_props) from e
+
+        # todo: should we handle generic BotoCoreError here too?
+        # todo: should we handle generic HTTPClientError here too? e.g. for timeout
+
+    def _get_table_name_for_error_context(self, operation_kwargs) -> str:
+        # First handle the two multi-table cases: batch and transaction operations
+        if REQUEST_ITEMS in operation_kwargs:
+            return ','.join(operation_kwargs[REQUEST_ITEMS])
+        elif TRANSACT_ITEMS in operation_kwargs:
+            return ",".join(
+                op[TABLE_NAME] for op in (
+                    item for item in operation_kwargs[TRANSACT_ITEMS]
+                )
+            )
+        return operation_kwargs.get(TABLE_NAME)
 
     @property
     def session(self) -> botocore.session.Session:
@@ -375,6 +383,8 @@ class Connection(object):
                 }
             )
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
+
+            self._client.meta.events.register_first('before-sign.*.*', self._before_sign)
         return self._client
 
     def get_meta_table(self, table_name: str, refresh: bool = False):
@@ -782,7 +792,6 @@ class Connection(object):
         return_values: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the DeleteItem operation and returns the result
@@ -797,7 +806,7 @@ class Connection(object):
             return_item_collection_metrics=return_item_collection_metrics
         )
         try:
-            return self.dispatch(DELETE_ITEM, operation_kwargs, settings)
+            return self.dispatch(DELETE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise DeleteError("Failed to delete item: {}".format(e), e)
 
@@ -811,7 +820,6 @@ class Connection(object):
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
         return_values: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the UpdateItem operation
@@ -830,7 +838,7 @@ class Connection(object):
             return_item_collection_metrics=return_item_collection_metrics,
         )
         try:
-            return self.dispatch(UPDATE_ITEM, operation_kwargs, settings)
+            return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise UpdateError("Failed to update item: {}".format(e), e)
 
@@ -844,7 +852,6 @@ class Connection(object):
         return_values: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the PutItem operation and returns the result
@@ -861,7 +868,7 @@ class Connection(object):
             return_item_collection_metrics=return_item_collection_metrics
         )
         try:
-            return self.dispatch(PUT_ITEM, operation_kwargs, settings)
+            return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to put item: {}".format(e), e)
 
@@ -890,7 +897,6 @@ class Connection(object):
         client_request_token: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the TransactWrite operation and returns the result
@@ -917,7 +923,7 @@ class Connection(object):
         operation_kwargs[TRANSACT_ITEMS] = transact_items
 
         try:
-            return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs, settings)
+            return self.dispatch(TRANSACT_WRITE_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TransactWriteError("Failed to write transaction items", e)
 
@@ -925,7 +931,6 @@ class Connection(object):
         self,
         get_items: Sequence[Dict],
         return_consumed_capacity: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the TransactGet operation and returns the result
@@ -936,7 +941,7 @@ class Connection(object):
         ]
 
         try:
-            return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs, settings)
+            return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise TransactGetError("Failed to get transaction items", e)
 
@@ -947,7 +952,6 @@ class Connection(object):
         delete_items: Optional[Any] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the batch_write_item operation
@@ -977,7 +981,7 @@ class Connection(object):
                 })
         operation_kwargs[REQUEST_ITEMS][table_name] = delete_items_list + put_items_list
         try:
-            return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs, settings)
+            return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise PutError("Failed to batch write items: {}".format(e), e)
 
@@ -988,7 +992,6 @@ class Connection(object):
         consistent_read: Optional[bool] = None,
         return_consumed_capacity: Optional[str] = None,
         attributes_to_get: Optional[Any] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the batch get item operation
@@ -1019,7 +1022,7 @@ class Connection(object):
             )
         operation_kwargs[REQUEST_ITEMS][table_name].update(keys_map)
         try:
-            return self.dispatch(BATCH_GET_ITEM, operation_kwargs, settings)
+            return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise GetError("Failed to batch get items: {}".format(e), e)
 
@@ -1030,7 +1033,6 @@ class Connection(object):
         range_key: Optional[str] = None,
         consistent_read: bool = False,
         attributes_to_get: Optional[Any] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the GetItem operation and returns the result
@@ -1043,7 +1045,7 @@ class Connection(object):
             attributes_to_get=attributes_to_get
         )
         try:
-            return self.dispatch(GET_ITEM, operation_kwargs, settings)
+            return self.dispatch(GET_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise GetError("Failed to get item: {}".format(e), e)
 
@@ -1059,7 +1061,6 @@ class Connection(object):
         total_segments: Optional[int] = None,
         consistent_read: Optional[bool] = None,
         index_name: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the scan operation
@@ -1096,7 +1097,7 @@ class Connection(object):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
 
         try:
-            return self.dispatch(SCAN, operation_kwargs, settings)
+            return self.dispatch(SCAN, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise ScanError("Failed to scan table: {}".format(e), e)
 
@@ -1114,7 +1115,6 @@ class Connection(object):
         return_consumed_capacity: Optional[str] = None,
         scan_index_forward: Optional[bool] = None,
         select: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the Query operation and returns the result
@@ -1171,7 +1171,7 @@ class Connection(object):
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
 
         try:
-            return self.dispatch(QUERY, operation_kwargs, settings)
+            return self.dispatch(QUERY, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
             raise QueryError("Failed to query items: {}".format(e), e)
 

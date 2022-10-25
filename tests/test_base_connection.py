@@ -17,13 +17,12 @@ import pytest
 from pynamodb.connection import Connection
 from pynamodb.connection.base import MetaTable
 from pynamodb.exceptions import (
-    TableError, DeleteError, PutError, ScanError, GetError, UpdateError, TableDoesNotExist)
+    TableError, DeleteError, PutError, ScanError, GetError, UpdateError, TableDoesNotExist, VerboseClientError)
 from pynamodb.constants import (
     UNPROCESSED_ITEMS, STRING, BINARY, DEFAULT_ENCODING, TABLE_KEY,
     PAY_PER_REQUEST_BILLING_MODE)
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
-from pynamodb.settings import OperationSettings
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
@@ -1373,24 +1372,66 @@ def test_connection_scan():
 
 
 @mock.patch('botocore.httpsession.URLLib3Session.send')
-def test_connection__make_api_call_throws_verbose_error_after_backoff(send_mock):
+def test_connection__make_api_call__wraps_verbose_client_error_create(send_mock):
     response = AWSResponse(
-        url='http://lyft.com',
+        url='',
         status_code=500,
         raw='',  # todo: use stream, like `botocore.tests.RawResponse`?
-        headers={'x-amzn-RequestId': 'abcdef'},
+        headers={'X-Amzn-RequestId': 'abcdef'},
     )
-    response._content = json.dumps({'message': 'There is a problem', '__type': 'InternalServerError'}).encode('utf-8')
+    response._content = json.dumps({
+        '__type': 'InternalServerError',
+        'message': 'There is a problem',
+        'code': 'InternalServerError',
+    }).encode('utf-8')
     send_mock.return_value = response
 
-    c = Connection()
+    c = Connection(max_retry_attempts=0)
 
-    with pytest.raises(ClientError) as excinfo:
+    with pytest.raises(VerboseClientError) as excinfo:
         c._make_api_call('CreateTable', {'TableName': 'MyTable'})
-        assert (
-            'An error occurred (InternalServerError) on request (abcdef) on table (MyTable) when calling the CreateTable operation: There is a problem'
-            in str(excinfo)
-        )
+    assert (
+        'An error occurred (InternalServerError) on request (abcdef) on table (MyTable) when calling the CreateTable operation: There is a problem'
+        in str(excinfo.value)
+    )
+
+@mock.patch('botocore.httpsession.URLLib3Session.send')
+def test_connection__make_api_call__wraps_verbose_client_error_batch(send_mock):
+    response = AWSResponse(
+        url='',
+        status_code=500,
+        raw='',  # todo: use stream, like `botocore.tests.RawResponse`?
+        headers={'X-Amzn-RequestId': 'abcdef'},
+    )
+    response._content = json.dumps({
+        '__type': 'InternalServerError',
+        'message': 'There is a problem',
+        'code': 'InternalServerError',
+    }).encode('utf-8')
+    send_mock.return_value = response
+
+    c = Connection(max_retry_attempts=0)
+
+    with pytest.raises(VerboseClientError) as excinfo:
+        c._make_api_call('BatchGetItem', {
+            'RequestItems': {
+                'table_one': {
+                    "Keys": [
+                        {"ID": {"S": "1"}},
+                        {"ID": {"S": "2"}},
+                    ]
+                },
+                'table_two': {
+                    "Keys": [
+                        {"ID": {"S": "3"}}
+                    ],
+                },
+            },
+        })
+    assert (
+        'An error occurred (InternalServerError) on request (abcdef) on table (table_one,table_two) when calling the BatchGetItem operation: There is a problem'
+        in str(excinfo.value)
+    )
 
 
 @mock.patch('botocore.httpsession.URLLib3Session.send')
@@ -1468,17 +1509,15 @@ def test_connection_make_api_call___extra_headers(send_mock):
 
     send_mock.return_value = good_response
 
-    c = Connection(extra_headers={'foo': 'bar', 'abc': '123'}, max_retry_attempts=0)
+    c = Connection(extra_headers={'foo': 'bar'}, max_retry_attempts=0)
     c._make_api_call(
         'DescribeTable',
         {'TableName': 'MyTable'},
-        settings=OperationSettings(extra_headers={'abc': 'xyz'}),
     )
 
     assert send_mock.call_count == 1
     request = send_mock.call_args[0][0]
-    assert request.headers.get('foo') == 'bar'
-    assert request.headers.get('abc') == 'xyz'
+    assert request.headers.get('foo').decode() == 'bar'
 
 
 @mock.patch('botocore.httpsession.URLLib3Session.send')

@@ -5,7 +5,7 @@ PynamoDB Connection classes
 
 from typing import Any, Dict, Mapping, Optional, Sequence
 
-from pynamodb.connection.base import Connection, MetaTable, OperationSettings
+from pynamodb.connection.base import Connection, MetaTable
 from pynamodb.constants import DEFAULT_BILLING_MODE, KEY
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.update import Action
@@ -91,7 +91,6 @@ class TableConnection:
         return_values: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the DeleteItem operation and returns the result
@@ -104,7 +103,6 @@ class TableConnection:
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
-            settings=settings,
         )
 
     def update_item(
@@ -116,7 +114,6 @@ class TableConnection:
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
         return_values: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the UpdateItem operation
@@ -130,7 +127,6 @@ class TableConnection:
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
             return_values=return_values,
-            settings=settings,
         )
 
     def put_item(
@@ -142,7 +138,6 @@ class TableConnection:
         return_values: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the PutItem operation and returns the result
@@ -156,7 +151,6 @@ class TableConnection:
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
-            settings=settings,
         )
 
     def batch_write_item(
@@ -165,7 +159,6 @@ class TableConnection:
         delete_items: Optional[Any] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the batch_write_item operation
@@ -176,7 +169,6 @@ class TableConnection:
             delete_items=delete_items,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
-            settings=settings,
         )
 
     def batch_get_item(
@@ -185,7 +177,6 @@ class TableConnection:
         consistent_read: Optional[bool] = None,
         return_consumed_capacity: Optional[str] = None,
         attributes_to_get: Optional[Any] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the batch get item operation
@@ -196,7 +187,6 @@ class TableConnection:
             consistent_read=consistent_read,
             return_consumed_capacity=return_consumed_capacity,
             attributes_to_get=attributes_to_get,
-            settings=settings,
         )
 
     def get_item(
@@ -205,7 +195,6 @@ class TableConnection:
         range_key: Optional[str] = None,
         consistent_read: bool = False,
         attributes_to_get: Optional[Any] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the GetItem operation and returns the result
@@ -216,7 +205,6 @@ class TableConnection:
             range_key=range_key,
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get,
-            settings=settings,
         )
 
     def scan(
@@ -230,7 +218,6 @@ class TableConnection:
         exclusive_start_key: Optional[str] = None,
         consistent_read: Optional[bool] = None,
         index_name: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the scan operation
@@ -246,7 +233,6 @@ class TableConnection:
             exclusive_start_key=exclusive_start_key,
             consistent_read=consistent_read,
             index_name=index_name,
-            settings=settings,
         )
 
     def query(
@@ -262,7 +248,6 @@ class TableConnection:
         return_consumed_capacity: Optional[str] = None,
         scan_index_forward: Optional[bool] = None,
         select: Optional[str] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Dict:
         """
         Performs the Query operation and returns the result
@@ -280,7 +265,6 @@ class TableConnection:
             return_consumed_capacity=return_consumed_capacity,
             scan_index_forward=scan_index_forward,
             select=select,
-            settings=settings,
         )
 
     def describe_table(self) -> Dict:

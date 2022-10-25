@@ -3,7 +3,6 @@ from typing import Any, Callable, Dict, Iterable, Iterator, TypeVar, Optional
 
 from pynamodb.constants import (CAMEL_COUNT, ITEMS, LAST_EVALUATED_KEY, SCANNED_COUNT,
                                 CONSUMED_CAPACITY, TOTAL, CAPACITY_UNITS)
-from pynamodb.settings import OperationSettings
 
 _T = TypeVar('_T')
 
@@ -85,7 +84,6 @@ class PageIterator(Iterator[_T]):
         args: Any,
         kwargs: Dict[str, Any],
         rate_limit: Optional[float] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> None:
         self._operation = operation
         self._args = args
@@ -96,7 +94,6 @@ class PageIterator(Iterator[_T]):
         self._rate_limiter = None
         if rate_limit:
             self._rate_limiter = RateLimiter(rate_limit)
-        self._settings = settings
 
     def __iter__(self) -> Iterator[_T]:
         return self
@@ -112,7 +109,7 @@ class PageIterator(Iterator[_T]):
         if self._rate_limiter:
             self._rate_limiter.acquire()
             self._kwargs['return_consumed_capacity'] = TOTAL
-        page = self._operation(*self._args, settings=self._settings, **self._kwargs)
+        page = self._operation(*self._args, **self._kwargs)
         self._last_evaluated_key = page.get(LAST_EVALUATED_KEY)
         self._total_scanned_count += page[SCANNED_COUNT]
 
@@ -167,9 +164,8 @@ class ResultIterator(Iterator[_T]):
         map_fn: Optional[Callable] = None,
         limit: Optional[int] = None,
         rate_limit: Optional[float] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> None:
-        self.page_iter: PageIterator = PageIterator(operation, args, kwargs, rate_limit, settings)
+        self.page_iter: PageIterator = PageIterator(operation, args, kwargs, rate_limit)
         self._first_iteration = True
         self._map_fn = map_fn
         self._limit = limit
