@@ -339,11 +339,11 @@ class Connection(object):
         if REQUEST_ITEMS in operation_kwargs:
             return ','.join(operation_kwargs[REQUEST_ITEMS])
         elif TRANSACT_ITEMS in operation_kwargs:
-            return ",".join(
-                op[TABLE_NAME] for op in (
-                    item for item in operation_kwargs[TRANSACT_ITEMS]
-                )
-            )
+            table_names = []
+            for item in operation_kwargs[TRANSACT_ITEMS]:
+                for op in item.values():
+                    table_names.append(op[TABLE_NAME])
+            return ",".join(table_names)
         return operation_kwargs.get(TABLE_NAME)
 
     @property
@@ -376,7 +376,7 @@ class Connection(object):
                     'mode': 'standard',
                 }
             )
-            self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
+            self._client = cast(BotocoreBaseClientPrivate, self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config))
 
             self._client.meta.events.register_first('before-sign.*.*', self._before_sign)
         return self._client

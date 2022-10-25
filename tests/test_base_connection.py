@@ -1435,6 +1435,46 @@ def test_connection__make_api_call__wraps_verbose_client_error_batch(send_mock):
 
 
 @mock.patch('botocore.httpsession.URLLib3Session.send')
+def test_connection__make_api_call__wraps_verbose_client_error_transact(send_mock):
+    response = AWSResponse(
+        url='',
+        status_code=500,
+        raw='',  # todo: use stream, like `botocore.tests.RawResponse`?
+        headers={'X-Amzn-RequestId': 'abcdef'},
+    )
+    response._content = json.dumps({
+        '__type': 'InternalServerError',
+        'message': 'There is a problem',
+        'code': 'InternalServerError',
+    }).encode('utf-8')
+    send_mock.return_value = response
+
+    c = Connection(max_retry_attempts=0)
+
+    with pytest.raises(VerboseClientError) as excinfo:
+        c._make_api_call('TransactWriteItems', {
+            'ClientRequestToken': "some_token",
+            'TransactItems': [
+                {
+                    'Put': {
+                        'Item': {'id': {'S': 'item_id_one'}},
+                        'TableName': 'table_one',
+                    },
+                },
+                {
+                    'Update': {
+                        'Key': {'id': {'S': 'item_id_two'}},
+                        'TableName': 'table_two',
+                    }
+                },
+            ],
+        })
+    assert (
+        'An error occurred (InternalServerError) on request (abcdef) on table (table_one,table_two) when calling the TransactWriteItems operation: There is a problem'
+        in str(excinfo.value)
+    )
+
+@mock.patch('botocore.httpsession.URLLib3Session.send')
 def test_connection__make_api_call_throws_verbose_error_after_backoff_later_succeeds(send_mock):
     # mock response
     bad_response = mock.Mock(spec=AWSResponse)
