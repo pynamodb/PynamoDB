@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+v5.2.2
+----------
+* Update for botocore 1.28 private API change (#1083)
+
+
 v5.2.1
 ----------
 * Fix issue from 5.2.0 with attempting to set GSI provisioned throughput on PAY_PER_REQUEST billing mode (#1018)
