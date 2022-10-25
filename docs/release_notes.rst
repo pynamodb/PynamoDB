@@ -3,7 +3,9 @@ Release Notes
 
 v5.2.2
 ----------
-* Update for botocore 1.28 private API change (#1083)
+* Update for botocore 1.28 private API change (#1083) which caused the following exception::
+
+    TypeError: _convert_to_request_dict() missing 1 required positional argument: 'endpoint_url'
 
 
 v5.2.1
