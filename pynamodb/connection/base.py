@@ -538,7 +538,7 @@ class Connection(object):
                 max_pool_connections=self._max_pool_connections)
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
             self._convert_to_request_dict_kwargs = {}
-            if 'endpoint_url' in inspect.getargs(self._client._convert_to_request_dict).args:
+            if 'endpoint_url' in inspect.signature(self._client._convert_to_request_dict).parameters:
                 self._convert_to_request_dict_kwargs['endpoint_url'] = self.host
         return self._client
 
