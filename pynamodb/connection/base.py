@@ -1,6 +1,7 @@
 """
 Lowest level connection
 """
+import inspect
 import json
 import logging
 import random
@@ -252,6 +253,7 @@ class Connection(object):
         self.host = host
         self._local = local()
         self._client = None
+        self._convert_to_request_dict_kwargs = {}
         if region:
             self.region = region
         else:
@@ -358,6 +360,7 @@ class Connection(object):
         request_dict = self.client._convert_to_request_dict(
             operation_kwargs,
             operation_model,
+            **self._convert_to_request_dict_kwargs,
         )
 
         for i in range(0, self._max_retry_attempts_exception + 1):
@@ -534,6 +537,9 @@ class Connection(object):
                 read_timeout=self._read_timeout_seconds,
                 max_pool_connections=self._max_pool_connections)
             self._client = self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config)
+            self._convert_to_request_dict_kwargs = {}
+            if 'endpoint_url' in inspect.getargs(self._client._convert_to_request_dict).args:
+                self._convert_to_request_dict_kwargs['endpoint_url'] = self.host
         return self._client
 
     def get_meta_table(self, table_name: str, refresh: bool = False):
