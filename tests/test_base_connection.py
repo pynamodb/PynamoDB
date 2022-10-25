@@ -2,11 +2,14 @@
 Tests for the base connection class
 """
 import base64
+import io
 import json
 from unittest import mock, TestCase
 from unittest.mock import patch
 
 import botocore.exceptions
+import botocore.httpsession
+import urllib3
 from botocore.awsrequest import AWSPreparedRequest, AWSRequest, AWSResponse
 from botocore.client import ClientError
 from botocore.exceptions import BotoCoreError
@@ -1409,6 +1412,22 @@ class ConnectionTestCase(TestCase):
                 ScanError,
                 conn.scan,
                 table_name)
+
+    def test_make_api_call__happy_path(self):
+        response = AWSResponse(
+            url='https://www.example.com',
+            status_code=200,
+            raw=urllib3.HTTPResponse(
+                body=io.BytesIO(json.dumps({}).encode('utf-8')),
+                preload_content=False,
+            ),
+            headers={'x-amzn-RequestId': 'abcdef'},
+        )
+
+        c = Connection()
+
+        with patch.object(botocore.httpsession.URLLib3Session, 'send', return_value=response):
+            c._make_api_call('CreateTable', {'TableName': 'MyTable'})
 
     @mock.patch('pynamodb.connection.Connection.client')
     def test_make_api_call_throws_verbose_error_after_backoff(self, client_mock):

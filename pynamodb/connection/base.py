@@ -254,7 +254,7 @@ class Connection(object):
         self.host = host
         self._local = local()
         self._client: Optional[BotocoreBaseClientPrivate] = None
-        self._convert_to_request_dict_kwargs: Dict[str, Any] = {}
+        self._convert_to_request_dict__endpoint_url = False
         if region:
             self.region = region
         else:
@@ -358,11 +358,28 @@ class Connection(object):
         2. It provides a place to monkey patch HTTP requests for unit testing
         """
         operation_model = self.client._service_model.operation_model(operation_name)
-        request_dict = self.client._convert_to_request_dict(
-            operation_kwargs,
-            operation_model,
-            **self._convert_to_request_dict_kwargs,
-        )
+        if self._convert_to_request_dict__endpoint_url:
+            request_context = {
+                'client_region': self.region,
+                'client_config': self.client.meta.config,
+                'has_streaming_input': operation_model.has_streaming_input,
+                'auth_type': operation_model.auth_type,
+            }
+            endpoint_url, additional_headers = self.client._resolve_endpoint_ruleset(
+                operation_model, operation_kwargs, request_context
+            )
+            request_dict = self.client._convert_to_request_dict(
+                api_params=operation_kwargs,
+                operation_model=operation_model,
+                endpoint_url=endpoint_url,
+                context=request_context,
+                headers=additional_headers,
+            )
+        else:
+            request_dict = self.client._convert_to_request_dict(
+                operation_kwargs,
+                operation_model,
+            )
 
         for i in range(0, self._max_retry_attempts_exception + 1):
             attempt_number = i + 1
@@ -536,11 +553,10 @@ class Connection(object):
                 parameter_validation=False,  # Disable unnecessary validation for performance
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
-                max_pool_connections=self._max_pool_connections)
+                max_pool_connections=self._max_pool_connections,
+            )
             self._client = cast(BotocoreBaseClientPrivate, self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config))
-            self._convert_to_request_dict_kwargs = {}
-            if 'endpoint_url' in inspect.signature(self._client._convert_to_request_dict).parameters:
-                self._convert_to_request_dict_kwargs['endpoint_url'] = self.host
+            self._convert_to_request_dict__endpoint_url = 'endpoint_url' in inspect.signature(self._client._convert_to_request_dict).parameters
         return self._client
 
     def get_meta_table(self, table_name: str, refresh: bool = False):
