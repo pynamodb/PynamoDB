@@ -1,6 +1,13 @@
 Release Notes
 =============
 
+v5.2.3
+----------
+* Update for botocore 1.28 private API change (#1087) which caused the following exception::
+
+    TypeError: Cannot mix str and non-str arguments
+
+
 v5.2.2
 ----------
 * Update for botocore 1.28 private API change (#1083) which caused the following exception::
