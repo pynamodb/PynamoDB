@@ -331,9 +331,6 @@ class Connection(object):
             }
             raise VerboseClientError(botocore_props, operation_name, verbose_props) from e
 
-        # todo: should we handle generic BotoCoreError here too?
-        # todo: should we handle generic HTTPClientError here too? e.g. for timeout
-
     def _get_table_name_for_error_context(self, operation_kwargs) -> str:
         # First handle the two multi-table cases: batch and transaction operations
         if REQUEST_ITEMS in operation_kwargs:

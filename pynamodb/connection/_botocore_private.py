@@ -27,5 +27,5 @@ class BotocoreBaseClientPrivate(botocore.client.BaseClient):
         self,
         operation_name: str,
         operation_kwargs: Dict,
-    ):
+    ) -> Dict:
         ...

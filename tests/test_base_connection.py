@@ -2,8 +2,8 @@
 Tests for the base connection class
 """
 import base64
-import io
 import json
+import urllib3
 from unittest import mock
 from unittest.mock import patch
 
@@ -1587,6 +1587,17 @@ def test_connection_make_api_call__throws_retry_disabled(send_mock):
         c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
 
     assert len(send_mock.mock_calls) == 1
+
+
+@mock.patch('urllib3.connectionpool.HTTPConnectionPool.urlopen')
+def test_connection_make_api_call__throws_conn_closed(urlopen_mock):
+    urlopen_mock.side_effect = [
+        urllib3.exceptions.ProtocolError(),
+    ]
+    c = Connection(read_timeout_seconds=11, max_retry_attempts=0)
+
+    with pytest.raises(botocore.exceptions.ConnectionClosedError):
+        c._make_api_call('DescribeTable', {'TableName': 'MyTable'})
 
 
 @mock.patch('botocore.httpsession.URLLib3Session.send')
