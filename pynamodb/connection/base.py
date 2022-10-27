@@ -80,6 +80,13 @@ class MetaTable(object):
         return ""
 
     @property
+    def table_name(self) -> str:
+        """
+        Returns the table name
+        """
+        return self.data[TABLE_NAME]
+
+    @property
     def range_keyname(self) -> Optional[str]:
         """
         Returns the name of this table's range key
@@ -559,25 +566,22 @@ class Connection(object):
             self._convert_to_request_dict__endpoint_url = 'endpoint_url' in inspect.signature(self._client._convert_to_request_dict).parameters
         return self._client
 
-    def get_meta_table(self, table_name: str, refresh: bool = False):
+    def add_meta_table(self, meta_table: MetaTable) -> None:
+        """
+        Sets the meta table for a given table name
+        """
+        if meta_table.table_name in self._tables:
+            raise ValueError(f"Meta-table for '{meta_table.table_name}' already added")
+        self._tables[meta_table.table_name] = meta_table
+
+    def get_meta_table(self, table_name: str):
         """
         Returns a MetaTable
         """
-        if table_name not in self._tables or refresh:
-            operation_kwargs = {
-                TABLE_NAME: table_name
-            }
-            try:
-                data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
-                self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
-            except BotoCoreError as e:
-                raise TableError("Unable to describe table: {}".format(e), e)
-            except ClientError as e:
-                if 'ResourceNotFound' in e.response['Error']['Code']:
-                    raise TableDoesNotExist(e.response['Error']['Message'])
-                else:
-                    raise
-        return self._tables[table_name]
+        try:
+            return self._tables[table_name]
+        except KeyError:
+            raise TableError(f"Meta-table for '{table_name}' not initialized") from None
 
     def create_table(
         self,
@@ -767,13 +771,26 @@ class Connection(object):
         """
         Performs the DescribeTable operation
         """
+        operation_kwargs = {
+            TABLE_NAME: table_name
+        }
         try:
-            tbl = self.get_meta_table(table_name, refresh=True)
-            if tbl:
-                return tbl.data
-        except ValueError:
-            pass
-        raise TableDoesNotExist(table_name)
+            data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
+            table_data = data.get(TABLE_KEY)
+            # For compatibility with existing code which uses Connection directly,
+            # we can let DescribeTable set the meta table.
+            if table_data:
+                meta_table = MetaTable(table_data)
+                if meta_table.table_name not in self._tables:
+                    self.add_meta_table(meta_table)
+            return table_data
+        except BotoCoreError as e:
+            raise TableError("Unable to describe table: {}".format(e), e)
+        except ClientError as e:
+            if 'ResourceNotFound' in e.response['Error']['Code']:
+                raise TableDoesNotExist(e.response['Error']['Message'])
+            else:
+                raise
 
     def get_item_attribute_map(
         self,

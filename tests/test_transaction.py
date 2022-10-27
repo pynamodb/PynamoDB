@@ -2,6 +2,8 @@ import pytest
 from pynamodb.attributes import NumberAttribute, UnicodeAttribute, VersionAttribute
 
 from pynamodb.connection import Connection
+from pynamodb.connection.base import MetaTable
+from pynamodb.constants import TABLE_KEY
 from pynamodb.transactions import Transaction, TransactGet, TransactWrite
 from pynamodb.models import Model
 from tests.test_base_connection import PATCH_METHOD
@@ -21,24 +23,24 @@ class MockModel(Model):
 
 MOCK_TABLE_DESCRIPTOR = {
     "Table": {
-        "TableName": "Mock",
+        "TableName": "mock",
         "KeySchema": [
             {
-                "AttributeName": "MockHash",
+                "AttributeName": "mock_hash",
                 "KeyType": "HASH"
             },
             {
-                "AttributeName": "MockRange",
+                "AttributeName": "mock_range",
                 "KeyType": "RANGE"
             }
         ],
         "AttributeDefinitions": [
             {
-                "AttributeName": "MockHash",
+                "AttributeName": "mock_hash",
                 "AttributeType": "N"
             },
             {
-                "AttributeName": "MockRange",
+                "AttributeName": "mock_range",
                 "AttributeType": "N"
             }
         ]
@@ -58,15 +60,15 @@ class TestTransactGet:
 
     def test_commit(self, mocker):
         connection = Connection()
+        connection.add_meta_table(MetaTable(MOCK_TABLE_DESCRIPTOR[TABLE_KEY]))
+
         mock_connection_transact_get = mocker.patch.object(connection, 'transact_get_items')
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MOCK_TABLE_DESCRIPTOR
-            with TransactGet(connection=connection) as t:
-                t.get(MockModel, 1, 2)
+        with TransactGet(connection=connection) as t:
+            t.get(MockModel, 1, 2)
 
         mock_connection_transact_get.assert_called_once_with(
-            get_items=[{'Key': {'MockHash': {'N': '1'}, 'MockRange': {'N': '2'}}, 'TableName': 'mock'}],
+            get_items=[{'Key': {'mock_hash': {'N': '1'}, 'mock_range': {'N': '2'}}, 'TableName': 'mock'}],
             return_consumed_capacity=None
         )
 
@@ -92,25 +94,25 @@ class TestTransactWrite:
         expected_condition_checks = [{
             'ConditionExpression': 'attribute_not_exists (#0)',
             'ExpressionAttributeNames': {'#0': 'mock_hash'},
-            'Key': {'MockHash': {'N': '1'}, 'MockRange': {'N': '3'}},
+            'Key': {'mock_hash': {'N': '1'}, 'mock_range': {'N': '3'}},
             'TableName': 'mock'}
         ]
         expected_deletes = [{
             'ConditionExpression': 'attribute_not_exists (#0)',
             'ExpressionAttributeNames': {'#0': 'mock_version'},
-            'Key': {'MockHash': {'N': '2'}, 'MockRange': {'N': '4'}},
+            'Key': {'mock_hash': {'N': '2'}, 'mock_range': {'N': '4'}},
             'TableName': 'mock'
         }]
         expected_puts = [{
             'ConditionExpression': 'attribute_not_exists (#0)',
             'ExpressionAttributeNames': {'#0': 'mock_version'},
-            'Item': {'MockHash': {'N': '3'}, 'MockRange': {'N': '5'}, 'mock_version': {'N': '1'}},
+            'Item': {'mock_hash': {'N': '3'}, 'mock_range': {'N': '5'}, 'mock_version': {'N': '1'}},
             'TableName': 'mock'
         }]
         expected_updates = [{
             'ConditionExpression': 'attribute_not_exists (#0)',
             'TableName': 'mock',
-            'Key': {'MockHash': {'N': '4'}, 'MockRange': {'N': '6'}},
+            'Key': {'mock_hash': {'N': '4'}, 'mock_range': {'N': '6'}},
             'ReturnValuesOnConditionCheckFailure': 'ALL_OLD',
             'UpdateExpression': 'SET #1 = :0, #0 = :1',
             'ExpressionAttributeNames': {'#0': 'mock_version', '#1': 'mock_toot'},
