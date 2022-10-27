@@ -19,7 +19,6 @@ class TableConnection:
     def __init__(
         self,
         table_name: str,
-        meta_table: Optional[MetaTable] = None,
         region: Optional[str] = None,
         host: Optional[str] = None,
         connect_timeout_seconds: Optional[float] = None,
@@ -31,6 +30,8 @@ class TableConnection:
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
         aws_session_token: Optional[str] = None,
+        *,
+        meta_table: Optional[MetaTable] = None,
     ) -> None:
         self.table_name = table_name
         self.connection = Connection(region=region,
