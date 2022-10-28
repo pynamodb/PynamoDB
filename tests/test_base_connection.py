@@ -64,7 +64,7 @@ class ConnectionTestCase(TestCase):
     """
 
     def setUp(self):
-        self.test_table_name = 'ci-table'
+        self.test_table_name = 'Thread'
         self.region = 'us-east-1'
 
     def test_create_connection(self):
@@ -153,7 +153,7 @@ class ConnectionTestCase(TestCase):
             }
         ]
         params = {
-            'TableName': 'ci-table',
+            'TableName': 'Thread',
             'ProvisionedThroughput': {
                 'WriteCapacityUnits': 1,
                 'ReadCapacityUnits': 1
@@ -295,7 +295,7 @@ class ConnectionTestCase(TestCase):
         """
         Connection.delete_table
         """
-        params = {'TableName': 'ci-table'}
+        params = {'TableName': 'Thread'}
         with patch(PATCH_METHOD) as req:
             req.return_value = None
             conn = Connection(self.region)
@@ -320,7 +320,7 @@ class ConnectionTestCase(TestCase):
                     'WriteCapacityUnits': 2,
                     'ReadCapacityUnits': 2
                 },
-                'TableName': 'ci-table'
+                'TableName': 'Thread'
             }
             conn.update_table(
                 self.test_table_name,
@@ -353,7 +353,7 @@ class ConnectionTestCase(TestCase):
                 }
             ]
             params = {
-                'TableName': 'ci-table',
+                'TableName': 'Thread',
                 'ProvisionedThroughput': {
                     'ReadCapacityUnits': 2,
                     'WriteCapacityUnits': 2,
@@ -387,17 +387,11 @@ class ConnectionTestCase(TestCase):
             req.return_value = DESCRIBE_TABLE_DATA
             conn = Connection(self.region)
             conn.describe_table(self.test_table_name)
-            self.assertEqual(req.call_args[0][1], {'TableName': 'ci-table'})
+            self.assertEqual(req.call_args[0][1], {'TableName': 'Thread'})
 
         with self.assertRaises(TableDoesNotExist):
             with patch(PATCH_METHOD) as req:
                 req.side_effect = ClientError({'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Not Found'}}, "DescribeTable")
-                conn = Connection(self.region)
-                conn.describe_table(self.test_table_name)
-
-        with self.assertRaises(TableDoesNotExist):
-            with patch(PATCH_METHOD) as req:
-                req.side_effect = ValueError()
                 conn = Connection(self.region)
                 conn.describe_table(self.test_table_name)
 
@@ -434,9 +428,7 @@ class ConnectionTestCase(TestCase):
         Connection.delete_item
         """
         conn = Connection(self.region)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table(self.test_table_name)
+        conn.add_meta_table(MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.side_effect = BotoCoreError
@@ -587,9 +579,7 @@ class ConnectionTestCase(TestCase):
         """
         conn = Connection(self.region)
         table_name = 'Thread'
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table(table_name)
+        conn.add_meta_table(MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = GET_ITEM_DATA
@@ -639,20 +629,11 @@ class ConnectionTestCase(TestCase):
         Connection.update_item
         """
         conn = Connection()
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table(self.test_table_name)
+        conn.add_meta_table(MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         self.assertRaises(ValueError, conn.update_item, self.test_table_name, 'foo-key')
 
         self.assertRaises(ValueError, conn.update_item, self.test_table_name, 'foo', actions=[])
-
-        attr_updates = {
-            'Subject': {
-                'Value': 'foo-subject',
-                'Action': 'PUT'
-            },
-        }
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -689,7 +670,7 @@ class ConnectionTestCase(TestCase):
                         'S': 'foo-subject'
                     }
                 },
-                'TableName': 'ci-table'
+                'TableName': 'Thread'
             }
             self.assertEqual(req.call_args[0][1], params)
 
@@ -736,7 +717,7 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'ci-table'
+                'TableName': 'Thread'
             }
             self.assertEqual(req.call_args[0][1], params)
 
@@ -756,9 +737,7 @@ class ConnectionTestCase(TestCase):
         Connection.put_item
         """
         conn = Connection(self.region)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table(self.test_table_name)
+        conn.add_meta_table(MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.side_effect = BotoCoreError
@@ -955,9 +934,7 @@ class ConnectionTestCase(TestCase):
             conn.batch_write_item,
             table_name)
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table(table_name)
+        conn.add_meta_table(MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -1084,9 +1061,7 @@ class ConnectionTestCase(TestCase):
             items.append(
                 {"ForumName": "FooForum", "Subject": "thread-{}".format(i)}
             )
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table(table_name)
+        conn.add_meta_table(MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.side_effect = BotoCoreError
@@ -1168,9 +1143,7 @@ class ConnectionTestCase(TestCase):
         """
         conn = Connection()
         table_name = 'Thread'
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table(table_name)
+        conn.add_meta_table(MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with pytest.raises(ValueError, match="Table Thread has no index: NonExistentIndexName"):
             conn.query(table_name, "FooForum", limit=1, index_name='NonExistentIndexName')
@@ -1303,9 +1276,7 @@ class ConnectionTestCase(TestCase):
         conn = Connection()
         table_name = 'Thread'
 
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table(table_name)
+        conn.add_meta_table(MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}

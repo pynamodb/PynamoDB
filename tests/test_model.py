@@ -30,7 +30,6 @@ from pynamodb.attributes import (
     BooleanAttribute, ListAttribute, TTLAttribute, VersionAttribute)
 from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
-    DESCRIBE_TABLE_DATA_PAY_PER_REQUEST,
     BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
     COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
     CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
@@ -556,24 +555,11 @@ class ModelTestCase(TestCase):
         self.assertEqual(UserModel.Meta.read_capacity_units, 25)
         self.assertEqual(UserModel.Meta.write_capacity_units, 25)
 
-        # Test for wrong billing_mode
-        setattr(UserModel.Meta, 'billing_mode', 'WRONG')
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            self.assertRaises(ValueError)
-        delattr(UserModel.Meta, 'billing_mode')
-
         # A table with billing_mode set as on_demand
         self.assertEqual(BillingModeOnDemandModel.Meta.billing_mode, 'PAY_PER_REQUEST')
         with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA_PAY_PER_REQUEST
+            req.return_value = MODEL_TABLE_DATA
             BillingModeOnDemandModel.create_table(read_capacity_units=2, write_capacity_units=2)
-            self.assertEqual(BillingModeOnDemandModel._connection.get_meta_table().data
-                             .get('BillingModeSummary', {}).get('BillingMode', None), 'PAY_PER_REQUEST')
-            self.assertEqual(BillingModeOnDemandModel._connection.get_meta_table().data
-                             .get('ProvisionedThroughput', {}).get('ReadCapacityUnits', None), 0)
-            self.assertEqual(BillingModeOnDemandModel._connection.get_meta_table().data
-                             .get('ProvisionedThroughput', {}).get('WriteCapacityUnits', None), 0)
 
         UserModel._connection = None
 
@@ -683,12 +669,12 @@ class ModelTestCase(TestCase):
         schema = CustomAttrNameModel._get_schema()
         correct_schema = {
             'KeySchema': [
-                {'key_type': 'HASH', 'attribute_name': 'user_name'},
-                {'key_type': 'RANGE', 'attribute_name': 'user_id'}
+                {'KeyType': 'HASH', 'AttributeName': 'user_name'},
+                {'KeyType': 'RANGE', 'AttributeName': 'user_id'}
             ],
             'AttributeDefinitions': [
-                {'attribute_type': 'S', 'attribute_name': 'user_name'},
-                {'attribute_type': 'S', 'attribute_name': 'user_id'}
+                {'AttributeType': 'S', 'AttributeName': 'user_name'},
+                {'AttributeType': 'S', 'AttributeName': 'user_id'}
             ]
         }
         self.assert_dict_lists_equal(correct_schema['KeySchema'], schema['key_schema'])
@@ -2077,21 +2063,16 @@ class ModelTestCase(TestCase):
                 {
                     UNPROCESSED_ITEMS: {
                         UserModel.Meta.table_name: unprocessed_items[:2],
-                    }
+                    },
                 },
-                {
-                    UNPROCESSED_ITEMS: {
-                        UserModel.Meta.table_name: unprocessed_items[2:],
-                    }
-                },
-                {}
+                {},
             ]
 
             with UserModel.batch_write() as batch:
                 for item in items:
                     batch.save(item)
 
-            self.assertEqual(len(req.mock_calls), 3)
+            self.assertEqual(len(req.mock_calls), 2)
 
     def test_batch_write_raises_put_error(self):
         items = []
@@ -2111,19 +2092,11 @@ class ModelTestCase(TestCase):
             })
 
         with patch(PATCH_METHOD) as req:
-            req.side_effect = [
-                {
-                    UNPROCESSED_ITEMS: {
-                        BatchModel.Meta.table_name: unprocessed_items[:2],
-                    }
-                },
-                {
-                    UNPROCESSED_ITEMS: {
-                        BatchModel.Meta.table_name: unprocessed_items[2:],
-                    }
-                },
-                {}
-            ]
+            req.return_value = {
+                UNPROCESSED_ITEMS: {
+                    BatchModel.Meta.table_name: unprocessed_items[2:],
+                }
+            }
             with self.assertRaises(PutError):
                 with BatchModel.batch_write() as batch:
                     for item in items:
@@ -2428,9 +2401,9 @@ class ModelTestCase(TestCase):
                 }
             ],
             'attribute_definitions': [
-                {'attribute_type': 'S', 'attribute_name': 'user_name'},
-                {'attribute_type': 'S', 'attribute_name': 'email'},
-                {'attribute_type': 'NS', 'attribute_name': 'numbers'}
+                {'AttributeType': 'S', 'AttributeName': 'user_name'},
+                {'AttributeType': 'S', 'AttributeName': 'email'},
+                {'AttributeType': 'NS', 'AttributeName': 'numbers'}
             ]
         }
         self.assert_dict_lists_equal(
