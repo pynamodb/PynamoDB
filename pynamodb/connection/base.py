@@ -568,15 +568,15 @@ class Connection(object):
 
     def add_meta_table(self, meta_table: MetaTable) -> None:
         """
-        Sets the meta table for a given table name
+        Adds information about the table's schema.
         """
         if meta_table.table_name in self._tables:
             raise ValueError(f"Meta-table for '{meta_table.table_name}' already added")
         self._tables[meta_table.table_name] = meta_table
 
-    def get_meta_table(self, table_name: str):
+    def get_meta_table(self, table_name: str) -> MetaTable:
         """
-        Returns a MetaTable
+        Returns information about the table's schema.
         """
         try:
             return self._tables[table_name]
@@ -612,8 +612,8 @@ class Connection(object):
             raise ValueError("attribute_definitions argument is required")
         for attr in attribute_definitions:
             attrs_list.append({
-                ATTR_NAME: attr.get('attribute_name'),
-                ATTR_TYPE: attr.get('attribute_type')
+                ATTR_NAME: attr.get(ATTR_NAME) or attr['attribute_name'],
+                ATTR_TYPE: attr.get(ATTR_TYPE) or attr['attribute_type']
             })
         operation_kwargs[ATTR_DEFINITIONS] = attrs_list
 
@@ -643,8 +643,8 @@ class Connection(object):
         key_schema_list = []
         for item in key_schema:
             key_schema_list.append({
-                ATTR_NAME: item.get('attribute_name'),
-                KEY_TYPE: str(item.get('key_type')).upper()
+                ATTR_NAME: item.get(ATTR_NAME) or item['attribute_name'],
+                KEY_TYPE: str(item.get(KEY_TYPE) or item['key_type']).upper()
             })
         operation_kwargs[KEY_SCHEMA] = sorted(key_schema_list, key=lambda x: x.get(KEY_TYPE))
 
