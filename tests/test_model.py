@@ -669,12 +669,12 @@ class ModelTestCase(TestCase):
         schema = CustomAttrNameModel._get_schema()
         correct_schema = {
             'KeySchema': [
-                {'key_type': 'HASH', 'attribute_name': 'user_name'},
-                {'key_type': 'RANGE', 'attribute_name': 'user_id'}
+                {'KeyType': 'HASH', 'AttributeName': 'user_name'},
+                {'KeyType': 'RANGE', 'AttributeName': 'user_id'}
             ],
             'AttributeDefinitions': [
-                {'attribute_type': 'S', 'attribute_name': 'user_name'},
-                {'attribute_type': 'S', 'attribute_name': 'user_id'}
+                {'AttributeType': 'S', 'AttributeName': 'user_name'},
+                {'AttributeType': 'S', 'AttributeName': 'user_id'}
             ]
         }
         self.assert_dict_lists_equal(correct_schema['KeySchema'], schema['key_schema'])
@@ -2401,9 +2401,9 @@ class ModelTestCase(TestCase):
                 }
             ],
             'attribute_definitions': [
-                {'attribute_type': 'S', 'attribute_name': 'user_name'},
-                {'attribute_type': 'S', 'attribute_name': 'email'},
-                {'attribute_type': 'NS', 'attribute_name': 'numbers'}
+                {'AttributeType': 'S', 'AttributeName': 'user_name'},
+                {'AttributeType': 'S', 'AttributeName': 'email'},
+                {'AttributeType': 'NS', 'AttributeName': 'numbers'}
             ]
         }
         self.assert_dict_lists_equal(

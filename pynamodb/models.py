@@ -871,18 +871,18 @@ class Model(AttributeContainer, metaclass=MetaModel):
         for attr_name, attr_cls in cls.get_attributes().items():
             if attr_cls.is_hash_key or attr_cls.is_range_key:
                 schema['attribute_definitions'].append({
-                    'attribute_name': attr_cls.attr_name,
-                    'attribute_type': attr_cls.attr_type
+                    ATTR_NAME: attr_cls.attr_name,
+                    ATTR_TYPE: attr_cls.attr_type
                 })
             if attr_cls.is_hash_key:
                 schema['key_schema'].append({
-                    'key_type': HASH,
-                    'attribute_name': attr_cls.attr_name
+                    KEY_TYPE: HASH,
+                    ATTR_NAME: attr_cls.attr_name
                 })
             elif attr_cls.is_range_key:
                 schema['key_schema'].append({
-                    'key_type': RANGE,
-                    'attribute_name': attr_cls.attr_name
+                    KEY_TYPE: RANGE,
+                    ATTR_NAME: attr_cls.attr_name
                 })
         for index in cls._indexes.values():
             index_schema = index._get_schema()
@@ -895,13 +895,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         attr_names = {key_schema[ATTR_NAME]
                       for index_schema in (*schema['global_secondary_indexes'], *schema['local_secondary_indexes'])
                       for key_schema in index_schema['key_schema']}
-        attr_keys = {attr.get('attribute_name') for attr in schema['attribute_definitions']}
+        attr_keys = {attr[ATTR_NAME] for attr in schema['attribute_definitions']}
         for attr_name in attr_names:
             if attr_name not in attr_keys:
                 attr_cls = cls.get_attributes()[cls._dynamo_to_python_attr(attr_name)]
                 schema['attribute_definitions'].append({
-                    'attribute_name': attr_cls.attr_name,
-                    'attribute_type': attr_cls.attr_type
+                    ATTR_NAME: attr_cls.attr_name,
+                    ATTR_TYPE: attr_cls.attr_type
                 })
         return schema
 
@@ -1067,20 +1067,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
             schema = cls._get_schema()
             meta_table = MetaTable({
                 constants.TABLE_NAME: cls.Meta.table_name,
-                constants.KEY_SCHEMA: [
-                    {
-                        constants.KEY_TYPE: key_schema['key_type'],
-                        constants.ATTR_NAME: key_schema['attribute_name'],
-                    }
-                    for key_schema in schema['key_schema']
-                ],
-                constants.ATTR_DEFINITIONS: [
-                    {
-                        constants.ATTR_TYPE: attribute_definition['attribute_type'],
-                        constants.ATTR_NAME: attribute_definition['attribute_name'],
-                    }
-                    for attribute_definition in schema['attribute_definitions']
-                ],
+                constants.KEY_SCHEMA: schema['key_schema'],
+                constants.ATTR_DEFINITIONS: schema['attribute_definitions'],
                 constants.GLOBAL_SECONDARY_INDEXES: [
                     {
                         constants.INDEX_NAME: index_schema['index_name'],
