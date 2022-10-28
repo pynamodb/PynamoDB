@@ -1,6 +1,19 @@
 Release Notes
 =============
 
+v5.3.0
+----------
+* No longer call ``DescribeTable`` API before first operation
+
+  Before this change, we would call ``DescribeTable`` before the first operation
+  on a given table in order to discover its schema. This slowed down bootstrap
+  (particularly important for lambdas), complicated testing and could potentially
+  cause inconsistent behavior since queries were serialized using the table's
+  (key) schema but deserialized using the model's schema.
+
+  With this change, both queries and models now use the model's schema.
+
+
 v5.2.3
 ----------
 * Update for botocore 1.28 private API change (#1087) which caused the following exception::

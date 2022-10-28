@@ -24,6 +24,8 @@ from typing import TypeVar
 from typing import Union
 from typing import cast
 
+from pynamodb.connection.base import MetaTable
+
 if sys.version_info >= (3, 8):
     from typing import Protocol
 else:
@@ -38,9 +40,10 @@ from pynamodb.attributes import (
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
 from pynamodb.types import HASH, RANGE
-from pynamodb.indexes import Index, GlobalSecondaryIndex
+from pynamodb.indexes import Index, GlobalSecondaryIndex, LocalSecondaryIndex
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import get_settings_value, OperationSettings
+from pynamodb import constants
 from pynamodb.constants import (
     ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
     KEY_TYPE, ITEM, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
@@ -53,7 +56,7 @@ from pynamodb.constants import (
     BATCH_WRITE_PAGE_LIMIT,
     META_CLASS_NAME, REGION, HOST, NULL,
     COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
-    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE, TAGS
+    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE, TAGS, TABLE_NAME
 )
 from pynamodb.util import attribute_value_to_json
 from pynamodb.util import json_to_attribute_value
@@ -863,18 +866,18 @@ class Model(AttributeContainer, metaclass=MetaModel):
         for attr_name, attr_cls in cls.get_attributes().items():
             if attr_cls.is_hash_key or attr_cls.is_range_key:
                 schema['attribute_definitions'].append({
-                    'attribute_name': attr_cls.attr_name,
-                    'attribute_type': attr_cls.attr_type
+                    ATTR_NAME: attr_cls.attr_name,
+                    ATTR_TYPE: attr_cls.attr_type
                 })
             if attr_cls.is_hash_key:
                 schema['key_schema'].append({
-                    'key_type': HASH,
-                    'attribute_name': attr_cls.attr_name
+                    KEY_TYPE: HASH,
+                    ATTR_NAME: attr_cls.attr_name
                 })
             elif attr_cls.is_range_key:
                 schema['key_schema'].append({
-                    'key_type': RANGE,
-                    'attribute_name': attr_cls.attr_name
+                    KEY_TYPE: RANGE,
+                    ATTR_NAME: attr_cls.attr_name
                 })
         for index in cls._indexes.values():
             index_schema = index._get_schema()
@@ -887,13 +890,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         attr_names = {key_schema[ATTR_NAME]
                       for index_schema in (*schema['global_secondary_indexes'], *schema['local_secondary_indexes'])
                       for key_schema in index_schema['key_schema']}
-        attr_keys = {attr.get('attribute_name') for attr in schema['attribute_definitions']}
+        attr_keys = {attr[ATTR_NAME] for attr in schema['attribute_definitions']}
         for attr_name in attr_names:
             if attr_name not in attr_keys:
                 attr_cls = cls.get_attributes()[cls._dynamo_to_python_attr(attr_name)]
                 schema['attribute_definitions'].append({
-                    'attribute_name': attr_cls.attr_name,
-                    'attribute_type': attr_cls.attr_type
+                    ATTR_NAME: attr_cls.attr_name,
+                    ATTR_TYPE: attr_cls.attr_type
                 })
         return schema
 
@@ -1057,7 +1060,28 @@ class Model(AttributeContainer, metaclass=MetaModel):
         # For now we just check that the connection exists and (in the case of model inheritance)
         # points to the same table. In the future we should update the connection if any of the attributes differ.
         if cls._connection is None or cls._connection.table_name != cls.Meta.table_name:
+            schema = cls._get_schema()
+            meta_table = MetaTable({
+                constants.TABLE_NAME: cls.Meta.table_name,
+                constants.KEY_SCHEMA: schema['key_schema'],
+                constants.ATTR_DEFINITIONS: schema['attribute_definitions'],
+                constants.GLOBAL_SECONDARY_INDEXES: [
+                    {
+                        constants.INDEX_NAME: index_schema['index_name'],
+                        constants.KEY_SCHEMA: index_schema['key_schema'],
+                    }
+                    for index_schema in schema['global_secondary_indexes']
+                ],
+                constants.LOCAL_SECONDARY_INDEXES: [
+                    {
+                        constants.INDEX_NAME: index_schema['index_name'],
+                        constants.KEY_SCHEMA: index_schema['key_schema'],
+                    }
+                    for index_schema in schema['local_secondary_indexes']
+                ],
+            })
             cls._connection = TableConnection(cls.Meta.table_name,
+                                              meta_table=meta_table,
                                               region=cls.Meta.region,
                                               host=cls.Meta.host,
                                               connect_timeout_seconds=cls.Meta.connect_timeout_seconds,
