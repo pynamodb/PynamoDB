@@ -30,6 +30,8 @@ class TableConnection:
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
         aws_session_token: Optional[str] = None,
+        *,
+        meta_table: Optional[MetaTable] = None,
     ) -> None:
         self.table_name = table_name
         self.connection = Connection(region=region,
@@ -40,17 +42,19 @@ class TableConnection:
                                      base_backoff_ms=base_backoff_ms,
                                      max_pool_connections=max_pool_connections,
                                      extra_headers=extra_headers)
+        if meta_table is not None:
+            self.connection.add_meta_table(meta_table)
 
         if aws_access_key_id and aws_secret_access_key:
             self.connection.session.set_credentials(aws_access_key_id,
                                                     aws_secret_access_key,
                                                     aws_session_token)
 
-    def get_meta_table(self, refresh: bool = False) -> MetaTable:
+    def get_meta_table(self) -> MetaTable:
         """
         Returns a MetaTable
         """
-        return self.connection.get_meta_table(self.table_name, refresh=refresh)
+        return self.connection.get_meta_table(self.table_name)
 
     def get_operation_kwargs(
         self,

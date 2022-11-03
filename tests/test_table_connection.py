@@ -5,6 +5,8 @@ from unittest import TestCase
 
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION
+from pynamodb.connection.base import MetaTable
+from pynamodb.constants import TABLE_KEY
 from pynamodb.expressions.operand import Path
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
 from .response import HttpOK
@@ -20,19 +22,20 @@ class ConnectionTestCase(TestCase):
     """
 
     def setUp(self):
-        self.test_table_name = 'ci-table'
+        self.test_table_name = 'Thread'
         self.region = DEFAULT_REGION
 
     def test_create_connection(self):
         """
         TableConnection()
         """
-        conn = TableConnection(self.test_table_name)
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
         self.assertIsNotNone(conn)
 
     def test_connection_session_set_credentials(self):
         conn = TableConnection(
             self.test_table_name,
+            meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]),
             aws_access_key_id='access_key_id',
             aws_secret_access_key='secret_access_key')
 
@@ -44,6 +47,7 @@ class ConnectionTestCase(TestCase):
     def test_connection_session_set_credentials_with_session_token(self):
         conn = TableConnection(
             self.test_table_name,
+            meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]),
             aws_access_key_id='access_key_id',
             aws_secret_access_key='secret_access_key',
             aws_session_token='session_token')
@@ -58,7 +62,7 @@ class ConnectionTestCase(TestCase):
         """
         TableConnection.create_table
         """
-        conn = TableConnection(self.test_table_name)
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
         kwargs = {
             'read_capacity_units': 1,
             'write_capacity_units': 1,
@@ -86,7 +90,7 @@ class ConnectionTestCase(TestCase):
             }
         ]
         params = {
-            'TableName': 'ci-table',
+            'TableName': 'Thread',
             'ProvisionedThroughput': {
                 'WriteCapacityUnits': 1,
                 'ReadCapacityUnits': 1
@@ -121,7 +125,7 @@ class ConnectionTestCase(TestCase):
             self.assertEqual(kwargs, params)
 
     def test_create_table_with_tags(self):
-        conn = TableConnection(self.test_table_name)
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
         kwargs = {
             'read_capacity_units': 1,
             'write_capacity_units': 1,
@@ -151,7 +155,7 @@ class ConnectionTestCase(TestCase):
             }
         }
         params = {
-            'TableName': 'ci-table',
+            'TableName': 'Thread',
             'ProvisionedThroughput': {
                 'WriteCapacityUnits': 1,
                 'ReadCapacityUnits': 1
@@ -200,7 +204,7 @@ class ConnectionTestCase(TestCase):
         TableConnection.update_time_to_live
         """
         params = {
-            'TableName': 'ci-table',
+            'TableName': 'Thread',
             'TimeToLiveSpecification': {
                 'AttributeName': 'ttl_attr',
                 'Enabled': True,
@@ -208,7 +212,7 @@ class ConnectionTestCase(TestCase):
         }
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), None
-            conn = TableConnection(self.test_table_name)
+            conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
             conn.update_time_to_live('ttl_attr')
             kwargs = req.call_args[0][1]
             self.assertEqual(kwargs, params)
@@ -217,10 +221,10 @@ class ConnectionTestCase(TestCase):
         """
         TableConnection.delete_table
         """
-        params = {'TableName': 'ci-table'}
+        params = {'TableName': 'Thread'}
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), None
-            conn = TableConnection(self.test_table_name)
+            conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
             conn.delete_table()
             kwargs = req.call_args[0][1]
             self.assertEqual(kwargs, params)
@@ -231,7 +235,7 @@ class ConnectionTestCase(TestCase):
         """
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), None
-            conn = TableConnection(self.test_table_name)
+            conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
             params = {
                 'ProvisionedThroughput': {
                     'WriteCapacityUnits': 2,
@@ -247,7 +251,7 @@ class ConnectionTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), None
-            conn = TableConnection(self.test_table_name)
+            conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
             global_secondary_index_updates = [
                 {
@@ -288,19 +292,16 @@ class ConnectionTestCase(TestCase):
         """
         with patch(PATCH_METHOD) as req:
             req.return_value = DESCRIBE_TABLE_DATA
-            conn = TableConnection(self.test_table_name)
-            conn.describe_table()
-            self.assertEqual(conn.table_name, self.test_table_name)
-            self.assertEqual(req.call_args[0][1], {'TableName': 'ci-table'})
+            conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
+            data = conn.describe_table()
+            self.assertEqual(data, DESCRIBE_TABLE_DATA[TABLE_KEY])
+            self.assertEqual(req.call_args[0][1], {'TableName': 'Thread'})
 
     def test_delete_item(self):
         """
         TableConnection.delete_item
         """
-        conn = TableConnection(self.test_table_name)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table()
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -325,17 +326,7 @@ class ConnectionTestCase(TestCase):
         """
         TableConnection.update_item
         """
-        conn = TableConnection(self.test_table_name)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table()
-
-        attr_updates = {
-            'Subject': {
-                'Value': 'foo-subject',
-                'Action': 'PUT'
-            },
-        }
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), {}
@@ -363,7 +354,7 @@ class ConnectionTestCase(TestCase):
                     }
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'ci-table'
+                'TableName': 'Thread'
             }
             self.assertEqual(req.call_args[0][1], params)
 
@@ -371,10 +362,7 @@ class ConnectionTestCase(TestCase):
         """
         TableConnection.get_item
         """
-        conn = TableConnection(self.test_table_name)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table()
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = GET_ITEM_DATA
@@ -385,10 +373,7 @@ class ConnectionTestCase(TestCase):
         """
         TableConnection.put_item
         """
-        conn = TableConnection(self.test_table_name)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table()
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -456,14 +441,11 @@ class ConnectionTestCase(TestCase):
         TableConnection.batch_write_item
         """
         items = []
-        conn = TableConnection(self.test_table_name)
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
         for i in range(10):
             items.append(
                 {"ForumName": "FooForum", "Subject": "thread-{}".format(i)}
             )
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table()
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
             conn.batch_write_item(
@@ -493,14 +475,11 @@ class ConnectionTestCase(TestCase):
         TableConnection.batch_get_item
         """
         items = []
-        conn = TableConnection(self.test_table_name)
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
         for i in range(10):
             items.append(
                 {"ForumName": "FooForum", "Subject": "thread-{}".format(i)}
             )
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table()
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -532,10 +511,7 @@ class ConnectionTestCase(TestCase):
         """
         TableConnection.query
         """
-        conn = TableConnection(self.test_table_name)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table()
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -566,10 +542,7 @@ class ConnectionTestCase(TestCase):
         """
         TableConnection.scan
         """
-        conn = TableConnection(self.test_table_name)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = DESCRIBE_TABLE_DATA
-            conn.describe_table()
+        conn = TableConnection(self.test_table_name, meta_table=MetaTable(DESCRIBE_TABLE_DATA[TABLE_KEY]))
         with patch(PATCH_METHOD) as req:
             req.return_value = HttpOK(), {}
             conn.scan()
