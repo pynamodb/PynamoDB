@@ -53,6 +53,8 @@ _ACT = TypeVar('_ACT', bound = 'AttributeContainer')
 
 _A = TypeVar('_A', bound='Attribute')
 
+_IMMUTABLE_TYPES = (str, int, float, datetime, timedelta, bytes, bool, tuple, frozenset, type(None))
+
 
 class Attribute(Generic[_T]):
     """
@@ -72,6 +74,10 @@ class Attribute(Generic[_T]):
     ) -> None:
         if default and default_for_new:
             raise ValueError("An attribute cannot have both default and default_for_new parameters")
+        if not callable(default) and not isinstance(default, _IMMUTABLE_TYPES):
+            raise ValueError("default must be immutable type or a callable")
+        if not callable(default_for_new) and not isinstance(default_for_new, _IMMUTABLE_TYPES):
+            raise ValueError("default_for_new must be immutable type or a callable")
         self.default = default
         # This default is only set for new objects (ie: it's not set for re-saved objects)
         self.default_for_new = default_for_new
