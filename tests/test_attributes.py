@@ -130,10 +130,10 @@ class TestDefault:
         Attribute(default='test')
         Attribute(default_for_new='test')
 
-        with pytest.raises(ValueError, match='default must be immutable type or a callable'):
+        with pytest.raises(ValueError, match="'default' must be immutable (.*) or a callable"):
             Attribute(default=[])
 
-        with pytest.raises(ValueError, match='default_for_new must be immutable type or a callable'):
+        with pytest.raises(ValueError, match="'default_for_new' must be immutable (.*) or a callable"):
             Attribute(default_for_new=[])
 
         Attribute(default=list)
