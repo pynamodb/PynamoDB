@@ -15,7 +15,7 @@ import pytest
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, DynamicMapAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute, NullAttribute,
-    ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute)
+    ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute, Attribute)
 from pynamodb.constants import (
     DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, BOOLEAN,
@@ -49,7 +49,7 @@ class CustomAttrMap(MapAttribute):
 
 
 class DefaultsMap(MapAttribute):
-    map_field = MapAttribute(default={})
+    map_field = MapAttribute(default=dict)
     string_set_field = UnicodeSetAttribute(null=True)
 
 
@@ -123,6 +123,21 @@ class TestAttributeDescriptor:
         """
         self.instance.json_attr = {'foo': 'bar', 'bar': 42}
         assert self.instance.json_attr == {'foo': 'bar', 'bar': 42}
+
+
+class TestDefault:
+    def test_default(self):
+        Attribute(default='test')
+        Attribute(default_for_new='test')
+
+        with pytest.raises(ValueError, match="'default' must be immutable (.*) or a callable"):
+            Attribute(default=[])
+
+        with pytest.raises(ValueError, match="'default_for_new' must be immutable (.*) or a callable"):
+            Attribute(default_for_new=[])
+
+        Attribute(default=list)
+        Attribute(default_for_new=list)
 
 
 class TestUTCDateTimeAttribute:
@@ -260,8 +275,8 @@ class TestBinaryAttribute:
         attr = BinarySetAttribute()
         assert attr is not None
 
-        attr = BinarySetAttribute(default={b'foo', b'bar'})
-        assert attr.default == {b'foo', b'bar'}
+        attr = BinarySetAttribute(default=lambda: {b'foo', b'bar'})
+        assert attr.default() == {b'foo', b'bar'}
 
 
 class TestNumberAttribute:
@@ -320,8 +335,8 @@ class TestNumberAttribute:
         attr = NumberSetAttribute()
         assert attr is not None
 
-        attr = NumberSetAttribute(default={1, 2})
-        assert attr.default == {1, 2}
+        attr = NumberSetAttribute(default=lambda: {1, 2})
+        assert attr.default() == {1, 2}
 
 
 class TestUnicodeAttribute:
@@ -416,8 +431,8 @@ class TestUnicodeAttribute:
         attr = UnicodeSetAttribute()
         assert attr is not None
         assert attr.attr_type == STRING_SET
-        attr = UnicodeSetAttribute(default={'foo', 'bar'})
-        assert attr.default == {'foo', 'bar'}
+        attr = UnicodeSetAttribute(default=lambda: {'foo', 'bar'})
+        assert attr.default() == {'foo', 'bar'}
 
 
 class TestBooleanAttribute:
@@ -526,8 +541,8 @@ class TestJSONAttribute:
         assert attr is not None
 
         assert attr.attr_type == STRING
-        attr = JSONAttribute(default={})
-        assert attr.default == {}
+        attr = JSONAttribute(default=lambda: {})
+        assert attr.default() == {}
 
     def test_json_serialize(self):
         """
@@ -1018,7 +1033,7 @@ class TestMapAndListAttribute:
 
         inp = [person1, person2]
 
-        list_attribute = ListAttribute(default=[], of=Person)
+        list_attribute = ListAttribute(default=list, of=Person)
         serialized = list_attribute.serialize(inp)
         deserialized = list_attribute.deserialize(serialized)
         assert sorted(deserialized) == sorted(inp)
@@ -1042,7 +1057,7 @@ class TestMapAndListAttribute:
 
         inp = [attribute1, attribute2]
 
-        list_attribute = ListAttribute(default=[], of=CustomMapAttribute)
+        list_attribute = ListAttribute(default=list, of=CustomMapAttribute)
         serialized = list_attribute.serialize(inp)
         deserialized = list_attribute.deserialize(serialized)
 

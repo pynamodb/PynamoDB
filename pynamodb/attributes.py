@@ -53,10 +53,47 @@ _ACT = TypeVar('_ACT', bound = 'AttributeContainer')
 
 _A = TypeVar('_A', bound='Attribute')
 
+_IMMUTABLE_TYPES = (str, int, float, datetime, timedelta, bytes, bool, tuple, frozenset, type(None))
+_IMMUTABLE_TYPE_NAMES = ', '.join(map(lambda x: x.__name__, _IMMUTABLE_TYPES))
+
 
 class Attribute(Generic[_T]):
     """
-    An attribute of a model
+    An attribute of a model or an index.
+
+    :param hash_key: If `True`, this attribute is a model's or an index's hash key (partition key).
+    :param range_key: If `True`, this attribute is a model's or an index's range key (sort key).
+    :param null: If `True`, a `None` value would be considered valid and would result in the attribute
+      not being set in the underlying DynamoDB item. If `False` (default), an exception will be raised when
+      the attribute is persisted with a `None` value.
+
+      .. note::
+         This is different from :class:`pynamodb.attributes.NullAttribute`, which manifests in a `NULL`-typed
+         DynamoDB attribute value.
+
+    :param default: A default value that will be assigned in new models (when they are initialized)
+      and existing models (when they are loaded).
+
+      .. note::
+         Starting with PynamoDB 6.0, the default must be either an immutable value (of one of the built-in
+         immutable types) or a callable. This prevents a common class of errors caused by unintentionally mutating
+         the default value. A simple workaround is to pass an initializer (e.g. change :code:`default={}` to
+         :code:`default=dict`) or wrap in a lambda (e.g. change :code:`default={'foo': 'bar'}` to
+         :code:`default=lambda: {'foo': 'bar'}`).
+
+    :param default_for_new: Like `default`, but used only for new models. Use this to assign a default
+      for new models that you don't want to apply to existing models when they are loaded and then re-saved.
+
+      .. note::
+         Starting with PynamoDB 6.0, the default must be either an immutable value (of one of the built-in
+         immutable types) or a callable.
+
+    :param attr_name: The name that is used for the attribute in the underlying DynamoDB item;
+        use this to assign a "pythonic" name that is different from the persisted name, i.e.
+
+        .. code-block:: python
+
+          number_of_threads = NumberAttribute(attr_name='thread_count')
     """
     attr_type: str
     null = False
@@ -72,8 +109,17 @@ class Attribute(Generic[_T]):
     ) -> None:
         if default and default_for_new:
             raise ValueError("An attribute cannot have both default and default_for_new parameters")
+        if not callable(default) and not isinstance(default, _IMMUTABLE_TYPES):
+            raise ValueError(
+                f"An attribute's 'default' must be immutable ({_IMMUTABLE_TYPE_NAMES}) or a callable "
+                "(see https://pynamodb.readthedocs.io/en/latest/api.html#pynamodb.attributes.Attribute)"
+            )
+        if not callable(default_for_new) and not isinstance(default_for_new, _IMMUTABLE_TYPES):
+            raise ValueError(
+                f"An attribute's 'default_for_new' must be immutable ({_IMMUTABLE_TYPE_NAMES}) or a callable "
+                "(see https://pynamodb.readthedocs.io/en/latest/api.html#pynamodb.attributes.Attribute)"
+            )
         self.default = default
-        # This default is only set for new objects (ie: it's not set for re-saved objects)
         self.default_for_new = default_for_new
 
         if null is not None:
