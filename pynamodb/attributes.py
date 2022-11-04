@@ -466,6 +466,10 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         AttributeContainer._container_deserialize(instance, attribute_values)
         return instance
 
+    def __repr__(self) -> str:
+        fields = ', '.join(f'{k}={v!r}' for k, v in self.attribute_values.items())
+        return f'{type(self).__name__}({fields})'
+
 
 class DiscriminatorAttribute(Attribute[type]):
     attr_type = STRING
