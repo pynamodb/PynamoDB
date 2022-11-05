@@ -2,7 +2,8 @@ from typing import Any
 from typing import Dict
 from unittest import TestCase
 
-from pynamodb.attributes import ListAttribute, MapAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute
+from pynamodb.attributes import ListAttribute, MapAttribute, NumberSetAttribute, UnicodeAttribute, UnicodeSetAttribute, \
+    NumberAttribute
 from pynamodb.expressions.condition import Condition, size
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.projection import create_projection_expression
@@ -47,6 +48,28 @@ class ActionTestCase(TestCase):
         action = Action(Path('foo.bar'))
         action.format_string = '{0}'
         assert repr(action) == 'foo.bar'
+
+    def test_action_eq(self):
+        action = Action(Path('foo.bar'))
+        assert action == action
+
+        action_eq = Action(Path('foo.bar'))
+        assert action == action_eq
+
+        action_not_eq = Action(Path('spam.ham'))
+        assert action != action_not_eq
+
+        attr_s = UnicodeAttribute(attr_name='foo')
+        assert attr_s.set('bar') == attr_s.set('bar')
+        assert attr_s.set('bar') != attr_s.set('baz')
+
+        attr_n = NumberAttribute(attr_name='num')
+        assert attr_n.add(42) == attr_n.add(42)
+        assert attr_n.add(42) != attr_n.set(42)
+        assert attr_n.add(42) != attr_n.add(7)
+
+        attr_s2 = UnicodeAttribute(attr_name='foo')
+        assert attr_s.set('bar') != attr_s2.set('bar')
 
 
 class ProjectionExpressionTestCase(TestCase):
@@ -116,6 +139,17 @@ class ConditionExpressionTestCase(TestCase):
         self.attribute = UnicodeAttribute(attr_name='foo')
         self.placeholder_names: Dict[str, str] = {}
         self.expression_attribute_values: Dict[str, str] = {}
+
+    def test_condition_eq(self):
+        condition = self.attribute == 'foo'
+        condition_eq = self.attribute == 'foo'
+        condition_not_eq = self.attribute == 'bar'
+        assert condition == condition_eq
+        assert condition != condition_not_eq
+
+        different_attr = UnicodeAttribute(attr_name='foo')
+        condition_not_eq = different_attr == 'foo'
+        assert condition != condition_not_eq
 
     def test_equal(self):
         condition = self.attribute == 'bar'
