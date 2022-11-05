@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Dict, Iterable, Iterator, TypeVar, Optional
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, TypeVar
 
 from pynamodb.constants import (CAMEL_COUNT, ITEMS, LAST_EVALUATED_KEY, SCANNED_COUNT,
                                 CONSUMED_CAPACITY, TOTAL, CAPACITY_UNITS)
@@ -172,14 +172,14 @@ class ResultIterator(Iterator[_T]):
         self._map_fn = map_fn
         self._limit = limit
         self._total_count = 0
-        self._items = None
+        self._items: List = []
         self._index = 0
         self._count = 0
 
     def _get_next_page(self) -> None:
         page = next(self.page_iter)
         self._count = page[CAMEL_COUNT]
-        self._items = page.get(ITEMS)  # not returned if 'Select' is set to 'COUNT'
+        self._items = page.get(ITEMS) or []  # not returned if 'Select' is set to 'COUNT'
         self._index = 0 if self._items else self._count
         self._total_count += self._count
 
