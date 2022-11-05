@@ -83,13 +83,11 @@ class TestTransactWrite:
     def test_commit(self, mocker):
         connection = Connection()
         mock_connection_transact_write = mocker.patch.object(connection, 'transact_write_items')
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MOCK_TABLE_DESCRIPTOR
-            with TransactWrite(connection=connection) as t:
-                t.condition_check(MockModel, 1, 3, condition=(MockModel.mock_hash.does_not_exist()))
-                t.delete(MockModel(2, 4))
-                t.save(MockModel(3, 5))
-                t.update(MockModel(4, 6), actions=[MockModel.mock_toot.set('hello')], return_values='ALL_OLD')
+        with TransactWrite(connection=connection) as t:
+            t.condition_check(MockModel, 1, 3, condition=(MockModel.mock_hash.does_not_exist()))
+            t.delete(MockModel(2, 4))
+            t.save(MockModel(3, 5))
+            t.update(MockModel(4, 6), actions=[MockModel.mock_toot.set('hello')], return_values='ALL_OLD')
 
         expected_condition_checks = [{
             'ConditionExpression': 'attribute_not_exists (#0)',
