@@ -1378,6 +1378,33 @@ class ModelTestCase(TestCase):
             self.assertEqual(results_iter.total_count, 10)
             self.assertEqual(results_iter.page_iter.total_scanned_count, 10)
 
+    def test_query_with_failure(self):
+        items = [
+            {
+                **GET_MODEL_ITEM_DATA[ITEM],
+                'user_id': {
+                    STRING: f'id-{idx}'
+                },
+            }
+            for idx in range(30)
+        ]
+
+        with patch(PATCH_METHOD) as req:
+            req.side_effect = [
+                Exception('bleep-bloop'),
+                {'Count': 10, 'ScannedCount': 10, 'Items': items[0:10], 'LastEvaluatedKey': {'user_id': items[10]['user_id']}},
+            ]
+            results_iter = UserModel.query('foo', limit=10, page_size=10)
+
+            with pytest.raises(Exception, match='bleep-bloop'):
+                next(results_iter)
+
+            first_item = next(results_iter)
+            assert first_item.user_id == 'id-0'
+
+            second_item = next(results_iter)
+            assert second_item.user_id == 'id-1'
+
     def test_query(self):
         """
         Model.query
