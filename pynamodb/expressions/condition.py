@@ -1,4 +1,5 @@
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 
 
 # match dynamo function syntax: size(path)
