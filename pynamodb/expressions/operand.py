@@ -264,6 +264,7 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         return (
             super()._equals_to(other)
             and self.attr_type == other.attr_type
+            # 'is' to equate class identity (rather than trigger Attribute.__eq__)
             and self.attribute is other.attribute
         )
 
