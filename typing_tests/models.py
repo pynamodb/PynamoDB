@@ -56,7 +56,6 @@ def test_model_update() -> None:
         MyModel.my_attr.set(123 + my_model.my_attr),
         MyModel.my_attr.set(my_model.my_attr - 123),
         MyModel.my_attr.set(123 - my_model.my_attr),
-        MyModel.my_attr.set(my_model.my_attr | 123),
     ])
 
 
