@@ -59,6 +59,8 @@ def test_model_update() -> None:
         MyModel.my_attr.set(MyModel.my_attr | 123),
     ])
 
+    _ = MyModel.my_attr.set('foo')  # type:ignore[arg-type]
+
 
 def test_paths() -> None:
     import pynamodb.expressions.operand
