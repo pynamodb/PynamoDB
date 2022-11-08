@@ -253,7 +253,7 @@ class Attribute(Generic[_T]):
     def prepend(self, other: Iterable) -> '_ListAppend':
         return Path(self).prepend(other)
 
-    def set(self, value: Any) -> 'SetAction':
+    def set(self, value: _T) -> 'SetAction':
         return Path(self).set(value)
 
     def remove(self) -> 'RemoveAction':
