@@ -1,3 +1,4 @@
+from typing import Any
 from typing import Dict
 
 
@@ -13,6 +14,14 @@ class Condition(object):
     def __init__(self, operator: str, *values) -> None:
         self.operator = operator
         self.values = values
+
+    def __eq__(self, other: Any) -> bool:
+        return (
+            type(self) is type(other)
+            and self.operator == other.operator
+            and len(self.values) == len(other.values)
+            and all(v1._equals_to(v2) for v1, v2 in zip(self.values, other.values))
+        )
 
     def serialize(self, placeholder_names: Dict[str, str], expression_attribute_values: Dict[str, str]) -> str:
         values = [value.serialize(placeholder_names, expression_attribute_values) for value in self.values]

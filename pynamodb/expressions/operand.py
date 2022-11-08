@@ -29,6 +29,12 @@ class _Operand:
     def __repr__(self) -> str:
         return self.format_string.format(*self.values)
 
+    def _equals_to(self, other: Any) -> bool:
+        return (
+            type(self) is type(other)
+            and self.values == other.values
+        )
+
     def serialize(self, placeholder_names: Dict[str, str], expression_attribute_values: Dict[str, str]) -> str:
         values = [self._serialize_value(value, placeholder_names, expression_attribute_values) for value in self.values]
         return self.format_string.format(*values)
@@ -200,6 +206,12 @@ class Value(_NumericOperand, _ListAppendOperand, _ConditionOperand):
             (self.attr_type, value) = Value.__serialize(value, attribute)
         super(Value, self).__init__({self.attr_type: value})
 
+    def _equals_to(self, other: Any) -> bool:
+        return (
+            super()._equals_to(other)
+            and self.attr_type == other.attr_type
+        )
+
     @property
     def value(self):
         return self.values[0]
@@ -247,6 +259,14 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
         if not path:
             raise ValueError("path cannot be empty")
         super(Path, self).__init__(get_path_segments(path))
+
+    def _equals_to(self, other: Any) -> bool:
+        return (
+            super()._equals_to(other)
+            and self.attr_type == other.attr_type
+            # 'is' to equate class identity (rather than trigger Attribute.__eq__)
+            and self.attribute is other.attribute
+        )
 
     @property
     def path(self) -> List[str]:
