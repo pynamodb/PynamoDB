@@ -52,10 +52,11 @@ def test_model_update() -> None:
     my_model = MyModel()
     my_model.update(actions=[
         # test update expressions
-        MyModel.my_attr.set(my_model.my_attr + 123),
-        MyModel.my_attr.set(123 + my_model.my_attr),
-        MyModel.my_attr.set(my_model.my_attr - 123),
-        MyModel.my_attr.set(123 - my_model.my_attr),
+        MyModel.my_attr.set(MyModel.my_attr + 123),
+        MyModel.my_attr.set(123 + MyModel.my_attr),
+        MyModel.my_attr.set(MyModel.my_attr - 123),
+        MyModel.my_attr.set(123 - MyModel.my_attr),
+        MyModel.my_attr.set(MyModel.my_attr | 123),
     ])
 
 
