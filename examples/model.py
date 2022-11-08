@@ -192,7 +192,7 @@ print(thread_item.update(actions=[
 # Update list attribute
 print(thread_item.update(actions=[
     Thread.notes.set(
-        Thread.notes.append(["new note"])
+        thread_item.notes.append(["new note"])
     )
 ]))
 
