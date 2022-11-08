@@ -253,7 +253,10 @@ class Attribute(Generic[_T]):
     def prepend(self, other: Iterable) -> '_ListAppend':
         return Path(self).prepend(other)
 
-    def set(self, value: Union[_T, 'Attribute[_T]', '_Increment', '_Decrement', '_IfNotExists', '_ListAppend']) -> 'SetAction':
+    def set(
+        self,
+        value: Union[_T, 'Attribute[_T]', '_Increment', '_Decrement', '_IfNotExists', '_ListAppend']
+    ) -> 'SetAction':
         return Path(self).set(value)
 
     def remove(self) -> 'RemoveAction':
