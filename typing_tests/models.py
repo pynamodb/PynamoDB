@@ -43,11 +43,12 @@ def test_pagination() -> None:
 
 
 def test_model_update() -> None:
-    from pynamodb.attributes import NumberAttribute
+    from pynamodb.attributes import NumberAttribute, UnicodeAttribute
     from pynamodb.models import Model
 
     class MyModel(Model):
         my_attr = NumberAttribute()
+        my_str_attr = UnicodeAttribute()
 
     my_model = MyModel()
     my_model.update(actions=[
@@ -60,6 +61,7 @@ def test_model_update() -> None:
     ])
 
     _ = MyModel.my_attr.set('foo')  # type:ignore[arg-type]
+    _ = MyModel.my_attr.set(MyModel.my_str_attr)  # type:ignore[arg-type]
 
 
 def test_paths() -> None:
