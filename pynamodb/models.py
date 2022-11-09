@@ -399,13 +399,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         return BatchWrite(cls, auto_commit=auto_commit, settings=settings)
 
-        # hash_key, range_key = self._get_serialized_keys()
-        # if self._range_keyname:
-        #     msg = "{}<{}, {}>".format(self.Meta.table_name, hash_key, range_key)
-        # else:
-        #     msg = "{}<{}>".format(self.Meta.table_name, hash_key)
-        # return msg
-
     def delete(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
         """
         Deletes this object from dynamodb
