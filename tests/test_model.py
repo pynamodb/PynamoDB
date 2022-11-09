@@ -2907,6 +2907,10 @@ class ModelTestCase(TestCase):
         actual = instance.map_attr
         for k, v in map_native.items():
             self.assertEqual(v, actual[k])
+        self.assertEqual(
+            repr(actual),
+            "MapAttribute(foo='bar', num=1, bool_type=True, other_b_type=False, floaty=1.2, listy=[1, 2, 12345678909876543211234234324234], mapy={'baz': 'bongo'})"
+        )
 
     def test_raw_map_from_raw_data_works(self):
         map_native = {
