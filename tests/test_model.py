@@ -467,11 +467,6 @@ class ModelTestCase(TestCase):
     """
     Tests for the models API
     """
-    @staticmethod
-    def init_table_meta(model_clz, table_data):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = table_data
-            model_clz._get_connection().describe_table()
 
     def assert_dict_lists_equal(self, list1, list2):
         """
@@ -642,7 +637,6 @@ class ModelTestCase(TestCase):
         """
         Model()
         """
-        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         item = UserModel('foo', 'bar')
         self.assertEqual(item.email, 'needs_email')
         self.assertEqual(item.callable_field, 42)
@@ -650,14 +644,12 @@ class ModelTestCase(TestCase):
             repr(item), "UserModel(callable_field=42, email='needs_email', custom_user_name='foo', user_id='bar')"
         )
 
-        self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
         item = SimpleUserModel('foo')
         self.assertEqual(repr(item), "SimpleUserModel(user_name='foo')")
         self.assertRaises(ValueError, item.save)
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
 
-        self.init_table_meta(CustomAttrNameModel, CUSTOM_ATTR_NAME_INDEX_TABLE_DATA)
         item = CustomAttrNameModel('foo', 'bar', overidden_attr='test')
         self.assertEqual(item.overidden_attr, 'test')
         self.assertTrue(not hasattr(item, 'foo_attr'))
@@ -691,9 +683,7 @@ class ModelTestCase(TestCase):
         """
         Model.refresh
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            item = UserModel('foo', 'bar')
+        item = UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -712,7 +702,6 @@ class ModelTestCase(TestCase):
         """
         Model with complex key
         """
-        self.init_table_meta(ComplexKeyModel, COMPLEX_TABLE_DATA)
         item = ComplexKeyModel('test')
 
         with patch(PATCH_METHOD) as req:
@@ -723,7 +712,6 @@ class ModelTestCase(TestCase):
         """
         Model.delete
         """
-        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         item = UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
@@ -807,11 +795,11 @@ class ModelTestCase(TestCase):
         Model.delete
         """
         with patch(PATCH_METHOD) as req:
-            req.return_value = CAR_MODEL_TABLE_DATA
+            req.return_value = {}
             CarModel('foo').delete()
 
         with patch(PATCH_METHOD) as req:
-            req.return_value = CAR_MODEL_TABLE_DATA
+            req.return_value = {}
             with CarModel.batch_write() as batch:
                 car = CarModel('foo')
                 batch.delete(car)
@@ -822,7 +810,6 @@ class ModelTestCase(TestCase):
         Model.update
         """
         mock_time.side_effect = [1559692800]  # 2019-06-05 00:00:00 UTC
-        self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
         item = SimpleUserModel(user_name='foo', is_active=True, email='foo@example.com', signature='foo', views=100)
 
         with patch(PATCH_METHOD) as req:
@@ -908,7 +895,6 @@ class ModelTestCase(TestCase):
             self.assertEqual({'bob'}, item.custom_aliases)
 
     def test_update_doesnt_do_validation_on_null_attributes(self):
-        self.init_table_meta(CarModel, CAR_MODEL_TABLE_DATA)
         item = CarModel(12345)
         item.car_info = CarInfoMap(make='Foo', model='Bar')
         item.car_info.location = CarLocation()  # two levels deep we have invalid Nones
@@ -927,9 +913,7 @@ class ModelTestCase(TestCase):
         """
         Model.save
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            item = UserModel('foo', 'bar')
+        item = UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
@@ -1090,7 +1074,6 @@ class ModelTestCase(TestCase):
         """
         Model.count(**filters)
         """
-        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 10, 'ScannedCount': 20}
             res = UserModel.count('foo')
@@ -1138,7 +1121,6 @@ class ModelTestCase(TestCase):
         """
         Model.index.count()
         """
-        self.init_table_meta(CustomAttrNameModel, CUSTOM_ATTR_NAME_INDEX_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 42, 'ScannedCount': 42}
             res = CustomAttrNameModel.uid_index.count(
@@ -1171,7 +1153,6 @@ class ModelTestCase(TestCase):
             deep_eq(args, params, _assert=True)
 
     def test_index_multipage_count(self):
-        self.init_table_meta(CustomAttrNameModel, CUSTOM_ATTR_NAME_INDEX_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             last_evaluated_key = {
                 'user_name': {'S': u'user'},
@@ -1209,7 +1190,6 @@ class ModelTestCase(TestCase):
             deep_eq(args_two, params_two, _assert=True)
 
     def test_query_limit_greater_than_available_items_single_page(self):
-        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
@@ -1225,9 +1205,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(req.mock_calls[0][1][1]['Limit'], 25)
 
     def test_query_limit_identical_to_available_items_single_page(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1242,9 +1220,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(req.mock_calls[0][1][1]['Limit'], 5)
 
     def test_query_limit_less_than_available_items_multiple_page(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1270,9 +1246,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(results_iter.page_iter.total_scanned_count, 60)
 
     def test_query_limit_less_than_available_and_page_size(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1298,9 +1272,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(results_iter.page_iter.total_scanned_count, 60)
 
     def test_query_limit_greater_than_available_items_multiple_page(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1326,7 +1298,6 @@ class ModelTestCase(TestCase):
             self.assertEqual(results_iter.page_iter.total_scanned_count, 60)
 
     def test_query_limit_greater_than_available_items_and_page_size(self):
-        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
@@ -1353,9 +1324,7 @@ class ModelTestCase(TestCase):
             self.assertEqual(results_iter.page_iter.total_scanned_count, 60)
 
     def test_query_with_exclusive_start_key(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1382,9 +1351,7 @@ class ModelTestCase(TestCase):
         """
         Model.query
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = MODEL_TABLE_DATA
-            UserModel('foo', 'bar')
+        UserModel('foo', 'bar')
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1500,10 +1467,6 @@ class ModelTestCase(TestCase):
         with patch(PATCH_METHOD, new=mock_query) as req:
             for item in UserModel.query('foo'):
                 self.assertIsNotNone(item)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            CustomAttrNameModel._get_connection().describe_table()
 
         with patch(PATCH_METHOD) as req:
             items = []
@@ -1771,7 +1734,6 @@ class ModelTestCase(TestCase):
         fake_db = MagicMock()
         fake_db.side_effect = fake_dynamodb
 
-        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         with patch(PATCH_METHOD, new=fake_db) as req:
             item = UserModel.get(
                 'foo',
@@ -1818,10 +1780,6 @@ class ModelTestCase(TestCase):
                 self.fail('UserModel.Exception must derive from pynamodb.Exceptions.DoesNotExist')
 
         with patch(PATCH_METHOD) as req:
-            req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            CustomAttrNameModel._get_connection().describe_table()
-
-        with patch(PATCH_METHOD) as req:
             req.return_value = {"ConsumedCapacity": {"CapacityUnits": 0.5, "TableName": "UserModel"}}
             self.assertRaises(CustomAttrNameModel.DoesNotExist, CustomAttrNameModel.get, 'foo', 'bar')
 
@@ -1840,7 +1798,6 @@ class ModelTestCase(TestCase):
         """
         Model.batch_get
         """
-        self.init_table_meta(SimpleUserModel, SIMPLE_MODEL_TABLE_DATA)
         self.maxDiff = None
 
         with patch(PATCH_METHOD) as req:
@@ -1929,7 +1886,6 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(params, req.call_args[0][1])
 
-        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
 
         with patch(PATCH_METHOD) as req:
             item_keys = [('hash-{}'.format(x), '{}'.format(x)) for x in range(10)]
@@ -1995,7 +1951,6 @@ class ModelTestCase(TestCase):
         """
         Model.batch_write
         """
-        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
 
@@ -2107,18 +2062,6 @@ class ModelTestCase(TestCase):
         """
         Model.Index.Query
         """
-        with patch(PATCH_METHOD) as req:
-            req.return_value = CUSTOM_ATTR_NAME_INDEX_TABLE_DATA
-            CustomAttrNameModel._get_connection().describe_table()
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = INDEX_TABLE_DATA
-            IndexedModel._get_connection().describe_table()
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = LOCAL_INDEX_TABLE_DATA
-            LocalIndexedModel._get_connection().describe_table()
-
         self.assertEqual(IndexedModel.include_index.Meta.index_name, "non_key_idx")
 
         with patch(PATCH_METHOD) as req:
@@ -2311,11 +2254,6 @@ class ModelTestCase(TestCase):
         """
         self.assertIsNotNone(IndexedModel.email_index._hash_key_attribute())
         self.assertEqual(IndexedModel.email_index.Meta.projection.projection_type, AllProjection.projection_type)
-        with patch(PATCH_METHOD) as req:
-            req.return_value = INDEX_TABLE_DATA
-            with self.assertRaises(ValueError):
-                IndexedModel('foo', 'bar')
-            IndexedModel._get_connection().describe_table()
 
         scope_args = {'count': 0}
 
@@ -2360,16 +2298,6 @@ class ModelTestCase(TestCase):
         """
         Models.LocalSecondaryIndex
         """
-        with self.assertRaises(ValueError):
-            with patch(PATCH_METHOD) as req:
-                req.return_value = LOCAL_INDEX_TABLE_DATA
-                # This table has no range key
-                LocalIndexedModel('foo', 'bar')
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = LOCAL_INDEX_TABLE_DATA
-            LocalIndexedModel('foo')
-
         schema = IndexedModel._get_schema()
 
         expected = {
@@ -2625,32 +2553,27 @@ class ModelTestCase(TestCase):
         )
 
     def test_model_with_maps(self):
-        self.init_table_meta(OfficeEmployee, OFFICE_EMPLOYEE_MODEL_TABLE_DATA)
         office_employee = self._get_office_employee()
         with patch(PATCH_METHOD):
             office_employee.save()
 
     def test_model_with_list(self):
-        self.init_table_meta(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA)
         grocery_list = self._get_grocery_list()
         with patch(PATCH_METHOD):
             grocery_list.save()
 
     def test_model_with_list_of_map(self):
-        self.init_table_meta(Office, OFFICE_MODEL_TABLE_DATA)
         item = self._get_office()
         with patch(PATCH_METHOD):
             item.save()
 
     def test_model_with_nulls_validates(self):
-        self.init_table_meta(CarModel, CAR_MODEL_TABLE_DATA)
         car_info = CarInfoMap(make='Dodge')
         item = CarModel(car_id=123, car_info=car_info)
         with patch(PATCH_METHOD):
             item.save()
 
     def test_model_with_invalid_data_does_not_validate__list_attr(self):
-        self.init_table_meta(Office, OFFICE_MODEL_TABLE_DATA)
         office = Office(office_id=3, address=Location(lat=37.77461, lng=-122.3957216, name='Lyft HQ'))
         employee = OfficeEmployeeMap(
             office_employee_id=123,
@@ -2864,12 +2787,6 @@ class ModelTestCase(TestCase):
                               int(INVALID_CAR_MODEL_WITH_NULL_ITEM_DATA.get(ITEM).get(
                                   'car_id').get(NUMBER)))
             self.assertIsNone(item.car_info.make)
-
-    def test_boolean_serializes_as_bool(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = BOOLEAN_MODEL_TABLE_DATA
-            item = BooleanModel(user_name='justin', is_human=True)
-            item.save()
 
     def test_deserializing_bool_false_works(self):
         fake_db = self.database_mocker(BooleanModel,
@@ -3112,7 +3029,6 @@ class ModelTestCase(TestCase):
                                          DOG_TABLE_DATA['Table']['AttributeDefinitions'])
 
     def test_model_version_attribute_save(self):
-        self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
         item = VersionedModel('test_user_name', email='test_user@email.com')
 
         with patch(PATCH_METHOD) as req:
@@ -3165,7 +3081,6 @@ class ModelTestCase(TestCase):
             deep_eq(args, params, _assert=True)
 
     def test_model_version_attribute_save_with_initial_version_zero(self):
-        self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
         item = VersionedModel('test_user_name', email='test_user@email.com', version=0)
 
         with patch(PATCH_METHOD) as req:
@@ -3219,7 +3134,6 @@ class ModelTestCase(TestCase):
             deep_eq(args, params, _assert=True)
 
     def test_version_attribute_increments_on_update(self):
-        self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
         item = VersionedModel('test_user_name', email='test_user@email.com')
 
         with patch(PATCH_METHOD) as req:
@@ -3413,15 +3327,11 @@ class ModelInitTestCase(TestCase):
         assert TTLModel._ttl_attribute().attr_name == "my_ttl"
 
     def test_deserialized(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = SIMPLE_MODEL_TABLE_DATA
-            m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}})
+        m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}})
         assert m.my_ttl is None
 
     def test_deserialized_with_ttl(self):
-        with patch(PATCH_METHOD) as req:
-            req.return_value = SIMPLE_MODEL_TABLE_DATA
-            m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}, 'my_ttl': {'N': '1546300800'}})
+        m = TTLModel.from_raw_data({'user_name': {'S': 'mock'}, 'my_ttl': {'N': '1546300800'}})
         assert m.my_ttl == datetime(2019, 1, 1, tzinfo=timezone.utc)
 
     def test_deserialized_with_invalid_type(self):
