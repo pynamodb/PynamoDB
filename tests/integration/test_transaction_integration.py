@@ -137,6 +137,7 @@ def test_transact_write__error__idempotent_parameter_mismatch(connection):
 
 @pytest.mark.ddblocal
 def test_transact_write__error__different_regions(connection):
+    # Tip: This test *WILL* fail if run against `dynamodb-local -sharedDb` !
     with pytest.raises(TransactWriteError) as exc_info:
         with TransactWrite(connection=connection) as transact_write:
             # creating a model in a table outside the region everyone else operates in

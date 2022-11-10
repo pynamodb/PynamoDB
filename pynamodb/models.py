@@ -25,6 +25,7 @@ from typing import TypeVar
 from typing import Union
 from typing import cast
 
+from pynamodb._schema import ModelSchema
 from pynamodb.connection.base import MetaTable
 
 if sys.version_info >= (3, 8):
@@ -41,23 +42,21 @@ from pynamodb.attributes import (
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
 from pynamodb.types import HASH, RANGE
-from pynamodb.indexes import Index, GlobalSecondaryIndex, LocalSecondaryIndex
+from pynamodb.indexes import Index
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import get_settings_value, OperationSettings
 from pynamodb import constants
 from pynamodb.constants import (
-    ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
-    KEY_TYPE, ITEM, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
-    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES,
-    INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ALL_NEW,
-    GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, KEYS,
-    PROJECTION_TYPE, NON_KEY_ATTRIBUTES,
-    TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT,
+    ATTR_NAME, ATTR_TYPE,
+    KEY_TYPE, ITEM,
+    ATTRIBUTES, PUT, DELETE, RESPONSES,
+    ALL_NEW,
+    KEYS,
+    TABLE_STATUS, ACTIVE, BATCH_GET_PAGE_LIMIT,
     UNPROCESSED_KEYS, PUT_REQUEST, DELETE_REQUEST,
     BATCH_WRITE_PAGE_LIMIT,
     META_CLASS_NAME, REGION, HOST, NULL,
-    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
-    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE, TAGS, TABLE_NAME
+    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS,
 )
 from pynamodb.util import attribute_value_to_json
 from pynamodb.util import json_to_attribute_value
@@ -802,27 +801,33 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         if not cls.exists():
             schema = cls._get_schema()
+            operation_kwargs: Dict[str, Any] = {
+                'attribute_definitions': schema['attribute_definitions'],
+                'key_schema': schema['key_schema'],
+                'global_secondary_indexes': schema['global_secondary_indexes'],
+                'local_secondary_indexes': schema['local_secondary_indexes'],
+            }
             if hasattr(cls.Meta, 'read_capacity_units'):
-                schema['read_capacity_units'] = cls.Meta.read_capacity_units
+                operation_kwargs['read_capacity_units'] = cls.Meta.read_capacity_units
             if hasattr(cls.Meta, 'write_capacity_units'):
-                schema['write_capacity_units'] = cls.Meta.write_capacity_units
+                operation_kwargs['write_capacity_units'] = cls.Meta.write_capacity_units
             if hasattr(cls.Meta, 'stream_view_type'):
-                schema['stream_specification'] = {
+                operation_kwargs['stream_specification'] = {
                     'stream_enabled': True,
                     'stream_view_type': cls.Meta.stream_view_type
                 }
             if hasattr(cls.Meta, 'billing_mode'):
-                schema['billing_mode'] = cls.Meta.billing_mode
+                operation_kwargs['billing_mode'] = cls.Meta.billing_mode
             if hasattr(cls.Meta, 'tags'):
-                schema['tags'] = cls.Meta.tags
+                operation_kwargs['tags'] = cls.Meta.tags
             if read_capacity_units is not None:
-                schema['read_capacity_units'] = read_capacity_units
+                operation_kwargs['read_capacity_units'] = read_capacity_units
             if write_capacity_units is not None:
-                schema['write_capacity_units'] = write_capacity_units
+                operation_kwargs['write_capacity_units'] = write_capacity_units
             if billing_mode is not None:
-                schema['billing_mode'] = billing_mode
+                operation_kwargs['billing_mode'] = billing_mode
             cls._get_connection().create_table(
-                **schema
+                **operation_kwargs
             )
         if wait:
             while True:
@@ -858,11 +863,12 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
     # Private API below
     @classmethod
-    def _get_schema(cls) -> Dict[str, Any]:
+    def _get_schema(cls) -> ModelSchema:
         """
         Returns the schema for this table
         """
-        schema: Dict[str, List] = {
+
+        schema: ModelSchema = {
             'attribute_definitions': [],
             'key_schema': [],
             'global_secondary_indexes': [],
@@ -874,35 +880,21 @@ class Model(AttributeContainer, metaclass=MetaModel):
                     ATTR_NAME: attr_cls.attr_name,
                     ATTR_TYPE: attr_cls.attr_type
                 })
-            if attr_cls.is_hash_key:
                 schema['key_schema'].append({
-                    KEY_TYPE: HASH,
+                    KEY_TYPE: HASH if attr_cls.is_hash_key else RANGE,
                     ATTR_NAME: attr_cls.attr_name
                 })
-            elif attr_cls.is_range_key:
-                schema['key_schema'].append({
-                    KEY_TYPE: RANGE,
-                    ATTR_NAME: attr_cls.attr_name
-                })
-        for index in cls._indexes.values():
-            index_schema = index._get_schema()
-            if isinstance(index, GlobalSecondaryIndex):
-                if getattr(cls.Meta, 'billing_mode', None) == PAY_PER_REQUEST_BILLING_MODE:
-                    index_schema.pop('provisioned_throughput', None)
-                schema['global_secondary_indexes'].append(index_schema)
-            else:
-                schema['local_secondary_indexes'].append(index_schema)
-        attr_names = {key_schema[ATTR_NAME]
-                      for index_schema in (*schema['global_secondary_indexes'], *schema['local_secondary_indexes'])
-                      for key_schema in index_schema['key_schema']}
-        attr_keys = {attr[ATTR_NAME] for attr in schema['attribute_definitions']}
-        for attr_name in attr_names:
-            if attr_name not in attr_keys:
-                attr_cls = cls.get_attributes()[cls._dynamo_to_python_attr(attr_name)]
-                schema['attribute_definitions'].append({
-                    ATTR_NAME: attr_cls.attr_name,
-                    ATTR_TYPE: attr_cls.attr_type
-                })
+
+        indexes = cls._indexes.copy()
+        # add indexes from derived classes that we might initialize
+        discriminator_attr = cls._get_discriminator_attribute()
+        if discriminator_attr is not None:
+            for model_cls in discriminator_attr.get_registered_subclasses(Model):
+                indexes.update(model_cls._indexes)
+
+        for index in indexes.values():
+            index._update_model_schema(schema)
+
         return schema
 
     def _get_save_args(self, condition: Optional[Condition] = None) -> Tuple[Iterable[Any], Dict[str, Any]]:

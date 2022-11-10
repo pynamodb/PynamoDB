@@ -5,16 +5,17 @@ from inspect import getmembers
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 from typing import TYPE_CHECKING
 
+from pynamodb._schema import IndexSchema, GlobalSecondaryIndexSchema
+from pynamodb._schema import ModelSchema
 from pynamodb.constants import (
-    INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE, KEY_SCHEMA,
-    ATTR_DEFINITIONS, PROJECTION_TYPE, NON_KEY_ATTRIBUTES,
+    INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE,
+    PROJECTION_TYPE, NON_KEY_ATTRIBUTES,
     READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
 )
 from pynamodb.attributes import Attribute
 from pynamodb.expressions.condition import Condition
 from pynamodb.pagination import ResultIterator
 from pynamodb.types import HASH, RANGE
-
 if TYPE_CHECKING:
     from pynamodb.models import Model
 
@@ -136,28 +137,32 @@ class Index(Generic[_M]):
             if attr_cls.is_hash_key:
                 return attr_cls
 
+    def _update_model_schema(self, schema: ModelSchema) -> None:
+        raise NotImplementedError
+
     @classmethod
-    def _get_schema(cls) -> Dict:
+    def _get_schema(cls) -> IndexSchema:
         """
         Returns the schema for this index
         """
-        schema = {
+        schema: IndexSchema = {
             'index_name': cls.Meta.index_name,
             'key_schema': [],
             'projection': {
                 PROJECTION_TYPE: cls.Meta.projection.projection_type,
             },
+            'attribute_definitions': [],
         }
+
         for attr_cls in cls.Meta.attributes.values():
-            if attr_cls.is_hash_key:
-                schema['key_schema'].append({
+            if attr_cls.is_hash_key or attr_cls.is_range_key:
+                schema['attribute_definitions'].append({
                     ATTR_NAME: attr_cls.attr_name,
-                    KEY_TYPE: HASH
+                    ATTR_TYPE: attr_cls.attr_type,
                 })
-            elif attr_cls.is_range_key:
                 schema['key_schema'].append({
                     ATTR_NAME: attr_cls.attr_name,
-                    KEY_TYPE: RANGE
+                    KEY_TYPE: HASH if attr_cls.is_hash_key else RANGE,
                 })
         if cls.Meta.projection.non_key_attributes:
             schema['projection'][NON_KEY_ATTRIBUTES] = cls.Meta.projection.non_key_attributes
@@ -168,24 +173,41 @@ class GlobalSecondaryIndex(Index[_M]):
     """
     A global secondary index
     """
-
     @classmethod
-    def _get_schema(cls) -> Dict:
-        schema = super()._get_schema()
-        provisioned_throughput = {}
+    def _update_model_schema(cls, schema: ModelSchema) -> None:
+        index_schema: GlobalSecondaryIndexSchema = {
+            **cls._get_schema(),  # type:ignore[misc]  # https://github.com/python/mypy/pull/13353
+            'provisioned_throughput': {},
+        }
+
         if hasattr(cls.Meta, 'read_capacity_units'):
-            provisioned_throughput[READ_CAPACITY_UNITS] = cls.Meta.read_capacity_units
+            index_schema['provisioned_throughput'][READ_CAPACITY_UNITS] = cls.Meta.read_capacity_units
         if hasattr(cls.Meta, 'write_capacity_units'):
-            provisioned_throughput[WRITE_CAPACITY_UNITS] = cls.Meta.write_capacity_units
-        schema['provisioned_throughput'] = provisioned_throughput
-        return schema
+            index_schema['provisioned_throughput'][WRITE_CAPACITY_UNITS] = cls.Meta.write_capacity_units
+
+        schema['global_secondary_indexes'].append(index_schema)
+        # With polymorphism, indexes can use the same attribute, e.g. index1 on (thread_id, created_at)
+        # and index2 on (thread_id, updated_at). We need to deduplicate.
+        for attr_def in index_schema['attribute_definitions']:
+            if attr_def not in schema['attribute_definitions']:
+                schema['attribute_definitions'].append(attr_def)
 
 
 class LocalSecondaryIndex(Index[_M]):
     """
     A local secondary index
     """
-    pass
+
+    @classmethod
+    def _update_model_schema(cls, schema: ModelSchema) -> None:
+        index_schema = cls._get_schema()
+        schema['local_secondary_indexes'].append(index_schema)
+        # With polymorphism, indexes can use the same attribute, e.g. index1 on (thread_id, created_at)
+        # and index2 on (thread_id, updated_at). We need to deduplicate.
+        for attr_def in index_schema['attribute_definitions']:
+            if attr_def not in schema['attribute_definitions']:
+                schema['attribute_definitions'].append(attr_def)
+
 
 
 class Projection:
