@@ -1,7 +1,11 @@
 """
 Pynamodb constants
 """
-from typing_extensions import Final
+import sys
+if sys.version_info >= (3, 8):
+    from typing import Final
+else:
+    from typing_extensions import Final
 
 # Operations
 TRANSACT_WRITE_ITEMS = 'TransactWriteItems'
