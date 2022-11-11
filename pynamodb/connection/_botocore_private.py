@@ -31,7 +31,7 @@ class BotocoreBaseClientPrivate(botocore.client.BaseClient):
         request_context: Dict[str, Any],
         ignore_signing_region: bool = ...,
     ):
-        ...
+        raise NotImplementedError
 
     def _convert_to_request_dict(
         self,
@@ -43,4 +43,4 @@ class BotocoreBaseClientPrivate(botocore.client.BaseClient):
         headers: Optional[Dict[str, Any]] = ...,
         set_user_agent_header: bool = ...,
     ) -> Dict[str, Any]:
-        ...
+        raise NotImplementedError
