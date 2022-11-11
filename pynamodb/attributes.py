@@ -982,7 +982,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
     def __get__(self: _MT, instance: Any, owner: Any) -> _MT: ...
     def __get__(self: _A, instance: Any, owner: Any) -> Union[_A, _T]:
         # just for typing
-        return super().__get__(instance, owner)  # type: ignore
+        return super().__get__(instance, owner)
 
     def __setattr__(self, name, value):
         # "Raw" (i.e. non-subclassed) instances set their name-value pairs in the `attribute_values` dictionary.
