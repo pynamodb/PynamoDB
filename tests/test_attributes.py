@@ -57,7 +57,7 @@ class TestAttributeDescriptor:
     """
     Test Attribute Descriptors
     """
-    def setup(self):
+    def setup_method(self):
         self.instance = AttributeTestModel()
 
     def test_binary_attr(self):
@@ -145,7 +145,7 @@ class TestUTCDateTimeAttribute:
     Tests UTCDateTime attributes
     """
 
-    def setup(self):
+    def setup_method(self):
         self.attr = UTCDateTimeAttribute()
         self.dt = datetime(2047, 1, 6, 8, 21, 30, 2000, tzinfo=timezone.utc)
 
