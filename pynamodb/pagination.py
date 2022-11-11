@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, TypeVar
+from typing import Any, Callable, Dict, Iterable, Iterator, Optional, TypeVar
 
 from pynamodb.constants import (CAMEL_COUNT, ITEMS, LAST_EVALUATED_KEY, SCANNED_COUNT,
                                 CONSUMED_CAPACITY, TOTAL, CAPACITY_UNITS)
