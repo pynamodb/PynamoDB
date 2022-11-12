@@ -13,11 +13,13 @@ from unittest.mock import patch, call
 import pytest
 
 from pynamodb.attributes import (
-    BinarySetAttribute, BinaryAttribute, DynamicMapAttribute, NumberSetAttribute, NumberAttribute,
+    BinaryDataSetAttribute, BinaryDataAttribute, DynamicMapAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute, NullAttribute,
     ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute, Attribute)
+from pynamodb.attributes import LegacyBinaryAttribute
+from pynamodb.attributes import LegacyBinarySetAttribute
 from pynamodb.constants import (
-    DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
+    DATETIME_FORMAT, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, BOOLEAN,
 )
 from pynamodb.models import Model
@@ -29,8 +31,8 @@ class AttributeTestModel(Model):
         host = 'http://localhost:8000'
         table_name = 'test'
 
-    binary_attr = BinaryAttribute(hash_key=True)
-    binary_set_attr = BinarySetAttribute()
+    binary_attr = BinaryDataAttribute(hash_key=True)
+    binary_set_attr = BinaryDataSetAttribute()
     number_attr = NumberAttribute()
     number_set_attr = NumberSetAttribute()
     unicode_attr = UnicodeAttribute()
@@ -200,83 +202,111 @@ class TestUTCDateTimeAttribute:
             self.attr.deserialize(invalid_string)
 
 
-class TestBinaryAttribute:
+class TestBinaryDataAttribute:
     """
     Tests binary attributes
     """
     def test_binary_attribute(self):
         """
-        BinaryAttribute.default
+        BinaryDataAttribute.default
         """
-        attr = BinaryAttribute()
-        assert attr is not None
+        attr = BinaryDataAttribute()
         assert attr.attr_type == BINARY
 
-        attr = BinaryAttribute(default=b'foo')
+        attr = BinaryDataAttribute(default=b'foo')
         assert attr.default == b'foo'
 
-    def test_binary_round_trip(self):
+    def test_binary_data_round_trip(self):
         """
-        BinaryAttribute round trip
+        BinaryDataAttribute round trip
         """
-        attr = BinaryAttribute()
+        attr = BinaryDataAttribute()
         value = b'foo'
         serial = attr.serialize(value)
         assert attr.deserialize(serial) == value
 
-    def test_binary_serialize(self):
+    def test_binary_data_serialize(self):
         """
-        BinaryAttribute.serialize
+        BinaryDataAttribute.serialize
         """
-        attr = BinaryAttribute()
-        serial = b64encode(b'foo').decode(DEFAULT_ENCODING)
-        assert attr.serialize(b'foo') == serial
+        attr = BinaryDataAttribute()
+        assert attr.serialize(b'foo') == b'foo'
 
-    def test_binary_deserialize(self):
+    def test_binary_data_deserialize(self):
         """
-        BinaryAttribute.deserialize
+        BinaryDataAttribute.deserialize
         """
-        attr = BinaryAttribute()
-        serial = b64encode(b'foo').decode(DEFAULT_ENCODING)
-        assert attr.deserialize(serial) == b'foo'
+        attr = BinaryDataAttribute()
+        assert attr.deserialize('foo') == 'foo'
 
-    def test_binary_set_serialize(self):
-        """
-        BinarySetAttribute.serialize
-        """
-        attr = BinarySetAttribute()
-        assert attr.attr_type == BINARY_SET
-        assert sorted(attr.serialize({b'foo', b'bar'})) == ['YmFy', 'Zm9v']
-        assert attr.serialize({}) is None
 
     def test_binary_set_round_trip(self):
         """
-        BinarySetAttribute round trip
+        BinaryDataSetAttribute round trip
         """
-        attr = BinarySetAttribute()
+        attr = BinaryDataSetAttribute()
         value = {b'foo', b'bar'}
         serial = attr.serialize(value)
         assert attr.deserialize(serial) == value
 
+    def test_binary_set_serialize(self):
+        """
+        BinaryDataSetAttribute.serialize
+        """
+        attr = BinaryDataSetAttribute()
+        value = {b'foo', b'bar'}
+        assert sorted(attr.serialize(value)) == [b'bar', b'foo']
+
     def test_binary_set_deserialize(self):
         """
-        BinarySetAttribute.deserialize
+        BinaryDataSetAttribute.deserialize
         """
-        attr = BinarySetAttribute()
-        value = {b'foo', b'bar'}
-        assert attr.deserialize(
-            [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]
-        ) == value
+        attr = BinaryDataSetAttribute()
+        value = [b'foo', b'bar']
+        assert attr.deserialize(value) == {b'foo', b'bar'}
 
     def test_binary_set_attribute(self):
         """
-        BinarySetAttribute.serialize
+        BinaryDataSetAttribute.serialize
         """
-        attr = BinarySetAttribute()
-        assert attr is not None
-
-        attr = BinarySetAttribute(default=lambda: {b'foo', b'bar'})
+        attr = BinaryDataSetAttribute(default=lambda: {b'foo', b'bar'})
         assert attr.default() == {b'foo', b'bar'}
+
+
+class TestLegacyBinaryDataAttribute:
+    def test_legacy_binary_serialize(self):
+        """
+        LegacyBinaryDataAttribute.serialize
+        """
+        attr = LegacyBinaryAttribute()
+        assert attr.serialize(b'foo') == b64encode(b'foo').decode()
+
+    def test_legacy_binary_deserialize(self):
+        """
+        LegacyBinaryDataAttribute.deserialize
+        """
+        attr = BinaryDataAttribute()
+        serial = b64encode(b'foo').decode()
+        assert attr.deserialize(serial) == serial
+
+    def test_legacy_binary_set_serialize(self):
+        """
+        LegacyBinarySetAttribute.serialize
+        """
+        attr = LegacyBinarySetAttribute()
+        assert attr.attr_type == BINARY_SET
+        assert sorted(attr.serialize({b'foo', b'bar'})) == ['YmFy', 'Zm9v']
+        assert attr.serialize({}) is None
+
+    def test_legacy_binary_set_deserialize(self):
+        """
+        LegacyBinarySetAttribute.deserialize
+        """
+        attr = LegacyBinarySetAttribute()
+        value = {b'foo', b'bar'}
+        assert attr.deserialize(
+            [b64encode(val).decode() for val in sorted(value)]
+        ) == value
 
 
 class TestNumberAttribute:

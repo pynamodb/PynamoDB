@@ -2,7 +2,7 @@
 A PynamoDB example using a custom attribute
 """
 import pickle
-from pynamodb.attributes import BinaryAttribute, UnicodeAttribute
+from pynamodb.attributes import BinaryDataAttribute, UnicodeAttribute
 from pynamodb.models import Model
 
 
@@ -17,7 +17,7 @@ class Color(object):
         return "<Color: {}>".format(self.name)
 
 
-class PickleAttribute(BinaryAttribute):
+class PickleAttribute(BinaryDataAttribute):
     """
     This class will serializer/deserialize any picklable Python object.
     The value will be stored as a binary attribute in DynamoDB.

@@ -1,6 +1,7 @@
 """
 PynamoDB attributes
 """
+import base64
 import calendar
 import collections.abc
 import json
@@ -443,8 +444,10 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
     def _coerce_attribute_type(attr_type: str, attribute_value: Dict[str, Any]):
         # coerce attribute types to disambiguate json string and array types
         if attr_type == BINARY and STRING in attribute_value:
-            attribute_value[BINARY] = attribute_value.pop(STRING)
-        if attr_type in {BINARY_SET, NUMBER_SET, STRING_SET} and LIST in attribute_value:
+            attribute_value[BINARY] = base64.b64decode(attribute_value.pop(STRING))
+        elif attr_type == BINARY_SET and LIST in attribute_value:
+            attribute_value[BINARY_SET] = [base64.b64decode(v[STRING]) for v in attribute_value.pop(LIST)]
+        elif attr_type in {NUMBER_SET, STRING_SET} and LIST in attribute_value:
             json_type = NUMBER if attr_type == NUMBER_SET else STRING
             if all(next(iter(v)) == json_type for v in attribute_value[LIST]):
                 attribute_value[attr_type] = [value[json_type] for value in attribute_value.pop(LIST)]
@@ -516,9 +519,13 @@ class DiscriminatorAttribute(Attribute[type]):
         return self._discriminator_map[value]
 
 
-class BinaryAttribute(Attribute[bytes]):
+class LegacyBinaryAttribute(Attribute[bytes]):
     """
-    A binary attribute
+    A legacy binary attribute whose underlying data is double base64-encoded.
+    Use for migrating :code:`BinaryAttribute` from PynamoDB 5 and lower.
+
+    .. warning::
+        Do not use for new models.
     """
     attr_type = BINARY
 
@@ -535,9 +542,52 @@ class BinaryAttribute(Attribute[bytes]):
         return b64decode(value)
 
 
-class BinarySetAttribute(Attribute[Set[bytes]]):
+class BinaryDataAttribute(Attribute[bytes]):
+    """
+    A binary attribute
+    """
+    attr_type = BINARY
+
+    def serialize(self, value):
+        """
+        Returns a binary string
+        """
+        return value
+
+    def deserialize(self, value):
+        """
+        Returns a decoded byte string from a binary value
+        """
+        return value
+
+
+class BinaryDataSetAttribute(Attribute[Set[bytes]]):
     """
     A binary set
+    """
+    attr_type = BINARY_SET
+    null = True
+
+    def serialize(self, value):
+        """
+        Returns a list of strings. Encodes empty sets as "None".
+        """
+        return list(value) or None
+
+    def deserialize(self, value):
+        """
+        Returns a set of decoded byte strings from base64 encoded values.
+        """
+        return set(value)
+
+
+class LegacyBinarySetAttribute(Attribute[Set[bytes]]):
+    """
+    A legacy binary set attribute whose underlying data is double base64-encoded.
+    Use for migrating :code:`BinarySetAttribute` from PynamoDB 5 and lower.
+
+    .. warning::
+        Do not use for new models.
     """
     attr_type = BINARY_SET
     null = True
@@ -1258,8 +1308,8 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
 
 
 DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {
-    BINARY: BinaryAttribute(),
-    BINARY_SET: BinarySetAttribute(),
+    BINARY: BinaryDataAttribute(),
+    BINARY_SET: BinaryDataSetAttribute(),
     BOOLEAN: BooleanAttribute(),
     LIST: ListAttribute(),
     MAP: MapAttribute(),
@@ -1278,5 +1328,5 @@ SERIALIZE_CLASS_MAP = {
     float: NumberAttribute(),
     int: NumberAttribute(),
     str: UnicodeAttribute(),
-    bytes: BinaryAttribute(),
+    bytes: BinaryDataAttribute(),
 }

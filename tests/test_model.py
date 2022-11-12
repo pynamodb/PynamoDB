@@ -25,8 +25,8 @@ from pynamodb.indexes import (
     IncludeProjection, KeysOnlyProjection, Index
 )
 from pynamodb.attributes import (
-    DiscriminatorAttribute, UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
-    UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
+    DiscriminatorAttribute, UnicodeAttribute, NumberAttribute, BinaryDataAttribute, UTCDateTimeAttribute,
+    UnicodeSetAttribute, NumberSetAttribute, BinaryDataSetAttribute, MapAttribute,
     BooleanAttribute, ListAttribute, TTLAttribute, VersionAttribute)
 from .data import (
     MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
@@ -149,7 +149,7 @@ class IndexedModel(Model):
     include_index = NonKeyAttrIndex()
     numbers = NumberSetAttribute()
     aliases = UnicodeSetAttribute()
-    icons = BinarySetAttribute()
+    icons = BinaryDataSetAttribute()
 
 
 class LocalIndexedModel(Model):
@@ -165,7 +165,7 @@ class LocalIndexedModel(Model):
     email_index = LocalEmailIndex()
     numbers = NumberSetAttribute()
     aliases = UnicodeSetAttribute()
-    icons = BinarySetAttribute()
+    icons = BinaryDataSetAttribute()
 
 
 class SimpleUserModel(Model):
@@ -180,7 +180,7 @@ class SimpleUserModel(Model):
     email = UnicodeAttribute()
     numbers = NumberSetAttribute()
     custom_aliases = UnicodeSetAttribute(attr_name='aliases')
-    icons = BinarySetAttribute()
+    icons = BinaryDataSetAttribute()
     views = NumberAttribute(null=True)
     is_active = BooleanAttribute(null=True)
     signature = UnicodeAttribute(null=True)
@@ -222,7 +222,7 @@ class UserModel(Model):
 
     custom_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
     user_id = UnicodeAttribute(range_key=True)
-    picture = BinaryAttribute(null=True)
+    picture = BinaryDataAttribute(null=True)
     zip_code = NumberAttribute(null=True)
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)

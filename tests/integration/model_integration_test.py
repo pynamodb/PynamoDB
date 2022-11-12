@@ -7,7 +7,7 @@ from datetime import datetime
 from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
 from pynamodb.attributes import (
-    UnicodeAttribute, BinaryAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute,
+    UnicodeAttribute, BinaryDataAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute,
     VersionAttribute)
 
 import pytest
@@ -51,7 +51,7 @@ def test_model_integration(ddb_url):
         view_index = LSIndex()
         epoch_index = GSIndex()
         epoch = UTCDateTimeAttribute(default=datetime.now)
-        content = BinaryAttribute(null=True)
+        content = BinaryDataAttribute(null=True)
         scores = NumberSetAttribute()
         version = VersionAttribute()
 

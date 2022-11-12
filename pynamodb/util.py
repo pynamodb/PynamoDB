@@ -1,6 +1,7 @@
 """
 Utils
 """
+import base64
 import json
 from typing import Any
 from typing import Dict
@@ -25,7 +26,11 @@ def attribute_value_to_json(attribute_value: Dict[str, Any]) -> Any:
         return {k: attribute_value_to_json(v) for k, v in attr_value.items()}
     if attr_type == NULL:
         return None
-    if attr_type in {BINARY, BINARY_SET, BOOLEAN, STRING, STRING_SET}:
+    if attr_type == BINARY:
+        return base64.b64encode(attr_value).decode()
+    if attr_type == BINARY_SET:
+        return [base64.b64encode(v).decode() for v in attr_value]
+    if attr_type in {BOOLEAN, STRING, STRING_SET}:
         return attr_value
     if attr_type == NUMBER:
         return json.loads(attr_value)
