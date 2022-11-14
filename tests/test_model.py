@@ -641,11 +641,11 @@ class ModelTestCase(TestCase):
         self.assertEqual(item.email, 'needs_email')
         self.assertEqual(item.callable_field, 42)
         self.assertEqual(
-            repr(item), '{}<{}, {}>'.format(UserModel.Meta.table_name, item.custom_user_name, item.user_id)
+            repr(item), "UserModel(callable_field=42, email='needs_email', custom_user_name='foo', user_id='bar')"
         )
 
         item = SimpleUserModel('foo')
-        self.assertEqual(repr(item), '{}<{}>'.format(SimpleUserModel.Meta.table_name, item.user_name))
+        self.assertEqual(repr(item), "SimpleUserModel(user_name='foo')")
         self.assertRaises(ValueError, item.save)
 
         self.assertRaises(ValueError, UserModel.from_raw_data, None)
@@ -2751,6 +2751,10 @@ class ModelTestCase(TestCase):
                 item.person.fname,
                 COMPLEX_MODEL_ITEM_DATA.get(ITEM).get('weird_person').get(
                     MAP).get('firstName').get(STRING))
+            self.assertEqual(
+                repr(item),
+                "ComplexModel(key=123, person=Person(age=31, fname='Justin', is_male=True, lname='Phillips'))"
+            )
 
     def database_mocker(self, model, table_data, item_data,
                         primary_key_name, primary_key_dynamo_type, primary_key_id):
@@ -2930,6 +2934,10 @@ class ModelTestCase(TestCase):
         actual = instance.map_attr
         for k, v in map_native.items():
             self.assertEqual(v, actual[k])
+        self.assertEqual(
+            repr(actual),
+            "MapAttribute(foo='bar', num=1, bool_type=True, other_b_type=False, floaty=1.2, listy=[1, 2, 12345678909876543211234234324234], mapy={'baz': 'bongo'})"
+        )
 
     def test_raw_map_from_raw_data_works(self):
         map_native = {
