@@ -1,6 +1,6 @@
 from botocore.exceptions import ClientError
 
-from pynamodb.exceptions import PutError
+from pynamodb.exceptions import PynamoDBException, PutError
 
 
 def test_get_cause_response_code():
@@ -40,3 +40,10 @@ def test_get_cause_response_message__no_message():
     error = PutError()
     assert error.cause_response_message is None
 
+
+class PynamoDBTestError(PynamoDBException):
+    msg = "Test message"
+
+
+def test_subclass_message_is_not_overwritten_with_none():
+    assert PynamoDBTestError().msg == "Test message"
