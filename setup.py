@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 install_requires = [
     'botocore>=1.12.54',
-    'typing-extensions>=3.7; python_version<"3.8"'
+    'typing-extensions>=4; python_version<"3.11"',
 ]
 
 setup(
