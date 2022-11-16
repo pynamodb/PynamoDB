@@ -527,7 +527,7 @@ class BinaryAttribute(Attribute[bytes]):
 
     :param legacy_encoding: If :code:`True`, inefficient legacy encoding will be used to maintain compatibility
       with PynamoDB 5 and lower. Set to :code:`False` for new tables and models, and always set to :code:`False`
-      within :class:`pynamodb.attributes.MapAttribute`.
+      within :class:`~pynamodb.attributes.MapAttribute`.
 
       For more details, see :doc:`upgrading_binary`.
     """
@@ -554,7 +554,7 @@ class BinarySetAttribute(Attribute[Set[bytes]]):
 
     :param legacy_encoding: If :code:`True`, inefficient legacy encoding will be used to maintain compatibility
       with PynamoDB 5 and lower. Set to :code:`False` for new tables and models, and always set to :code:`False`
-      within :class:`pynamodb.attributes.MapAttribute`.
+      within :class:`~pynamodb.attributes.MapAttribute`.
 
       For more details, see :doc:`upgrading_binary`.
     """
