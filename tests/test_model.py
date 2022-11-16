@@ -149,7 +149,7 @@ class IndexedModel(Model):
     include_index = NonKeyAttrIndex()
     numbers = NumberSetAttribute()
     aliases = UnicodeSetAttribute()
-    icons = BinarySetAttribute()
+    icons = BinarySetAttribute(legacy_encoding=False)
 
 
 class LocalIndexedModel(Model):
@@ -165,7 +165,7 @@ class LocalIndexedModel(Model):
     email_index = LocalEmailIndex()
     numbers = NumberSetAttribute()
     aliases = UnicodeSetAttribute()
-    icons = BinarySetAttribute()
+    icons = BinarySetAttribute(legacy_encoding=False)
 
 
 class SimpleUserModel(Model):
@@ -180,7 +180,7 @@ class SimpleUserModel(Model):
     email = UnicodeAttribute()
     numbers = NumberSetAttribute()
     custom_aliases = UnicodeSetAttribute(attr_name='aliases')
-    icons = BinarySetAttribute()
+    icons = BinarySetAttribute(legacy_encoding=False)
     views = NumberAttribute(null=True)
     is_active = BooleanAttribute(null=True)
     signature = UnicodeAttribute(null=True)
@@ -222,12 +222,11 @@ class UserModel(Model):
 
     custom_user_name = UnicodeAttribute(hash_key=True, attr_name='user_name')
     user_id = UnicodeAttribute(range_key=True)
-    picture = BinaryAttribute(null=True)
+    picture = BinaryAttribute(null=True, legacy_encoding=False)
     zip_code = NumberAttribute(null=True)
     email = UnicodeAttribute(default='needs_email')
     callable_field = NumberAttribute(default=lambda: 42)
     ttl = TTLAttribute(null=True)
-
 
 
 class BatchModel(Model):

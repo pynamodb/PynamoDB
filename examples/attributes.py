@@ -44,7 +44,7 @@ class CustomAttributeModel(Model):
         write_capacity_units = 1
 
     id = UnicodeAttribute(hash_key=True)
-    obj = PickleAttribute()
+    obj = PickleAttribute(legacy_encoding=False)
 
 
 # Create the example table

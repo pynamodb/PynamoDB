@@ -18,16 +18,17 @@ import pytest
 
 from pynamodb.connection import Connection
 from pynamodb.connection.base import MetaTable
+from pynamodb.constants import LIST
+from pynamodb.constants import MAP
 from pynamodb.exceptions import (
     TableError, DeleteError, PutError, ScanError, GetError, UpdateError, TableDoesNotExist)
 from pynamodb.constants import (
-    UNPROCESSED_ITEMS, STRING, BINARY, DEFAULT_ENCODING, TABLE_KEY,
+    UNPROCESSED_ITEMS, STRING, BINARY, TABLE_KEY,
     PAY_PER_REQUEST_BILLING_MODE)
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
 from pynamodb.settings import OperationSettings
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
-from .deep_eq import deep_eq
 
 PATCH_METHOD = 'pynamodb.connection.Connection._make_api_call'
 
@@ -1583,33 +1584,55 @@ class ConnectionTestCase(TestCase):
     def test_handle_binary_attributes_for_unprocessed_items(self):
         binary_blob = b'\x00\xFF\x00\xFF'
 
-        unprocessed_items = []
-        for idx in range(0, 5):
-            unprocessed_items.append({
+        unprocessed_items = [
+            {
                 'PutRequest': {
                     'Item': {
-                        'name': {STRING: 'daniel'},
-                        'picture': {BINARY: base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
+                        'name': {
+                            STRING: 'daniel'
+                        },
+                        'picture': {
+                            BINARY: base64.b64encode(binary_blob).decode()
+                        },
+                        'map': {
+                            MAP: {
+                                'picture': {
+                                    BINARY: base64.b64encode(binary_blob).decode()
+                                },
+                            },
+                        },
+                        'list': {
+                            LIST: [
+                                {
+                                    BINARY: base64.b64encode(binary_blob).decode()
+                                },
+                            ],
+                        },
                     }
                 }
-            })
+            }
+            for _ in range(5)
+        ]
 
-        expected_unprocessed_items = []
-        for idx in range(0, 5):
-            expected_unprocessed_items.append({
-                'PutRequest': {
-                    'Item': {
-                        'name': {STRING: 'daniel'},
-                        'picture': {BINARY: binary_blob}
+        actual = Connection._handle_binary_attributes({UNPROCESSED_ITEMS: {'someTable': unprocessed_items}})
+
+        assert actual == {
+            UNPROCESSED_ITEMS: {
+                'someTable': [
+                    {
+                        'PutRequest': {
+                            'Item': {
+                                'name': {STRING: 'daniel'},
+                                'picture': {BINARY: binary_blob},
+                                'map': {MAP: {'picture': {BINARY: binary_blob}}},
+                                'list': {LIST: [{BINARY: binary_blob}]},
+                            }
+                        }
                     }
-                }
-            })
-
-        deep_eq(
-            Connection._handle_binary_attributes({UNPROCESSED_ITEMS: {'someTable': unprocessed_items}}),
-            {UNPROCESSED_ITEMS: {'someTable': expected_unprocessed_items}},
-            _assert=True
-        )
+                    for _ in range(5)
+                ]
+            }
+        }
 
     def test_handle_binary_attributes_for_unprocessed_keys(self):
         binary_blob = b'\x00\xFF\x00\xFF'
@@ -1620,7 +1643,7 @@ class ConnectionTestCase(TestCase):
                     'Keys': [
                         {
                             'ForumName': {'S': 'FooForum'},
-                            'Subject': {'B': base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
+                            'Subject': {'B': base64.b64encode(binary_blob).decode()}
                         },
                         {
                             'ForumName': {'S': 'FooForum'},
@@ -1634,7 +1657,7 @@ class ConnectionTestCase(TestCase):
                     'Keys': [
                         {
                             'ForumName': {'S': 'FooForum'},
-                            'Subject': {'B': base64.b64encode(binary_blob).decode(DEFAULT_ENCODING)}
+                            'Subject': {'B': base64.b64encode(binary_blob).decode()}
                         },
                         {
                             'ForumName': {'S': 'FooForum'},
@@ -1645,9 +1668,11 @@ class ConnectionTestCase(TestCase):
                 }
             }
         }
-        data = Connection._handle_binary_attributes(unprocessed_keys)
-        self.assertEqual(data['UnprocessedKeys']['MyTable']['Keys'][0]['Subject']['B'], binary_blob)
-        self.assertEqual(data['UnprocessedKeys']['MyOtherTable']['Keys'][0]['Subject']['B'], binary_blob)
+
+        actual = Connection._handle_binary_attributes(unprocessed_keys)
+
+        assert actual['UnprocessedKeys']['MyTable']['Keys'][0]['Subject']['B'] == binary_blob
+        assert actual['UnprocessedKeys']['MyOtherTable']['Keys'][0]['Subject']['B'] == binary_blob
 
     def test_update_time_to_live_fail(self):
         conn = Connection(self.region)
