@@ -18,14 +18,14 @@ which were addressed in PynamoDB 6:
 - Top-level binary attributes (i.e. within a :py:class:`~pynamodb.models.Model`) were being Base64-encoded
   twice. For elements in BinarySetAttribute, each element was being encoded twice.
 
-  This behavior was an oversight that carried no particular advantage, and the disadvantage of larger item sizes.
+  This behavior was an oversight and resulted in larger item sizes and non-standard semantics.
 
   .. admonition:: For example...
 
-     The 4 bytes :code:`b'\\xCA\\xFE\\xF0\\x0D'` should've been sent over the wire as :code:`b'yv7wDQ=='` (single round
+     The 4 bytes :code:`CA FE F0 0D` should've been sent over the wire as :code:`yv7wDQ==` (single round
      of Base64 encoding). Server-side, they would've been decoded and stored as 4 bytes. Instead, they were put through an extra
-     round of Base64 encoding, thus sending :code:`b'eXY3d0RRPT0='` over the wire. Server-side, they decoded into :code:`b'yv7wDQ=='`
-     and stored as 8 bytes.
+     round of Base64 encoding, thus sending :code:`eXY3d0RRPT0=` over the wire. Server-side, they decoded into :code:`yv7wDQ==`
+     (in bytes, :code:`79 76 37 77 44 51 3D 3D`) and stored as 8 bytes.
 
 - Nested binary attributes (i.e. within a :py:class:`~pynamodb.attributes.MapAttribute` and :py:class:`~pynamodb.attributes.ListAttribute`)
   were being wrapped in an additional layer of Base64 encoding on every serialization roundtrip.
