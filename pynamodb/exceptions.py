@@ -8,6 +8,8 @@ import botocore.exceptions
 
 
 class PynamoDBException(Exception):
+    msg: str
+
     """
     A common exception class
     """
