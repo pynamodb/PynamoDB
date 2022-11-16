@@ -1124,14 +1124,16 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
     def serialize(self, null_check: bool = True) -> Dict[str, Dict[str, Any]]:
         """
-        Serialize attribute values for DynamoDB API.
+        Serializes a model for botocore's DynamoDB client.
+
         See :func:`~pynamodb.models.Model.to_dict` for a simple JSON-serializable dict.
         """
         return self._container_serialize(null_check=null_check)
 
     def deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
         """
-        Sets attributes sent back from DynamoDB on this object.
+        Deserializes a model from botocore's DynamoDB client.
+
         Use :func:`~pynamodb.models.Model.from_dict` to set attributes from a dict
         previously produced by :func:`~pynamodb.models.Model.to_dict`.
         """

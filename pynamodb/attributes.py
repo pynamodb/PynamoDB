@@ -168,13 +168,21 @@ class Attribute(Generic[_T]):
 
     def serialize(self, value: Any) -> Any:
         """
-        This method should return a dynamodb compatible value
+        Serializes a value for botocore's DynamoDB client.
+
+        For a list of DynamoDB attribute types and their matching botocore Python types,
+        see `DynamoDB.Client.get_item API reference
+        <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/dynamodb.html#DynamoDB.Client.get_item>`_.
         """
         return value
 
     def deserialize(self, value: Any) -> Any:
         """
-        Performs any needed deserialization on the value
+        Deserializes a value from botocore's DynamoDB client.
+
+        For a list of DynamoDB attribute types and their matching botocore Python types,
+        see `DynamoDB.Client.get_item API reference
+        <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/dynamodb.html#DynamoDB.Client.get_item>`_.
         """
         return value
 
@@ -523,7 +531,7 @@ class DiscriminatorAttribute(Attribute[type]):
 
 class BinaryAttribute(Attribute[bytes]):
     """
-    A binary attribute
+    An attribute containing a binary data object (:code:`bytes`).
 
     :param legacy_encoding: If :code:`True`, inefficient legacy encoding will be used to maintain compatibility
       with PynamoDB 5 and lower. Set to :code:`False` for new tables and models, and always set to :code:`False`
@@ -550,7 +558,7 @@ class BinaryAttribute(Attribute[bytes]):
 
 class BinarySetAttribute(Attribute[Set[bytes]]):
     """
-    A binary set
+    An attribute containing a set of binary data objects (:code:`bytes`).
 
     :param legacy_encoding: If :code:`True`, inefficient legacy encoding will be used to maintain compatibility
       with PynamoDB 5 and lower. Set to :code:`False` for new tables and models, and always set to :code:`False`
