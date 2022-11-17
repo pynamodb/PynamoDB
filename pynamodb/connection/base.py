@@ -578,10 +578,9 @@ class Connection(object):
         """
         Returns information about the table's schema.
         """
-        try:
-            return self._tables[table_name]
-        except KeyError:
-            raise TableError(f"Meta-table for '{table_name}' not initialized") from None
+        if table_name not in self._tables:
+            self.describe_table(table_name)
+        return self._tables[table_name]
 
     def create_table(
         self,

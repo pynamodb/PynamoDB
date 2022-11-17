@@ -21,8 +21,6 @@ def test_connection_integration(ddb_url):
     # See: http://aws.amazon.com/dynamodb/developer-resources/
     conn = Connection(host=ddb_url)
 
-    print(conn)
-    print("conn.describe_table...")
     table = None
     try:
         table = conn.describe_table(table_name)
@@ -95,19 +93,16 @@ def test_connection_integration(ddb_url):
                 }
             ]
         }
-        print("conn.create_table...")
         conn.create_table(table_name, **params)
 
     while table is None:
-        time.sleep(1)
+        time.sleep(0.1)
         table = conn.describe_table(table_name)
 
     while table['TableStatus'] == 'CREATING':
-        time.sleep(2)
+        time.sleep(0.1)
         table = conn.describe_table(table_name)
-    print("conn.list_tables")
     conn.list_tables()
-    print("conn.update_table...")
 
     conn.update_table(
         table_name,
@@ -121,7 +116,6 @@ def test_connection_integration(ddb_url):
         time.sleep(2)
         table = conn.describe_table(table_name)
 
-    print("conn.put_item")
     conn.put_item(
         table_name,
         'item1-hash',
@@ -145,25 +139,54 @@ def test_connection_integration(ddb_url):
         items.append(
             {"Forum": "FooForum", "Thread": "thread-{}".format(i)}
         )
-    print("conn.batch_write_items...")
     conn.batch_write_item(
         table_name,
         put_items=items
     )
-    print("conn.batch_get_items...")
-    data = conn.batch_get_item(
+    conn.batch_get_item(
         table_name,
         items
     )
-    print("conn.query...")
     conn.query(
         table_name,
         "FooForum",
         range_key_condition=(BeginsWith(Path('Thread'), Value('thread'))),
     )
-    print("conn.scan...")
     conn.scan(
         table_name,
     )
-    print("conn.delete_table...")
     conn.delete_table(table_name)
+
+
+@pytest.mark.ddblocal
+def test_connection_integration__describe_as_needed(ddb_url):
+    table_name = 'pynamodb-ci-connection-describe-as-needed'
+
+    conn = Connection(host=ddb_url)
+
+    conn.create_table(
+        table_name,
+        read_capacity_units=1,
+        write_capacity_units=1,
+        attribute_definitions=[
+            {
+                'attribute_type': NUMBER,
+                'attribute_name': 'foo'
+            }
+        ],
+        key_schema=[
+            {
+                'key_type': HASH,
+                'attribute_name': 'foo'
+            },
+        ],
+    )
+
+    # we do not call describe_table here, and expect it to be done for us
+
+    try:
+        conn.put_item(table_name, '123', attributes={'bar': {'S': 'baz'}})
+        resp = conn.get_item(table_name, '123')
+        assert resp['Item']['bar']['S'] == 'baz'
+    finally:
+        conn.delete_table(table_name)
