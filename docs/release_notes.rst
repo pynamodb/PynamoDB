@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+v5.3.1
+----------
+* Fixed issue introduced in 5.3.0: using TableConnection directly (not through a model)
+  raised the following exception::
+
+    pynamodb.exceptions.TableError: Meta-table for '(table-name)' not initialized
+
+
 v5.3.0
 ----------
 * No longer call ``DescribeTable`` API before first operation
