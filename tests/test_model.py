@@ -480,6 +480,7 @@ class ModelTestCase(TestCase):
                 if d2_item == d1_item:
                     found = True
             if not found:
+                assert list1 == list2
                 raise AssertionError("Values not equal: {} {}".format(list1, list2))
 
     def test_create_model(self):
@@ -653,23 +654,37 @@ class ModelTestCase(TestCase):
         self.assertEqual(item.overidden_attr, 'test')
         self.assertTrue(not hasattr(item, 'foo_attr'))
 
-    def test_overidden_defaults(self):
+    def test_overridden_defaults(self):
         """
         Custom attribute names
         """
         schema = CustomAttrNameModel._get_schema()
-        correct_schema = {
-            'KeySchema': [
-                {'KeyType': 'HASH', 'AttributeName': 'user_name'},
-                {'KeyType': 'RANGE', 'AttributeName': 'user_id'}
+        self.assertListEqual(
+            schema['key_schema'],
+            [
+                {
+                    'KeyType': 'RANGE',
+                    'AttributeName': 'user_id'
+                },
+                {
+                    'KeyType': 'HASH',
+                    'AttributeName': 'user_name'
+                },
             ],
-            'AttributeDefinitions': [
-                {'AttributeType': 'S', 'AttributeName': 'user_name'},
-                {'AttributeType': 'S', 'AttributeName': 'user_id'}
+        )
+        self.assertListEqual(
+            schema['attribute_definitions'],
+            [
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'user_id'
+                },
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'user_name'
+                },
             ]
-        }
-        self.assert_dict_lists_equal(correct_schema['KeySchema'], schema['key_schema'])
-        self.assert_dict_lists_equal(correct_schema['AttributeDefinitions'], schema['attribute_definitions'])
+        )
 
     def test_overridden_attr_name(self):
         user = UserModel(custom_user_name="bob")
@@ -2326,43 +2341,22 @@ class ModelTestCase(TestCase):
         """
         schema = IndexedModel._get_schema()
 
-        expected = {
-            'local_secondary_indexes': [
-                {
-                    'KeySchema': [
-                        {'KeyType': 'HASH', 'AttributeName': 'email'},
-                        {'KeyType': 'RANGE', 'AttributeName': 'numbers'}
-                    ],
-                    'IndexName': 'include_index',
-                    'projection': {
-                        'ProjectionType': 'INCLUDE',
-                        'NonKeyAttributes': ['numbers']
-                    }
-                }
-            ],
-            'global_secondary_indexes': [
-                {
-                    'KeySchema': [
-                        {'KeyType': 'HASH', 'AttributeName': 'email'},
-                        {'KeyType': 'RANGE', 'AttributeName': 'numbers'}
-                    ],
-                    'IndexName': 'email_index',
-                    'projection': {'ProjectionType': 'ALL'},
-                    'provisioned_throughput': {
-                        'WriteCapacityUnits': 1,
-                        'ReadCapacityUnits': 2
-                    }
-                }
-            ],
-            'attribute_definitions': [
-                {'AttributeType': 'S', 'AttributeName': 'user_name'},
-                {'AttributeType': 'S', 'AttributeName': 'email'},
-                {'AttributeType': 'NS', 'AttributeName': 'numbers'}
-            ]
-        }
-        self.assert_dict_lists_equal(
+        self.assertListEqual(
             schema['attribute_definitions'],
-            expected['attribute_definitions']
+            [
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'user_name'
+                },
+                {
+                    'AttributeType': 'NS',
+                    'AttributeName': 'numbers'
+                },
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'email'
+                },
+            ]
         )
         self.assertEqual(schema['local_secondary_indexes'][0]['projection']['ProjectionType'], 'INCLUDE')
         self.assertEqual(schema['local_secondary_indexes'][0]['projection']['NonKeyAttributes'], ['numbers'])
@@ -2382,28 +2376,19 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD, new=fake_db) as req:
             LocalIndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
-            params = {
-                'AttributeDefinitions': [
-                    {
-                        'attribute_name': 'email', 'attribute_type': 'S'
-                    },
-                    {
-                        'attribute_name': 'numbers',
-                        'attribute_type': 'NS'
-                    }
-                ],
-                'KeySchema': [
+            schema = LocalIndexedModel.email_index._get_schema()
+            args = req.call_args[0][1]
+            self.assert_dict_lists_equal(
+                schema['key_schema'],
+                [
                     {
                         'AttributeName': 'email', 'KeyType': 'HASH'
                     },
                     {
                         'AttributeName': 'numbers', 'KeyType': 'RANGE'
                     }
-                ]
-            }
-            schema = LocalIndexedModel.email_index._get_schema()
-            args = req.call_args[0][1]
-            self.assert_dict_lists_equal(schema['key_schema'], params['KeySchema'])
+                ],
+            )
             self.assertTrue('ProvisionedThroughput' not in args['LocalSecondaryIndexes'][0])
 
     def test_projections(self):
