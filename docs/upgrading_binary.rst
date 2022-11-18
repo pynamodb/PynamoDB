@@ -33,7 +33,7 @@ which were addressed in PynamoDB 6:
   Not only it prevented them from being deserialized correctly, but also the model would also grow
   in size exponentially until it hit the DynamoDB item limit of 400KB. For this reason we conclude
   that :code:`BinaryAttribute` and :code:`BinarySetAttribute` were not used in practice within maps and lists
-  before PynamoDB 6.0 and thus will not require any legacy encoding.
+  before PynamoDB 6.0 and thus there is no practical reason you would want :code:`legacy_encoding=True` for them.
 
 
 Guidance
@@ -127,9 +127,16 @@ Nested binary attributes
 Migrating
 #########
 
-Migrating existing systems off the legacy encoding is not necessary at this time. For large tables,
-there might be significant cost and engineering complexity involved. If you choose to do so,
-follow the typical steps for data migration:
+Since PynamoDB 6 is compatible with existing data through :code:`legacy_encoding=True`, you do not need
+to migrate data during an upgrade. Whether you want to migrate data depends on your use case.
+Advantages include smaller item sizes and more standardized serialization. However, for large tables,
+there might be significant cost and engineering complexity involved.
+
+ .. warning::
+
+    Be sure to have an up-to-date backup of your data.
+
+These are the typical steps to migrate an attribute:
 
 1. Double-write to both the old and new attribute. Read from the new, falling back to the old.
 
