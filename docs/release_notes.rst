@@ -1,12 +1,16 @@
+.. highlight:: none
+
 Release Notes
 =============
 
 v5.3.1
 ----------
-* Fixed issue introduced in 5.3.0: using TableConnection directly (not through a model)
+* Fixed issue introduced in 5.3.0: using :py:class:`~pynamodb.connection.table.TableConnection` directly (not through a model)
   raised the following exception::
 
     pynamodb.exceptions.TableError: Meta-table for '(table-name)' not initialized
+
+* Fix typing on :py:class:`~pynamodb.transactions.TransactGet` (backport of #1057)
 
 
 v5.3.0
@@ -146,7 +150,7 @@ v4.3.3
 
 * Add type stubs for indexing into a ``ListAttribute`` for forming conditional expressions (#774)
 
-  ::
+  .. code-block:: python
 
     class MyModel(Model):
       ...
@@ -228,7 +232,9 @@ v4.1.0
 
 This is a backwards compatible, minor release.
 
-* In the Model's Meta, you may now provide an AWS session token, which is mostly useful for assumed roles (#700)::
+* In the Model's Meta, you may now provide an AWS session token, which is mostly useful for assumed roles (#700):
+
+  .. code-block:: python
 
     sts_client = boto3.client("sts")
     role_object = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="role_name", DurationSeconds=BOTO3_CLIENT_DURATION)
