@@ -30,7 +30,7 @@ class Index(Generic[_M]):
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)  # type: ignore  # see https://github.com/python/mypy/issues/4660
+        super().__init_subclass__(**kwargs)
         if cls.Meta is not None:
             cls.Meta.attributes = {}
             for name, attribute in getmembers(cls, lambda o: isinstance(o, Attribute)):
