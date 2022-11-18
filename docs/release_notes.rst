@@ -3,6 +3,15 @@
 Release Notes
 =============
 
+v5.3.2
+----------
+* Prevent ``typing_tests`` from being installed into site-packages (#1118)
+
+Contributors to this release:
+
+* @musicinmybrain
+
+
 v5.3.1
 ----------
 * Fixed issue introduced in 5.3.0: using :py:class:`~pynamodb.connection.table.TableConnection` directly (not through a model)
