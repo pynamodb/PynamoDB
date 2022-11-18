@@ -42,8 +42,7 @@ Guidance
 Top-level binary attributes
 ***************************
 
-- For binary and binary-set attributes in models which were written by PynamoDB 5 (or lower),
-  use :code:`legacy_encoding=True`.
+- In models existing at the time of an upgrade from PynamoDB 5 (or lower), use :code:`legacy_encoding=True`.
 
   .. note::
 
@@ -68,7 +67,7 @@ Top-level binary attributes
   After the version upgrade is complete, you can consider adding a new binary attribute
   and :ref:`migrating the data <migrating>`.
 
-- For binary and binary-set attributes in new models, use :code:`legacy_encoding=False`.
+- In new models, use :code:`legacy_encoding=False`.
 
   .. code-block:: python
 
@@ -80,7 +79,7 @@ Top-level binary attributes
 Nested binary attributes
 ************************
 
-- For binary and binary-set attributes in maps, use :code:`legacy_encoding=False`.
+- In maps, use :code:`legacy_encoding=False`.
 
   .. code-block:: python
 
@@ -88,7 +87,7 @@ Nested binary attributes
        binary = BinaryAttribute(legacy_encoding=False)
        binary_set = BinarySetAttribute(legacy_encoding=False)
 
-- For binary and binary-set attributes in raw maps, normal (non-legacy) encoding will be used.
+- In raw maps, normal (non-legacy) encoding will be used.
 
   .. code-block:: python
 
@@ -98,7 +97,7 @@ Nested binary attributes
      my_model = MyModel()
      my_model.my_raw_map = MapAttribute(binary=b'foo')
 
-- For binary (set) attributes in lists, normal (non-legacy) encoding will be used.
+- In lists, normal (non-legacy) encoding will be used.
 
   This applies to both :code:`ListAttribute(of=BinaryAttribute)` and
   :code:`of=BinarySetAttribute` as well as when :code:`of=...`
