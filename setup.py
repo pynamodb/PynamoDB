@@ -9,7 +9,7 @@ install_requires = [
 setup(
     name='pynamodb',
     version=__import__('pynamodb').__version__,
-    packages=find_packages(exclude=('tests', 'typing_tests', 'tests.integration',)),
+    packages=find_packages(exclude=('examples', 'tests', 'typing_tests', 'tests.integration',)),
     url='http://jlafon.io/pynamodb.html',
     author='Jharrod LaFon',
     author_email='jlafon@eyesopen.com',
