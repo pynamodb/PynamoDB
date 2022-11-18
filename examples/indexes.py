@@ -86,16 +86,17 @@ class GameModel(Model):
     player_opponent_index = GamePlayerOpponentIndex()
     opponent_time_index = GameOpponentTimeIndex()
 
+
 if not GameModel.exists():
     GameModel.create_table(wait=True)
 
 # Create an item
-item = GameModel('1234', datetime.datetime.utcnow())
-item.winner_id = '5678'
-item.save()
+game = GameModel('1234', datetime.datetime.utcnow())
+game.winner_id = '5678'
+game.save()
 
 # Indexes can be queried easily using the index's hash key
-for item in GameModel.player_opponent_index.query('1234'):
+for game in GameModel.player_opponent_index.query('1234'):
     print("Item queried from index: {0}".format(item))
 
 # Count on an index

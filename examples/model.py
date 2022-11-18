@@ -4,9 +4,15 @@ An example using Amazon's Thread example for motivation
 http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleTablesAndData.html
 """
 import logging
+from typing import Any
+
 from pynamodb.models import Model
 from pynamodb.attributes import (
-    UnicodeAttribute, NumberAttribute, UnicodeSetAttribute, UTCDateTimeAttribute
+    ListAttribute,
+    NumberAttribute,
+    UnicodeAttribute,
+    UnicodeSetAttribute,
+    UTCDateTimeAttribute,
 )
 from datetime import datetime
 
@@ -29,7 +35,7 @@ class Thread(Model):
     answered = NumberAttribute(default=0)
     tags = UnicodeSetAttribute()
     last_post_datetime = UTCDateTimeAttribute(null=True)
-    notes = ListAttribute(default=list)
+    notes: ListAttribute[Any] = ListAttribute(default=list)
 
 
 # Delete the table
@@ -60,7 +66,7 @@ with Thread.batch_write() as batch:
     threads = []
     for x in range(100):
         thread = Thread('forum-{0}'.format(x), 'subject-{0}'.format(x))
-        thread.tags = ['tag1', 'tag2']
+        thread.tags = {'tag1', 'tag2'}
         thread.last_post_datetime = datetime.now()
         threads.append(thread)
 
@@ -75,16 +81,16 @@ print(Thread.count('forum-1'))
 
 # Batch get
 item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(100)]
-for item in Thread.batch_get(item_keys):
-    print(item)
+for thread_item in Thread.batch_get(item_keys):
+    print(thread_item)
 
 # Scan
-for item in Thread.scan():
-    print(item)
+for thread_item in Thread.scan():
+    print(thread_item)
 
 # Query
-for item in Thread.query('forum-1', Thread.subject.startswith('subject')):
-    print(item)
+for thread_item in Thread.query('forum-1', Thread.subject.startswith('subject')):
+    print(thread_item)
 
 
 print("-"*80)
@@ -103,11 +109,12 @@ class AliasedModel(Model):
     tags = UnicodeSetAttribute(attr_name='t')
     last_post_datetime = UTCDateTimeAttribute(attr_name='lp')
 
+
 if not AliasedModel.exists():
     AliasedModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
 
 # Create a thread
-thread_item = AliasedModel(
+aliased_thread_item = AliasedModel(
     'Some Forum',
     'Some Subject',
     tags=['foo', 'bar'],
@@ -115,45 +122,45 @@ thread_item = AliasedModel(
 )
 
 # Save the thread
-thread_item.save()
+aliased_thread_item.save()
 
 # Batch write operation
 with AliasedModel.batch_write() as batch:
-    threads = []
-    for x in range(100):
-        thread = AliasedModel('forum-{0}'.format(x), 'subject-{0}'.format(x))
-        thread.tags = ['tag1', 'tag2']
-        thread.last_post_datetime = datetime.now()
-        threads.append(thread)
+    aliased_threads = []
+    for idx in range(100):
+        aliased_thread_item = AliasedModel('forum-{0}'.format(idx), 'subject-{0}'.format(idx))
+        aliased_thread_item.tags = {'tag1', 'tag2'}
+        aliased_thread_item.last_post_datetime = datetime.now()
+        aliased_threads.append(aliased_thread_item)
 
-    for thread in threads:
-        batch.save(thread)
+    for aliased_thread_item in aliased_threads:
+        batch.save(aliased_thread_item)
 
 # Batch get
 item_keys = [('forum-{0}'.format(x), 'subject-{0}'.format(x)) for x in range(100)]
-for item in AliasedModel.batch_get(item_keys):
-    print("Batch get item: {0}".format(item))
+for aliased_thread_item in AliasedModel.batch_get(item_keys):
+    print("Batch get item: {0}".format(aliased_thread_item))
 
 # Scan
-for item in AliasedModel.scan():
-    print("Scanned item: {0}".format(item))
+for aliased_thread_item in AliasedModel.scan():
+    print("Scanned item: {0}".format(aliased_thread_item))
 
 # Query
-for item in AliasedModel.query('forum-1', AliasedModel.subject.startswith('subject')):
-    print("Query using aliased attribute: {0}".format(item))
+for aliased_thread_item in AliasedModel.query('forum-1', AliasedModel.subject.startswith('subject')):
+    print("Query using aliased attribute: {0}".format(aliased_thread_item))
 
 # Query with filters
-for item in Thread.query('forum-1', (Thread.views == 0) | (Thread.replies == 0)):
-    print("Query result: {0}".format(item))
+for thread_item in Thread.query('forum-1', (Thread.views == 0) | (Thread.replies == 0)):
+    print("Query result: {0}".format(thread_item))
 
 
 # Scan with filters
-for item in Thread.scan(Thread.subject.startswith('subject') & (Thread.views == 0)):
-    print("Scanned item: {0} {1}".format(item.subject, item.views))
+for thread_item in Thread.scan(Thread.subject.startswith('subject') & (Thread.views == 0)):
+    print("Scanned item: {0} {1}".format(thread_item.subject, thread_item.views))
 
 # Scan with null filter
-for item in Thread.scan(Thread.subject.startswith('subject') & Thread.last_post_datetime.does_not_exist()):
-    print("Scanned item: {0} {1}".format(item.subject, item.views))
+for thread_item in Thread.scan(Thread.subject.startswith('subject') & Thread.last_post_datetime.does_not_exist()):
+    print("Scanned item: {0} {1}".format(thread_item.subject, thread_item.views))
 
 # Conditionally save an item
 thread_item = Thread(

@@ -4,8 +4,9 @@ pytest-mock
 
 # only used in CI
 coveralls
-mypy==0.770;python_version>="3.7"
+mypy==0.900;python_version>="3.7"
 pytest-cov
 
 # used for type-checking
 botocore-stubs
+types-Flask
