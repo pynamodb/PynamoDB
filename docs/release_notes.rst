@@ -3,6 +3,28 @@
 Release Notes
 =============
 
+v5.3.3
+----------
+* Fix :py:class:`~pynamodb.pagination.PageIterator` and :py:class:`~pynamodb.pagination.ResultIterator`
+  to allow recovery from an exception when retrieving the first item (#1101).
+
+  .. code-block:: python
+
+    results = MyModel.query('hash_key')
+    while True:
+        try:
+            item = next(results)
+        except StopIteration:
+            break
+        except pynamodb.exceptions.QueryError as ex:
+            if ex.cause_response_code == 'ThrottlingException':
+                time.sleep(1)  # for illustration purposes only
+            else:
+                raise
+        else:
+            handle_item(item)
+
+
 v5.3.2
 ----------
 * Prevent ``typing_tests`` from being installed into site-packages (#1118)
