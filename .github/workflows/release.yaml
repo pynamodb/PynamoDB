@@ -3,6 +3,11 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      test_pypi_api_token:
+        description: 'Test PyPI API token'
+        type: string
 
 jobs:
   deploy:
@@ -25,6 +30,14 @@ jobs:
 
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+      if: ${{ github.event == 'release' }}
       with:
-        user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+
+    - name: Publish to Test PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      if: ${{ github.event == 'workflow_dispatch' }}
+      with:
+        password: ${{ inputs.test_pypi_api_token }}
+        repository_url: https://test.pypi.org/legacy/
+        skip_existing: true
