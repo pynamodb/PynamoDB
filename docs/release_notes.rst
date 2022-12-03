@@ -18,7 +18,6 @@ This is a major release and contains breaking changes. Please read the notes bel
 * Index count, query, and scan methods are now instance methods.
 
 
-
 v5.3.0
 ----------
 * No longer call ``DescribeTable`` API before first operation
