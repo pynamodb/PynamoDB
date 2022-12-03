@@ -8,7 +8,7 @@ This is a major release and contains breaking changes. Please read the notes bel
 
 * :py:class:`~pynamodb.attributes.BinaryAttribute` and :py:class:`~pynamodb.attributes.BinarySetAttribute` have undergone breaking changes:
 
-  * The attributes' internal encoding has changed. To avoid this change going unnoticed, :code:`legacy_encoding` have been made required: see :doc:`upgrading_binary` for details.
+  * The attributes' internal encoding has changed. To prevent this change going unnoticed, :code:`legacy_encoding` have been made required: see :doc:`upgrading_binary` for details.
     If your codebase uses :py:class:`~pynamodb.attributes.BinaryAttribute` or :py:class:`~pynamodb.attributes.BinarySetAttribute`,
     go over the attribute declarations and mark them accordingly.
   * When using binary attributes, the return value of :py:func:`~pynamodb.model.Model.serialize` will no longer be JSON-serializable
