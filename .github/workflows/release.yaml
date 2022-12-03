@@ -3,14 +3,18 @@ name: Release
 on:
   release:
     types: [published]
+  # For non-release, we want to exercise (a) building, (b) uploading to test.pypi.org
+  push:
+    branches: [master]
+  pull_request:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.x'
     - name: Install dependencies
@@ -24,7 +28,16 @@ jobs:
         python setup.py sdist bdist_wheel
 
     - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@master
+      uses: pypa/gh-action-pypi-publish@release/v1
+      if: ${{ github.event_name == 'release' }}
       with:
-        user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+
+    - name: Publish to Test PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      if: ${{ github.event_name != 'release' }}
+      with:
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
+        # Since we run this often, it's OK if that version already exists
+        skip_existing: true
