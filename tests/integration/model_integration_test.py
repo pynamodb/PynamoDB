@@ -51,7 +51,7 @@ def test_model_integration(ddb_url):
         view_index = LSIndex()
         epoch_index = GSIndex()
         epoch = UTCDateTimeAttribute(default=datetime.now)
-        content = BinaryAttribute(null=True)
+        content = BinaryAttribute(null=True, legacy_encoding=False)
         scores = NumberSetAttribute()
         version = VersionAttribute()
 

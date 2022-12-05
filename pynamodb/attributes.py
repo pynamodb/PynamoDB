@@ -1,6 +1,7 @@
 """
 PynamoDB attributes
 """
+import base64
 import calendar
 import collections.abc
 import json
@@ -20,7 +21,6 @@ from pynamodb.constants import BINARY
 from pynamodb.constants import BINARY_SET
 from pynamodb.constants import BOOLEAN
 from pynamodb.constants import DATETIME_FORMAT
-from pynamodb.constants import DEFAULT_ENCODING
 from pynamodb.constants import LIST
 from pynamodb.constants import MAP
 from pynamodb.constants import NULL
@@ -168,13 +168,21 @@ class Attribute(Generic[_T]):
 
     def serialize(self, value: Any) -> Any:
         """
-        This method should return a dynamodb compatible value
+        Serializes a value for botocore's DynamoDB client.
+
+        For a list of DynamoDB attribute types and their matching botocore Python types,
+        see `DynamoDB.Client.get_item API reference
+        <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/dynamodb.html#DynamoDB.Client.get_item>`_.
         """
         return value
 
     def deserialize(self, value: Any) -> Any:
         """
-        Performs any needed deserialization on the value
+        Deserializes a value from botocore's DynamoDB client.
+
+        For a list of DynamoDB attribute types and their matching botocore Python types,
+        see `DynamoDB.Client.get_item API reference
+        <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/dynamodb.html#DynamoDB.Client.get_item>`_.
         """
         return value
 
@@ -270,6 +278,7 @@ class Attribute(Generic[_T]):
 
 
 class AttributeContainerMeta(type):
+    _attributes: Dict[str, Attribute]
 
     def __new__(cls, name, bases, namespace, discriminator=None):
         # Defined so that the discriminator can be set in the class definition.
@@ -329,10 +338,8 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
     def get_attributes(cls) -> Dict[str, Attribute]:
         """
         Returns the attributes of this class as a mapping from `python_attr_name` => `attribute`.
-
-        :rtype: dict[str, Attribute]
         """
-        return cls._attributes  # type: ignore
+        return cls._attributes
 
     @classmethod
     def _dynamo_to_python_attr(cls, dynamo_key: str) -> str:
@@ -443,8 +450,10 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
     def _coerce_attribute_type(attr_type: str, attribute_value: Dict[str, Any]):
         # coerce attribute types to disambiguate json string and array types
         if attr_type == BINARY and STRING in attribute_value:
-            attribute_value[BINARY] = attribute_value.pop(STRING)
-        if attr_type in {BINARY_SET, NUMBER_SET, STRING_SET} and LIST in attribute_value:
+            attribute_value[BINARY] = base64.b64decode(attribute_value.pop(STRING))
+        elif attr_type == BINARY_SET and LIST in attribute_value:
+            attribute_value[BINARY_SET] = [base64.b64decode(v[STRING]) for v in attribute_value.pop(LIST)]
+        elif attr_type in {NUMBER_SET, STRING_SET} and LIST in attribute_value:
             json_type = NUMBER if attr_type == NUMBER_SET else STRING
             if all(next(iter(v)) == json_type for v in attribute_value[LIST]):
                 attribute_value[attr_type] = [value[json_type] for value in attribute_value.pop(LIST)]
@@ -522,41 +531,63 @@ class DiscriminatorAttribute(Attribute[type]):
 
 class BinaryAttribute(Attribute[bytes]):
     """
-    A binary attribute
+    An attribute containing a binary data object (:code:`bytes`).
+
+    :param legacy_encoding: If :code:`True`, inefficient legacy encoding will be used to maintain compatibility
+      with PynamoDB 5 and lower. Set to :code:`False` for new tables and models, and always set to :code:`False`
+      within :class:`~pynamodb.attributes.MapAttribute`.
+
+      For more details, see :doc:`upgrading_binary`.
     """
     attr_type = BINARY
 
+    def __init__(self, *args: Any, legacy_encoding: bool, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.legacy_encoding = legacy_encoding
+
     def serialize(self, value):
-        """
-        Returns a base64 encoded binary string
-        """
-        return b64encode(value).decode(DEFAULT_ENCODING)
+        if self.legacy_encoding:
+            return b64encode(value)
+        return value
 
     def deserialize(self, value):
-        """
-        Returns a decoded byte string from a base64 encoded value
-        """
-        return b64decode(value)
+        if self.legacy_encoding:
+            return b64decode(value)
+        return value
 
 
 class BinarySetAttribute(Attribute[Set[bytes]]):
     """
-    A binary set
+    An attribute containing a set of binary data objects (:code:`bytes`).
+
+    :param legacy_encoding: If :code:`True`, inefficient legacy encoding will be used to maintain compatibility
+      with PynamoDB 5 and lower. Set to :code:`False` for new tables and models, and always set to :code:`False`
+      within :class:`~pynamodb.attributes.MapAttribute`.
+
+      For more details, see :doc:`upgrading_binary`.
     """
     attr_type = BINARY_SET
     null = True
+
+    def __init__(self, *args: Any, legacy_encoding: bool, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.legacy_encoding = legacy_encoding
 
     def serialize(self, value):
         """
         Returns a list of base64 encoded binary strings. Encodes empty sets as "None".
         """
-        return [b64encode(v).decode(DEFAULT_ENCODING) for v in value] or None
+        if self.legacy_encoding:
+            return [b64encode(v) for v in value] or None
+        return list(value) or None
 
     def deserialize(self, value):
         """
         Returns a set of decoded byte strings from base64 encoded values.
         """
-        return {b64decode(v) for v in value}
+        if self.legacy_encoding:
+            return {b64decode(v) for v in value}
+        return set(value)
 
 
 class UnicodeAttribute(Attribute[str]):
@@ -800,7 +831,18 @@ class NullAttribute(Attribute[None]):
         return None
 
 
-class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer):
+class MetaMapAttribute(AttributeContainerMeta):
+    def __init__(self, name, bases, namespace, discriminator=None):
+        super().__init__(name, bases, namespace, discriminator=discriminator)
+        for attr_name, attr in self._attributes.items():
+            if isinstance(attr, (BinaryAttribute, BinarySetAttribute)) and attr.legacy_encoding:
+                raise ValueError(
+                    "Legacy encoding is only ever needed for top-level (model) attributes. "
+                    f"Please remove the legacy_encoding flag from the definition of '{attr_name}'."
+                )
+
+
+class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer, metaclass=MetaMapAttribute):
     """
     A Map Attribute
 
@@ -1152,15 +1194,28 @@ class DynamicMapAttribute(MapAttribute):
         return True
 
 
-def _get_class_for_serialize(value):
+def _get_class_for_serialize(value: Any) -> Attribute:
     if value is None:
         return NullAttribute()
     if isinstance(value, MapAttribute):
         return value
+    if isinstance(value, set):
+        set_types = {type(v) for v in value}
+        if not set_types:
+            raise ValueError("Cannot serialize empty set")
+        if set_types == {str}:
+            return UnicodeSetAttribute()
+        if set_types <= {int, float}:
+            return NumberSetAttribute()
+        if set_types == {bytes}:
+            return BinarySetAttribute(legacy_encoding=False)
+        raise ValueError(f"Cannot serialize set consisting of types: {', '.join(sorted(map(repr, set_types)))}")
+
     value_type = type(value)
-    if value_type not in SERIALIZE_CLASS_MAP:
-        raise ValueError('Unknown value: {}'.format(value_type))
-    return SERIALIZE_CLASS_MAP[value_type]
+    attr = SERIALIZE_CLASS_MAP.get(value_type)
+    if attr is None:
+        raise ValueError(f"Unsupported value type '{value_type}'")
+    return attr
 
 
 class ListAttribute(Generic[_T], Attribute[List[_T]]):
@@ -1215,15 +1270,19 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         Decode from list of AttributeValue types.
         """
         if self.element_type:
-            element_attr = self.element_type()
-            if isinstance(element_attr, MapAttribute):
-                element_attr._make_attribute()  # ensure attr_name exists
+            element_attr: Attribute
+            if issubclass(self.element_type, (BinaryAttribute, BinarySetAttribute)):
+                element_attr = self.element_type(legacy_encoding=False)
+            else:
+                element_attr = self.element_type()
+                if isinstance(element_attr, MapAttribute):
+                    element_attr._make_attribute()  # ensure attr_name exists
             deserialized_lst = []
             for idx, attribute_value in enumerate(values):
                 value = None
                 if NULL not in attribute_value:
                     # set attr_name in case `get_value` raises an exception
-                    element_attr.attr_name = '{}[{}]'.format(self.attr_name, idx)
+                    element_attr.attr_name = f'{self.attr_name}[{idx}]' if self.attr_name else f'[{idx}]'
                     value = element_attr.deserialize(element_attr.get_value(attribute_value))
                 deserialized_lst.append(value)
             return deserialized_lst
@@ -1257,13 +1316,15 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
         if isinstance(value, Attribute):
             return value
         if self.element_type:
+            if issubclass(self.element_type, (BinaryAttribute, BinarySetAttribute)):
+                return self.element_type(legacy_encoding=False)
             return self.element_type()
-        return SERIALIZE_CLASS_MAP[type(value)]
+        return _get_class_for_serialize(value)
 
 
 DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {
-    BINARY: BinaryAttribute(),
-    BINARY_SET: BinarySetAttribute(),
+    BINARY: BinaryAttribute(legacy_encoding=False),
+    BINARY_SET: BinarySetAttribute(legacy_encoding=False),
     BOOLEAN: BooleanAttribute(),
     LIST: ListAttribute(),
     MAP: MapAttribute(),
@@ -1274,13 +1335,12 @@ DESERIALIZE_CLASS_MAP: Dict[str, Attribute] = {
     STRING_SET: UnicodeSetAttribute()
 }
 
-SERIALIZE_CLASS_MAP = {
+SERIALIZE_CLASS_MAP: Mapping[type, Attribute] = {
     dict: MapAttribute(),
     list: ListAttribute(),
-    set: ListAttribute(),
     bool: BooleanAttribute(),
     float: NumberAttribute(),
     int: NumberAttribute(),
     str: UnicodeAttribute(),
-    bytes: BinaryAttribute(),
+    bytes: BinaryAttribute(legacy_encoding=False),
 }

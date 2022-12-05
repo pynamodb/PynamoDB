@@ -21,6 +21,8 @@ from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 
 from pynamodb.connection._botocore_private import BotocoreBaseClientPrivate
+from pynamodb.constants import LIST
+from pynamodb.constants import MAP
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES,
@@ -34,7 +36,7 @@ from pynamodb.constants import (
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
     CONSUMED_CAPACITY, CAPACITY_UNITS, ATTRIBUTE_TYPES,
-    ITEMS, DEFAULT_ENCODING, BINARY, BINARY_SET, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
+    ITEMS, BINARY, BINARY_SET, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
     CONDITION_EXPRESSION, FILTER_EXPRESSION,
@@ -1384,10 +1386,14 @@ class Connection(object):
         return {v: k for k, v in d.items()}
 
 
-def _convert_binary(attr):
+def _convert_binary(attr: Dict[str, Any]) -> None:
     if BINARY in attr:
-        attr[BINARY] = b64decode(attr[BINARY].encode(DEFAULT_ENCODING))
+        attr[BINARY] = b64decode(attr[BINARY].encode())
     elif BINARY_SET in attr:
-        value = attr[BINARY_SET]
-        if value and len(value):
-            attr[BINARY_SET] = {b64decode(v.encode(DEFAULT_ENCODING)) for v in value}
+        attr[BINARY_SET] = [b64decode(v.encode()) for v in attr[BINARY_SET]]
+    elif MAP in attr:
+        for sub_attr in attr[MAP].values():
+            _convert_binary(sub_attr)
+    elif LIST in attr:
+        for sub_attr in attr[LIST]:
+            _convert_binary(sub_attr)
