@@ -18,6 +18,25 @@ This is a major release and contains breaking changes. Please read the notes bel
 * Index count, query, and scan methods are now instance methods.
 
 
+v5.3.2
+----------
+* Prevent ``typing_tests`` from being installed into site-packages (#1118)
+
+Contributors to this release:
+
+* @musicinmybrain
+
+
+v5.3.1
+----------
+* Fixed issue introduced in 5.3.0: using :py:class:`~pynamodb.connection.table.TableConnection` directly (not through a model)
+  raised the following exception::
+
+    pynamodb.exceptions.TableError: Meta-table for '(table-name)' not initialized
+
+* Fix typing on :py:class:`~pynamodb.transactions.TransactGet` (backport of #1057)
+
+
 v5.3.0
 ----------
 * No longer call ``DescribeTable`` API before first operation
