@@ -29,11 +29,11 @@ from pynamodb.attributes import (
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
     BooleanAttribute, ListAttribute, TTLAttribute, VersionAttribute)
 from .data import (
-    MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
-    BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
-    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
-    CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
-    BINARY_ATTR_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+    MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA,
+    BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS,
+    COMPLEX_ITEM_DATA, DOG_TABLE_DATA,
+    CUSTOM_ATTR_NAME_ITEM_DATA,
+    OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
     GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
@@ -43,7 +43,7 @@ from .data import (
     TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA,
     EXPLICIT_RAW_MAP_MODEL_TABLE_DATA, EXPLICIT_RAW_MAP_MODEL_ITEM_DATA,
     EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA, EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA,
-    VERSIONED_TABLE_DATA)
+)
 
 from unittest.mock import patch, MagicMock
 
@@ -2440,40 +2440,6 @@ class ModelTestCase(TestCase):
         with self.assertRaises(AttributeError):
             MissingTableNameModel.exists()
 
-    def test_to_json(self):
-        """
-        Model.to_json
-        """
-        user = UserModel()
-        user.custom_user_name = 'foo'
-        user.user_id = 'bar'
-        user.picture = base64.b64decode(BINARY_ATTR_DATA)
-        user.zip_code = 88030
-        json_user = json.loads(user.to_json())
-        self.assertEqual(json_user['user_name'], user.custom_user_name)  # uses custom attribute name
-        self.assertEqual(json_user['user_id'], user.user_id)
-        self.assertEqual(json_user['picture'], BINARY_ATTR_DATA)
-        self.assertEqual(json_user['zip_code'], user.zip_code)
-        self.assertEqual(json_user['email'], 'needs_email')  # set to default value
-
-    def test_from_json(self):
-        """
-        Model.from_json
-        """
-        json_user = {
-            'user_name': 'foo',
-            'user_id': 'bar',
-            'picture': BINARY_ATTR_DATA,
-            'zip_code': 88030,
-        }
-        user = UserModel()
-        user.from_json(json.dumps(json_user))
-        self.assertEqual(user.custom_user_name, json_user['user_name'])  # uses custom attribute name
-        self.assertEqual(user.user_id, json_user['user_id'])
-        self.assertEqual(user.picture, base64.b64decode(json_user['picture']))
-        self.assertEqual(user.zip_code, json_user['zip_code'])
-        self.assertEqual(user.email, 'needs_email')  # set to default value
-
     def _get_office_employee(self):
         justin = Person(
             fname='Justin',
@@ -2686,7 +2652,7 @@ class ModelTestCase(TestCase):
             )
         assert item.person.is_male
         with pytest.raises(AttributeError):
-            item.person.is_dude
+            _ = item.person.is_dude
 
     def test_model_with_list_retrieve_from_db(self):
         fake_db = self.database_mocker(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,

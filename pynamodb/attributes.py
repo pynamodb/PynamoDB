@@ -17,6 +17,10 @@ from inspect import getmembers
 from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload, Iterable
 from typing import TYPE_CHECKING
 
+from pynamodb._util import attr_value_to_normal_dict
+from pynamodb._util import bin_decode_attr
+from pynamodb._util import bin_encode_attr
+from pynamodb._util import normal_dict_to_attr_value
 from pynamodb.constants import BINARY
 from pynamodb.constants import BINARY_SET
 from pynamodb.constants import BOOLEAN
@@ -477,6 +481,44 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         instance = (stored_cls or cls)(_user_instantiated=False)
         AttributeContainer._container_deserialize(instance, attribute_values)
         return instance
+
+    def to_dynamodb_dict(self) -> Dict[str, Any]:
+        """
+        Returns the contents of this instance as a JSON-serializable mapping,
+        using the same format as the "DynamoDB" JSON mapping in the AWS Console.
+        """
+        attr_values = self._container_serialize(null_check=False)
+        for v in attr_values.values():
+            bin_encode_attr(v)
+        return attr_values
+
+    def from_dynamodb_dict(self, d: Dict[str, Any]) -> None:
+        """
+        Sets attributes from a mapping previously produced by :func:`to_dynamodb_dict`.
+        """
+        for v in d.values():
+            bin_decode_attr(v)
+        self._update_attribute_types(d)
+        self._container_deserialize(d)
+
+    def to_normal_dict(self, *, force: bool = False) -> Dict[str, Any]:
+        """
+        Returns the contents of this instance as a normal JSON-serializable mapping,
+        using the same format as the "normal" JSON mapping in the AWS Console.
+
+        :param force: If :code:`True`, force the conversion even if the model contains Binary or Set attributes
+          (as they cannot be unambiguously represented in JSON, so this assumes the same model will be used
+          when parsing). If :code:`False`, a :code:`ValueError` will be raised if such attributes are set.
+        """
+        return {k: attr_value_to_normal_dict(v, force) for k, v in self._container_serialize(null_check=False).items()}
+
+    def from_normal_dict(self, d: Dict[str, Any]) -> None:
+        """
+        Sets attributes from a mapping previously produced by :func:`to_normal_dict`.
+        """
+        attribute_values = {k: normal_dict_to_attr_value(v) for k, v in d.items()}
+        self._update_attribute_types(attribute_values)
+        self._container_deserialize(attribute_values)
 
     def __repr__(self) -> str:
         fields = ', '.join(f'{k}={v!r}' for k, v in self.attribute_values.items())

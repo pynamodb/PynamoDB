@@ -12,7 +12,8 @@ This is a major release and contains breaking changes. Please read the notes bel
     If your codebase uses :py:class:`~pynamodb.attributes.BinaryAttribute` or :py:class:`~pynamodb.attributes.BinarySetAttribute`,
     go over the attribute declarations and mark them accordingly.
   * When using binary attributes, the return value of :py:func:`~pynamodb.models.Model.serialize` will no longer be JSON-serializable
-    since it will contain :code:`bytes` objects. Note that both `:py:func:`~pynamodb.models.Model.to_dict` and `:py:func:`~pynamodb.model.Model.to_json` are also affected.
+    since it will contain :code:`bytes` objects. Use `:py:func:`~pynamodb.models.Model.to_dynamodb_dict`
+    for a safe JSON-serializable representation.
 
 * Python 3.6 is no longer supported.
 * Index count, query, and scan methods are now instance methods.
