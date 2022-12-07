@@ -3,6 +3,11 @@
 Release Notes
 =============
 
+v5.3.4
+----------
+* Make serialization :code:`null_check=False` propagate to maps inside lists (#1128).
+
+
 v5.3.3
 ----------
 * Fix :py:class:`~pynamodb.pagination.PageIterator` and :py:class:`~pynamodb.pagination.ResultIterator`
