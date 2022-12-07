@@ -352,7 +352,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
                 raise
 
             if value is not None:
-                if isinstance(attr, MapAttribute):
+                if isinstance(attr, (ListAttribute, MapAttribute)):
                     attr_value = attr.serialize(value, null_check=null_check)
                 else:
                     attr_value = attr.serialize(value)
@@ -1123,7 +1123,7 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
                 raise ValueError("'of' must be a subclass of Attribute")
             self.element_type = of
 
-    def serialize(self, values):
+    def serialize(self, values, *, null_check: bool = True):
         """
         Encode the given list of objects into a list of AttributeValue types.
         """
@@ -1133,7 +1133,10 @@ class ListAttribute(Generic[_T], Attribute[List[_T]]):
             if self.element_type and v is not None and not isinstance(attr_class, self.element_type):
                 raise ValueError("List elements must be of type: {}".format(self.element_type.__name__))
             attr_type = attr_class.attr_type
-            attr_value = attr_class.serialize(v)
+            if isinstance(attr_class, (ListAttribute, MapAttribute)):
+                attr_value = attr_class.serialize(v, null_check=null_check)
+            else:
+                attr_value = attr_class.serialize(v)
             if attr_value is None:
                 # When attribute values serialize to "None" (e.g. empty sets) we store {"NULL": True} in DynamoDB.
                 attr_type = NULL
