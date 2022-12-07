@@ -2,6 +2,7 @@ mock
 pytest>=6
 pytest-env
 pytest-mock
+botocore<1.28
 
 # only used in CI
 coveralls
