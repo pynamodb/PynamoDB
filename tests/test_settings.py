@@ -18,5 +18,5 @@ def test_override_old_attributes(settings_str, tmpdir):
     with patch.dict('os.environ', {'PYNAMODB_CONFIG': str(custom_settings)}):
         with pytest.warns(UserWarning) as warns:
             reload_module(pynamodb.settings)
-    assert len(warns) == 1
-    assert 'options are no longer supported' in str(warns[0].message)
+
+    assert any(('options are no longer supported' in str(warn.message)) for warn in warns)

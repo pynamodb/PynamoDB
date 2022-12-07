@@ -31,12 +31,16 @@ install_requires = [
 setup(
     name='pynamodb',
     version=__import__('pynamodb').__version__,
-    packages=find_packages(exclude=('tests', 'tests.integration',)),
+    packages=find_packages(exclude=('examples', 'tests', 'typing_tests', 'tests.integration',)),
     url='http://jlafon.io/pynamodb.html',
+    project_urls={
+        'Source': 'https://github.com/pynamodb/PynamoDB',
+    },
     author='Jharrod LaFon',
     author_email='jlafon@eyesopen.com',
     description='A Pythonic Interface to DynamoDB',
     long_description=open('README.rst').read(),
+    long_description_content_type='text/x-rst',
     zip_safe=False,
     license='MIT',
     keywords='python dynamodb amazon',

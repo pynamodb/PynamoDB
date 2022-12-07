@@ -1,13 +1,12 @@
 mock
-pytest
+pytest>=6
+pytest-env
 pytest-mock
 
-# Due to https://github.com/boto/botocore/issues/1872. Remove after botocore fixes.
-python-dateutil==2.8.0
-
-# only used in .travis.yml
+# only used in CI
 coveralls
-mypy==0.761;python_version>="3.7"
+mypy==0.950;python_version>="3.7"
 pytest-cov
-sphinx
-sphinx-rtd-theme
+
+# used for type-checking
+botocore-stubs
