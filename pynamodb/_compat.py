@@ -24,7 +24,7 @@ def load_module(name, path):
         # using the following approach in >= python 3.5:
         # https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
         loader = SourceFileLoader(name, path)
-        return loader.load_module()  # type: ignore
+        return loader.load_module()
     else:
         from imp import load_source
         return load_source(name, path)
