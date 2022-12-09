@@ -318,6 +318,9 @@ class AttributeContainerMeta(type):
 
 
 class AttributeContainer(metaclass=AttributeContainerMeta):
+    """
+    Base class for models and maps.
+    """
 
     def __init__(self, _user_instantiated: bool = True, **attributes: Attribute) -> None:
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
