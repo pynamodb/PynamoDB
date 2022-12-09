@@ -8,7 +8,6 @@ import random
 import sys
 import time
 import uuid
-from base64 import b64decode
 from threading import local
 from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
@@ -21,8 +20,7 @@ from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 
 from pynamodb.connection._botocore_private import BotocoreBaseClientPrivate
-from pynamodb.constants import LIST
-from pynamodb.constants import MAP
+from pynamodb._util import bin_decode_attr
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES,
@@ -36,7 +34,7 @@ from pynamodb.constants import (
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
     DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
     CONSUMED_CAPACITY, CAPACITY_UNITS, ATTRIBUTE_TYPES,
-    ITEMS, BINARY, BINARY_SET, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
+    ITEMS, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
     UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
     EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
     CONDITION_EXPRESSION, FILTER_EXPRESSION,
@@ -503,39 +501,39 @@ class Connection(object):
         """ Simulate botocore's binary attribute handling """
         if ITEM in data:
             for attr in data[ITEM].values():
-                _convert_binary(attr)
+                bin_decode_attr(attr)
         if ITEMS in data:
             for item in data[ITEMS]:
                 for attr in item.values():
-                    _convert_binary(attr)
+                    bin_decode_attr(attr)
         if RESPONSES in data:
-            if isinstance(data[RESPONSES], list):
+            if isinstance(data[RESPONSES], list):  # ExecuteTransaction response
                 for item in data[RESPONSES]:
                     for attr in item.values():
-                        _convert_binary(attr)
-            else:
-                for item_list in data[RESPONSES].values():
-                    for item in item_list:
+                        bin_decode_attr(attr)
+            else:  # BatchGetItem response
+                for table_items in data[RESPONSES].values():
+                    for item in table_items:
                         for attr in item.values():
-                            _convert_binary(attr)
+                            bin_decode_attr(attr)
         if LAST_EVALUATED_KEY in data:
             for attr in data[LAST_EVALUATED_KEY].values():
-                _convert_binary(attr)
+                bin_decode_attr(attr)
         if UNPROCESSED_KEYS in data:
             for table_data in data[UNPROCESSED_KEYS].values():
                 for item in table_data[KEYS]:
                     for attr in item.values():
-                        _convert_binary(attr)
+                        bin_decode_attr(attr)
         if UNPROCESSED_ITEMS in data:
             for table_unprocessed_requests in data[UNPROCESSED_ITEMS].values():
                 for request in table_unprocessed_requests:
                     for item_mapping in request.values():
                         for item in item_mapping.values():
                             for attr in item.values():
-                                _convert_binary(attr)
+                                bin_decode_attr(attr)
         if ATTRIBUTES in data:
             for attr in data[ATTRIBUTES].values():
-                _convert_binary(attr)
+                bin_decode_attr(attr)
         return data
 
     @property
@@ -1384,16 +1382,3 @@ class Connection(object):
     @staticmethod
     def _reverse_dict(d):
         return {v: k for k, v in d.items()}
-
-
-def _convert_binary(attr: Dict[str, Any]) -> None:
-    if BINARY in attr:
-        attr[BINARY] = b64decode(attr[BINARY].encode())
-    elif BINARY_SET in attr:
-        attr[BINARY_SET] = [b64decode(v.encode()) for v in attr[BINARY_SET]]
-    elif MAP in attr:
-        for sub_attr in attr[MAP].values():
-            _convert_binary(sub_attr)
-    elif LIST in attr:
-        for sub_attr in attr[LIST]:
-            _convert_binary(sub_attr)

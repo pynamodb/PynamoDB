@@ -29,11 +29,11 @@ from pynamodb.attributes import (
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
     BooleanAttribute, ListAttribute, TTLAttribute, VersionAttribute)
 from .data import (
-    MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA, SIMPLE_MODEL_TABLE_DATA,
-    BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS, COMPLEX_TABLE_DATA,
-    COMPLEX_ITEM_DATA, INDEX_TABLE_DATA, LOCAL_INDEX_TABLE_DATA, DOG_TABLE_DATA,
-    CUSTOM_ATTR_NAME_INDEX_TABLE_DATA, CUSTOM_ATTR_NAME_ITEM_DATA,
-    BINARY_ATTR_DATA, OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
+    MODEL_TABLE_DATA, GET_MODEL_ITEM_DATA,
+    BATCH_GET_ITEMS, SIMPLE_BATCH_GET_ITEMS,
+    COMPLEX_ITEM_DATA, DOG_TABLE_DATA,
+    CUSTOM_ATTR_NAME_ITEM_DATA,
+    OFFICE_EMPLOYEE_MODEL_TABLE_DATA,
     GET_OFFICE_EMPLOYEE_ITEM_DATA, GET_OFFICE_EMPLOYEE_ITEM_DATA_WITH_NULL,
     GROCERY_LIST_MODEL_TABLE_DATA, GET_GROCERY_LIST_ITEM_DATA,
     GET_OFFICE_ITEM_DATA, OFFICE_MODEL_TABLE_DATA, COMPLEX_MODEL_TABLE_DATA, COMPLEX_MODEL_ITEM_DATA,
@@ -43,7 +43,7 @@ from .data import (
     TREE_MODEL_TABLE_DATA, TREE_MODEL_ITEM_DATA,
     EXPLICIT_RAW_MAP_MODEL_TABLE_DATA, EXPLICIT_RAW_MAP_MODEL_ITEM_DATA,
     EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_ITEM_DATA, EXPLICIT_RAW_MAP_MODEL_AS_SUB_MAP_IN_TYPED_MAP_TABLE_DATA,
-    VERSIONED_TABLE_DATA)
+)
 
 from unittest.mock import patch, MagicMock
 
@@ -390,20 +390,20 @@ class BooleanModel(Model):
     is_human = BooleanAttribute()
 
 
-class TreeLeaf2(MapAttribute):
-    value = NumberAttribute()
-
-
-class TreeLeaf1(MapAttribute):
-    value = NumberAttribute()
-    left = TreeLeaf2()
-    right = TreeLeaf2()
-
-
 class TreeLeaf(MapAttribute):
     value = NumberAttribute()
-    left = TreeLeaf1()
-    right = TreeLeaf1()
+
+
+class TreeNode2(MapAttribute):
+    value = NumberAttribute()
+    left = TreeLeaf()
+    right = TreeLeaf()
+
+
+class TreeNode1(MapAttribute):
+    value = NumberAttribute()
+    left = TreeNode2()
+    right = TreeNode2()
 
 
 class TreeModel(Model):
@@ -411,8 +411,8 @@ class TreeModel(Model):
         table_name = 'TreeModelTable'
 
     tree_key = UnicodeAttribute(hash_key=True)
-    left = TreeLeaf()
-    right = TreeLeaf()
+    left = TreeNode1()
+    right = TreeNode1()
 
 
 class ExplicitRawMapModel(Model):
@@ -2440,40 +2440,6 @@ class ModelTestCase(TestCase):
         with self.assertRaises(AttributeError):
             MissingTableNameModel.exists()
 
-    def test_to_json(self):
-        """
-        Model.to_json
-        """
-        user = UserModel()
-        user.custom_user_name = 'foo'
-        user.user_id = 'bar'
-        user.picture = base64.b64decode(BINARY_ATTR_DATA)
-        user.zip_code = 88030
-        json_user = json.loads(user.to_json())
-        self.assertEqual(json_user['user_name'], user.custom_user_name)  # uses custom attribute name
-        self.assertEqual(json_user['user_id'], user.user_id)
-        self.assertEqual(json_user['picture'], BINARY_ATTR_DATA)
-        self.assertEqual(json_user['zip_code'], user.zip_code)
-        self.assertEqual(json_user['email'], 'needs_email')  # set to default value
-
-    def test_from_json(self):
-        """
-        Model.from_json
-        """
-        json_user = {
-            'user_name': 'foo',
-            'user_id': 'bar',
-            'picture': BINARY_ATTR_DATA,
-            'zip_code': 88030,
-        }
-        user = UserModel()
-        user.from_json(json.dumps(json_user))
-        self.assertEqual(user.custom_user_name, json_user['user_name'])  # uses custom attribute name
-        self.assertEqual(user.user_id, json_user['user_id'])
-        self.assertEqual(user.picture, base64.b64decode(json_user['picture']))
-        self.assertEqual(user.zip_code, json_user['zip_code'])
-        self.assertEqual(user.email, 'needs_email')  # set to default value
-
     def _get_office_employee(self):
         justin = Person(
             fname='Justin',
@@ -2686,7 +2652,7 @@ class ModelTestCase(TestCase):
             )
         assert item.person.is_male
         with pytest.raises(AttributeError):
-            item.person.is_dude
+            _ = item.person.is_dude
 
     def test_model_with_list_retrieve_from_db(self):
         fake_db = self.database_mocker(GroceryList, GROCERY_LIST_MODEL_TABLE_DATA,
@@ -2822,34 +2788,40 @@ class ModelTestCase(TestCase):
             self.assertTrue(item.is_human)
 
     def test_serializing_map_with_null_check(self):
-        item = TreeModel(
+        class TreeModelWithList(TreeModel):
+            leaves = ListAttribute(of=TreeLeaf)
+
+        item = TreeModelWithList(
             tree_key='test',
-            left=TreeLeaf(
+            left=TreeNode1(
                 value=42,
-                left=TreeLeaf1(
+                left=TreeNode2(
                     value=42,
-                    left=TreeLeaf2(value=42),
-                    right=TreeLeaf2(value=42),
+                    left=TreeLeaf(value=42),
+                    right=TreeLeaf(value=42),
                 ),
-                right=TreeLeaf1(
+                right=TreeNode2(
                     value=42,
-                    left=TreeLeaf2(value=42),
-                    right=TreeLeaf2(value=42),
+                    left=TreeLeaf(value=42),
+                    right=TreeLeaf(value=42),
                 ),
             ),
-            right=TreeLeaf(
+            right=TreeNode1(
                 value=42,
-                left=TreeLeaf1(
+                left=TreeNode2(
                     value=42,
-                    left=TreeLeaf2(value=42),
-                    right=TreeLeaf2(value=42),
+                    left=TreeLeaf(value=42),
+                    right=TreeLeaf(value=42),
                 ),
-                right=TreeLeaf1(
+                right=TreeNode2(
                     value=42,
-                    left=TreeLeaf2(value=42),
-                    right=TreeLeaf2(value=42),
+                    left=TreeLeaf(value=42),
+                    right=TreeLeaf(value=42),
                 ),
             ),
+            leaves=[
+                TreeLeaf(value=42),
+            ],
         )
         item.serialize(null_check=True)
 
@@ -2860,6 +2832,16 @@ class ModelTestCase(TestCase):
         # now with null check
         with pytest.raises(Exception, match="Attribute 'left.left.left.value' cannot be None"):
             item.serialize(null_check=True)
+
+        # now let's nullify an attribute of a map in a list to test that `null_check` propagates
+        item.left.left.left.value = 42
+        item.leaves[0].value = None
+        item.serialize(null_check=False)
+
+        # now with null check
+        with pytest.raises(Exception, match=r"Attribute 'leaves.\[0\].value' cannot be None"):
+            item.serialize(null_check=True)
+
 
     def test_deserializing_map_four_layers_deep_works(self):
         fake_db = self.database_mocker(TreeModel,
@@ -3317,8 +3299,8 @@ class ModelInitTestCase(TestCase):
     def test_subclassed_map_attribute_with_map_attribute_member_with_initialized_instance_init(self):
         left = self._get_bin_tree()
         right = self._get_bin_tree(multiplier=2)
-        left_instance = TreeLeaf(**left)
-        right_instance = TreeLeaf(**right)
+        left_instance = TreeNode1(**left)
+        right_instance = TreeNode1(**right)
         actual = TreeModel(tree_key='key', left=left_instance, right=right_instance)
         self.assertEqual(actual.left.left.right.value, left_instance.left.right.value)
         self.assertEqual(actual.left.left.value, left_instance.left.value)
