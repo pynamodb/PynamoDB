@@ -1153,7 +1153,7 @@ class DictTestModel(Model):
 
 
 class TestNormalDict:
-    def test_to_normal_dict(self):
+    def test_to_simple_dict(self):
         dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
         test_model = DictTestModel()
         test_model.number_attr = 1
@@ -1173,7 +1173,7 @@ class TestNormalDict:
             DictTestMapAttribute(string='bar'),
         ]
 
-        actual = test_model.to_normal_dict()
+        actual = test_model.to_simple_dict()
 
         assert actual == {
             'bool_attr': True,
@@ -1199,26 +1199,26 @@ class TestNormalDict:
         # ensure it JSON--serializable
         _ = json.dumps(actual)
 
-    def test_to_normal_dict__not_force(self):
+    def test_to_simple_dict__not_force(self):
         with pytest.raises(ValueError):
-            DictTestModel(binary_attr=b'foo').to_normal_dict(force=False)
+            DictTestModel(binary_attr=b'foo').to_simple_dict(force=False)
 
         with pytest.raises(ValueError):
-            DictTestModel(number_set_attr={1, 2, 3}).to_normal_dict(force=False)
+            DictTestModel(number_set_attr={1, 2, 3}).to_simple_dict(force=False)
 
         with pytest.raises(ValueError):
-            DictTestModel(unicode_set_attr={'foo', 'bar'}).to_normal_dict(force=False)
+            DictTestModel(unicode_set_attr={'foo', 'bar'}).to_simple_dict(force=False)
 
         with pytest.raises(ValueError):
-            DictTestModel(binary_set_attr={b'foo', b'bar'}).to_normal_dict(force=False)
+            DictTestModel(binary_set_attr={b'foo', b'bar'}).to_simple_dict(force=False)
 
         with pytest.raises(ValueError):
-            DictTestModel(raw_map_attr={'string': 'bar','binary': b'baz'}).to_normal_dict(force=False)
+            DictTestModel(raw_map_attr={'string': 'bar','binary': b'baz'}).to_simple_dict(force=False)
 
         with pytest.raises(ValueError):
-            DictTestModel(DictTestMapAttribute(string='bar', binary=b'foo')).to_normal_dict(force=False)
+            DictTestModel(DictTestMapAttribute(string='bar', binary=b'foo')).to_simple_dict(force=False)
 
-    def test_to_normal_dict__force(self):
+    def test_to_simple_dict__force(self):
         test_model = DictTestModel()
         test_model.binary_attr = b'foo'
         test_model.binary_set_attr = [b'foo', b'bar']
@@ -1233,7 +1233,7 @@ class TestNormalDict:
             binary=b'foo',
         )
 
-        actual = test_model.to_normal_dict(force=True)
+        actual = test_model.to_simple_dict(force=True)
 
         assert actual == {
             'binary_attr': 'Zm9v',
@@ -1253,8 +1253,8 @@ class TestNormalDict:
         # ensure it JSON--serializable
         _ = json.dumps(actual)
 
-    def test_from_normal_dict(self):
-        normal_dict = {
+    def test_from_simple_dict(self):
+        simple_dict = {
             'binary_attr': 'Zm9v',
             'binary_set_attr': ['Zm9v', 'YmFy'],
             'bool_attr': True,
@@ -1277,7 +1277,7 @@ class TestNormalDict:
         }
 
         test_model = DictTestModel()
-        test_model.from_normal_dict(normal_dict)
+        test_model.from_simple_dict(simple_dict)
 
         expected_dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
         assert test_model.binary_attr == b'foo'

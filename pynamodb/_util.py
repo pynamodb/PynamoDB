@@ -16,12 +16,12 @@ from pynamodb.constants import STRING
 from pynamodb.constants import STRING_SET
 
 
-def attr_value_to_normal_dict(attribute_value: Dict[str, Any], force: bool) -> Any:
+def attr_value_to_simple_dict(attribute_value: Dict[str, Any], force: bool) -> Any:
     attr_type, attr_value = next(iter(attribute_value.items()))
     if attr_type == LIST:
-        return [attr_value_to_normal_dict(v, force) for v in attr_value]
+        return [attr_value_to_simple_dict(v, force) for v in attr_value]
     if attr_type == MAP:
-        return {k: attr_value_to_normal_dict(v, force) for k, v in attr_value.items()}
+        return {k: attr_value_to_simple_dict(v, force) for k, v in attr_value.items()}
     if attr_type == NULL:
         return None
     if attr_type == BOOLEAN:
@@ -49,7 +49,7 @@ def attr_value_to_normal_dict(attribute_value: Dict[str, Any], force: bool) -> A
     raise ValueError("Unknown attribute type: {}".format(attr_type))
 
 
-def normal_dict_to_attr_value(value: Any) -> Dict[str, Any]:
+def simple_dict_to_attr_value(value: Any) -> Dict[str, Any]:
     if value is None:
         return {NULL: True}
     if value is True or value is False:
@@ -59,9 +59,9 @@ def normal_dict_to_attr_value(value: Any) -> Dict[str, Any]:
     if isinstance(value, str):
         return {STRING: value}
     if isinstance(value, list):
-        return {LIST: [normal_dict_to_attr_value(v) for v in value]}
+        return {LIST: [simple_dict_to_attr_value(v) for v in value]}
     if isinstance(value, dict):
-        return {MAP: {k: normal_dict_to_attr_value(v) for k, v in value.items()}}
+        return {MAP: {k: simple_dict_to_attr_value(v) for k, v in value.items()}}
     raise ValueError("Unknown value type: {}".format(type(value).__name__))
 
 

@@ -25,10 +25,6 @@ from typing import Union
 from typing import cast
 
 from pynamodb._schema import ModelSchema
-from pynamodb._util import attr_value_to_normal_dict
-from pynamodb._util import bin_decode_attr
-from pynamodb._util import bin_encode_attr
-from pynamodb._util import normal_dict_to_attr_value
 from pynamodb.connection.base import MetaTable
 
 if sys.version_info >= (3, 8):
@@ -1124,7 +1120,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             :code:`bytes` objects which are not JSON-serializable by the :code:`json` module.
 
             Use :meth:`~pynamodb.attributes.AttributeContainer.to_dynamodb_dict`
-            and :meth:`~pynamodb.attributes.AttributeContainer.to_normal_dict` for JSON-serializable mappings.
+            and :meth:`~pynamodb.attributes.AttributeContainer.to_simple_dict` for JSON-serializable mappings.
         """
         return self._container_serialize(null_check=null_check)
 
