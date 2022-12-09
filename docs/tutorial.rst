@@ -295,7 +295,7 @@ Update actions use the update expression syntax (see :ref:`updates`).
 
 .. deprecated:: 2.0
 
-    :func:`update_item` is replaced with :func:`update`
+    :code:`update_item` is replaced with :func:`~pynamodb.models.Model.update`
 
 
 .. code-block:: python

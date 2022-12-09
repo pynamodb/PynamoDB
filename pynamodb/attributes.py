@@ -17,6 +17,10 @@ from inspect import getmembers
 from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload, Iterable
 from typing import TYPE_CHECKING
 
+from pynamodb._util import attr_value_to_simple_dict
+from pynamodb._util import bin_decode_attr
+from pynamodb._util import bin_encode_attr
+from pynamodb._util import simple_dict_to_attr_value
 from pynamodb.constants import BINARY
 from pynamodb.constants import BINARY_SET
 from pynamodb.constants import BOOLEAN
@@ -314,6 +318,9 @@ class AttributeContainerMeta(type):
 
 
 class AttributeContainer(metaclass=AttributeContainerMeta):
+    """
+    Base class for models and maps.
+    """
 
     def __init__(self, _user_instantiated: bool = True, **attributes: Attribute) -> None:
         # The `attribute_values` dictionary is used by the Attribute data descriptors in cls._attributes
@@ -477,6 +484,71 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         instance = (stored_cls or cls)(_user_instantiated=False)
         AttributeContainer._container_deserialize(instance, attribute_values)
         return instance
+
+    def to_dynamodb_dict(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Returns the contents of this instance as a JSON-serializable mapping,
+        where each attribute is represented as a mapping with the attribute
+        type as the key and the attribute value as the value, e.g.
+
+        .. code-block:: python
+
+           {
+               "id": {
+                   "N": "12345"
+               },
+               "name": {
+                   "S": "Alice"
+               },
+           }
+
+        This matches the structure of the "DynamoDB" JSON mapping in the AWS Console.
+        """
+        attr_values = self._container_serialize(null_check=False)
+        for v in attr_values.values():
+            bin_encode_attr(v)
+        return attr_values
+
+    def from_dynamodb_dict(self, d: Dict[str, Dict[str, Any]]) -> None:
+        """
+        Sets attributes from a mapping previously produced by :func:`to_dynamodb_dict`.
+        """
+        for v in d.values():
+            bin_decode_attr(v)
+        self._update_attribute_types(d)
+        self._container_deserialize(d)
+
+    def to_simple_dict(self, *, force: bool = False) -> Dict[str, Any]:
+        """
+        Returns the contents of this instance as a simple JSON-serializable mapping.
+
+        .. code-block:: python
+
+           {
+               "id": 12345,
+               "name": "Alice",
+           }
+
+        This matches the structure of the "normal" JSON mapping in the AWS Console.
+
+        .. note::
+
+           This representation is limited: by default, it cannot represent binary or set attributes,
+           as their encoded form is indistinguishable from a string or list attribute respectively
+           (and therefore ambiguous).
+
+        :param force: If :code:`True`, force the conversion even if the model contains Binary or Set attributes
+          If :code:`False`, a :code:`ValueError` will be raised if such attributes are set.
+        """
+        return {k: attr_value_to_simple_dict(v, force) for k, v in self._container_serialize(null_check=False).items()}
+
+    def from_simple_dict(self, d: Dict[str, Any]) -> None:
+        """
+        Sets attributes from a mapping previously produced by :func:`to_simple_dict`.
+        """
+        attribute_values = {k: simple_dict_to_attr_value(v) for k, v in d.items()}
+        self._update_attribute_types(attribute_values)
+        self._container_deserialize(attribute_values)
 
     def __repr__(self) -> str:
         fields = ', '.join(f'{k}={v!r}' for k, v in self.attribute_values.items())

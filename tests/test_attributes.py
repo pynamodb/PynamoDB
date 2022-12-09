@@ -1130,125 +1130,351 @@ class TestVersionAttribute:
         assert attr.deserialize('12345678909876543211234234324234') == 12345678909876543211234234324234
 
 
-class TestAttributeContainer:
-    def test_to_json(self):
+class DictTestMapAttribute(MapAttribute):
+    string = UnicodeAttribute(null=True)
+    binary = BinaryAttribute(null=True, legacy_encoding=False)
+
+
+class DictTestModel(Model):
+    binary_attr = BinaryAttribute(null=True, legacy_encoding=False)
+    binary_set_attr = BinarySetAttribute(null=True, legacy_encoding=False)
+    number_attr = NumberAttribute(null=True)
+    number_set_attr = NumberSetAttribute(null=True)
+    unicode_attr = UnicodeAttribute(null=True)
+    unicode_set_attr = UnicodeSetAttribute(null=True)
+    datetime_attr = UTCDateTimeAttribute(null=True)
+    bool_attr = BooleanAttribute(null=True)
+    json_attr = JSONAttribute(null=True)
+    map_attr = DictTestMapAttribute(null=True)
+    raw_map_attr = MapAttribute(null=True)
+    ttl_attr = TTLAttribute(null=True)
+    null_attr = NullAttribute(null=True)
+    list_attr = ListAttribute(of=DictTestMapAttribute, null=True)
+
+
+class TestNormalDict:
+    def test_to_simple_dict(self):
         dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
-        test_model = AttributeTestModel()
-        test_model.binary_attr = b'foo'
-        test_model.binary_set_attr = {b'bar'}
+        test_model = DictTestModel()
         test_model.number_attr = 1
-        test_model.number_set_attr = {0, 0.5, 1}
         test_model.unicode_attr = 'foo'
-        test_model.unicode_set_attr = {'baz'}
         test_model.datetime_attr = dt
         test_model.bool_attr = True
         test_model.json_attr = {'foo': 'bar'}
         test_model.raw_map_attr = {
             'string': 'bar',
-            'binary': b'bar',  # this won't roundtrip :(
         }
-        test_model.map_attr = AttributeTestMapAttribute(
+        test_model.map_attr = DictTestMapAttribute(
             string='bar',
-            binary=b'bar',
         )
         test_model.ttl_attr = dt
         test_model.null_attr = True
-        assert test_model.to_json() == (
-            '{'
-            '"binary_attr": "Zm9v", '
-            '"binary_set_attr": ["YmFy"], '
-            '"bool_attr": true, '
-            '"datetime_attr": "2022-12-31T23:59:59.000000+0000", '
-            '"json_attr": "{\\"foo\\": \\"bar\\"}", '
-            '"map_attr": {"binary": "YmFy", "string": "bar"}, '
-            '"null_attr": null, '
-            '"number_attr": 1, '
-            '"number_set_attr": [0, 0.5, 1], '
-            '"raw_map_attr": {"string": "bar", "binary": "YmFy"}, '
-            '"ttl_attr": 1672531199, '
-            '"unicode_attr": "foo", '
-            '"unicode_set_attr": ["baz"]'
-            '}')
+        test_model.list_attr = [
+            DictTestMapAttribute(string='bar'),
+        ]
 
-    def test_from_json(self):
-        dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
-        json_string = (
-            '{'
-            '"binary_attr": "Zm9v", '
-            '"binary_set_attr": ["YmFy"], '
-            '"bool_attr": true, '
-            '"datetime_attr": "2022-12-31T23:59:59.000000+0000", '
-            '"json_attr": "{\\"foo\\": \\"bar\\"}", '
-            '"map_attr": {"string": "bar", "binary": "YmFy"}, '
-            '"raw_map_attr": {"string": "bar", "binary": "YmFy"}, '
-            '"null_attr": null, '
-            '"number_attr": 1, '
-            '"number_set_attr": [0, 0.5, 1], '
-            '"ttl_attr": 1672531199, '
-            '"unicode_attr": "foo", '
-            '"unicode_set_attr": ["baz"]'
-            '}')
-        test_model = AttributeTestModel()
-        test_model.from_json(json_string)
+        actual = test_model.to_simple_dict()
+
+        assert actual == {
+            'bool_attr': True,
+            'datetime_attr': '2022-12-31T23:59:59.000000+0000',
+            'json_attr': '{"foo": "bar"}',
+            'list_attr': [
+                {
+                    'string': 'bar',
+                },
+            ],
+            'map_attr': {
+                'string': 'bar',
+            },
+            'null_attr': None,
+            'number_attr': 1,
+            'raw_map_attr': {
+                'string': 'bar',
+            },
+            'ttl_attr': 1672531199,
+            'unicode_attr': 'foo',
+        }
+
+        # ensure it JSON--serializable
+        _ = json.dumps(actual)
+
+    def test_to_simple_dict__not_force(self):
+        with pytest.raises(ValueError):
+            DictTestModel(binary_attr=b'foo').to_simple_dict(force=False)
+
+        with pytest.raises(ValueError):
+            DictTestModel(number_set_attr={1, 2, 3}).to_simple_dict(force=False)
+
+        with pytest.raises(ValueError):
+            DictTestModel(unicode_set_attr={'foo', 'bar'}).to_simple_dict(force=False)
+
+        with pytest.raises(ValueError):
+            DictTestModel(binary_set_attr={b'foo', b'bar'}).to_simple_dict(force=False)
+
+        with pytest.raises(ValueError):
+            DictTestModel(raw_map_attr={'string': 'bar','binary': b'baz'}).to_simple_dict(force=False)
+
+        with pytest.raises(ValueError):
+            DictTestModel(DictTestMapAttribute(string='bar', binary=b'foo')).to_simple_dict(force=False)
+
+    def test_to_simple_dict__force(self):
+        test_model = DictTestModel()
+        test_model.binary_attr = b'foo'
+        test_model.binary_set_attr = [b'foo', b'bar']
+        test_model.number_set_attr = [1, 2, 3]
+        test_model.unicode_set_attr = ['foo', 'bar']
+        test_model.raw_map_attr = {
+            'string': 'bar',
+            'binary': b'baz',  # this will not roundtrip :(
+        }
+        test_model.map_attr = DictTestMapAttribute(
+            string='bar',
+            binary=b'foo',
+        )
+
+        actual = test_model.to_simple_dict(force=True)
+
+        assert actual == {
+            'binary_attr': 'Zm9v',
+            'binary_set_attr': ['Zm9v', 'YmFy'],
+            'map_attr': {
+                'binary': 'Zm9v',
+                'string': 'bar',
+            },
+            'number_set_attr': [1, 2, 3],
+            'raw_map_attr': {
+                'binary': 'YmF6',
+                'string': 'bar',
+            },
+            'unicode_set_attr': ['foo', 'bar'],
+        }
+
+        # ensure it JSON--serializable
+        _ = json.dumps(actual)
+
+    def test_from_simple_dict(self):
+        simple_dict = {
+            'binary_attr': 'Zm9v',
+            'binary_set_attr': ['Zm9v', 'YmFy'],
+            'bool_attr': True,
+            'datetime_attr': '2022-12-31T23:59:59.000000+0000',
+            'json_attr': '{"foo": "bar"}',
+            'map_attr': {
+                'binary': 'YmF6',
+                'string': 'bar',
+            },
+            'raw_map_attr': {
+                'binary': 'YmF6',
+                'string': 'bar',
+            },
+            'null_attr': None,
+            'number_attr': 1,
+            'number_set_attr': [1, 2, 3],
+            'ttl_attr': 1672531199,
+            'unicode_attr': 'foo',
+            'unicode_set_attr': ['baz'],
+        }
+
+        test_model = DictTestModel()
+        test_model.from_simple_dict(simple_dict)
+
+        expected_dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
         assert test_model.binary_attr == b'foo'
-        assert test_model.binary_set_attr == {b'bar'}
+        assert test_model.binary_set_attr == {b'foo', b'bar'}
         assert test_model.number_attr == 1
-        assert test_model.number_set_attr == {0, 0.5, 1}
+        assert test_model.number_set_attr == {1, 2, 3}
         assert test_model.unicode_attr == 'foo'
         assert test_model.unicode_set_attr == {'baz'}
-        assert test_model.datetime_attr == dt
+        assert test_model.datetime_attr == expected_dt
         assert test_model.bool_attr is True
         assert test_model.json_attr == {'foo': 'bar'}
+        assert test_model.map_attr.binary == b'baz'
         assert test_model.map_attr.string == 'bar'
-        assert test_model.map_attr.binary == b'bar'
+        assert test_model.raw_map_attr.binary == 'YmF6'  # this did not round-trip :(
         assert test_model.raw_map_attr.string == 'bar'
-        assert test_model.raw_map_attr.binary == 'YmFy'  # this can't roundtrip :(
-        assert test_model.ttl_attr == dt
+        assert test_model.ttl_attr == expected_dt
         assert test_model.null_attr is None
 
-    def test_to_json_complex(self):
-        class MyMap(MapAttribute):
-            foo = UnicodeSetAttribute(attr_name='bar')
 
-        class ListTestModel(Model):
-            class Meta:
-                host = 'http://localhost:8000'
-                table_name = 'test'
-            unicode_attr = UnicodeAttribute(hash_key=True)
-            list_attr = ListAttribute(of=NumberSetAttribute)
-            list_map_attr = ListAttribute(of=MyMap)
+class TestDynamoDBDict:
+    def test_to_dynamodb_dict(self):
+        dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+        test_model = DictTestModel()
+        test_model.number_attr = 1
+        test_model.unicode_attr = 'foo'
+        test_model.datetime_attr = dt
+        test_model.bool_attr = True
+        test_model.json_attr = {'foo': 'bar'}
+        test_model.raw_map_attr = {
+            'binary': b'foo',
+            'string': 'bar',
+        }
+        test_model.map_attr = DictTestMapAttribute(
+            binary=b'foo',
+            string='bar',
+        )
+        test_model.list_attr = [
+            DictTestMapAttribute(
+                binary=b'foo',
+                string='bar',
+            )
+        ]
+        test_model.ttl_attr = dt
+        test_model.null_attr = True
+        test_model.binary_attr = b'foo'
+        test_model.binary_set_attr = [b'foo', b'bar']
+        test_model.number_set_attr = [1, 2, 3]
+        test_model.unicode_set_attr = ['foo', 'bar']
 
-        list_test_model = ListTestModel()
-        list_test_model.unicode_attr = 'foo'
-        list_test_model.list_attr = [{0, 1, 2}]
-        list_test_model.list_map_attr = [MyMap(foo={'baz'})]
-        assert list_test_model.to_json() == (
-            '{'
-            '"list_attr": [[0, 1, 2]], '
-            '"list_map_attr": [{"bar": ["baz"]}], '
-            '"unicode_attr": "foo"'
-            '}')
+        actual = test_model.to_dynamodb_dict()
 
-    def test_from_json_complex(self):
-        class MyMap(MapAttribute):
-            foo = UnicodeSetAttribute(attr_name='bar')
+        assert actual == {
+            'binary_attr': {
+                'B': 'Zm9v'
+            },
+            'binary_set_attr': {
+                'BS': ['Zm9v', 'YmFy']
+            },
+            'bool_attr': {
+                'BOOL': True
+            },
+            'datetime_attr': {
+                'S': '2022-12-31T23:59:59.000000+0000'
+            },
+            'json_attr': {
+                'S': '{"foo": "bar"}'
+            },
+            'list_attr': {
+                'L': [
+                    {
+                        'M': {
+                            'binary': {
+                                'B': 'Zm9v'
+                            },
+                            'string': {
+                                'S': 'bar'
+                            }
+                        }
+                    },
+                ],
+            },
+            'map_attr': {
+                'M': {
+                    'binary': {
+                        'B': 'Zm9v'
+                    },
+                    'string': {
+                        'S': 'bar'
+                    }
+                }
+            },
+            'null_attr': {
+                'NULL': True
+            },
+            'number_attr': {
+                'N': '1'
+            },
+            'number_set_attr': {
+                'NS': ['1', '2', '3']
+            },
+            'raw_map_attr': {
+                'M': {
+                    'binary': {
+                        'B': 'Zm9v'
+                    },
+                    'string': {
+                        'S': 'bar'
+                    }
+                }
+            },
+            'ttl_attr': {
+                'N': '1672531199'
+            },
+            'unicode_attr': {
+                'S': 'foo'
+            },
+            'unicode_set_attr': {
+                'SS': ['foo', 'bar']
+            }
+        }
 
-        class ListTestModel(Model):
-            class Meta:
-                host = 'http://localhost:8000'
-                table_name = 'test'
-            unicode_attr = UnicodeAttribute(hash_key=True)
-            list_attr = ListAttribute(of=NumberSetAttribute)
-            list_map_attr = ListAttribute(of=MyMap)
+        # ensure it JSON--serializable
+        _ = json.dumps(actual)
 
-        json_string = (
-            '{'
-            '"list_attr": [[0, 1, 2]], '
-            '"list_map_attr": [{"bar": ["baz"]}], '
-            '"unicode_attr": "foo"'
-            '}')
-        list_test_model = ListTestModel()
-        list_test_model.from_json(json_string)
-        assert list_test_model.unicode_attr == 'foo'
-        assert list_test_model.list_attr == [{0, 1, 2}]
-        assert list_test_model.list_map_attr[0].foo == {'baz'}
+    def test_from_dynamodb_dict(self):
+        dynamodb_dict = {
+            'binary_attr': {
+                'B': 'Zm9v'
+            },
+            'binary_set_attr': {
+                'BS': ['Zm9v', 'YmFy']
+            },
+            'bool_attr': {
+                'BOOL': True
+            },
+            'datetime_attr': {
+                'S': '2022-12-31T23:59:59.000000+0000'
+            },
+            'json_attr': {
+                'S': '{"foo": "bar"}'
+            },
+            'map_attr': {
+                'M': {
+                    'binary': {
+                        'B': 'Zm9v'
+                    },
+                    'string': {
+                        'S': 'bar'
+                    }
+                }
+            },
+            'null_attr': {
+                'NULL': True
+            },
+            'number_attr': {
+                'N': '1'
+            },
+            'number_set_attr': {
+                'NS': ['1', '2', '3']
+            },
+            'raw_map_attr': {
+                'M': {
+                    'binary': {
+                        'B': 'Zm9v'
+                    },
+                    'string': {
+                        'S': 'bar'
+                    }
+                }
+            },
+            'ttl_attr': {
+                'N': '1672531199'
+            },
+            'unicode_attr': {
+                'S': 'foo'
+            },
+            'unicode_set_attr': {
+                'SS': ['foo', 'bar']
+            }
+        }
+
+        test_model = DictTestModel()
+        test_model.from_dynamodb_dict(dynamodb_dict)
+
+        expected_dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+        assert test_model.binary_attr == b'foo'
+        assert test_model.binary_set_attr == {b'foo', b'bar'}
+        assert test_model.number_attr == 1
+        assert test_model.number_set_attr == {1, 2, 3}
+        assert test_model.unicode_attr == 'foo'
+        assert test_model.unicode_set_attr == {'foo', 'bar'}
+        assert test_model.datetime_attr == expected_dt
+        assert test_model.bool_attr is True
+        assert test_model.json_attr == {'foo': 'bar'}
+        assert test_model.map_attr.binary == b'foo'
+        assert test_model.map_attr.string == 'bar'
+        assert test_model.raw_map_attr.binary == b'foo'
+        assert test_model.raw_map_attr.string == 'bar'
+        assert test_model.ttl_attr == expected_dt
+        assert test_model.null_attr is None
