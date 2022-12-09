@@ -76,8 +76,8 @@ class PageIterator(Iterator[_T]):
     """
     PageIterator handles Query and Scan result pagination.
 
-    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.html#Query.Pagination
-    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Pagination
+    https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.Pagination.html
+    https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Pagination
     """
     def __init__(
         self,
@@ -155,8 +155,8 @@ class ResultIterator(Iterator[_T]):
     """
     ResultIterator handles Query and Scan item pagination.
 
-    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.html#Query.Pagination
-    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Pagination
+    https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.Pagination.html
+    https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Pagination
     """
     def __init__(
         self,

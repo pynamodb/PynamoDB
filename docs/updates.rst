@@ -2,7 +2,7 @@ Update Operations
 =================
 
 The UpdateItem DynamoDB operations allows you to create or modify attributes of an item using an update expression.
-See the `official documentation <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html>`_
+See the `official documentation <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html>`_
 for more details.
 
 Suppose that you have defined a `Thread` Model for the examples below.
