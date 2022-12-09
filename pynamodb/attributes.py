@@ -485,17 +485,31 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         AttributeContainer._container_deserialize(instance, attribute_values)
         return instance
 
-    def to_dynamodb_dict(self) -> Dict[str, Any]:
+    def to_dynamodb_dict(self) -> Dict[str, Dict[str, Any]]:
         """
         Returns the contents of this instance as a JSON-serializable mapping,
-        using the same format as the "DynamoDB" JSON mapping in the AWS Console.
+        where each attribute is represented as a mapping with the attribute
+        type as the key and the attribute value as the value, e.g.
+
+        .. code-block:: python
+
+           {
+               "id": {
+                   "N": "12345"
+               },
+               "name": {
+                   "S": "Alice"
+               },
+           }
+
+        This matches the structure of the "DynamoDB" JSON mapping in the AWS Console.
         """
         attr_values = self._container_serialize(null_check=False)
         for v in attr_values.values():
             bin_encode_attr(v)
         return attr_values
 
-    def from_dynamodb_dict(self, d: Dict[str, Any]) -> None:
+    def from_dynamodb_dict(self, d: Dict[str, Dict[str, Any]]) -> None:
         """
         Sets attributes from a mapping previously produced by :func:`to_dynamodb_dict`.
         """
@@ -506,11 +520,22 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
 
     def to_simple_dict(self, *, force: bool = False) -> Dict[str, Any]:
         """
-        Returns the contents of this instance as a simple JSON-serializable mapping,
-        using the same format as the "normal" JSON mapping in the AWS Console.
+        Returns the contents of this instance as a simple JSON-serializable mapping.
 
-        This representation is limited: by default, it cannot represent binary data or sets,
-        as their encoded form is indistinguishable from a string or list attribute (and therefore ambiguous).
+        .. code-block:: python
+
+           {
+               "id": 12345,
+               "name": "Alice",
+           }
+
+        This matches the structure of the "normal" JSON mapping in the AWS Console.
+
+        .. note::
+
+           This representation is limited: by default, it cannot represent binary or set attributes,
+           as their encoded form is indistinguishable from a string or list attribute respectively
+           (and therefore ambiguous).
 
         :param force: If :code:`True`, force the conversion even if the model contains Binary or Set attributes
           If :code:`False`, a :code:`ValueError` will be raised if such attributes are set.
