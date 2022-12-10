@@ -4,7 +4,7 @@ Conditional Operations
 ======================
 
 Some DynamoDB operations (UpdateItem, PutItem, DeleteItem) support the inclusion of conditions. The user can supply a condition to be
-evaluated by DynamoDB before the operation is performed. See the `official documentation <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItems.html#WorkingWithItems.ConditionalUpdate>`_
+evaluated by DynamoDB before the operation is performed. See the `official documentation <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItems.html#WorkingWithItems.ConditionalUpdate>`_
 for more details.
 
 Suppose that you have defined a `Thread` Model for the examples below.
@@ -32,7 +32,7 @@ Condition Expressions
 
 PynamoDB supports creating condition expressions from attributes using a mix of built-in operators and method calls.
 Any value provided will be serialized using the serializer defined for that attribute.
-See the `comparison operator and function reference <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html>`_
+See the `comparison operator and function reference <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html>`_
 for more details.
 
 .. csv-table::

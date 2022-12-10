@@ -510,7 +510,7 @@ will cause a warning to be logged.
 
 New features in this release:
 
-* Add support for current version of `DynamoDB API <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Appendix.CurrentAPI.html>`_
+* Add support for current version of DynamoDB API
 * Improved ``MapAttribute`` item assignment and access.
 
 Contributors to this release:
@@ -546,7 +546,7 @@ If your project was calling those low level methods a warning will be logged.
 
 New features in this release:
 
-* Add support for current version of `DynamoDB API <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Appendix.CurrentAPI.html>`_
+* Add support for current version of DynamoDB API
 
 Contributors to this release:
 
@@ -593,7 +593,7 @@ This is a major release with breaking changes.
 ``MapAttribute`` now allows pythonic access when recursively defined.
 If you were not using the ``attr_name=`` kwarg then you should have no problems upgrading.
 Previously defined non subclassed ``MapAttributes`` (raw ``MapAttributes``) that were members of a subclassed ``MapAttribute`` (typed ``MapAttributes``) would have to be accessed like a dictionary.
-Now object access is possible and recommended. See [here](https://github.com/pynamodb/PynamoDB/blob/master/pynamodb/tests/test_attributes.py#L671) for a test example.
+Now object access is possible and recommended.
 Access via the ``attr_name``, also known as the DynamoDB name, will now throw an ``AttributeError``.
 
 ``UnicodeSetAttributes`` do not json serialize or deserialize anymore.
@@ -1131,7 +1131,7 @@ v1.2.0
 
 * Numerous documentation improvements
 * Improved support for conditional operations
-* Added support for filtering queries on non key attributes (http://aws.amazon.com/blogs/aws/improved-queries-and-updates-for-dynamodb/)
+* Added support for filtering queries on non key attributes (https://aws.amazon.com/blogs/aws/improved-queries-and-updates-for-dynamodb/)
 * Fixed issue with JSON loading where escaped characters caused an error (#17)
 * Minor bug fixes
 

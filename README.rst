@@ -9,9 +9,9 @@ PynamoDB
 .. image:: https://github.com/pynamodb/PynamoDB/workflows/Tests/badge.svg
     :target: https://github.com/pynamodb/PynamoDB/actions
 .. image:: https://img.shields.io/coveralls/pynamodb/PynamoDB/master.svg
-    :target: https://coveralls.io/r/pynamodb/PynamoDB
+    :target: https://coveralls.io/github/pynamodb/PynamoDB
 
-A Pythonic interface for Amazon's `DynamoDB <http://aws.amazon.com/dynamodb/>`_.
+A Pythonic interface for Amazon's `DynamoDB <https://aws.amazon.com/dynamodb/>`_.
 
 DynamoDB is a great NoSQL service provided by Amazon, but the API is verbose.
 PynamoDB presents you with a simple, elegant API.

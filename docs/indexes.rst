@@ -3,7 +3,7 @@ Index Queries
 
 DynamoDB supports two types of indexes: global secondary indexes, and local secondary indexes.
 Indexes can make accessing your data more efficient, and should be used when appropriate. See
-`the documentation for more information <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html>`__.
+`the documentation for more information <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html>`__.
 
 Index Settings
 ^^^^^^^^^^^^^^

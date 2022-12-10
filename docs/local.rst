@@ -6,7 +6,7 @@ Use PynamoDB Locally
 Several DynamoDB compatible servers have been written for testing and debugging purposes. PynamoDB can be
 used with any server that provides the same API as DynamoDB.
 
-PynamoDB has been tested with two DynamoDB compatible servers, `DynamoDB Local <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tools.DynamoDBLocal.html>`_
+PynamoDB has been tested with two DynamoDB compatible servers, `DynamoDB Local <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html>`_
 and `dynalite <https://github.com/mhart/dynalite>`_.
 
 To use a local server, you need to set the ``host`` attribute on your ``Model``'s ``Meta`` class to the hostname and port
@@ -34,7 +34,7 @@ that your server is listening on.
 Running dynalite
 ^^^^^^^^^^^^^^^^
 
-Make sure you have the Node Package Manager installed (see `npm instructions <https://www.npmjs.org/doc/README.html>`_).
+Make sure you have the Node Package Manager installed (see `npm instructions <https://docs.npmjs.com/>`_).
 
 Install dynalite::
 
@@ -52,13 +52,13 @@ Running DynamoDB Local
 
 DynamoDB local is a tool provided by Amazon that mocks the DynamoDB API, and uses a local file to
 store your data. You can use DynamoDB local with PynamoDB for testing, debugging, or offline development.
-For more information, you can read `Amazon's Announcement <http://aws.amazon.com/about-aws/whats-new/2013/09/12/amazon-dynamodb-local/>`_ and
-`Jeff Barr's blog post <http://aws.typepad.com/aws/2013/09/dynamodb-local-for-desktop-development.html>`_ about it.
+For more information, you can read `Amazon's Announcement <https://aws.amazon.com/about-aws/whats-new/2013/09/12/amazon-dynamodb-local/>`_ and
+`Jeff Barr's blog post <https://aws.amazon.com/blogs/aws/dynamodb-local-for-desktop-development/>`_ about it.
 
-* Download the `latest version of DynamoDB local <http://dynamodb-local.s3-website-us-west-2.amazonaws.com/dynamodb_local_latest>`_.
+* Download the `latest version of DynamoDB Local <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.DownloadingAndRunning.html>`_.
 * Unpack the contents of the archive into a directory of your choice.
 
-DynamoDB local requires the `Java Runtime Environment <http://java.com/en/>`_ version 7. Make sure the JRE is installed before continuing.
+DynamoDB local requires the `Java Runtime Environment <https://www.java.com/en/>`_ version 7. Make sure the JRE is installed before continuing.
 
 From the directory where you unpacked DynamoDB local, you can launch it like this:
 
