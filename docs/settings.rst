@@ -40,7 +40,7 @@ base_backoff_ms
 Default: ``25``
 
 The base number of milliseconds used for `exponential backoff and jitter
-<https://www.awsarchitectureblog.com/2015/03/backoff.html>`_ on retries.
+<https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/>`_ on retries.
 
 
 region

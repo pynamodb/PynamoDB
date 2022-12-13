@@ -2,7 +2,7 @@ Contributing
 ============
 
 Pull requests are welcome, forking from the ``master`` branch. If you are new to GitHub, be sure and check out
-GitHub's `Hello World <https://guides.github.com/activities/hello-world/>`_ tutorial.
+GitHub's `Hello World <https://docs.github.com/en/get-started/quickstart/hello-world>`_ tutorial.
 
 
 Environment Setup
@@ -115,7 +115,7 @@ maintainers to populate the release notes.
 Documentation
 -------------
 
-Docs are built using `sphinx <https://www.sphinx-doc.org/en/1.5.1/>`_ and
-available on `readthedocs <https://pynamodb.readthedocs.io/>`_. A release
+Docs are built using `sphinx <https://www.sphinx-doc.org/>`_ and
+the latest are available on `readthedocs <https://pynamodb.readthedocs.io/en/latest/>`_. A release
 of the `latest` tag (tracking master) happens automatically on merge via
-a Github webhook.
+a GitHub webhook.

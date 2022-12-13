@@ -2,7 +2,7 @@ Custom Attributes
 ==========================
 
 Attributes in PynamoDB are classes that are serialized to and from DynamoDB attributes. PynamoDB provides attribute classes
-for all DynamoDB data types, as defined in the `DynamoDB documentation <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html>`_.
+for all DynamoDB data types, as defined in the `DynamoDB documentation <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html>`_.
 Higher level attribute types (internally stored as a DynamoDB data types) can be defined with PynamoDB. Two such types
 are included with PynamoDB for convenience: ``JSONAttribute`` and ``UTCDateTimeAttribute``.
 
@@ -193,7 +193,7 @@ These attributes can then be used inside of Model classes just like any other at
         make = UnicodeAttribute(null=False)
         model = UnicodeAttribute(null=True)
 
-`As with a model and its top-level attributes <https://github.com/pynamodb/PynamoDB/blob/master/docs/quickstart.rst#changing-items>`_, a PynamoDB MapAttribute will ignore sub-attributes it does not know about during deserialization. As a result, if the item in DynamoDB contains sub-attributes not declared as properties of the corresponding MapAttribute, save() will cause those sub-attributes to be deleted.
+:ref:`As with a model and its top-level attributes <changing-items>`, a PynamoDB MapAttribute will ignore sub-attributes it does not know about during deserialization. As a result, if the item in DynamoDB contains sub-attributes not declared as properties of the corresponding MapAttribute, save() will cause those sub-attributes to be deleted.
 
 ``DynamicMapAttribute`` is a subclass of ``MapAttribute`` which allows you to mix and match defined attributes and undefined attributes.
 

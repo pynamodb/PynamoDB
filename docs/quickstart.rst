@@ -62,6 +62,8 @@ Ready to delete the user?
 
     >>> user.delete()
 
+.. _changing-items:
+
 Changing items
 ^^^^^^^^^^^^^^
 
@@ -85,7 +87,7 @@ Use of `update()` (in its simplest form) looks like this::
     )
 
 `save()` will entirely replace an object (it internally uses `PutItem
-<http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html>`_). As
+<https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html>`_). As
 a consequence, even if you modify only one attribute prior to calling
 `save()`, the entire object is re-written. Any modifications done to
 the same user by other processes will be lost, even if made to other
