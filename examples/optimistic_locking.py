@@ -16,9 +16,6 @@ class OfficeEmployeeMap(MapAttribute):
     def __eq__(self, other):
         return isinstance(other, OfficeEmployeeMap) and self.person == other.person
 
-    def __repr__(self):
-        return str(vars(self))
-
 
 class Office(Model):
     class Meta:

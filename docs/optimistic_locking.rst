@@ -29,9 +29,6 @@ To enable optimistic locking for a table simply add a ``VersionAttribute`` to yo
       def __eq__(self, other):
           return isinstance(other, OfficeEmployeeMap) and self.person == other.person
 
-      def __repr__(self):
-          return str(vars(self))
-
 
   class Office(Model):
       class Meta:
