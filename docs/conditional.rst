@@ -86,9 +86,10 @@ operand can be ``None`` to allow easier chaining of filter conditions:
 Conditioning on keys
 ^^^^^^^^^^^^^^^^^^^^
 
-When writing to a table (save, update, delete), ``exists()`` condition on a key ensures that the item already exists
-(under the given key) in the table at the time the operation is performed. For example,
-a `save` or `update` would update an existing item but fail if the item does not exist.
+When writing to a table (save, update, delete), an ``exists()`` condition on a key attribute
+ensures that the item already exists (under the given key) in the table before the operation.
+For example, a `save` or `update` would update an existing item, but fail if the item
+does not exist.
 
 Correspondingly, a ``does_not_exist()`` condition on a key ensures that the item
 does not exist. For example, a `save` with such a condition ensures that it's not
