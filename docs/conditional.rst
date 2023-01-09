@@ -42,12 +42,12 @@ for more details.
 
     =, ==, Any, :code:`Thread.forum_name == 'Some Forum'`
     <>, !=, Any, :code:`Thread.forum_name != 'Some Forum'`
-    <, <, Any, :code:`Thread.views < 10`
-    <=, <=, Any, :code:`Thread.views <= 10`
-    >, >, Any, :code:`Thread.views > 10`
-    >=, >=, Any, :code:`Thread.views >= 10`
-    BETWEEN, "between( `lower` , `upper` )", "TODO", ":code:`Thread.views.between(1, 5)`"
-    IN, is_in( `*values` ), Any, ":code:`Thread.subject.is_in('Subject', 'Other Subject')`"
+    <, <, "Binary, Number, String", :code:`Thread.views < 10`
+    <=, <=, "Binary, Number, String", :code:`Thread.views <= 10`
+    >, >, "Binary, Number, String", :code:`Thread.views > 10`
+    >=, >=, "Binary, Number, String", :code:`Thread.views >= 10`
+    BETWEEN, "between( `lower` , `upper` )", "Binary, Number, String", ":code:`Thread.views.between(1, 5)`"
+    IN, is_in( `*values` ), "Binary, Number, String", ":code:`Thread.subject.is_in('Subject', 'Other Subject')`"
     attribute_exists ( `path` ), exists(), Any, :code:`Thread.forum_name.exists()`
     attribute_not_exists ( `path` ), does_not_exist(), Any, :code:`Thread.forum_name.does_not_exist()`
     "attribute_type ( `path` , `type` )", is_type(), Any, :code:`Thread.forum_name.is_type()`
