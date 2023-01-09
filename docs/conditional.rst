@@ -3,8 +3,9 @@
 Conditional Operations
 ======================
 
-Some DynamoDB operations (UpdateItem, PutItem, DeleteItem) support the inclusion of conditions. The user can supply a condition to be
-evaluated by DynamoDB before the operation is performed. See the `official documentation <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItems.html#WorkingWithItems.ConditionalUpdate>`_
+Some DynamoDB operations support the inclusion of conditions. The user can supply a condition to be
+evaluated by DynamoDB before an item is modified (with save, update and delete) or before an item is included
+in the result (with query and scan). See the `official documentation <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItems.html#WorkingWithItems.ConditionalUpdate>`_
 for more details.
 
 Suppose that you have defined a `Thread` Model for the examples below.
@@ -52,7 +53,7 @@ for more details.
     "attribute_type ( `path` , `type` )", is_type(), Any, :code:`Thread.forum_name.is_type()`
     "begins_with ( `path` , `substr` )", startswith( `prefix` ), String, :code:`Thread.subject.startswith('Example')`
     "contains ( `path` , `operand` )", contains( `item` ), "Set, String", :code:`Thread.subject.contains('foobar')`
-    size ( `path`), size( `attribute` ), "Binary, List, Map, Set, String", :code:`size(Thread.subject) == 10`
+    size ( `path` ), size( `attribute` ), "Binary, List, Map, Set, String", :code:`size(Thread.subject) == 10`
     AND, &, Any, :code:`(Thread.views > 1) & (Thread.views < 5)`
     OR, \|, Any, :code:`(Thread.views < 1) | (Thread.views > 5)`
     NOT, ~, Any, :code:`~Thread.subject.contains('foobar')`
@@ -61,10 +62,10 @@ Conditions expressions using nested list and map attributes can be created with 
 
 .. code-block:: python
 
-    # the 'properties' map contains key 'emoji'
-    Thread.properties['emoji'].exists()
+    # Query for threads where 'properties' map contains key 'emoji'
+    Thread.query(..., filter_condition=Thread.properties['emoji'].exists())
 
-    # the first author's name contains "John"
+    # Query for threads where the first author's name contains "John"
     Thread.authors[0].contains("John")
 
 Conditions can be composited using ``&`` (AND) and ``|`` (OR) operators. For the ``&`` (AND) operator, the left-hand side
@@ -85,8 +86,8 @@ operand can be ``None`` to allow easier chaining of filter conditions:
 Conditioning on keys
 ^^^^^^^^^^^^^^^^^^^^
 
-An ``exists()`` condition on a key ensures that the item already exists (under
-the given key) in the table at the time the operation is performed. For example,
+When writing to a table (save, update, delete), ``exists()`` condition on a key ensures that the item already exists
+(under the given key) in the table at the time the operation is performed. For example,
 a `save` or `update` would update an existing item but fail if the item does not exist.
 
 Correspondingly, a ``does_not_exist()`` condition on a key ensures that the item
