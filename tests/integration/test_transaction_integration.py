@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime
 
+import botocore.exceptions
 import pytest
 
 from pynamodb.connection import Connection
-from pynamodb.exceptions import DoesNotExist, TransactWriteError, TransactGetError, InvalidStateError
+from pynamodb.exceptions import DoesNotExist, TransactWriteError, InvalidStateError
 
 
 from pynamodb.attributes import (
@@ -103,14 +104,6 @@ def create_tables(ddb_url):
             m.delete_table()
 
 
-def get_error_code(error):
-    return error.cause.response['Error'].get('Code')
-
-
-def get_error_message(error):
-    return error.cause.response['Error'].get('Message')
-
-
 @pytest.mark.ddblocal
 def test_transact_write__error__idempotent_parameter_mismatch(connection):
     client_token = str(uuid.uuid4())
@@ -123,7 +116,8 @@ def test_transact_write__error__idempotent_parameter_mismatch(connection):
         # committing the first time, then adding more info and committing again
         with TransactWrite(connection=connection, client_request_token=client_token) as transaction:
             transaction.save(User(3))
-    assert get_error_code(exc_info.value) == IDEMPOTENT_PARAMETER_MISMATCH
+    assert exc_info.value.cause_response_code == IDEMPOTENT_PARAMETER_MISMATCH
+    assert isinstance(exc_info.value.cause, botocore.exceptions.ClientError)
     assert User.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
 
     # ensure that the first request succeeded in creating new users
@@ -144,7 +138,8 @@ def test_transact_write__error__different_regions(connection):
             transact_write.save(DifferentRegion(entry_index=0))
             transact_write.save(BankStatement(1))
             transact_write.save(User(1))
-    assert get_error_code(exc_info.value) == RESOURCE_NOT_FOUND
+    assert exc_info.value.cause_response_code == RESOURCE_NOT_FOUND
+    assert isinstance(exc_info.value.cause, botocore.exceptions.ClientError)
     assert DifferentRegion.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
     assert BankStatement.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
     assert User.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
@@ -161,8 +156,9 @@ def test_transact_write__error__transaction_cancelled__condition_check_failure(c
         with TransactWrite(connection=connection) as transaction:
             transaction.save(User(1), condition=(User.user_id.does_not_exist()))
             transaction.save(BankStatement(1), condition=(BankStatement.user_id.does_not_exist()))
-    assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
-    assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+    assert exc_info.value.cause_response_code == TRANSACTION_CANCELLED
+    assert 'ConditionalCheckFailed' in exc_info.value.cause_response_message
+    assert isinstance(exc_info.value.cause, botocore.exceptions.ClientError)
     assert User.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
     assert BankStatement.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
 
@@ -176,7 +172,8 @@ def test_transact_write__error__multiple_operations_on_same_record(connection):
         with TransactWrite(connection=connection) as transaction:
             transaction.condition_check(BankStatement, 1, condition=(BankStatement.user_id.exists()))
             transaction.update(BankStatement(1), actions=[(BankStatement.balance.add(10))])
-    assert get_error_code(exc_info.value) == VALIDATION_EXCEPTION
+    assert exc_info.value.cause_response_code == VALIDATION_EXCEPTION
+    assert isinstance(exc_info.value.cause, botocore.exceptions.ClientError)
     assert BankStatement.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
 
 
@@ -349,8 +346,9 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
     with pytest.raises(TransactWriteError) as exc_info:
         with TransactWrite(connection=connection) as transaction:
             transaction.save(Foo(21))
-    assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
-    assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+    assert exc_info.value.cause_response_code == TRANSACTION_CANCELLED
+    assert 'ConditionalCheckFailed' in exc_info.value.cause_response_message
+    assert isinstance(exc_info.value.cause, botocore.exceptions.ClientError)
     assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
 
     with pytest.raises(TransactWriteError) as exc_info:
@@ -361,8 +359,8 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
                     Foo.star.set('birdistheword'),
                 ]
             )
-    assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
-    assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+    assert exc_info.value.cause_response_code == TRANSACTION_CANCELLED
+    assert 'ConditionalCheckFailed' in exc_info.value.cause_response_message
     assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
     # Version attribute is not updated on failure.
     assert foo2.version is None
@@ -370,6 +368,6 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
     with pytest.raises(TransactWriteError) as exc_info:
         with TransactWrite(connection=connection) as transaction:
             transaction.delete(foo2)
-    assert get_error_code(exc_info.value) == TRANSACTION_CANCELLED
-    assert 'ConditionalCheckFailed' in get_error_message(exc_info.value)
+    assert exc_info.value.cause_response_code == TRANSACTION_CANCELLED
+    assert 'ConditionalCheckFailed' in exc_info.value.cause_response_message
     assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
