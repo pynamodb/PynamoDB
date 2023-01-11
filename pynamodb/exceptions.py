@@ -8,11 +8,12 @@ import botocore.exceptions
 
 
 class PynamoDBException(Exception):
+    """
+    Base class for all PynamoDB exceptions.
+    """
+
     msg: str
 
-    """
-    A common exception class
-    """
     def __init__(self, msg: Optional[str] = None, cause: Optional[Exception] = None) -> None:
         self.msg = msg if msg is not None else self.msg
         self.cause = cause
@@ -20,10 +21,22 @@ class PynamoDBException(Exception):
 
     @property
     def cause_response_code(self) -> Optional[str]:
+        """
+        The DynamoDB response code such as:
+
+        - ``ConditionalCheckFailedException``
+        - ``ProvisionedThroughputExceededException``
+        - ``TransactionCanceledException``
+
+        Inspect this value to determine the cause of the error and handle it.
+        """
         return getattr(self.cause, 'response', {}).get('Error', {}).get('Code')
 
     @property
     def cause_response_message(self) -> Optional[str]:
+        """
+        The human-readable description of the error returned by DynamoDB.
+        """
         return getattr(self.cause, 'response', {}).get('Error', {}).get('Message')
 
 
@@ -101,28 +114,26 @@ class TableDoesNotExist(PynamoDBException):
 
 class TransactWriteError(PynamoDBException):
     """
-    Raised when a TransactWrite operation fails
+    Raised when a :class:`~pynamodb.transactions.TransactWrite` operation fails.
     """
-    pass
 
 
 class TransactGetError(PynamoDBException):
     """
-    Raised when a TransactGet operation fails
+    Raised when a :class:`~pynamodb.transactions.TransactGet` operation fails.
     """
-    pass
 
 
 class InvalidStateError(PynamoDBException):
     """
-    Raises when the internal state of an operation context is invalid
+    Raises when the internal state of an operation context is invalid.
     """
     msg = "Operation in invalid state"
 
 
 class AttributeDeserializationError(TypeError):
     """
-    Raised when attribute type is invalid
+    Raised when attribute type is invalid during deserialization.
     """
     def __init__(self, attr_name: str, attr_type: str):
         msg = "Cannot deserialize '{}' attribute from type: {}".format(attr_name, attr_type)
@@ -130,6 +141,10 @@ class AttributeDeserializationError(TypeError):
 
 
 class AttributeNullError(ValueError):
+    """
+    Raised when an attribute which is not nullable (:code:`null=False`) is unset during serialization.
+    """
+
     def __init__(self, attr_name: str) -> None:
         self.attr_path = attr_name
 
@@ -141,8 +156,14 @@ class AttributeNullError(ValueError):
 
 
 class VerboseClientError(botocore.exceptions.ClientError):
-    def __init__(self, error_response: Any, operation_name: str, verbose_properties: Optional[Any] = None):
-        """ Modify the message template to include the desired verbose properties """
+    def __init__(self, error_response: Any, operation_name: str, verbose_properties: Optional[Any] = None) -> None:
+        """
+        Like ClientError, but with a verbose message.
+
+        :param error_response: Error response in shape expected by ClientError.
+        :param operation_name: The name of the operation that failed.
+        :param verbose_properties: A dict of properties to include in the verbose message.
+        """
         if not verbose_properties:
             verbose_properties = {}
 
