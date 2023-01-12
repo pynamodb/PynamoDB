@@ -48,7 +48,8 @@ from pynamodb.constants import (
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError,
-    TransactGetError, TransactWriteError)
+    TransactGetError, TransactWriteError, CancellationReason,
+)
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
@@ -465,7 +466,20 @@ class Connection(object):
                     verbose_properties['table_name'] = operation_kwargs.get(TABLE_NAME)
 
                 try:
-                    raise VerboseClientError(botocore_expected_format, operation_name, verbose_properties)
+                    raise VerboseClientError(
+                        botocore_expected_format,
+                        operation_name,
+                        verbose_properties,
+                        cancellation_reasons=(
+                            (
+                                CancellationReason(
+                                    code=d['Code'],
+                                    message=d.get('Message'),
+                                ) if d['Code'] != 'None' else None
+                            )
+                            for d in data.get('CancellationReasons', [])
+                        ),
+                    )
                 except VerboseClientError as e:
                     if is_last_attempt_for_exceptions:
                         log.debug('Reached the maximum number of retry attempts: %s', attempt_number)

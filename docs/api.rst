@@ -44,3 +44,4 @@ Exceptions
 .. autoexception:: pynamodb.exceptions.InvalidStateError
 .. autoexception:: pynamodb.exceptions.AttributeDeserializationError
 .. autoexception:: pynamodb.exceptions.AttributeNullError
+.. autoclass:: pynamodb.exceptions.CancellationReason
