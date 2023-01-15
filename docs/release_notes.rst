@@ -3,6 +3,13 @@
 Release Notes
 =============
 
+v5.4.0
+----------
+* Expose transaction cancellation reasons in
+  :meth:`~pynamodb.exceptions.TransactWriteError.cancellation_reasons` and
+  :meth:`~pynamodb.exceptions.TransactGetError.cancellation_reasons` (#1144).
+
+
 v5.3.4
 ----------
 * Make serialization :code:`null_check=False` propagate to maps inside lists (#1128).

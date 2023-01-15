@@ -1,8 +1,13 @@
 """
 PynamoDB exceptions
 """
-
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing_extensions import Literal
 
 import botocore.exceptions
 
@@ -97,18 +102,59 @@ class TableDoesNotExist(PynamoDBException):
         super(TableDoesNotExist, self).__init__(msg)
 
 
+class CancellationReason:
+    """
+    A reason for a transaction cancellation.
+    """
+    def __init__(self, *, code: str, message: Optional[str]) -> None:
+        self.code = code
+        self.message = message
+
+    def __eq__(self, other: Any) -> bool:
+        return isinstance(other, CancellationReason) and self.code == other.code and self.message == other.message
+
+
 class TransactWriteError(PynamoDBException):
     """
     Raised when a TransactWrite operation fails
     """
-    pass
+
+    @property
+    def cancellation_reasons(self) -> List[Optional[CancellationReason]]:
+        """
+        When :attr:`.cause_response_code` is ``TransactionCanceledException``, this property lists
+        cancellation reasons in the same order as the transaction items (one-to-one).
+        Items which were not part of the reason for cancellation would have :code:`None` as the value.
+
+        For a list of possible cancellation reasons and their semantics,
+        see `TransactWriteItems`_ in the AWS documentation.
+
+        .. _TransactWriteItems: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html
+        """
+        if not isinstance(self.cause, VerboseClientError):
+            return []
+        return self.cause.cancellation_reasons
 
 
 class TransactGetError(PynamoDBException):
     """
     Raised when a TransactGet operation fails
     """
-    pass
+    @property
+    def cancellation_reasons(self) -> List[Optional[CancellationReason]]:
+        """
+        When :attr:`.cause_response_code` is ``TransactionCanceledException``, this property lists
+        cancellation reasons in the same order as the transaction items (one-to-one).
+        Items which were not part of the reason for cancellation would have :code:`None` as the value.
+
+        For a list of possible cancellation reasons and their semantics,
+        see `TransactGetItems`_ in the AWS documentation.
+
+        .. _TransactGetItems: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactGetItems.html
+        """
+        if not isinstance(self.cause, VerboseClientError):
+            return []
+        return self.cause.cancellation_reasons
 
 
 class InvalidStateError(PynamoDBException):
@@ -139,8 +185,24 @@ class AttributeNullError(ValueError):
 
 
 class VerboseClientError(botocore.exceptions.ClientError):
-    def __init__(self, error_response: Any, operation_name: str, verbose_properties: Optional[Any] = None):
-        """ Modify the message template to include the desired verbose properties """
+    def __init__(
+        self,
+        error_response: Dict[str, Any],
+        operation_name: str,
+        verbose_properties: Optional[Any] = None,
+        *,
+        cancellation_reasons: Iterable[Optional[CancellationReason]] = (),
+    ) -> None:
+        """
+        Like ClientError, but with a verbose message.
+
+        :param error_response: Error response in shape expected by ClientError.
+        :param operation_name: The name of the operation that failed.
+        :param verbose_properties: A dict of properties to include in the verbose message.
+        :param cancellation_reasons: For `TransactionCanceledException` error code,
+          a list of cancellation reasons in the same order as the transaction's items (one to one).
+          For items which were not a reason for the transaction cancellation, :code:`None` will be the value.
+        """
         if not verbose_properties:
             verbose_properties = {}
 
@@ -150,4 +212,9 @@ class VerboseClientError(botocore.exceptions.ClientError):
             'operation: {{error_message}}'
         ).format(request_id=verbose_properties.get('request_id'), table_name=verbose_properties.get('table_name'))
 
-        super(VerboseClientError, self).__init__(error_response, operation_name)
+        self.cancellation_reasons = list(cancellation_reasons)
+
+        super(VerboseClientError, self).__init__(
+            error_response,  # type:ignore[arg-type]  # in stubs: botocore.exceptions._ClientErrorResponseTypeDef
+            operation_name,
+        )
