@@ -35,7 +35,11 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.coverage',
+    'sphinx_issues',
 ]
+
+# Directive for sphinx_issues
+issues_github_path = "pynamodb/pynamodb"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
