@@ -21,11 +21,11 @@ This is a major release and contains breaking changes. Please read the notes bel
 
 v5.3.2
 ----------
-* Prevent ``typing_tests`` from being installed into site-packages (#1118)
+* Prevent ``typing_tests`` from being installed into site-packages (:pr:`1118`)
 
 Contributors to this release:
 
-* @musicinmybrain
+* :user:`musicinmybrain`
 
 
 v5.3.1
@@ -35,7 +35,7 @@ v5.3.1
 
     pynamodb.exceptions.TableError: Meta-table for '(table-name)' not initialized
 
-* Fix typing on :py:class:`~pynamodb.transactions.TransactGet` (backport of #1057)
+* Fix typing on :py:class:`~pynamodb.transactions.TransactGet` (backport of :pr:`1057`)
 
 
 v5.3.0
@@ -53,29 +53,29 @@ v5.3.0
 
 v5.2.3
 ----------
-* Update for botocore 1.28 private API change (#1087) which caused the following exception::
+* Update for botocore 1.28 private API change (:pr:`1087`) which caused the following exception::
 
     TypeError: Cannot mix str and non-str arguments
 
 
 v5.2.2
 ----------
-* Update for botocore 1.28 private API change (#1083) which caused the following exception::
+* Update for botocore 1.28 private API change (:pr:`1083`) which caused the following exception::
 
     TypeError: _convert_to_request_dict() missing 1 required positional argument: 'endpoint_url'
 
 
 v5.2.1
 ----------
-* Fix issue from 5.2.0 with attempting to set GSI provisioned throughput on PAY_PER_REQUEST billing mode (#1018)
+* Fix issue from 5.2.0 with attempting to set GSI provisioned throughput on PAY_PER_REQUEST billing mode (:pr:`1018`)
 
 
 v5.2.0
 ----------
-* The ``IndexMeta`` class has been removed. Now ``type(Index) == type`` (#998)
-* JSON serialization support (``Model.to_json`` and ``Model.from_json``) has been added (#857)
-* Improved type annotations for expressions and transactions (#951, #991)
-* Always use Model attribute definitions in create table schema (#996)
+* The ``IndexMeta`` class has been removed. Now ``type(Index) == type`` (:pr:`998`)
+* JSON serialization support (``Model.to_json`` and ``Model.from_json``) has been added (:pr:`857`)
+* Improved type annotations for expressions and transactions (:pr:`951`, :pr:`991`)
+* Always use Model attribute definitions in create table schema (:pr:`996`)
 
 
 v5.1.0
@@ -83,11 +83,11 @@ v5.1.0
 
 :date: 2021-06-29
 
-* Introduce ``DynamicMapAttribute`` to enable partially defining attributes on a ``MapAttribute`` (#868)
-* Quality of life improvements: Type annotations, better comment, more resilient test (#934, #936, #948)
-* Fix type annotation of ``is_in`` conditional expression (#947)
-* Null errors should include full attribute path (#915)
-* Fix for serializing and deserializing dates prior to year 1000 (#949)
+* Introduce ``DynamicMapAttribute`` to enable partially defining attributes on a ``MapAttribute`` (:pr:`868`)
+* Quality of life improvements: Type annotations, better comment, more resilient test (:pr:`934`, :pr:`936`, :pr:`948`)
+* Fix type annotation of ``is_in`` conditional expression (:pr:`947`)
+* Null errors should include full attribute path (:pr:`915`)
+* Fix for serializing and deserializing dates prior to year 1000 (:pr:`949`)
 
 
 v5.0.3
@@ -95,7 +95,7 @@ v5.0.3
 
 :date: 2021-02-14
 
-* Propagate ``Model.serialize``'s ``null_check`` parameter to nested MapAttributes (#908)
+* Propagate ``Model.serialize``'s ``null_check`` parameter to nested MapAttributes (:pr:`908`)
 
 
 v5.0.2
@@ -103,7 +103,7 @@ v5.0.2
 
 :date: 2021-02-11
 
-* Do not serialize all attributes for updates and deletes (#905)
+* Do not serialize all attributes for updates and deletes (:pr:`905`)
 
 
 v5.0.1
@@ -111,7 +111,7 @@ v5.0.1
 
 :date: 2021-02-10
 
-* Fix type errors when deriving from a MapAttribute and another type (#904)
+* Fix type errors when deriving from a MapAttribute and another type (:pr:`904`)
 
 
 v5.0.0
@@ -151,29 +151,29 @@ Other changes in this release:
   where what's intended to be a cheap and fast condition ends up being expensive and slow. Since filter conditions
   cannot contain range keys, this had limited utility to begin with, and would sometimes cause confusing
   "'filter_condition' cannot contain key attributes" errors.
-* Replace the internal attribute type constants with their "short" DynamoDB version (#827)
-* Typed list attributes can now support any Attribute subclass (#833)
-* Add support for empty values in Binary and String attributes (#830)
+* Replace the internal attribute type constants with their "short" DynamoDB version (:pr:`827`)
+* Typed list attributes can now support any Attribute subclass (:pr:`833`)
+* Add support for empty values in Binary and String attributes (:pr:`830`)
 * Most API operation methods now accept a ``settings`` argument to customize settings of individual operations.
-  This currently allow adding or overriding HTTP headers. (#887)
-* Remove ``ListAttribute.remove_indexes`` (added in v4.3.2) and document usage of remove for list elements (#838)
-* Add the attribute name to error messages when deserialization fails (#815)
-* Add the table name to error messages for transactional operations (#835)
-* Remove ``pynamodb.connection.util.pythonic`` (#753) and (#865)
-* Remove ``ModelContextManager`` class (#861)
+  This currently allow adding or overriding HTTP headers. (:pr:`887`)
+* Remove ``ListAttribute.remove_indexes`` (added in v4.3.2) and document usage of remove for list elements (:pr:`838`)
+* Add the attribute name to error messages when deserialization fails (:pr:`815`)
+* Add the table name to error messages for transactional operations (:pr:`835`)
+* Remove ``pynamodb.connection.util.pythonic`` (:pr:`753`) and (:pr:`865`)
+* Remove ``ModelContextManager`` class (:pr:`861`)
 
 Contributors to this release:
 
-* @jpinner
-* @ikonst
-* @rchilaka-amzn
-* @jonathantan
+* :user:`jpinner`
+* :user:`ikonst`
+* :user:`rchilaka`-amzn
+* :user:`jonathantan`
 
 
 v4.3.3
 ----------
 
-* Add type stubs for indexing into a ``ListAttribute`` for forming conditional expressions (#774)
+* Add type stubs for indexing into a ``ListAttribute`` for forming conditional expressions (:pr:`774`)
 
   ::
 
@@ -183,30 +183,30 @@ v4.3.3
 
     MyModel.query(..., condition=MyModel.my_list[0] == 42)
 
-* Fix a warning about ``collections.abc`` deprecation (#782)
+* Fix a warning about ``collections.abc`` deprecation (:pr:`782`)
 
 
 v4.3.2
 ----------
 
-* Fix discrepancy between runtime and type-checker's perspective of ``Index`` and derived types (#769)
-* Add ``ListAttribute.remove_indexes`` action for removing specific indexes from a ``ListAttribute`` (#754)
+* Fix discrepancy between runtime and type-checker's perspective of ``Index`` and derived types (:pr:`769`)
+* Add ``ListAttribute.remove_indexes`` action for removing specific indexes from a ``ListAttribute`` (:pr:`754`)
 * Type stub fixes:
 
-  * Add missing parameters of ``Model.scan`` (#750)
-  * Change ``Model.get``'s ``hash_key`` parameter to be typed ``Any`` (#756)
+  * Add missing parameters of ``Model.scan`` (:pr:`750`)
+  * Change ``Model.get``'s ``hash_key`` parameter to be typed ``Any`` (:pr:`756`)
 
-* Prevent integration tests from being packaged (#758)
-* Various documentation fixes (#762, #765, #766)
+* Prevent integration tests from being packaged (:pr:`758`)
+* Various documentation fixes (:pr:`762`, :pr:`765`, :pr:`766`)
 
 Contributors to this release:
 
-* @mxr
-* @sodre
-* @biniow
-* @MartinAltmayer
-* @dotpmrcunha
-* @meawoppl
+* :user:`mxr`
+* :user:`sodre`
+* :user:`biniow`
+* :user:`MartinAltmayer`
+* :user:`dotpmrcunha`
+* :user:`meawoppl`
 
 v4.3.1
 ----------
@@ -218,21 +218,21 @@ v4.3.1
 v4.3.0
 ----------
 
-* Implement exponential backoff for batch writes (#728)
-* Avoid passing 'PROVISIONED' BillingMode for compatibility with some AWS AZs (#721)
-* On Python >= 3.3, use importlib instead of deprecated imp (#723)
-* Update in-memory object correctly on ``REMOVE`` update expressions (#741)
+* Implement exponential backoff for batch writes (:pr:`728`)
+* Avoid passing 'PROVISIONED' BillingMode for compatibility with some AWS AZs (:pr:`721`)
+* On Python >= 3.3, use importlib instead of deprecated imp (:pr:`723`)
+* Update in-memory object correctly on ``REMOVE`` update expressions (:pr:`741`)
 
 Contributors to this release:
 
-* @hallie
-* @bit-bot-bit
-* @edholland
-* @reginalin
-* @MichelML
-* @timgates42
-* @sunaoka
-* @conjmurph
+* :user:`hallie`
+* :user:`bit`-bot-bit
+* :user:`edholland`
+* :user:`reginalin`
+* :user:`MichelML`
+* :user:`timgates42`
+* :user:`sunaoka`
+* :user:`conjmurph`
 
 
 v4.2.0
@@ -242,12 +242,12 @@ v4.2.0
 
 This is a backwards compatible, minor release.
 
-* Add ``attributes_to_get`` parameter to ``Model.scan`` (#431)
-* Disable botocore parameter validation for performance (#711)
+* Add ``attributes_to_get`` parameter to ``Model.scan`` (:pr:`431`)
+* Disable botocore parameter validation for performance (:pr:`711`)
 
 Contributors to this release:
 
-* @ButtaKnife
+* :user:`ButtaKnife`
 
 
 v4.1.0
@@ -257,7 +257,7 @@ v4.1.0
 
 This is a backwards compatible, minor release.
 
-* In the Model's Meta, you may now provide an AWS session token, which is mostly useful for assumed roles (#700)::
+* In the Model's Meta, you may now provide an AWS session token, which is mostly useful for assumed roles (:pr:`700`)::
 
     sts_client = boto3.client("sts")
     role_object = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="role_name", DurationSeconds=BOTO3_CLIENT_DURATION)
@@ -273,14 +273,14 @@ This is a backwards compatible, minor release.
       hash = UnicodeAttribute(hash_key=True)
       range = UnicodeAttribute(range_key=True)
 
-* Fix warning about `inspect.getargspec` (#701)
-* Fix provisioning GSIs when using pay-per-request billing (#690)
-* Suppress Python 3 exception chaining when "re-raising" botocore errors as PynamoDB model exceptions (#705)
+* Fix warning about `inspect.getargspec` (:pr:`701`)
+* Fix provisioning GSIs when using pay-per-request billing (:pr:`690`)
+* Suppress Python 3 exception chaining when "re-raising" botocore errors as PynamoDB model exceptions (:pr:`705`)
 
 Contributors to this release:
 
-* @asottile
-* @julienduchesne
+* :user:`asottile`
+* :user:`julienduchesne`
 
 
 v4.0.0
@@ -332,19 +332,19 @@ attribute names. Also keep an eye out for kwargs like ``user_id__eq=5`` or ``ema
 
 New features in this release:
 
-* Support for transactions (``TransactGet`` and ``TransactWrite``) (#618)
-* Support for versioned optimistic locking (#664)
+* Support for transactions (``TransactGet`` and ``TransactWrite``) (:pr:`618`)
+* Support for versioned optimistic locking (:pr:`664`)
 
 Other changes in this release:
 
 * Python 2.6 is no longer supported. 4.x.x will be the last major release to support Python 2.7 given the upcoming EOL.
 * Added the ``max_pool_connection`` and ``extra_headers`` settings to replace common use cases for ``session_cls``
 * Added support for `moto <https://github.com/spulec/moto>`_ through implementing the botocore "before-send" hook.
-* Performance improvements to ``UTCDateTimeAttribute`` deserialization. (#610)
+* Performance improvements to ``UTCDateTimeAttribute`` deserialization. (:pr:`610`)
 * The ``MapAttributeMeta`` class has been removed. Now ``type(MapAttribute) == AttributeContainerMeta``.
 * Removed ``LegacyBooleanAttribute`` and the read-compatibility for it in ``BooleanAttribute``.
-* `None` can now be used to bootstrap condition chaining (#653)
-* Allow specifying timedeltas in expressions involving TTLAttributes (#665)
+* `None` can now be used to bootstrap condition chaining (:pr:`653`)
+* Allow specifying timedeltas in expressions involving TTLAttributes (:pr:`665`)
 
 
 v3.4.1
@@ -368,14 +368,14 @@ This is a backwards compatible, minor release.
 
 Changes in this release:
 
-* Adds a TTLAttribute that specifies when items expire (#259)
+* Adds a TTLAttribute that specifies when items expire (:pr:`259`)
 * Enables time-to-live on a DynamoDB table if the corresponding model has a TTLAttribute
 * Adds a default_for_new parameter for Attribute which is a default that applies to new items only
 
 Contributors to this release:
 
-* @irhkang
-* @ikonst
+* :user:`irhkang`
+* :user:`ikonst`
 
 
 v3.3.3
@@ -387,12 +387,12 @@ This is a backwards compatible, minor release.
 
 Fixes in this release:
 
-* Legacy boolean attribute migration fix. (#538)
-* Correctly package type stubs. (#585)
+* Legacy boolean attribute migration fix. (:pr:`538`)
+* Correctly package type stubs. (:pr:`585`)
 
 Contributors to this release:
 
-* @vo-va
+* :user:`vo`-va
 
 
 v3.3.2
@@ -404,7 +404,7 @@ This is a backwards compatible, minor release.
 
 Changes in this release:
 
-* Built-in support for mypy type stubs, superseding those in python/typeshed. (#537)
+* Built-in support for mypy type stubs, superseding those in python/typeshed. (:pr:`537`)
 
 
 v3.3.1
@@ -416,15 +416,15 @@ This is a backwards compatible, minor bug fix release.
 
 Fixes in this release:
 
-* Clearer error message on missing consumed capacity during rate-limited scan. (#506)
-* Python 3 compatibility in PageIterator. (#535)
-* Proxy configuration changes in botocore>=1.11.0. (#531)
+* Clearer error message on missing consumed capacity during rate-limited scan. (:pr:`506`)
+* Python 3 compatibility in PageIterator. (:pr:`535`)
+* Proxy configuration changes in botocore>=1.11.0. (:pr:`531`)
 
 Contributors to this release:
 
-* @ikonst
-* @zetaben
-* @ningirsu
+* :user:`ikonst`
+* :user:`zetaben`
+* :user:`ningirsu`
 
 
 v3.3.0
@@ -437,37 +437,37 @@ This is a backwards compatible, major bug fix release.
 New features in this release:
 
 
-* Support scan operations on secondary indexes. (#141, #392)
-* Support projections in model get function. (#337, #403)
-* Handle values from keys when batch get returns unprocessed keys. (#252, #376)
-* Externalizes AWS Credentials. (#426)
-* Add migration support for LegacyBooleanAttribute. (#404, #405)
-* Rate limited Page Iterator. (#481)
+* Support scan operations on secondary indexes. (:pr:`141`, :pr:`392`)
+* Support projections in model get function. (:pr:`337`, :pr:`403`)
+* Handle values from keys when batch get returns unprocessed keys. (:pr:`252`, :pr:`376`)
+* Externalizes AWS Credentials. (:pr:`426`)
+* Add migration support for LegacyBooleanAttribute. (:pr:`404`, :pr:`405`)
+* Rate limited Page Iterator. (:pr:`481`)
 
 Fixes in this release:
 
-* Thread-safe client creation in botocore. (#153, #393)
-* Use attr.get_value(value) when deserialize. (#450)
-* Skip null attributes post serialization for maps. (#455)
-* Fix deserialization bug in BinaryAttribute and BinarySetAttribute. (#459, #480)
-* Allow MapAttribute instances to be used as the RHS in expressions. (#488)
-* Return the correct last_evaluated_key for limited queries/scans. (#406, #410)
-* Fix exclusive_start_key getting lost in PageIterator. (#421)
-* Add python 3.5 for Travis ci builds. (#437)
+* Thread-safe client creation in botocore. (:pr:`153`, :pr:`393`)
+* Use attr.get_value(value) when deserialize. (:pr:`450`)
+* Skip null attributes post serialization for maps. (:pr:`455`)
+* Fix deserialization bug in BinaryAttribute and BinarySetAttribute. (:pr:`459`, :pr:`480`)
+* Allow MapAttribute instances to be used as the RHS in expressions. (:pr:`488`)
+* Return the correct last_evaluated_key for limited queries/scans. (:pr:`406`, :pr:`410`)
+* Fix exclusive_start_key getting lost in PageIterator. (:pr:`421`)
+* Add python 3.5 for Travis ci builds. (:pr:`437`)
 
 Contributors to this release:
 
-* @jpinner-lyft
-* @scode
-* @behos
-* @jmphilli
-* @drewisme
-* @nicysneiros
-* @jcomo
-* @kevgliss
-* @asottile
-* @harleyk
-* @betamoo
+* :user:`jpinner`-lyft
+* :user:`scode`
+* :user:`behos`
+* :user:`jmphilli`
+* :user:`drewisme`
+* :user:`nicysneiros`
+* :user:`jcomo`
+* :user:`kevgliss`
+* :user:`asottile`
+* :user:`harleyk`
+* :user:`betamoo`
 
 
 v3.2.1
@@ -479,21 +479,21 @@ This is a backwards compatible, minor bug fix release.
 
 Removed features in this release:
 
-* Remove experimental Throttle api. (#378)
+* Remove experimental Throttle api. (:pr:`378`)
 
 Fixes in this release:
 
-* Handle attributes that cannot be retrieved by getattr. Fixes #104 (#385)
-* Model.refresh() should reset all model attribuets. Fixes #166 (#388)
-* Model.loads() should deserialize using custom attribute names. Fixes #168 (#387)
-* Deserialize hash key during table loads. Fixes #143 (#386)
-* Support pagination in high-level api query and scan methods. Fixes #50, #118, #207, and #248 (#379)
-* Don't serialize null nested attributed. Fixes #240 and #309 (#375)
-* Legacy update item subset removal using DELETE operator. Fixes #132 (#374)
+* Handle attributes that cannot be retrieved by getattr. Fixes :pr:`104` (:pr:`385`)
+* Model.refresh() should reset all model attribuets. Fixes :pr:`166` (:pr:`388`)
+* Model.loads() should deserialize using custom attribute names. Fixes :pr:`168` (:pr:`387`)
+* Deserialize hash key during table loads. Fixes :pr:`143` (:pr:`386`)
+* Support pagination in high-level api query and scan methods. Fixes :pr:`50`, :pr:`118`, :pr:`207`, and :pr:`248` (:pr:`379`)
+* Don't serialize null nested attributed. Fixes :pr:`240` and :pr:`309` (:pr:`375`)
+* Legacy update item subset removal using DELETE operator. Fixes :pr:`132` (:pr:`374`)
 
 Contributors to this release:
 
-* @jpinner-lyft
+* :user:`jpinner`-lyft
 
 
 v3.2.0
@@ -515,7 +515,7 @@ New features in this release:
 
 Contributors to this release:
 
-* @jpinner-lyft
+* :user:`jpinner`-lyft
 
 
 v3.2.0rc2
@@ -530,7 +530,7 @@ It also improves ``MapAttribute`` assignment and access.
 
 Contributors to this release:
 
-* @jpinner-lyft
+* :user:`jpinner`-lyft
 
 
 v3.2.0rc1
@@ -550,7 +550,7 @@ New features in this release:
 
 Contributors to this release:
 
-* @jpinner-lyft
+* :user:`jpinner`-lyft
 
 
 v3.1.0
@@ -568,19 +568,19 @@ raise a ``ValueError``, as it was previously returning incorrect results.
 
 New features in this release:
 
-* Add support for signals via blinker (#278)
+* Add support for signals via blinker (:pr:`278`)
 
 Fixes in this release:
 
-* Pass batch parameters down to boto/dynamo (#308)
-* Raise a ValueError if count() is invoked with no hash key AND filters (#313)
-* Add consistent_read parameter to Model.scan (#311)
+* Pass batch parameters down to boto/dynamo (:pr:`308`)
+* Raise a ValueError if count() is invoked with no hash key AND filters (:pr:`313`)
+* Add consistent_read parameter to Model.scan (:pr:`311`)
 
 Contributors to this release:
 
-* @jmphilli
-* @Lordnibbler
-* @lita
+* :user:`jmphilli`
+* :user:`Lordnibbler`
+* :user:`lita`
 
 
 v3.0.1
@@ -600,23 +600,23 @@ Access via the ``attr_name``, also known as the DynamoDB name, will now throw an
 We deprecated the functionality of json serializing as of ``1.6.0`` but left the deserialization functionality in there so people could migrate away from the old functionality.
 If you have any ``UnicodeSetAttributes`` that have not been persisted since version ``1.6.0`` you will need to migrate your data or manage the json encoding and decoding with a custom attribute in application.
 
-* Performance enhancements for the ``UTCDateTimeAttribute`` deserialize method. (#277)
-* There was a regression with attribute discovery. Fixes attribute discovery for model classes with inheritance (#280)
-* Fix to ignore null checks for batch delete (#283)
-* Fix for ``ListAttribute`` and ``MapAttribute`` serialize (#286)
-* Fix for ``MapAttribute`` pythonic access (#292) This is a breaking change.
-* Deprecated the json decode in ``UnicodeSetAttribute`` (#294) This is a breaking change.
-* Raise ``TableDoesNotExist`` error instead of letting json decoding ``ValueErrors`` raise (#296)
+* Performance enhancements for the ``UTCDateTimeAttribute`` deserialize method. (:pr:`277`)
+* There was a regression with attribute discovery. Fixes attribute discovery for model classes with inheritance (:pr:`280`)
+* Fix to ignore null checks for batch delete (:pr:`283`)
+* Fix for ``ListAttribute`` and ``MapAttribute`` serialize (:pr:`286`)
+* Fix for ``MapAttribute`` pythonic access (:pr:`292`) This is a breaking change.
+* Deprecated the json decode in ``UnicodeSetAttribute`` (:pr:`294`) This is a breaking change.
+* Raise ``TableDoesNotExist`` error instead of letting json decoding ``ValueErrors`` raise (:pr:`296`)
 
 Contributors to this release:
 
-* @jcbertin
-* @johnliu
-* @scode
-* @rowilla
-* @lita
-* @garretheel
-* @jmphilli
+* :user:`jcbertin`
+* :user:`johnliu`
+* :user:`scode`
+* :user:`rowilla`
+* :user:`lita`
+* :user:`garretheel`
+* :user:`jmphilli`
 
 
 v2.2.0
@@ -627,10 +627,10 @@ v2.2.0
 This is a backwards compatible, minor release.
 
 The purpose of this release is to prepare users to upgrade to v3.0.1+
-(see issue #377 for details).
+(see issue :pr:`377` for details).
 
-Pull request #294 removes the backwards compatible deserialization of
-UnicodeSetAttributes introduced in #151.
+Pull request :pr:`294` removes the backwards compatible deserialization of
+UnicodeSetAttributes introduced in :pr:`151`.
 
 This release introduces a migration function on the Model class to help
 re-serialize any data that was written with v1.5.4 and below.
@@ -650,19 +650,19 @@ This is a backwards compatible, minor release.
 
 Fixes in this release:
 
-* Replace Delorean with dateutil (#208)
-* Fix a bug with count -- consume all pages in paginated response (#256)
-* Update mock lib (#262)
-* Use pytest instead of nose (#263)
-* Documentation changes (#269)
-* Fix null deserialization in MapAttributes (#272)
+* Replace Delorean with dateutil (:pr:`208`)
+* Fix a bug with count -- consume all pages in paginated response (:pr:`256`)
+* Update mock lib (:pr:`262`)
+* Use pytest instead of nose (:pr:`263`)
+* Documentation changes (:pr:`269`)
+* Fix null deserialization in MapAttributes (:pr:`272`)
 
 Contributors to this release:
 
-* @funkybob
-* @garrettheel
-* @lita
-* @jmphilli
+* :user:`funkybob`
+* :user:`garrettheel`
+* :user:`lita`
+* :user:`jmphilli`
 
 
 v2.1.5
@@ -674,15 +674,15 @@ This is a backwards compatible, minor release.
 
 Fixes in this release:
 
-* Apply retry to ProvisionedThroughputExceeded (#222)
-* rate_limited_scan fix to handle consumed capacity (#235)
-* Fix for test when dict ordering differs (#237)
+* Apply retry to ProvisionedThroughputExceeded (:pr:`222`)
+* rate_limited_scan fix to handle consumed capacity (:pr:`235`)
+* Fix for test when dict ordering differs (:pr:`237`)
 
 Contributors to this release:
 
-* @anandswaminathan
-* @jasonfriedland
-* @JohnEmhoff
+* :user:`anandswaminathan`
+* :user:`jasonfriedland`
+* :user:`JohnEmhoff`
 
 
 v2.1.4
@@ -694,30 +694,30 @@ This is a minor release, with some changes to `MapAttribute` handling. Previousl
 when accessing a `MapAttribute` via `item.attr`, the type of the object used during
 instantiation would determine the return value. `Model(attr={...})` would return
 a `dict` on access. `Model(attr=MapAttribute(...))` would return an instance of
-`MapAttribute`. After #223, a `MapAttribute` will always be returned during
+`MapAttribute`. After :pr:`223`, a `MapAttribute` will always be returned during
 item access regardless of the type of the object used during instantiation. For
 convenience, a `dict` version can be accessed using `.as_dict()` on the `MapAttribute`.
 
 New features in this release:
 
-* Support multiple attribute update (#194)
-* Rate-limited scan (#205)
-* Always create map attributes when setting a dict (#223)
+* Support multiple attribute update (:pr:`194`)
+* Rate-limited scan (:pr:`205`)
+* Always create map attributes when setting a dict (:pr:`223`)
 
 Fixes in this release:
 
-* Remove AttributeDict and require explicit attr names (#220)
-* Add distinct DoesNotExist classes per model (#206)
-* Ensure defaults are respected for MapAttribute (#221)
-* Add docs for GSI throughput changes (#224)
+* Remove AttributeDict and require explicit attr names (:pr:`220`)
+* Add distinct DoesNotExist classes per model (:pr:`206`)
+* Ensure defaults are respected for MapAttribute (:pr:`221`)
+* Add docs for GSI throughput changes (:pr:`224`)
 
 Contributors to this release:
 
-* @anandswaminathan
-* @garrettheel
-* @ikonst
-* @jasonfriedland
-* @yedpodtrzitko
+* :user:`anandswaminathan`
+* :user:`garrettheel`
+* :user:`ikonst`
+* :user:`jasonfriedland`
+* :user:`yedpodtrzitko`
 
 
 v2.0.3
@@ -729,12 +729,12 @@ This is a backwards compatible, minor release.
 
 Fixes in this release:
 
-* Allow longs as members of maps + lists in python 2 (#200)
-* Allow raw map attributes in subclassed map attributes (#199)
+* Allow longs as members of maps + lists in python 2 (:pr:`200`)
+* Allow raw map attributes in subclassed map attributes (:pr:`199`)
 
 Contributors to this release:
 
-* @jmphilli
+* :user:`jmphilli`
 
 
 v2.0.2
@@ -746,15 +746,15 @@ This is a backwards compatible, minor release.
 
 Fixes in this release:
 
-* add BOOL into SHORT_ATTR_TYPES (#190)
-* deserialize map attributes correctly (#192)
-* prepare request with requests session so session properties are applied (#197)
+* add BOOL into SHORT_ATTR_TYPES (:pr:`190`)
+* deserialize map attributes correctly (:pr:`192`)
+* prepare request with requests session so session properties are applied (:pr:`197`)
 
 Contributors to this release:
 
-* @anandswaminathan
-* @jmphilli
-* @yedpodtrzitko
+* :user:`anandswaminathan`
+* :user:`jmphilli`
+* :user:`yedpodtrzitko`
 
 
 v2.0.1
@@ -766,15 +766,15 @@ This is a backwards compatible, minor release.
 
 Fixes in this release:
 
-* make "unprocessed keys for batch operation" log at info level (#180)
-* fix RuntimeWarning during imp_load in custom settings file (#185)
-* allow unstructured map attributes (#186)
+* make "unprocessed keys for batch operation" log at info level (:pr:`180`)
+* fix RuntimeWarning during imp_load in custom settings file (:pr:`185`)
+* allow unstructured map attributes (:pr:`186`)
 
 Contributors to this release:
 
-* @danielhochman
-* @jmphilli
-* @bedge
+* :user:`danielhochman`
+* :user:`jmphilli`
+* :user:`bedge`
 
 
 v2.0.0
@@ -788,12 +788,12 @@ upgrading in production due to the volume of changes.
 
 New features in this release:
 
-* Add support for native map and list attributes (#175)
+* Add support for native map and list attributes (:pr:`175`)
 
 Contributors to this release:
 
-* @jmphilli
-* @berdim99
+* :user:`jmphilli`
+* :user:`berdim99`
 
 
 v1.6.0
@@ -810,20 +810,20 @@ attributes to allow for migration.
 
 New features in this release:
 
-* Add support for native boolean attributes (#149)
-* Parse legacy and native bool in legacy bool (#158)
-* Allow override of settings from global configuration file (#147)
+* Add support for native boolean attributes (:pr:`149`)
+* Parse legacy and native bool in legacy bool (:pr:`158`)
+* Allow override of settings from global configuration file (:pr:`147`)
 
 Fixes in this release:
 
-* Serialize UnicodeSetAttributes correctly (#151)
-* Make update_item respect attr_name differences (#160)
+* Serialize UnicodeSetAttributes correctly (:pr:`151`)
+* Make update_item respect attr_name differences (:pr:`160`)
 
 Contributors to this release:
 
-* @anandswaminathan
-* @jmphilli
-* @lita
+* :user:`anandswaminathan`
+* :user:`jmphilli`
+* :user:`lita`
 
 
 v1.5.4
@@ -834,9 +834,9 @@ v1.5.4
 This is a backwards compatible, minor bug fix release.
 
 The purpose of this release is to prepare users to upgrade to v1.6.0+
-(see issue #377 for details).
+(see issue :pr:`377` for details).
 
-Pull request #151 introduces a backwards incompatible change to how
+Pull request :pr:`151` introduces a backwards incompatible change to how
 UnicodeSetAttributes are serialized. While the commit attempts to
 provide compatibility by deserializing values written with v1.5.3 and
 below, it prevents users from upgrading because it starts writing non
@@ -846,7 +846,7 @@ Anyone using UnicodeSetAttribute must first deploy this version.
 
 Fixes in this release:
 
-* Backport UnicodeSetAttribute deserialization code from #151
+* Backport UnicodeSetAttribute deserialization code from :pr:`151`
 
 
 v1.5.3
@@ -858,11 +858,11 @@ This is a backwards compatible, minor release.
 
 Fixes in this release:
 
-* Introduce concept of page_size, separate from num items returned limit (#139)
+* Introduce concept of page_size, separate from num items returned limit (:pr:`139`)
 
 Contributors to this release:
 
-* @anandswaminathan
+* :user:`anandswaminathan`
 
 
 v1.5.2
@@ -874,11 +874,11 @@ This is a backwards compatible, minor release.
 
 Fixes in this release:
 
-* Additional retry logic for HTTP Status Code 5xx, usually attributed to InternalServerError (#135)
+* Additional retry logic for HTTP Status Code 5xx, usually attributed to InternalServerError (:pr:`135`)
 
 Contributors to this release:
 
-* @danielhochman
+* :user:`danielhochman`
 
 
 v1.5.1
@@ -890,11 +890,11 @@ This is a backwards compatible, minor release.
 
 Fixes in this release:
 
-* Fix for binary attribute handling of unprocessed items data corruption affecting users of 1.5.0 (#126 fixes #125)
+* Fix for binary attribute handling of unprocessed items data corruption affecting users of 1.5.0 (:pr:`126` fixes :pr:`125`)
 
 Contributors to this release:
 
-* @danielhochman
+* :user:`danielhochman`
 
 
 v1.5.0
@@ -909,30 +909,30 @@ no longer necessary.
 
 Fixes in this release:
 
-* Fix off-by-one error for limits when querying (#123 fixed #95)
-* Retry on ConnectionErrors and other types of RequestExceptions (#121 fixes #98)
-* More verbose logging when receiving errors e.g. InternalServerError from the DynamoDB API (#115)
-* Prevent permanent poisoning of credential cache due to botocore bug (#113 fixes #99)
-* Fix for UnprocessedItems serialization error (#114 fixes #103)
-* Fix parsing issue with newer version of dateutil and UTCDateTimeAttributes (#110 fixes #109)
-* Correctly handle expected value generation for set types (#107 fixes #102)
-* Use HTTP proxies configured by botocore (#100 fixes #92)
+* Fix off-by-one error for limits when querying (:pr:`123` fixed :pr:`95`)
+* Retry on ConnectionErrors and other types of RequestExceptions (:pr:`121` fixes :pr:`98`)
+* More verbose logging when receiving errors e.g. InternalServerError from the DynamoDB API (:pr:`115`)
+* Prevent permanent poisoning of credential cache due to botocore bug (:pr:`113` fixes :pr:`99`)
+* Fix for UnprocessedItems serialization error (:pr:`114` fixes :pr:`103`)
+* Fix parsing issue with newer version of dateutil and UTCDateTimeAttributes (:pr:`110` fixes :pr:`109`)
+* Correctly handle expected value generation for set types (:pr:`107` fixes :pr:`102`)
+* Use HTTP proxies configured by botocore (:pr:`100` fixes :pr:`92`)
 
 New features in this release:
 
-* Return the cause of connection exceptions to the caller (#108 documented by #112)
-* Configurable session class for custom connection pool size, etc (#91)
-* Add attributes_to_get and consistent_read to more of the API (#79)
+* Return the cause of connection exceptions to the caller (:pr:`108` documented by :pr:`112`)
+* Configurable session class for custom connection pool size, etc (:pr:`91`)
+* Add attributes_to_get and consistent_read to more of the API (:pr:`79`)
 
 Contributors to this release:
 
-* @ab
-* @danielhochman
-* @jlafon
-* @joshowen
-* @jpinner-lyft
-* @mxr
-* @nickgravgaard
+* :user:`ab`
+* :user:`danielhochman`
+* :user:`jlafon`
+* :user:`joshowen`
+* :user:`jpinner`-lyft
+* :user:`mxr`
+* :user:`nickgravgaard`
 
 
 v1.4.4
@@ -944,8 +944,8 @@ This is a backward compatible, minor release.
 
 Changes in this release:
 
-* Support for enabling table streams at table creation time (thanks to @brln)
-* Fixed bug where a value was always required for update_item when action was 'delete' (#90)
+* Support for enabling table streams at table creation time (thanks to :user:`brln`)
+* Fixed bug where a value was always required for update_item when action was 'delete' (:pr:`90`)
 
 
 v1.4.3
@@ -967,7 +967,7 @@ Changes in this release:
 * Fixed bug where models without a range key weren't handled correctly
 * Botocore is now only used for preparing requests (for performance reasons)
 * Removed the dependency on OrderedDict
-* Fixed bug for zope interface compatibility (#71)
+* Fixed bug for zope interface compatibility (:pr:`71`)
 * Fixed bug where the range key was handled incorrectly for integer values
 
 v1.4.2
@@ -991,7 +991,7 @@ This is a backward compatible, minor bug fix release.
 
 Bugs fixed in this release:
 
-* Fixed bug where a local variable could be unbound (#67).
+* Fixed bug where a local variable could be unbound (:pr:`67`).
 
 
 v1.4.0
@@ -1003,9 +1003,9 @@ This is a minor release, with backward compatible bug fixes.
 
 Bugs fixed in this release:
 
-* Added support for botocore 1.0.0 (#63)
-* Fixed bug where Model.get() could fail in certain cases (#64)
-* Fixed bug where JSON strings weren't being encoded properly (#61)
+* Added support for botocore 1.0.0 (:pr:`63`)
+* Fixed bug where Model.get() could fail in certain cases (:pr:`64`)
+* Fixed bug where JSON strings weren't being encoded properly (:pr:`61`)
 
 
 v1.3.7
@@ -1017,8 +1017,8 @@ This is a backward compatible, minor bug fix release.
 
 Bugs fixed in this release:
 
-* Fixed bug where range keys were not included in update_item (#59)
-* Fixed documentation bug (#58)
+* Fixed bug where range keys were not included in update_item (:pr:`59`)
+* Fixed documentation bug (:pr:`58`)
 
 
 v1.3.6
@@ -1030,8 +1030,8 @@ This is a backward compatible, minor bug fix release.
 
 Bugs fixed in this release:
 
-* Fixed bug where arguments were used incorrectly in update_item (#54)
-* Fixed bug where falsy values were used incorrectly in model constructors (#57), thanks @pior
+* Fixed bug where arguments were used incorrectly in update_item (:pr:`54`)
+* Fixed bug where falsy values were used incorrectly in model constructors (:pr:`57`), thanks :user:`pior`
 * Fixed bug where the limit argument for scan and query was not always honored.
 
 New features:
@@ -1046,9 +1046,9 @@ This is a backward compatible, minor bug fix release.
 
 Bugs fixed in this release.
 
-* Fixed bug where scan did not properly limit results (#45)
-* Fixed bug where scan filters were not being preserved (#44)
-* Fixed bug where items were mutated as an unexpected side effect (#47)
+* Fixed bug where scan did not properly limit results (:pr:`45`)
+* Fixed bug where scan filters were not being preserved (:pr:`44`)
+* Fixed bug where items were mutated as an unexpected side effect (:pr:`47`)
 * Fixed bug where conditional operator wasn't used in scan
 
 
@@ -1071,8 +1071,8 @@ v1.3.3
 
 This is a backward compatible, minor bug fix release, fixing the following issues
 
-* Fixed bug with Python 2.6 compatibility (#28)
-* Fixed bug where update_item was incorrectly checking attributes for null (#34)
+* Fixed bug with Python 2.6 compatibility (:pr:`28`)
+* Fixed bug where update_item was incorrectly checking attributes for null (:pr:`34`)
 
 Other minor improvements
 
@@ -1087,14 +1087,14 @@ v1.3.2
 
 :date: 2014-7-02
 
-* This is a minor bug fix release, fixing a bug where query filters were incorrectly parsed (#26).
+* This is a minor bug fix release, fixing a bug where query filters were incorrectly parsed (:pr:`26`).
 
 v1.3.1
 ------
 
 :date: 2014-05-26
 
-* This is a bug fix release, ensuring that KeyCondition and QueryFilter arguments are constructed correctly (#25).
+* This is a bug fix release, ensuring that KeyCondition and QueryFilter arguments are constructed correctly (:pr:`25`).
 * Added an example URL shortener to the examples.
 * Minor documentation fixes.
 
@@ -1105,9 +1105,9 @@ v1.3.0
 :date: 2014-05-20
 
 * This is a minor release, with new backward compatible features and bug fixes.
-* Fixed bug where NULL and NOT_NULL were not set properly in query and scan operations (#24)
-* Support for specifying the index_name as a Index.Meta attribute (#23)
-* Support for specifying read and write capacity in Model.Meta (#22)
+* Fixed bug where NULL and NOT_NULL were not set properly in query and scan operations (:pr:`24`)
+* Support for specifying the index_name as a Index.Meta attribute (:pr:`23`)
+* Support for specifying read and write capacity in Model.Meta (:pr:`22`)
 
 
 v1.2.2
@@ -1115,14 +1115,14 @@ v1.2.2
 
 :date: 2014-05-14
 
-* This is a minor bug fix release, resolving #21 (key_schema ordering for create_table).
+* This is a minor bug fix release, resolving :pr:`21` (key_schema ordering for create_table).
 
 v1.2.1
 ------
 
 :date: 2014-05-07
 
-* This is a minor bug fix release, resolving #20.
+* This is a minor bug fix release, resolving :pr:`20`.
 
 v1.2.0
 ------
@@ -1132,7 +1132,7 @@ v1.2.0
 * Numerous documentation improvements
 * Improved support for conditional operations
 * Added support for filtering queries on non key attributes (https://aws.amazon.com/blogs/aws/improved-queries-and-updates-for-dynamodb/)
-* Fixed issue with JSON loading where escaped characters caused an error (#17)
+* Fixed issue with JSON loading where escaped characters caused an error (:pr:`17`)
 * Minor bug fixes
 
 v1.1.0
@@ -1207,14 +1207,14 @@ v0.1.13
 
 :date: 2014-03-20
 
-* Bug fix release. Proper handling of update_item attributes for atomic item updates, with tests. Fixes #7.
+* Bug fix release. Proper handling of update_item attributes for atomic item updates, with tests. Fixes :pr:`7`.
 
 v0.1.12
 -------
 
 :date: 2014-03-18
 
-* Added a region attribute to model classes, allowing users to specify the AWS region, per model. Fixes #6.
+* Added a region attribute to model classes, allowing users to specify the AWS region, per model. Fixes :pr:`6`.
 
 v0.1.11
 -------
@@ -1222,8 +1222,8 @@ v0.1.11
 :date: 2014-02-26
 
 * New exception behavior: Model.get and Model.refresh will now raise DoesNotExist if the item is not found in the table.
-* Correctly deserialize complex key types. Fixes #3
-* Correctly construct keys for tables that don't have both a hash key and a range key in batch get operations. Fixes #5
+* Correctly deserialize complex key types. Fixes :pr:`3`
+* Correctly construct keys for tables that don't have both a hash key and a range key in batch get operations. Fixes :pr:`5`
 * Better PEP8 Compliance
 * More tests
 * Removed session and endpoint caching to avoid using stale IAM role credentials
