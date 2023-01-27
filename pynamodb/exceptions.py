@@ -1,13 +1,11 @@
 """
 PynamoDB exceptions
 """
-from dataclasses import dataclass
 from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Optional
-from typing_extensions import Literal
 
 import botocore.exceptions
 
