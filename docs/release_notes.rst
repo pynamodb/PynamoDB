@@ -3,6 +3,15 @@
 Release Notes
 =============
 
+v5.3.5
+----------
+* Fix message of some exceptions derived from :class:`~pynamodb.exceptions.PynamoDBException` (#1113).
+
+Contributors to this release:
+
+* @pauliokas
+
+
 v5.3.4
 ----------
 * Make serialization :code:`null_check=False` propagate to maps inside lists (#1128).
