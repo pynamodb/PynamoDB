@@ -14,6 +14,7 @@ from pynamodb.indexes import GlobalSecondaryIndex
 
 class TestDiscriminatorIndex:
 
+    @pytest.mark.ddblocal
     def test_create_table(self, ddb_url):
         class ParentModel(Model, discriminator='Parent'):
             class Meta:
@@ -65,6 +66,7 @@ class TestDiscriminatorIndex:
         model = next(ChildModel2.child_index.query('baz'))
         assert isinstance(model, ChildModel2)
 
+    @pytest.mark.ddblocal
     def test_create_table__incompatible_indexes(self, ddb_url):
         class ParentModel(Model, discriminator='Parent'):
             class Meta:
