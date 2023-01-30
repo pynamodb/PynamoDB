@@ -3,6 +3,13 @@
 Release Notes
 =============
 
+v5.4.0
+----------
+* Expose transaction cancellation reasons in
+  :meth:`~pynamodb.exceptions.TransactWriteError.cancellation_reasons` and
+  :meth:`~pynamodb.exceptions.TransactGetError.cancellation_reasons` (#1144).
+
+
 v5.3.5
 ----------
 * Fix message of some exceptions derived from :class:`~pynamodb.exceptions.PynamoDBException` (#1113).
