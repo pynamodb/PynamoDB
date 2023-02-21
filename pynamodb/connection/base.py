@@ -257,7 +257,10 @@ class Connection(object):
                  max_retry_attempts: Optional[int] = None,
                  base_backoff_ms: Optional[int] = None,
                  max_pool_connections: Optional[int] = None,
-                 extra_headers: Optional[Mapping[str, str]] = None):
+                 extra_headers: Optional[Mapping[str, str]] = None,
+                 aws_access_key_id: Optional[str] = None,
+                 aws_secret_access_key: Optional[str] = None,
+                 aws_session_token: Optional[str] = None):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
@@ -297,6 +300,10 @@ class Connection(object):
             self._extra_headers = extra_headers
         else:
             self._extra_headers = get_settings_value('extra_headers')
+
+        self._aws_access_key_id = aws_access_key_id
+        self._aws_secret_access_key = aws_secret_access_key
+        self._aws_session_token = aws_session_token
 
     def __repr__(self) -> str:
         return "Connection<{}>".format(self.client.meta.endpoint_url)
@@ -558,6 +565,10 @@ class Connection(object):
         # botocore client creation is not thread safe as of v1.2.5+ (see issue #153)
         if getattr(self._local, 'session', None) is None:
             self._local.session = get_session()
+            if self._aws_access_key_id and self._aws_secret_access_key:
+                self._local.session.set_credentials(self._aws_access_key_id,
+                                                        self._aws_secret_access_key,
+                                                        self._aws_session_token)
         return self._local.session
 
     @property
