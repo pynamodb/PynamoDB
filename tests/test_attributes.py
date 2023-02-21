@@ -204,7 +204,7 @@ class TestUTCDateTimeAttribute:
         ]
     )
     def test_utc_date_time_invalid(self, invalid_string):
-        with pytest.raises(ValueError, match="does not match format"):
+        with pytest.raises(ValueError, match=r"does not match format '%Y-%m-%dT%H:%M:%S.%f\+0000'"):
             self.attr.deserialize(invalid_string)
 
 
