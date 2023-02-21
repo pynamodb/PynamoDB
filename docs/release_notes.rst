@@ -3,6 +3,19 @@
 Release Notes
 =============
 
+v5.4.1
+----------
+* Use model's AWS credentials in threads (#1160)
+
+  A model can specify custom AWS credentials in the ``Meta`` class (in lieu of "global"
+  AWS credentials from the environment). Previously those model-specific credentials
+  were not used from within new threads.
+
+Contributors to this release:
+
+* @atsuoishimoto
+
+
 v5.4.0
 ----------
 * Expose transaction cancellation reasons in
