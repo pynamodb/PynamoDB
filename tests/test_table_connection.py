@@ -2,6 +2,7 @@
 Test suite for the table class
 """
 from unittest import TestCase
+from concurrent.futures import ThreadPoolExecutor
 
 from pynamodb.connection import TableConnection
 from pynamodb.constants import DEFAULT_REGION
@@ -39,7 +40,16 @@ class ConnectionTestCase(TestCase):
             aws_access_key_id='access_key_id',
             aws_secret_access_key='secret_access_key')
 
-        credentials = conn.connection.session.get_credentials()
+        def get_credentials():
+            return conn.connection.session.get_credentials()
+
+        credentials = get_credentials()
+        self.assertEqual(credentials.access_key, 'access_key_id')
+        self.assertEqual(credentials.secret_key, 'secret_access_key')
+
+        with ThreadPoolExecutor() as executor:
+            fut = executor.submit(get_credentials)
+            credentials = fut.result()
 
         self.assertEqual(credentials.access_key, 'access_key_id')
         self.assertEqual(credentials.secret_key, 'secret_access_key')
