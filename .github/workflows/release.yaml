@@ -3,10 +3,10 @@ name: Release
 on:
   release:
     types: [published]
-  # For non-release, we want to exercise (a) building, (b) uploading to test.pypi.org
   push:
     branches: [master]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -35,9 +35,7 @@ jobs:
 
     - name: Publish to Test PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      if: ${{ github.event_name != 'release' }}
+      if: ${{ github.event_name == 'workflow_dispatch' }}
       with:
         password: ${{ secrets.TEST_PYPI_API_TOKEN }}
         repository_url: https://test.pypi.org/legacy/
-        # Since we run this often, it's OK if that version already exists
-        skip_existing: true
