@@ -41,14 +41,13 @@ class TableConnection:
                                      max_retry_attempts=max_retry_attempts,
                                      base_backoff_ms=base_backoff_ms,
                                      max_pool_connections=max_pool_connections,
-                                     extra_headers=extra_headers)
+                                     extra_headers=extra_headers,
+                                     aws_access_key_id=aws_access_key_id,
+                                     aws_secret_access_key=aws_secret_access_key,
+                                     aws_session_token=aws_session_token)
+
         if meta_table is not None:
             self.connection.add_meta_table(meta_table)
-
-        if aws_access_key_id and aws_secret_access_key:
-            self.connection.session.set_credentials(aws_access_key_id,
-                                                    aws_secret_access_key,
-                                                    aws_session_token)
 
     def get_meta_table(self) -> MetaTable:
         """
