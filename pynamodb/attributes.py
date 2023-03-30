@@ -111,7 +111,7 @@ class Attribute(Generic[_T]):
         default_for_new: Optional[Union[Any, Callable[..., _T]]] = None,
         attr_name: Optional[str] = None,
     ) -> None:
-        if default and default_for_new:
+        if default is not None and default_for_new is not None:
             raise ValueError("An attribute cannot have both default and default_for_new parameters")
         if not callable(default) and not isinstance(default, _IMMUTABLE_TYPES):
             raise ValueError(

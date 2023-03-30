@@ -147,6 +147,13 @@ class TestDefault:
         Attribute(default=list)
         Attribute(default_for_new=list)
 
+        with pytest.raises(ValueError, match="An attribute cannot have both default and default_for_new parameters"):
+            Attribute(default='test', default_for_new='test')
+
+        with pytest.raises(ValueError, match="An attribute cannot have both default and default_for_new parameters"):
+            Attribute(default=False, default_for_new='test')
+
+
 
 class TestUTCDateTimeAttribute:
     """
