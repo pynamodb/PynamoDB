@@ -3223,6 +3223,47 @@ class ModelTestCase(TestCase):
 
             deep_eq(args, params, _assert=True)
 
+    def test_version_attribute__update__add_version_condition(self):
+        item = VersionedModel('test_user_name', email='test_user@email.com')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    'name': {
+                        'S': 'test_user_name'
+                    },
+                    'email': {
+                        'S': 'new@email.com'
+                    },
+                    'version': {
+                        'N': '1'
+                    },
+                }
+            }
+
+            item.update(actions=[VersionedModel.email.set('new@email.com')], add_version_condition=False)
+
+            operation_kwargs = req.call_args.args[1]
+            assert operation_kwargs == {
+                'ExpressionAttributeNames': {
+                    '#0': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'new@email.com'
+                    },
+                },
+                'Key': {
+                    'name': {
+                        'S': 'test_user_name'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ReturnValues': 'ALL_NEW',
+                'TableName': 'VersionedModel',
+                'UpdateExpression': 'SET #0 = :0'
+            }
+
 
 class ModelInitTestCase(TestCase):
 
