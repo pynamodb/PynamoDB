@@ -4,9 +4,10 @@ pytest-mock
 
 # only used in CI
 coveralls
-mypy==0.990
-typing-extensions==4.3.0
+mypy==1.2.0
+typing-extensions==4.5.0
 pytest-cov
+blinker==1.6.2
 
 # used for type-checking
 botocore-stubs
