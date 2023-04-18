@@ -772,7 +772,36 @@ class NumberSetAttribute(Attribute[Set[float]]):
 
 class VersionAttribute(NumberAttribute):
     """
-    A version attribute
+    A number attribute that denotes a version / revision counter of the model.
+
+    This attribute has special semantics within the model:
+
+    * :meth:`~pynamodb.models.Model.save` and :meth:`~pynamodb.models.Model.update` would increment the counter
+      every time the model is persisted. This allows concurrent updates not to overwrite each other, at the expense
+      of the latter update failing.
+    * :meth:`~pynamodb.models.Model.save`, :meth:`~pynamodb.models.Model.update`
+      and :meth:`~pynamodb.models.Model.delete` would avoid acting on a model if the counter in the database
+      is not what they expect to find, at the expense of failing. For `update` and `delete`, this behavior is optional
+      since a more granular approach can be preferred.
+
+    For example, suppose a room should be first reserved and then rented, and users can cancel
+    their reservation. Naive code would check to ensure the room is reserved, and then persist it with `rented=True`.
+    If the user has meanwhile cancelled their reservation, the version check would fail, allowing the rent code
+    to realize that its check was under outdated assumptions. (A retry would allow the 'rent' function to indicate
+    a high-level error to the user, e.g. "You must reserve before renting".)
+
+    Let's assume some other code periodically updates the room's temperature. This causes the version to increase,
+    and risks failing the 'rent' operation sporadically. We can then switch to :meth:`~pynamodb.models.Model.update`
+    and add a more fine-grained condition:
+
+    .. code-block:: diff
+
+        - room.save()
+        + room.update(
+        +   actions=[Room.rented.set(True)],
+        +   condition=Room.reserved == True,
+        +   add_version_condition=False,
+        + )
     """
     null = True
 
