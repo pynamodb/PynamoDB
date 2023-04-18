@@ -39,8 +39,8 @@ class _FakeSignal(object):
 try:
     from blinker import Namespace
     signals_available = True
-except ImportError: # pragma: no cover
-    Namespace = _FakeNamespace
+except ImportError:  # pragma: no cover
+    Namespace = _FakeNamespace  # type:ignore
 
 # The namespace for code signals.  If you are not PynamoDB code, do
 # not put signals in here.  Create your own namespace instead.
