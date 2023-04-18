@@ -3243,7 +3243,7 @@ class ModelTestCase(TestCase):
 
             item.update(actions=[VersionedModel.email.set('new@email.com')], add_version_condition=False)
 
-            operation_kwargs = req.call_args.args[1]
+            operation_kwargs = req.call_args[0][1]
             assert operation_kwargs == {
                 'ExpressionAttributeNames': {
                     '#0': 'email'
