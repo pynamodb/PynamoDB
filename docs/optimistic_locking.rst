@@ -1,3 +1,5 @@
+.. _optimistic_locking:
+
 ==================
 Optimistic Locking
 ==================
@@ -18,7 +20,16 @@ See also:
 Version Attribute
 -----------------
 
-To enable optimistic locking for a table simply add a ``VersionAttribute`` to your model definition.
+To enable optimistic locking for a table, add a ``VersionAttribute`` to your model definition. The presence of this
+attribute will change the model's behaviors:
+
+* :meth:`~pynamodb.models.Model.save` and :meth:`~pynamodb.models.Model.update` would increment the version attribute
+  every time the model is persisted. This allows concurrent updates not to overwrite each other, at the expense
+  of the latter update failing.
+* :meth:`~pynamodb.models.Model.save`, :meth:`~pynamodb.models.Model.update`
+  and :meth:`~pynamodb.models.Model.delete` would fail if they are the "latter update" (by adding to the update's
+  :ref:`conditions <conditional_operations>`). This behavior is optional since sometimes a more granular approach
+  can be desired (see :ref:`optimistic_locking_version_condition`).
 
 .. code-block:: python
 
@@ -83,7 +94,7 @@ These operations will fail if the local object is out-of-date.
       except TransactWriteError as e:
           assert isinstance(e.cause, ClientError)
           assert e.cause_response_code == "TransactionCanceledException"
-          assert "ConditionalCheckFailed" in e.cause_response_message
+          assert any(r.code == "ConditionalCheckFailed" for r in e.cancellation_reasons)
       else:
           raise AssertionError("The version attribute conditional check should have failed.")
 
@@ -103,6 +114,45 @@ These operations will fail if the local object is out-of-date.
 
   with assert_condition_check_fails():
       office.delete()
+
+
+.. _optimistic_locking_version_condition:
+
+Conditioning on the version
+---------------------------
+
+If you want a :meth:`~pynamodb.models.Model.save` or :meth:`~pynamodb.models.Model.update` operation to always
+succeed regardless of the version attribute, you can pass ``add_version_condition=False`` to the method call.
+It would still increment the version attribute, but would perform the update unconditional of the version:
+in other words, you'd make other updates fail, but your update will succeed.
+
+Done indiscriminately, this would be unsafe, but can be useful in certain scenarios.
+
+1. For ``save``, this is almost always unsafe and undesirable.
+2. For ``update``, use it when updating attributes for which a "last write wins" approach is acceptable,
+   or if you're otherwise conditioning the update in a way that is more domain-specific.
+3. For ``delete``, use it to delete the item regardless of its contents.
+
+For example, if your ``save`` experiences frequent locking failures, rewrite your code to use ``update``
+with specific attributes while passing :code:`add_version_condition=False`. Since you cannot rely on
+the checks you've done prior to the modification (also known as "time-of-check to time-of-use"),
+consider adding domain-specific conditions to ensure the item in the table is in the correct state.
+
+For example, let's consider a hotel room-renting system where the constraint is that only one person
+can book a room:
+
+    .. code-block:: diff
+
+        - if room.booked_by:
+        -   raise Exception("Room is already booked")
+        - room.booked_by = user_id
+        - room.save()
+        + room.update(
+        +   actions=[Room.booked_by.set(user_id)],
+        +   condition=Room.booked_by.does_not_exist(),
+        +   add_version_condition=False,
+        + )
+
 
 Transactions
 ------------

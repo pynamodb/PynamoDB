@@ -353,9 +353,8 @@ def test_transaction_write_with_version_attribute(connection):
     assert foo3.version == 2
     assert Foo.get(4).version == 1
     foo42 = Foo.get(42)
-    assert foo42.version == 2
-    assert foo42.star == 'last write wins'
-
+    assert foo42.version == foo42_dup.version + 1 == 3  # ensure version is incremented
+    assert foo42.star == 'last write wins'  # ensure last write wins
 
 
 @pytest.mark.ddblocal
