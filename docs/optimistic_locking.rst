@@ -121,25 +121,27 @@ These operations will fail if the local object is out-of-date.
 Conditioning on the version
 ---------------------------
 
-If you want a :meth:`~pynamodb.models.Model.save` or :meth:`~pynamodb.models.Model.update` operation to always
-succeed regardless of the version attribute, you can pass ``add_version_condition=False`` to the method call.
-It would still increment the version attribute, but would perform the update unconditional of the version:
-in other words, you'd make other updates fail, but your update will succeed.
+To have :meth:`~pynamodb.models.Model.save`, :meth:`~pynamodb.models.Model.update` or  :meth:`~pynamodb.models.Model.delete`
+execute even if the item was changed by someone else, pass the ``add_version_condition=False`` parameter.
+In this mode, updates would perform unconditionally but would still increment the version:
+in other words, you could make other updates fail, but your update will succeed.
 
-Done indiscriminately, this would be unsafe, but can be useful in certain scenarios.
+Done indiscriminately, this would be unsafe, but can be useful in certain scenarios:
 
-1. For ``save``, this is almost always unsafe and undesirable.
-2. For ``update``, use it when updating attributes for which a "last write wins" approach is acceptable,
+#. For ``save``, this is almost always unsafe and undesirable.
+#. For ``update``, use it when updating attributes for which a "last write wins" approach is acceptable,
    or if you're otherwise conditioning the update in a way that is more domain-specific.
-3. For ``delete``, use it to delete the item regardless of its contents.
+#. For ``delete``, use it to delete the item regardless of its contents.
 
-For example, if your ``save`` experiences frequent locking failures, rewrite your code to use ``update``
-with specific attributes while passing :code:`add_version_condition=False`. Since you cannot rely on
-the checks you've done prior to the modification (also known as "time-of-check to time-of-use"),
-consider adding domain-specific conditions to ensure the item in the table is in the correct state.
+For example, if your ``save`` operation experiences frequent "ConditionalCheckFailedException" failures,
+rewrite your code to call ``update`` with individual attributes while passing :code:`add_version_condition=False`.
+By disabling the version condition, you could no longer rely on the checks you've done prior to the modification (due to
+what is known as the "time-of-check to time-of-use" problem). Therefore, consider adding domain-specific conditions
+to ensure the item in the table is in the expected state prior to the update.
 
-For example, let's consider a hotel room-renting system where the constraint is that only one person
-can book a room:
+For example, let's consider a hotel room-booking service with the conventional constraint that only one person
+can book a room at a time. We can switch from a ``save`` to an ``update`` by specifying the individual attributes
+and rewriting the `if` statement as a condition:
 
     .. code-block:: diff
 
@@ -152,7 +154,6 @@ can book a room:
         +   condition=Room.booked_by.does_not_exist(),
         +   add_version_condition=False,
         + )
-
 
 Transactions
 ------------

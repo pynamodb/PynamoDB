@@ -11,12 +11,19 @@ This is a major release and contains breaking changes. Please read the notes bel
   * The attributes' internal encoding has changed. To prevent this change going unnoticed, :code:`legacy_encoding` have been made required: see :doc:`upgrading_binary` for details.
     If your codebase uses :py:class:`~pynamodb.attributes.BinaryAttribute` or :py:class:`~pynamodb.attributes.BinarySetAttribute`,
     go over the attribute declarations and mark them accordingly.
-  * When using binary attributes, the return value of :py:func:`~pynamodb.models.Model.serialize` will no longer be JSON-serializable
-    since it will contain :code:`bytes` objects. Use `:py:func:`~pynamodb.models.Model.to_dynamodb_dict`
+  * When using binary attributes, the return value of :meth:`~pynamodb.models.Model.serialize` will no longer be JSON-serializable
+    since it will contain :code:`bytes` objects. Use :meth:`~pynamodb.models.Model.to_dynamodb_dict`
     for a safe JSON-serializable representation.
 
 * Python 3.6 is no longer supported.
-* Index count, query, and scan methods are now instance methods.
+* :meth:`Index.count <pynamodb.indexes.Index.count>`, :meth:`Index.query <pynamodb.indexes.Index.query>`,
+  and :meth:`Indexn.scan <pynamodb.indexes.Index.scan>` are now instance methods.
+
+Other changes in this release:
+
+* :meth:`~pynamodb.models.Model.save`, :meth:`~pynamodb.models.Model.update`, :meth:`~pynamodb.models.Model.delete_item`,
+  and :meth:`~pynamodb.models.Model.delete` now accept a ``add_version_condition`` parameter.
+  See :ref:`optimistic_locking_version_condition` for more details.
 
 
 v5.3.2
