@@ -323,6 +323,11 @@ def test_transaction_write_with_version_attribute(connection):
     foo3 = Foo(3)
     foo3.save()
 
+    foo42 = Foo(42)
+    foo42.save()
+    foo42_dup = Foo.get(42)
+    foo42_dup.save()  # increment version w/o letting foo4 "know"
+
     with TransactWrite(connection=connection) as transaction:
         transaction.condition_check(Foo, 1, condition=(Foo.bar.exists()))
         transaction.delete(foo2)
@@ -333,6 +338,13 @@ def test_transaction_write_with_version_attribute(connection):
                 Foo.star.set('birdistheword'),
             ]
         )
+        transaction.update(
+            foo42,
+            actions=[
+                Foo.star.set('last write wins'),
+            ],
+            add_version_condition=False,
+        )
 
     assert Foo.get(1).version == 1
     with pytest.raises(DoesNotExist):
@@ -340,6 +352,9 @@ def test_transaction_write_with_version_attribute(connection):
     # Local object's version attribute is updated automatically.
     assert foo3.version == 2
     assert Foo.get(4).version == 1
+    foo42 = Foo.get(42)
+    assert foo42.version == foo42_dup.version + 1 == 3  # ensure version is incremented
+    assert foo42.star == 'last write wins'  # ensure last write wins
 
 
 @pytest.mark.ddblocal
@@ -369,7 +384,8 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
         with TransactWrite(connection=connection) as transaction:
             transaction.save(Foo(21))
     assert exc_info.value.cause_response_code == TRANSACTION_CANCELLED
-    assert 'ConditionalCheckFailed' in exc_info.value.cause_response_message
+    assert len(exc_info.value.cancellation_reasons) == 1
+    assert exc_info.value.cancellation_reasons[0].code == 'ConditionalCheckFailed'
     assert isinstance(exc_info.value.cause, botocore.exceptions.ClientError)
     assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
 
@@ -382,7 +398,8 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
                 ]
             )
     assert exc_info.value.cause_response_code == TRANSACTION_CANCELLED
-    assert 'ConditionalCheckFailed' in exc_info.value.cause_response_message
+    assert len(exc_info.value.cancellation_reasons) == 1
+    assert exc_info.value.cancellation_reasons[0].code == 'ConditionalCheckFailed'
     assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
     # Version attribute is not updated on failure.
     assert foo2.version is None
@@ -391,5 +408,6 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
         with TransactWrite(connection=connection) as transaction:
             transaction.delete(foo2)
     assert exc_info.value.cause_response_code == TRANSACTION_CANCELLED
-    assert 'ConditionalCheckFailed' in exc_info.value.cause_response_message
+    assert len(exc_info.value.cancellation_reasons) == 1
+    assert exc_info.value.cancellation_reasons[0].code == 'ConditionalCheckFailed'
     assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE

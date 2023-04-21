@@ -100,8 +100,11 @@ class TransactWrite(Transaction):
         )
         self._condition_check_items.append(operation_kwargs)
 
-    def delete(self, model: _M, condition: Optional[Condition] = None) -> None:
-        operation_kwargs = model.get_delete_kwargs_from_instance(condition=condition)
+    def delete(self, model: _M, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> None:
+        operation_kwargs = model.get_delete_kwargs_from_instance(
+            condition=condition,
+            add_version_condition=add_version_condition,
+        )
         self._delete_items.append(operation_kwargs)
 
     def save(self, model: _M, condition: Optional[Condition] = None, return_values: Optional[str] = None) -> None:
@@ -112,11 +115,15 @@ class TransactWrite(Transaction):
         self._put_items.append(operation_kwargs)
         self._models_for_version_attribute_update.append(model)
 
-    def update(self, model: _M, actions: List[Action], condition: Optional[Condition] = None, return_values: Optional[str] = None) -> None:
+    def update(self, model: _M, actions: List[Action], condition: Optional[Condition] = None,
+               return_values: Optional[str] = None,
+               *,
+               add_version_condition: bool = True) -> None:
         operation_kwargs = model.get_update_kwargs_from_instance(
             actions=actions,
             condition=condition,
-            return_values_on_condition_failure=return_values
+            return_values_on_condition_failure=return_values,
+            add_version_condition=add_version_condition,
         )
         self._update_items.append(operation_kwargs)
         self._models_for_version_attribute_update.append(model)
