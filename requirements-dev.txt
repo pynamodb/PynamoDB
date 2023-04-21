@@ -6,6 +6,7 @@ pytest-mock
 coveralls
 mypy==0.950;python_version>="3.7"
 pytest-cov
+blinker==1.5.0
 
 # used for type-checking
 botocore-stubs
