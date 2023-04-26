@@ -719,89 +719,6 @@ class ModelTestCase(TestCase):
             req.return_value = COMPLEX_ITEM_DATA
             item.refresh()
 
-    def test_delete(self):
-        """
-        Model.delete
-        """
-        self.init_table_meta(UserModel, MODEL_TABLE_DATA)
-        item = UserModel('foo', 'bar')
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = None
-            item.delete()
-            params = {
-                'Key': {
-                    'user_id': {
-                        'S': 'bar'
-                    },
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            args = req.call_args[0][1]
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = None
-            item.delete(UserModel.user_id =='bar')
-            params = {
-                'Key': {
-                    'user_id': {
-                        'S': 'bar'
-                    },
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '#0 = :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_id'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'bar'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            args = req.call_args[0][1]
-            deep_eq(args, params, _assert=True)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = None
-            item.delete(UserModel.user_id == 'bar')
-            params = {
-                'Key': {
-                    'user_id': {
-                        'S': 'bar'
-                    },
-                    'user_name': {
-                        'S': 'foo'
-                    }
-                },
-                'ConditionExpression': '#0 = :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'user_id'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'bar'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'UserModel'
-            }
-            args = req.call_args[0][1]
-            self.assertEqual(args, params)
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = None
-            deep_eq(args, params, _assert=True)
-
     def test_delete_doesnt_do_validation_on_null_attributes(self):
         """
         Model.delete
@@ -3144,59 +3061,6 @@ class ModelTestCase(TestCase):
             self.assert_dict_lists_equal(actual['AttributeDefinitions'],
                                          DOG_TABLE_DATA['Table']['AttributeDefinitions'])
 
-    def test_model_version_attribute_save(self):
-        self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
-        item = VersionedModel('test_user_name', email='test_user@email.com')
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {}
-            item.save()
-            args = req.call_args[0][1]
-            params = {
-                'Item': {
-                    'name': {
-                        'S': 'test_user_name'
-                    },
-                    'email': {
-                        'S': 'test_user@email.com'
-                    },
-                    'version': {
-                        'N': '1'
-                    },
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'VersionedModel',
-                'ConditionExpression': 'attribute_not_exists (#0)',
-                'ExpressionAttributeNames': {'#0': 'version'},
-            }
-
-            deep_eq(args, params, _assert=True)
-            item.version = 1
-            item.name = "test_new_username"
-            item.save()
-            args = req.call_args[0][1]
-
-            params = {
-                'Item': {
-                    'name': {
-                        'S': 'test_new_username'
-                    },
-                    'email': {
-                        'S': 'test_user@email.com'
-                    },
-                    'version': {
-                        'N': '2'
-                    },
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'TableName': 'VersionedModel',
-                'ConditionExpression': '#0 = :0',
-                'ExpressionAttributeNames': {'#0': 'version'},
-                'ExpressionAttributeValues': {':0': {'N': '1'}}
-            }
-
-            deep_eq(args, params, _assert=True)
-
     def test_model_version_attribute_save_with_initial_version_zero(self):
         self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
         item = VersionedModel('test_user_name', email='test_user@email.com', version=0)
@@ -3247,100 +3111,6 @@ class ModelTestCase(TestCase):
                 'ConditionExpression': '#0 = :0',
                 'ExpressionAttributeNames': {'#0': 'version'},
                 'ExpressionAttributeValues': {':0': {'N': '1'}}
-            }
-
-            deep_eq(args, params, _assert=True)
-
-    def test_version_attribute_increments_on_update(self):
-        self.init_table_meta(VersionedModel, VERSIONED_TABLE_DATA)
-        item = VersionedModel('test_user_name', email='test_user@email.com')
-
-        with patch(PATCH_METHOD) as req:
-            req.return_value = {
-                ATTRIBUTES: {
-                    'name': {
-                        'S': 'test_user_name'
-                    },
-                    'email': {
-                        'S': 'new@email.com'
-                    },
-                    'version': {
-                        'N': '1'
-                    },
-                }
-            }
-            item.update(actions=[VersionedModel.email.set('new@email.com')])
-            args = req.call_args[0][1]
-            params = {
-                'ConditionExpression': 'attribute_not_exists (#0)',
-                'ExpressionAttributeNames': {
-                    '#0': 'version',
-                    '#1': 'email'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'S': 'new@email.com'
-                    },
-                    ':1': {
-                        'N': '1'
-                    }
-                },
-                'Key': {
-                    'name': {
-                        'S': 'test_user_name'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'ReturnValues': 'ALL_NEW',
-                'TableName': 'VersionedModel',
-                'UpdateExpression': 'SET #1 = :0, #0 = :1'
-            }
-
-            deep_eq(args, params, _assert=True)
-            assert item.version == 1
-
-            req.return_value = {
-                ATTRIBUTES: {
-                    'name': {
-                        'S': 'test_user_name'
-                    },
-                    'email': {
-                        'S': 'newer@email.com'
-                    },
-                    'version': {
-                        'N': '2'
-                    },
-                }
-            }
-
-            item.update(actions=[VersionedModel.email.set('newer@email.com')])
-            args = req.call_args[0][1]
-            params = {
-                'ConditionExpression': '#0 = :0',
-                'ExpressionAttributeNames': {
-                    '#0': 'version',
-                    '#1': 'email'
-                },
-                'ExpressionAttributeValues': {
-                    ':0': {
-                        'N': '1'
-                    },
-                    ':1': {
-                        'S': 'newer@email.com'
-                    },
-                    ':2': {
-                        'N': '1'
-                    }
-                },
-                'Key': {
-                    'name': {
-                        'S': 'test_user_name'
-                    }
-                },
-                'ReturnConsumedCapacity': 'TOTAL',
-                'ReturnValues': 'ALL_NEW',
-                'TableName': 'VersionedModel',
-                'UpdateExpression': 'SET #1 = :1 ADD #0 :2'
             }
 
             deep_eq(args, params, _assert=True)
@@ -3509,3 +3279,237 @@ class ModelInitTestCase(TestCase):
         self.assertEqual(Foo._get_connection().table_name, Foo.Meta.table_name)
         self.assertEqual(Bar._get_connection().table_name, Bar.Meta.table_name)
         self.assertEqual(Baz._get_connection().table_name, Baz.Meta.table_name)
+
+
+@pytest.mark.parametrize('add_version_condition', [True, False])
+def test_model_version_attribute_save(add_version_condition: bool) -> None:
+    item = VersionedModel('test_user_name', email='test_user@email.com')
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {}
+        item.save(add_version_condition=add_version_condition)
+        args = req.call_args[0][1]
+        params = {
+            'Item': {
+                'name': {
+                    'S': 'test_user_name'
+                },
+                'email': {
+                    'S': 'test_user@email.com'
+                },
+                'version': {
+                    'N': '1'
+                },
+            },
+            'ReturnConsumedCapacity': 'TOTAL',
+            'TableName': 'VersionedModel',
+        }
+        if add_version_condition:
+            params.update({
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {'#0': 'version'},
+            })
+
+        assert args == params
+        deep_eq(args, params, _assert=True)
+        item.version = 1
+        item.name = "test_new_username"
+        item.save(add_version_condition=add_version_condition)
+        args = req.call_args[0][1]
+
+        params = {
+            'Item': {
+                'name': {
+                    'S': 'test_new_username'
+                },
+                'email': {
+                    'S': 'test_user@email.com'
+                },
+                'version': {
+                    'N': '2'
+                },
+            },
+            'ReturnConsumedCapacity': 'TOTAL',
+            'TableName': 'VersionedModel',
+        }
+        if add_version_condition:
+            params.update({
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {'#0': 'version'},
+                'ExpressionAttributeValues': {':0': {'N': '1'}}
+            })
+
+        assert args == params
+
+
+@pytest.mark.parametrize('add_version_condition', [True, False])
+def test_version_attribute_increments_on_update(add_version_condition: bool) -> None:
+    item = VersionedModel('test_user_name', email='test_user@email.com')
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {
+            ATTRIBUTES: {
+                'name': {
+                    'S': 'test_user_name'
+                },
+                'email': {
+                    'S': 'new@email.com'
+                },
+                'version': {
+                    'N': '1'
+                },
+            }
+        }
+        item.update(actions=[VersionedModel.email.set('new@email.com')], add_version_condition=add_version_condition)
+        args = req.call_args[0][1]
+        expected = {
+            'ExpressionAttributeValues': {
+                ':0': {
+                    'S': 'new@email.com'
+                },
+                ':1': {
+                    'N': '1'
+                }
+            },
+            'Key': {
+                'name': {
+                    'S': 'test_user_name'
+                }
+            },
+            'ReturnConsumedCapacity': 'TOTAL',
+            'ReturnValues': 'ALL_NEW',
+            'TableName': 'VersionedModel',
+        }
+        if add_version_condition:
+            expected.update({
+                'ConditionExpression': 'attribute_not_exists (#0)',
+                'ExpressionAttributeNames': {'#0': 'version', '#1': 'email'},
+                'UpdateExpression': 'SET #1 = :0, #0 = :1',
+            })
+        else:
+            expected.update({
+                'ExpressionAttributeNames': {'#0': 'email', '#1': 'version'},
+                'UpdateExpression': 'SET #0 = :0, #1 = :1',
+            })
+
+        assert args == expected
+        assert item.version == 1
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {
+            ATTRIBUTES: {
+                'name': {
+                    'S': 'test_user_name'
+                },
+                'email': {
+                    'S': 'newer@email.com'
+                },
+                'version': {
+                    'N': '2'
+                },
+            }
+        }
+
+        item.update(actions=[VersionedModel.email.set('newer@email.com')], add_version_condition=add_version_condition)
+        args = req.call_args[0][1]
+        expected = {
+            'Key': {
+                'name': {
+                    'S': 'test_user_name'
+                }
+            },
+            'ReturnConsumedCapacity': 'TOTAL',
+            'ReturnValues': 'ALL_NEW',
+            'TableName': 'VersionedModel',
+        }
+        if add_version_condition:
+            expected.update({
+                'ConditionExpression': '#0 = :0',
+                'ExpressionAttributeNames': {'#0': 'version', '#1': 'email'},
+                'ExpressionAttributeValues': {':0': {'N': '1'}, ':1': {'S': 'newer@email.com'}, ':2': {'N': '1'}},
+                'UpdateExpression': 'SET #1 = :1 ADD #0 :2',
+            })
+        else:
+            expected.update({
+                'ExpressionAttributeValues': {':0': {'S': 'newer@email.com'}, ':1': {'N': '1'}},
+                'ExpressionAttributeNames': {'#0': 'email', '#1': 'version'},
+                'UpdateExpression': 'SET #0 = :0 ADD #1 :1',
+            })
+
+        assert args == expected
+
+
+@pytest.mark.parametrize('add_version_condition', [True, False])
+def test_delete(add_version_condition: bool) -> None:
+    item = UserModel('foo', 'bar')
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = None
+        item.delete(add_version_condition=add_version_condition)
+        expected = {
+            'Key': {
+                'user_id': {
+                    'S': 'bar'
+                },
+                'user_name': {
+                    'S': 'foo'
+                }
+            },
+            'ReturnConsumedCapacity': 'TOTAL',
+            'TableName': 'UserModel'
+        }
+        args = req.call_args[0][1]
+        assert args == expected
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = None
+        item.delete(UserModel.user_id =='bar', add_version_condition=add_version_condition)
+        expected = {
+            'Key': {
+                'user_id': {
+                    'S': 'bar'
+                },
+                'user_name': {
+                    'S': 'foo'
+                }
+            },
+            'ConditionExpression': '#0 = :0',
+            'ExpressionAttributeNames': {
+                '#0': 'user_id'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {
+                    'S': 'bar'
+                }
+            },
+            'ReturnConsumedCapacity': 'TOTAL',
+            'TableName': 'UserModel'
+        }
+        args = req.call_args[0][1]
+        assert args == expected
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = None
+        item.delete(UserModel.user_id == 'bar', add_version_condition=add_version_condition)
+        expected = {
+            'Key': {
+                'user_id': {
+                    'S': 'bar'
+                },
+                'user_name': {
+                    'S': 'foo'
+                }
+            },
+            'ConditionExpression': '#0 = :0',
+            'ExpressionAttributeNames': {
+                '#0': 'user_id'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {
+                    'S': 'bar'
+                }
+            },
+            'ReturnConsumedCapacity': 'TOTAL',
+            'TableName': 'UserModel'
+        }
+        args = req.call_args[0][1]
+        assert args == expected

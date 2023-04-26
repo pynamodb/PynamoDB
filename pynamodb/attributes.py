@@ -624,7 +624,7 @@ class NumberSetAttribute(Attribute[Set[float]]):
 
 class VersionAttribute(NumberAttribute):
     """
-    A version attribute
+    A number attribute that implements :ref:`optimistic locking <optimistic_locking>`.
     """
     null = True
 
