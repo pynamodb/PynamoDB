@@ -395,26 +395,35 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         return BatchWrite(cls, auto_commit=auto_commit, settings=settings)
 
-    def delete(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
+    def delete(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default,
+               *, add_version_condition: bool = True) -> Any:
         """
-        Deletes this object from dynamodb
+        Deletes this object from DynamoDB.
 
+        :param add_version_condition: For models which have a :class:`~pynamodb.attributes.VersionAttribute`,
+          specifies whether the item should only be deleted if its current version matches the expected one.
+          Set to `False` for a 'delete anyway' strategy.
         :raises pynamodb.exceptions.DeleteError: If the record can not be deleted
         """
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
+
         version_condition = self._handle_version_attribute()
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
 
         return self._get_connection().delete_item(hk_value, range_key=rk_value, condition=condition, settings=settings)
 
-    def update(self, actions: List[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Any:
+    def update(self, actions: List[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default, *, add_version_condition: bool = True) -> Any:
         """
         Updates an item using the UpdateItem operation.
 
         :param actions: a list of Action updates to apply
         :param condition: an optional Condition on which to update
         :param settings: per-operation settings
+        :param add_version_condition: For models which have a :class:`~pynamodb.attributes.VersionAttribute`,
+          specifies whether only to update if the version matches the model that is currently loaded.
+          Set to `False` for a 'last write wins' strategy.
+          Regardless, the version will always be incremented to prevent "rollbacks" by concurrent :meth:`save` calls.
         :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         :raises pynamodb.exceptions.UpdateError: if the `condition` is not met
         """
@@ -423,7 +432,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
         version_condition = self._handle_version_attribute(actions=actions)
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
 
         data = self._get_connection().update_item(hk_value, range_key=rk_value, return_values=ALL_NEW, condition=condition, actions=actions, settings=settings)
@@ -434,11 +443,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         self.deserialize(item_data)
         return data
 
-    def save(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default) -> Dict[str, Any]:
+    def save(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default, *, add_version_condition: bool = True) -> Dict[str, Any]:
         """
         Save this object to dynamodb
         """
-        args, kwargs = self._get_save_args(condition=condition)
+        args, kwargs = self._get_save_args(condition=condition, add_version_condition=add_version_condition)
         kwargs['settings'] = settings
         data = self._get_connection().put_item(*args, **kwargs)
         self.update_local_version_attribute()
@@ -467,11 +476,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         actions: List[Action],
         condition: Optional[Condition] = None,
         return_values_on_condition_failure: Optional[str] = None,
+        *,
+        add_version_condition: bool = True,
     ) -> Dict[str, Any]:
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
 
         version_condition = self._handle_version_attribute(actions=actions)
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
 
         return self._get_connection().get_operation_kwargs(hk_value, range_key=rk_value, key=KEY, actions=actions, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
@@ -480,11 +491,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         self,
         condition: Optional[Condition] = None,
         return_values_on_condition_failure: Optional[str] = None,
+        *,
+        add_version_condition: bool = True,
     ) -> Dict[str, Any]:
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
 
         version_condition = self._handle_version_attribute()
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
 
         return self._get_connection().get_operation_kwargs(hk_value, range_key=rk_value, key=KEY, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
@@ -886,13 +899,16 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         return schema
 
-    def _get_save_args(self, condition: Optional[Condition] = None) -> Tuple[Iterable[Any], Dict[str, Any]]:
+    def _get_save_args(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Tuple[Iterable[Any], Dict[str, Any]]:
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
 
         This is used for serializing items to be saved.
 
         :param condition: If set, a condition
+        :param add_version_condition: For models which have a :class:`~pynamodb.attributes.VersionAttribute`,
+          specifies whether the item should only be saved if its current version matches the expected one.
+          Set to `False` for a 'last-write-wins' strategy.
         """
         attribute_values = self.serialize(null_check=True)
         hash_key_attribute = self._hash_key_attribute()
@@ -906,7 +922,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if range_key is not None:
             kwargs['range_key'] = range_key
         version_condition = self._handle_version_attribute(attributes=attribute_values)
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
         kwargs['attributes'] = attribute_values
         kwargs['condition'] = condition
