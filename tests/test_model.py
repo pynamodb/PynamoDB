@@ -1917,7 +1917,7 @@ class ModelTestCase(TestCase):
             items = [(f'hash-{x}', f'range-{x}') for x in range(10)]
             _ = list(UserModel.batch_get(items))
 
-            actual_keys = req.call_args.args[1]['RequestItems']['UserModel']['Keys']
+            actual_keys = req.call_args[0][1]['RequestItems']['UserModel']['Keys']
             actual_keys.sort(key=json.dumps)
             assert actual_keys == [
                 {'user_name': {'S': f'hash-{x}'}, 'user_id': {'S': f'range-{x}'}}
