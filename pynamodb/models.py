@@ -357,15 +357,23 @@ class Model(AttributeContainer, metaclass=MetaModel):
                         keys_to_get = []
             item = items.pop()
             if range_key_attribute:
-                hash_key, range_key = cls._serialize_keys(item[0], item[1])  # type: ignore
+                if isinstance(item, str):
+                    raise ValueError(f'Invalid key value {item!r}: '
+                                     'expected non-str iterable with exactly 2 elements (hash key, range key)')
+                try:
+                    hash_key, range_key = item
+                except (TypeError, ValueError):
+                    raise ValueError(f'Invalid key value {item!r}: '
+                                     'expected iterable with exactly 2 elements (hash key, range key)')
+                hash_key_ser, range_key_ser = cls._serialize_keys(hash_key, range_key)
                 keys_to_get.append({
-                    hash_key_attribute.attr_name: hash_key,
-                    range_key_attribute.attr_name: range_key
+                    hash_key_attribute.attr_name: hash_key_ser,
+                    range_key_attribute.attr_name: range_key_ser,
                 })
             else:
-                hash_key = cls._serialize_keys(item)[0]
+                hash_key_ser, _ = cls._serialize_keys(item)
                 keys_to_get.append({
-                    hash_key_attribute.attr_name: hash_key
+                    hash_key_attribute.attr_name: hash_key_ser
                 })
 
         while keys_to_get:
