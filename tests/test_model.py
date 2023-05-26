@@ -4,6 +4,7 @@ Test model API
 import base64
 import json
 import copy
+import re
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
@@ -1845,7 +1846,6 @@ class ModelTestCase(TestCase):
             }
             self.assertEqual(params, req.call_args[0][1])
 
-
         with patch(PATCH_METHOD) as req:
             item_keys = [('hash-{}'.format(x), '{}'.format(x)) for x in range(10)]
             item_keys_copy = list(item_keys)
@@ -1905,6 +1905,56 @@ class ModelTestCase(TestCase):
             item_keys = [('hash-{}'.format(x), '{}'.format(x)) for x in range(200)]
             for item in UserModel.batch_get(item_keys):
                 self.assertIsNotNone(item)
+
+    def test_batch_get__range_key(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                'UnprocessedKeys': {},
+                'Responses': {
+                    'UserModel': [],
+                }
+            }
+            items = [(f'hash-{x}', f'range-{x}') for x in range(10)]
+            _ = list(UserModel.batch_get(items))
+
+            actual_keys = req.call_args[0][1]['RequestItems']['UserModel']['Keys']
+            actual_keys.sort(key=json.dumps)
+            assert actual_keys == [
+                {'user_name': {'S': f'hash-{x}'}, 'user_id': {'S': f'range-{x}'}}
+                for x in range(10)
+            ]
+
+    def test_batch_get__range_key__invalid__string(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                'UnprocessedKeys': {},
+                'Responses': {
+                    'UserModel': [],
+                }
+            }
+            with pytest.raises(
+                ValueError,
+                match=re.escape(
+                    "Invalid key value 'ab': expected non-str iterable with exactly 2 elements (hash key, range key)"
+                )
+            ):
+                _ = list(UserModel.batch_get(['ab']))
+
+    def test_batch_get__range_key__invalid__3_elements(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                'UnprocessedKeys': {},
+                'Responses': {
+                    'UserModel': [],
+                }
+            }
+            with pytest.raises(
+                ValueError,
+                match=re.escape(
+                    "Invalid key value ('a', 'b', 'c'): expected iterable with exactly 2 elements (hash key, range key)"
+                )
+            ):
+                _ = list(UserModel.batch_get([('a', 'b', 'c')]))
 
     def test_batch_write(self):
         """
