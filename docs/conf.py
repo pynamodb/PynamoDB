@@ -35,7 +35,11 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.coverage',
+    'sphinx_issues',
 ]
+
+# Directive for sphinx_issues
+issues_github_path = "pynamodb/pynamodb"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -267,3 +271,7 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+autodoc_default_options = {
+    'members': True,
+}

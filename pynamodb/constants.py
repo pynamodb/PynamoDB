@@ -1,6 +1,11 @@
 """
 Pynamodb constants
 """
+import sys
+if sys.version_info >= (3, 8):
+    from typing import Final
+else:
+    from typing_extensions import Final
 
 # Operations
 TRANSACT_WRITE_ITEMS = 'TransactWriteItems'
@@ -41,8 +46,8 @@ ATTRS_TO_GET = 'AttributesToGet'
 TABLE_STATUS = 'TableStatus'
 TABLE_NAME = 'TableName'
 KEY_SCHEMA = 'KeySchema'
-ATTR_NAME = 'AttributeName'
-ATTR_TYPE = 'AttributeType'
+ATTR_NAME: Final = 'AttributeName'
+ATTR_TYPE: Final = 'AttributeType'
 ITEM_COUNT = 'ItemCount'
 CAMEL_COUNT = 'Count'
 PUT_REQUEST = 'PutRequest'
@@ -51,7 +56,7 @@ ATTRIBUTES = 'Attributes'
 TABLE_KEY = 'Table'
 RESPONSES = 'Responses'
 RANGE_KEY = 'RangeKey'
-KEY_TYPE = 'KeyType'
+KEY_TYPE: Final = 'KeyType'
 UPDATE = 'Update'
 SELECT = 'Select'
 ACTIVE = 'ACTIVE'
@@ -92,7 +97,7 @@ AVAILABLE_BILLING_MODES = [PROVISIONED_BILLING_MODE, PAY_PER_REQUEST_BILLING_MOD
 
 # Defaults
 DEFAULT_ENCODING = 'utf-8'
-DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
+DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 SERVICE_NAME = 'dynamodb'
 HTTP_OK = 200
 HTTP_BAD_REQUEST = 400
@@ -100,8 +105,8 @@ DEFAULT_BILLING_MODE = PROVISIONED_BILLING_MODE
 
 # Create Table arguments
 PROVISIONED_THROUGHPUT = 'ProvisionedThroughput'
-READ_CAPACITY_UNITS = 'ReadCapacityUnits'
-WRITE_CAPACITY_UNITS = 'WriteCapacityUnits'
+READ_CAPACITY_UNITS: Final = 'ReadCapacityUnits'
+WRITE_CAPACITY_UNITS: Final = 'WriteCapacityUnits'
 BILLING_MODE = 'BillingMode'
 
 # Attribute Types

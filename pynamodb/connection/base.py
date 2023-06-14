@@ -3,7 +3,6 @@ Lowest level connection
 """
 import logging
 import uuid
-from base64 import b64decode
 from threading import local
 from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
@@ -14,6 +13,7 @@ from botocore.exceptions import BotoCoreError
 from botocore.session import get_session
 
 from pynamodb.connection._botocore_private import BotocoreBaseClientPrivate
+from pynamodb._util import bin_decode_attr
 from pynamodb.constants import (
     RETURN_CONSUMED_CAPACITY_VALUES, RETURN_ITEM_COLL_METRICS_VALUES,
     RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY, RETURN_VALUES_VALUES,
@@ -25,9 +25,12 @@ from pynamodb.constants import (
     PUT_ITEM, SELECT, LIMIT, QUERY, SCAN, ITEM, LOCAL_SECONDARY_INDEXES,
     KEYS, KEY, SEGMENT, TOTAL_SEGMENTS, CREATE_TABLE, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS,
     WRITE_CAPACITY_UNITS, GLOBAL_SECONDARY_INDEXES, PROJECTION, EXCLUSIVE_START_TABLE_NAME, TOTAL,
-    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, CONSUMED_CAPACITY, CAPACITY_UNITS,
-    ATTRIBUTE_TYPES, DEFAULT_ENCODING, BINARY, BINARY_SET, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
-    EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES, CONDITION_EXPRESSION, FILTER_EXPRESSION,
+    DELETE_TABLE, UPDATE_TABLE, LIST_TABLES, GLOBAL_SECONDARY_INDEX_UPDATES, ATTRIBUTES,
+    CONSUMED_CAPACITY, CAPACITY_UNITS, ATTRIBUTE_TYPES,
+    ITEMS, LAST_EVALUATED_KEY, RESPONSES, UNPROCESSED_KEYS,
+    UNPROCESSED_ITEMS, STREAM_SPECIFICATION, STREAM_VIEW_TYPE, STREAM_ENABLED,
+    EXPRESSION_ATTRIBUTE_NAMES, EXPRESSION_ATTRIBUTE_VALUES,
+    CONDITION_EXPRESSION, FILTER_EXPRESSION,
     TRANSACT_WRITE_ITEMS, TRANSACT_GET_ITEMS, CLIENT_REQUEST_TOKEN, TRANSACT_ITEMS, TRANSACT_CONDITION_CHECK,
     TRANSACT_GET, TRANSACT_PUT, TRANSACT_DELETE, TRANSACT_UPDATE, UPDATE_EXPRESSION,
     RETURN_VALUES_ON_CONDITION_FAILURE_VALUES, RETURN_VALUES_ON_CONDITION_FAILURE,
@@ -37,7 +40,8 @@ from pynamodb.constants import (
 from pynamodb.exceptions import (
     TableError, QueryError, PutError, DeleteError, UpdateError, GetError, ScanError, TableDoesNotExist,
     VerboseClientError,
-    TransactGetError, TransactWriteError)
+    TransactGetError, TransactWriteError, CancellationReason,
+)
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Path
 from pynamodb.expressions.projection import create_projection_expression
@@ -67,6 +71,13 @@ class MetaTable(object):
         if self.data:
             return "MetaTable<{}>".format(self.data.get(TABLE_NAME))
         return ""
+
+    @property
+    def table_name(self) -> str:
+        """
+        Returns the table name
+        """
+        return self.data[TABLE_NAME]
 
     @property
     def range_keyname(self) -> Optional[str]:
@@ -237,7 +248,10 @@ class Connection(object):
                  connect_timeout_seconds: Optional[float] = None,
                  max_retry_attempts: Optional[int] = None,
                  max_pool_connections: Optional[int] = None,
-                 extra_headers: Optional[Mapping[str, str]] = None):
+                 extra_headers: Optional[Mapping[str, str]] = None,
+                 aws_access_key_id: Optional[str] = None,
+                 aws_secret_access_key: Optional[str] = None,
+                 aws_session_token: Optional[str] = None):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
@@ -272,6 +286,10 @@ class Connection(object):
             self._extra_headers = extra_headers
         else:
             self._extra_headers = get_settings_value('extra_headers')
+
+        self._aws_access_key_id = aws_access_key_id
+        self._aws_secret_access_key = aws_secret_access_key
+        self._aws_session_token = aws_session_token
 
     def __repr__(self) -> str:
         return "Connection<{}>".format(self.client.meta.endpoint_url)
@@ -323,13 +341,27 @@ class Connection(object):
             return self.client._make_api_call(operation_name, operation_kwargs)
         except ClientError as e:
             resp_metadata = e.response.get('ResponseMetadata', {}).get('HTTPHeaders', {})
+            cancellation_reasons = e.response.get('CancellationReasons', [])
 
             botocore_props = {'Error': e.response.get('Error', {})}
             verbose_props = {
                 'request_id': resp_metadata.get('x-amzn-requestid', ''),
                 'table_name': self._get_table_name_for_error_context(operation_kwargs),
             }
-            raise VerboseClientError(botocore_props, operation_name, verbose_props) from e
+            raise VerboseClientError(
+                botocore_props,
+                operation_name,
+                verbose_props,
+                cancellation_reasons=(
+                    (
+                        CancellationReason(
+                            code=d['Code'],
+                            message=d.get('Message'),
+                        ) if d['Code'] != 'None' else None
+                    )
+                    for d in cancellation_reasons
+                ),
+            ) from e
 
     def _get_table_name_for_error_context(self, operation_kwargs) -> str:
         # First handle the two multi-table cases: batch and transaction operations
@@ -351,6 +383,10 @@ class Connection(object):
         # botocore client creation is not thread safe as of v1.2.5+ (see issue #153)
         if getattr(self._local, 'session', None) is None:
             self._local.session = get_session()
+            if self._aws_access_key_id and self._aws_secret_access_key:
+                self._local.session.set_credentials(self._aws_access_key_id,
+                                                        self._aws_secret_access_key,
+                                                        self._aws_session_token)
         return self._local.session
 
     @property
@@ -378,25 +414,22 @@ class Connection(object):
             self._client.meta.events.register_first('before-sign.*.*', self._before_sign)
         return self._client
 
-    def get_meta_table(self, table_name: str, refresh: bool = False):
+    def add_meta_table(self, meta_table: MetaTable) -> None:
         """
-        Returns a MetaTable
+        Adds information about the table's schema.
         """
-        if table_name not in self._tables or refresh:
-            operation_kwargs = {
-                TABLE_NAME: table_name
-            }
-            try:
-                data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
-                self._tables[table_name] = MetaTable(data.get(TABLE_KEY))
-            except BotoCoreError as e:
-                raise TableError("Unable to describe table: {}".format(e), e)
-            except ClientError as e:
-                if 'ResourceNotFound' in e.response['Error']['Code']:
-                    raise TableDoesNotExist(e.response['Error']['Message'])
-                else:
-                    raise
-        return self._tables[table_name]
+        if meta_table.table_name in self._tables:
+            raise ValueError(f"Meta-table for '{meta_table.table_name}' already added")
+        self._tables[meta_table.table_name] = meta_table
+
+    def get_meta_table(self, table_name: str) -> MetaTable:
+        """
+        Returns information about the table's schema.
+        """
+        try:
+            return self._tables[table_name]
+        except KeyError:
+            raise TableError(f"Meta-table for '{table_name}' not initialized") from None
 
     def create_table(
         self,
@@ -427,8 +460,8 @@ class Connection(object):
             raise ValueError("attribute_definitions argument is required")
         for attr in attribute_definitions:
             attrs_list.append({
-                ATTR_NAME: attr.get('attribute_name'),
-                ATTR_TYPE: attr.get('attribute_type')
+                ATTR_NAME: attr.get(ATTR_NAME) or attr['attribute_name'],
+                ATTR_TYPE: attr.get(ATTR_TYPE) or attr['attribute_type']
             })
         operation_kwargs[ATTR_DEFINITIONS] = attrs_list
 
@@ -458,8 +491,8 @@ class Connection(object):
         key_schema_list = []
         for item in key_schema:
             key_schema_list.append({
-                ATTR_NAME: item.get('attribute_name'),
-                KEY_TYPE: str(item.get('key_type')).upper()
+                ATTR_NAME: item.get(ATTR_NAME) or item['attribute_name'],
+                KEY_TYPE: str(item.get(KEY_TYPE) or item['key_type']).upper()
             })
         operation_kwargs[KEY_SCHEMA] = sorted(key_schema_list, key=lambda x: x.get(KEY_TYPE))
 
@@ -586,13 +619,26 @@ class Connection(object):
         """
         Performs the DescribeTable operation
         """
+        operation_kwargs = {
+            TABLE_NAME: table_name
+        }
         try:
-            tbl = self.get_meta_table(table_name, refresh=True)
-            if tbl:
-                return tbl.data
-        except ValueError:
-            pass
-        raise TableDoesNotExist(table_name)
+            data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
+            table_data = data.get(TABLE_KEY)
+            # For compatibility with existing code which uses Connection directly,
+            # we can let DescribeTable set the meta table.
+            if table_data:
+                meta_table = MetaTable(table_data)
+                if meta_table.table_name not in self._tables:
+                    self.add_meta_table(meta_table)
+            return table_data
+        except BotoCoreError as e:
+            raise TableError("Unable to describe table: {}".format(e), e)
+        except ClientError as e:
+            if 'ResourceNotFound' in e.response['Error']['Code']:
+                raise TableDoesNotExist(e.response['Error']['Message'])
+            else:
+                raise
 
     def get_item_attribute_map(
         self,
@@ -1174,12 +1220,3 @@ class Connection(object):
     @staticmethod
     def _reverse_dict(d):
         return {v: k for k, v in d.items()}
-
-
-def _convert_binary(attr):
-    if BINARY in attr:
-        attr[BINARY] = b64decode(attr[BINARY].encode(DEFAULT_ENCODING))
-    elif BINARY_SET in attr:
-        value = attr[BINARY_SET]
-        if value and len(value):
-            attr[BINARY_SET] = {b64decode(v.encode(DEFAULT_ENCODING)) for v in value}

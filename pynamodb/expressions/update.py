@@ -1,3 +1,4 @@
+from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -20,6 +21,18 @@ class Action:
 
     def __init__(self, *values: '_Operand') -> None:
         self.values = values
+
+    def __eq__(self, other: Any) -> bool:
+        return (
+            type(self) is type(other)
+            and len(self.values) == len(other.values)
+            and all(
+                (
+                    type(v1) is type(v2)
+                    and v1._equals_to(v2)
+                )
+                for v1, v2 in zip(self.values, other.values))
+        )
 
     def serialize(self, placeholder_names: Dict[str, str], expression_attribute_values: Dict[str, str]) -> str:
         values = [value.serialize(placeholder_names, expression_attribute_values) for value in self.values]

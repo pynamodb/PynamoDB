@@ -30,9 +30,9 @@ Installation
     $ pip install pynamodb
 
 
-Don't have pip? `Here are instructions for installing pip <https://pip.readthedocs.io/en/latest/installing.html>`_.
+Don't have pip? `Here are instructions for installing pip <https://pip.pypa.io/en/latest/installing/>`_.
 
-Alternatively, if you are running `Anaconda or miniconda <https://www.anaconda.com/distribution/#download-section>`_, use:
+Alternatively, if you are running `Anaconda or miniconda <https://www.anaconda.com/products/distribution>`_, use:
 
 ::
 
@@ -45,7 +45,7 @@ Getting Started
 PynamoDB provides three API levels, a ``Connection``, a ``TableConnection``, and a ``Model``.
 Each API is built on top of the previous, and adds higher level features. Each API level is
 fully featured, and can be used directly. Before you begin, you should already have an
-`Amazon Web Services account <http://aws.amazon.com/>`__, and have your
+`Amazon Web Services account <https://aws.amazon.com/>`__, and have your
 `AWS credentials configured your boto <https://boto.readthedocs.io/en/latest/boto_config_tut.html>`__.
 
 Defining a Model
@@ -55,7 +55,7 @@ The most powerful feature of PynamoDB is the ``Model`` API. You start using it b
 class that inherits from ``pynamodb.models.Model``. Then, you add attributes to the model that
 inherit from ``pynamodb.attributes.Attribute``. The most common attributes have already been defined for you.
 
-Here is an example, using the same table structure as shown in `Amazon's DynamoDB Thread example <http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleTablesAndData.html>`__.
+Here is an example, using the same table structure as shown in `Amazon's DynamoDB Thread example <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/AppendixSampleTables.html>`__.
 
 .. note::
 
@@ -126,7 +126,7 @@ can even be a function.
 
 .. note::
 
-    `DynamoDB will not store empty attributes <http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html>`_.
+    `DynamoDB will not store empty attributes <https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html>`_.
     By default, an ``Attribute`` cannot be ``None`` unless you specify ``null=True`` in the
     attribute constructor.
 
@@ -295,7 +295,7 @@ Update actions use the update expression syntax (see :ref:`updates`).
 
 .. deprecated:: 2.0
 
-    :func:`update_item` is replaced with :func:`update`
+    :code:`update_item` is replaced with :func:`~pynamodb.models.Model.update`
 
 
 .. code-block:: python

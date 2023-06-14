@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Dict, Iterable, Iterator, TypeVar, Optional
+from typing import Any, Callable, Dict, Iterable, Iterator, Optional, TypeVar
 
 from pynamodb.constants import (CAMEL_COUNT, ITEMS, LAST_EVALUATED_KEY, SCANNED_COUNT,
                                 CONSUMED_CAPACITY, TOTAL, CAPACITY_UNITS)
@@ -75,8 +75,8 @@ class PageIterator(Iterator[_T]):
     """
     PageIterator handles Query and Scan result pagination.
 
-    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.html#Query.Pagination
-    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Pagination
+    https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.Pagination.html
+    https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Pagination
     """
     def __init__(
         self,
@@ -88,8 +88,8 @@ class PageIterator(Iterator[_T]):
         self._operation = operation
         self._args = args
         self._kwargs = kwargs
-        self._first_iteration = True
         self._last_evaluated_key = kwargs.get('exclusive_start_key')
+        self._is_last_page = False
         self._total_scanned_count = 0
         self._rate_limiter = None
         if rate_limit:
@@ -99,10 +99,8 @@ class PageIterator(Iterator[_T]):
         return self
 
     def __next__(self) -> _T:
-        if self._last_evaluated_key is None and not self._first_iteration:
+        if self._is_last_page:
             raise StopIteration()
-
-        self._first_iteration = False
 
         self._kwargs['exclusive_start_key'] = self._last_evaluated_key
 
@@ -111,6 +109,7 @@ class PageIterator(Iterator[_T]):
             self._kwargs['return_consumed_capacity'] = TOTAL
         page = self._operation(*self._args, **self._kwargs)
         self._last_evaluated_key = page.get(LAST_EVALUATED_KEY)
+        self._is_last_page = self._last_evaluated_key is None
         self._total_scanned_count += page[SCANNED_COUNT]
 
         if self._rate_limiter:
@@ -153,8 +152,8 @@ class ResultIterator(Iterator[_T]):
     """
     ResultIterator handles Query and Scan item pagination.
 
-    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.html#Query.Pagination
-    http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Pagination
+    https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.Pagination.html
+    https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Pagination
     """
     def __init__(
         self,
@@ -166,10 +165,11 @@ class ResultIterator(Iterator[_T]):
         rate_limit: Optional[float] = None,
     ) -> None:
         self.page_iter: PageIterator = PageIterator(operation, args, kwargs, rate_limit)
-        self._first_iteration = True
         self._map_fn = map_fn
         self._limit = limit
         self._total_count = 0
+        self._index = 0
+        self._count = 0
 
     def _get_next_page(self) -> None:
         page = next(self.page_iter)
@@ -184,10 +184,6 @@ class ResultIterator(Iterator[_T]):
     def __next__(self) -> _T:
         if self._limit == 0:
             raise StopIteration
-
-        if self._first_iteration:
-            self._first_iteration = False
-            self._get_next_page()
 
         while self._index == self._count:
             self._get_next_page()
@@ -205,7 +201,7 @@ class ResultIterator(Iterator[_T]):
 
     @property
     def last_evaluated_key(self) -> Optional[Dict[str, Dict[str, Any]]]:
-        if self._first_iteration or self._index == self._count:
+        if self._index == self._count:
             # Not started iterating yet: return `exclusive_start_key` if set, otherwise expect None; or,
             # Entire page has been consumed: last_evaluated_key is whatever DynamoDB returned
             # It may correspond to the current item, or it may correspond to an item evaluated but not returned.

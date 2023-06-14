@@ -28,4 +28,4 @@ class BotocoreBaseClientPrivate(botocore.client.BaseClient):
         operation_name: str,
         operation_kwargs: Dict,
     ) -> Dict:
-        ...
+        raise NotImplementedError

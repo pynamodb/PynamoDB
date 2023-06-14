@@ -1,7 +1,6 @@
 """
 DynamoDB Models for PynamoDB
 """
-import json
 import random
 import time
 import logging
@@ -25,6 +24,9 @@ from typing import TypeVar
 from typing import Union
 from typing import cast
 
+from pynamodb._schema import ModelSchema
+from pynamodb.connection.base import MetaTable
+
 if sys.version_info >= (3, 8):
     from typing import Protocol
 else:
@@ -39,25 +41,22 @@ from pynamodb.attributes import (
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
 from pynamodb.types import HASH, RANGE
-from pynamodb.indexes import Index, GlobalSecondaryIndex
+from pynamodb.indexes import Index
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import get_settings_value
+from pynamodb import constants
 from pynamodb.constants import (
-    ATTR_DEFINITIONS, ATTR_NAME, ATTR_TYPE, KEY_SCHEMA,
-    KEY_TYPE, ITEM, READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
-    RANGE_KEY, ATTRIBUTES, PUT, DELETE, RESPONSES,
-    INDEX_NAME, PROVISIONED_THROUGHPUT, PROJECTION, ALL_NEW,
-    GLOBAL_SECONDARY_INDEXES, LOCAL_SECONDARY_INDEXES, KEYS,
-    PROJECTION_TYPE, NON_KEY_ATTRIBUTES,
-    TABLE_STATUS, ACTIVE, RETURN_VALUES, BATCH_GET_PAGE_LIMIT,
+    ATTR_NAME, ATTR_TYPE,
+    KEY_TYPE, ITEM,
+    ATTRIBUTES, PUT, DELETE, RESPONSES,
+    ALL_NEW,
+    KEYS,
+    TABLE_STATUS, ACTIVE, BATCH_GET_PAGE_LIMIT,
     UNPROCESSED_KEYS, PUT_REQUEST, DELETE_REQUEST,
     BATCH_WRITE_PAGE_LIMIT,
     META_CLASS_NAME, REGION, HOST, NULL,
-    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS, STREAM_VIEW_TYPE,
-    STREAM_SPECIFICATION, STREAM_ENABLED, BILLING_MODE, PAY_PER_REQUEST_BILLING_MODE, TAGS
+    COUNT, ITEM_COUNT, KEY, UNPROCESSED_ITEMS,
 )
-from pynamodb.util import attribute_value_to_json
-from pynamodb.util import json_to_attribute_value
 
 _T = TypeVar('_T', bound='Model')
 _KeyType = Any
@@ -281,7 +280,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
     Defines a `PynamoDB` Model
 
     This model is backed by a table in DynamoDB.
-    You can create the table by with the ``create_table`` method.
+    You can create the table with the ``create_table`` method.
     """
 
     # These attributes are named to avoid colliding with user defined
@@ -350,15 +349,23 @@ class Model(AttributeContainer, metaclass=MetaModel):
                         keys_to_get = []
             item = items.pop()
             if range_key_attribute:
-                hash_key, range_key = cls._serialize_keys(item[0], item[1])  # type: ignore
+                if isinstance(item, str):
+                    raise ValueError(f'Invalid key value {item!r}: '
+                                     'expected non-str iterable with exactly 2 elements (hash key, range key)')
+                try:
+                    hash_key, range_key = item
+                except (TypeError, ValueError):
+                    raise ValueError(f'Invalid key value {item!r}: '
+                                     'expected iterable with exactly 2 elements (hash key, range key)')
+                hash_key_ser, range_key_ser = cls._serialize_keys(hash_key, range_key)
                 keys_to_get.append({
-                    hash_key_attribute.attr_name: hash_key,
-                    range_key_attribute.attr_name: range_key
+                    hash_key_attribute.attr_name: hash_key_ser,
+                    range_key_attribute.attr_name: range_key_ser,
                 })
             else:
-                hash_key = cls._serialize_keys(item)[0]
+                hash_key_ser, _ = cls._serialize_keys(item)
                 keys_to_get.append({
-                    hash_key_attribute.attr_name: hash_key
+                    hash_key_attribute.attr_name: hash_key_ser
                 })
 
         while keys_to_get:
@@ -387,34 +394,34 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         return BatchWrite(cls, auto_commit=auto_commit)
 
-    def __repr__(self) -> str:
-        hash_key, range_key = self._get_serialized_keys()
-        if self._range_keyname:
-            msg = "{}<{}, {}>".format(self.Meta.table_name, hash_key, range_key)
-        else:
-            msg = "{}<{}>".format(self.Meta.table_name, hash_key)
-        return msg
-
-    def delete(self, condition: Optional[Condition] = None) -> Any:
+    def delete(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Any:
         """
-        Deletes this object from dynamodb
+        Deletes this object from DynamoDB.
 
+        :param add_version_condition: For models which have a :class:`~pynamodb.attributes.VersionAttribute`,
+          specifies whether the item should only be deleted if its current version matches the expected one.
+          Set to `False` for a 'delete anyway' strategy.
         :raises pynamodb.exceptions.DeleteError: If the record can not be deleted
         """
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
+
         version_condition = self._handle_version_attribute()
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
 
         return self._get_connection().delete_item(hk_value, range_key=rk_value, condition=condition)
 
-    def update(self, actions: List[Action], condition: Optional[Condition] = None) -> Any:
+    def update(self, actions: List[Action], condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Any:
         """
         Updates an item using the UpdateItem operation.
 
         :param actions: a list of Action updates to apply
         :param condition: an optional Condition on which to update
         :param settings: per-operation settings
+        :param add_version_condition: For models which have a :class:`~pynamodb.attributes.VersionAttribute`,
+          specifies whether only to update if the version matches the model that is currently loaded.
+          Set to `False` for a 'last write wins' strategy.
+          Regardless, the version will always be incremented to prevent "rollbacks" by concurrent :meth:`save` calls.
         :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         :raises pynamodb.exceptions.UpdateError: if the `condition` is not met
         """
@@ -423,7 +430,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
         version_condition = self._handle_version_attribute(actions=actions)
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
 
         data = self._get_connection().update_item(hk_value, range_key=rk_value, return_values=ALL_NEW, condition=condition, actions=actions)
@@ -434,11 +441,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         self.deserialize(item_data)
         return data
 
-    def save(self, condition: Optional[Condition] = None) -> Dict[str, Any]:
+    def save(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Dict[str, Any]:
         """
         Save this object to dynamodb
         """
-        args, kwargs = self._get_save_args(condition=condition)
+        args, kwargs = self._get_save_args(condition=condition, add_version_condition=add_version_condition)
         data = self._get_connection().put_item(*args, **kwargs)
         self.update_local_version_attribute()
         return data
@@ -466,11 +473,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         actions: List[Action],
         condition: Optional[Condition] = None,
         return_values_on_condition_failure: Optional[str] = None,
+        *,
+        add_version_condition: bool = True,
     ) -> Dict[str, Any]:
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
 
         version_condition = self._handle_version_attribute(actions=actions)
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
 
         return self._get_connection().get_operation_kwargs(hk_value, range_key=rk_value, key=KEY, actions=actions, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
@@ -479,11 +488,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         self,
         condition: Optional[Condition] = None,
         return_values_on_condition_failure: Optional[str] = None,
+        *,
+        add_version_condition: bool = True,
     ) -> Dict[str, Any]:
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
 
         version_condition = self._handle_version_attribute()
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
 
         return self._get_connection().get_operation_kwargs(hk_value, range_key=rk_value, key=KEY, condition=condition, return_values_on_condition_failure=return_values_on_condition_failure)
@@ -781,27 +792,33 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         if not cls.exists():
             schema = cls._get_schema()
+            operation_kwargs: Dict[str, Any] = {
+                'attribute_definitions': schema['attribute_definitions'],
+                'key_schema': schema['key_schema'],
+                'global_secondary_indexes': schema['global_secondary_indexes'],
+                'local_secondary_indexes': schema['local_secondary_indexes'],
+            }
             if hasattr(cls.Meta, 'read_capacity_units'):
-                schema['read_capacity_units'] = cls.Meta.read_capacity_units
+                operation_kwargs['read_capacity_units'] = cls.Meta.read_capacity_units
             if hasattr(cls.Meta, 'write_capacity_units'):
-                schema['write_capacity_units'] = cls.Meta.write_capacity_units
+                operation_kwargs['write_capacity_units'] = cls.Meta.write_capacity_units
             if hasattr(cls.Meta, 'stream_view_type'):
-                schema['stream_specification'] = {
+                operation_kwargs['stream_specification'] = {
                     'stream_enabled': True,
                     'stream_view_type': cls.Meta.stream_view_type
                 }
             if hasattr(cls.Meta, 'billing_mode'):
-                schema['billing_mode'] = cls.Meta.billing_mode
+                operation_kwargs['billing_mode'] = cls.Meta.billing_mode
             if hasattr(cls.Meta, 'tags'):
-                schema['tags'] = cls.Meta.tags
+                operation_kwargs['tags'] = cls.Meta.tags
             if read_capacity_units is not None:
-                schema['read_capacity_units'] = read_capacity_units
+                operation_kwargs['read_capacity_units'] = read_capacity_units
             if write_capacity_units is not None:
-                schema['write_capacity_units'] = write_capacity_units
+                operation_kwargs['write_capacity_units'] = write_capacity_units
             if billing_mode is not None:
-                schema['billing_mode'] = billing_mode
+                operation_kwargs['billing_mode'] = billing_mode
             cls._get_connection().create_table(
-                **schema
+                **operation_kwargs
             )
         if wait:
             while True:
@@ -837,11 +854,12 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
     # Private API below
     @classmethod
-    def _get_schema(cls) -> Dict[str, Any]:
+    def _get_schema(cls) -> ModelSchema:
         """
         Returns the schema for this table
         """
-        schema: Dict[str, List] = {
+
+        schema: ModelSchema = {
             'attribute_definitions': [],
             'key_schema': [],
             'global_secondary_indexes': [],
@@ -850,47 +868,36 @@ class Model(AttributeContainer, metaclass=MetaModel):
         for attr_name, attr_cls in cls.get_attributes().items():
             if attr_cls.is_hash_key or attr_cls.is_range_key:
                 schema['attribute_definitions'].append({
-                    'attribute_name': attr_cls.attr_name,
-                    'attribute_type': attr_cls.attr_type
+                    ATTR_NAME: attr_cls.attr_name,
+                    ATTR_TYPE: attr_cls.attr_type
                 })
-            if attr_cls.is_hash_key:
                 schema['key_schema'].append({
-                    'key_type': HASH,
-                    'attribute_name': attr_cls.attr_name
+                    KEY_TYPE: HASH if attr_cls.is_hash_key else RANGE,
+                    ATTR_NAME: attr_cls.attr_name
                 })
-            elif attr_cls.is_range_key:
-                schema['key_schema'].append({
-                    'key_type': RANGE,
-                    'attribute_name': attr_cls.attr_name
-                })
-        for index in cls._indexes.values():
-            index_schema = index._get_schema()
-            if isinstance(index, GlobalSecondaryIndex):
-                if getattr(cls.Meta, 'billing_mode', None) == PAY_PER_REQUEST_BILLING_MODE:
-                    index_schema.pop('provisioned_throughput', None)
-                schema['global_secondary_indexes'].append(index_schema)
-            else:
-                schema['local_secondary_indexes'].append(index_schema)
-        attr_names = {key_schema[ATTR_NAME]
-                      for index_schema in (*schema['global_secondary_indexes'], *schema['local_secondary_indexes'])
-                      for key_schema in index_schema['key_schema']}
-        attr_keys = {attr.get('attribute_name') for attr in schema['attribute_definitions']}
-        for attr_name in attr_names:
-            if attr_name not in attr_keys:
-                attr_cls = cls.get_attributes()[cls._dynamo_to_python_attr(attr_name)]
-                schema['attribute_definitions'].append({
-                    'attribute_name': attr_cls.attr_name,
-                    'attribute_type': attr_cls.attr_type
-                })
+
+        indexes = cls._indexes.copy()
+        # add indexes from derived classes that we might initialize
+        discriminator_attr = cls._get_discriminator_attribute()
+        if discriminator_attr is not None:
+            for model_cls in discriminator_attr.get_registered_subclasses(Model):
+                indexes.update(model_cls._indexes)
+
+        for index in indexes.values():
+            index._update_model_schema(schema)
+
         return schema
 
-    def _get_save_args(self, condition: Optional[Condition] = None) -> Tuple[Iterable[Any], Dict[str, Any]]:
+    def _get_save_args(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Tuple[Iterable[Any], Dict[str, Any]]:
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
 
         This is used for serializing items to be saved.
 
         :param condition: If set, a condition
+        :param add_version_condition: For models which have a :class:`~pynamodb.attributes.VersionAttribute`,
+          specifies whether the item should only be saved if its current version matches the expected one.
+          Set to `False` for a 'last-write-wins' strategy.
         """
         attribute_values = self.serialize(null_check=True)
         hash_key_attribute = self._hash_key_attribute()
@@ -904,7 +911,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if range_key is not None:
             kwargs['range_key'] = range_key
         version_condition = self._handle_version_attribute(attributes=attribute_values)
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
         kwargs['attributes'] = attribute_values
         kwargs['condition'] = condition
@@ -1043,7 +1050,28 @@ class Model(AttributeContainer, metaclass=MetaModel):
         # For now we just check that the connection exists and (in the case of model inheritance)
         # points to the same table. In the future we should update the connection if any of the attributes differ.
         if cls._connection is None or cls._connection.table_name != cls.Meta.table_name:
+            schema = cls._get_schema()
+            meta_table = MetaTable({
+                constants.TABLE_NAME: cls.Meta.table_name,
+                constants.KEY_SCHEMA: schema['key_schema'],
+                constants.ATTR_DEFINITIONS: schema['attribute_definitions'],
+                constants.GLOBAL_SECONDARY_INDEXES: [
+                    {
+                        constants.INDEX_NAME: index_schema['index_name'],
+                        constants.KEY_SCHEMA: index_schema['key_schema'],
+                    }
+                    for index_schema in schema['global_secondary_indexes']
+                ],
+                constants.LOCAL_SECONDARY_INDEXES: [
+                    {
+                        constants.INDEX_NAME: index_schema['index_name'],
+                        constants.KEY_SCHEMA: index_schema['key_schema'],
+                    }
+                    for index_schema in schema['local_secondary_indexes']
+                ],
+            })
             cls._connection = TableConnection(cls.Meta.table_name,
+                                              meta_table=meta_table,
                                               region=cls.Meta.region,
                                               host=cls.Meta.host,
                                               connect_timeout_seconds=cls.Meta.connect_timeout_seconds,
@@ -1089,49 +1117,22 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
     def serialize(self, null_check: bool = True) -> Dict[str, Dict[str, Any]]:
         """
-        Serialize attribute values for DynamoDB API.
-        See :func:`~pynamodb.models.Model.to_dict` for a simple JSON-serializable dict.
+        Serializes a model for botocore's DynamoDB client.
+
+        .. warning::
+            BINARY and BINARY_SET attributes (whether top-level or nested) serialization would contain
+            :code:`bytes` objects which are not JSON-serializable by the :code:`json` module.
+
+            Use :meth:`~pynamodb.attributes.AttributeContainer.to_dynamodb_dict`
+            and :meth:`~pynamodb.attributes.AttributeContainer.to_simple_dict` for JSON-serializable mappings.
         """
         return self._container_serialize(null_check=null_check)
 
     def deserialize(self, attribute_values: Dict[str, Dict[str, Any]]) -> None:
         """
-        Sets attributes sent back from DynamoDB on this object.
-        Use :func:`~pynamodb.models.Model.from_dict` to set attributes from a dict
-        previously produced by :func:`~pynamodb.models.Model.to_dict`.
+        Deserializes a model from botocore's DynamoDB client.
         """
         return self._container_deserialize(attribute_values=attribute_values)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Returns the contents of this instance as a JSON-serializable dict.
-        See :func:`~pynamodb.models.Model.serialize` if you need to serialize
-        into a DynamoDB record.
-        """
-        return {k: attribute_value_to_json(v) for k, v in self.serialize().items()}
-
-    def to_json(self) -> str:
-        """
-        Returns the contents of this instance as serialized JSON (not in DynamoDB Record format).
-        """
-        return json.dumps(self.to_dict())
-
-    def from_dict(self, d: Dict[str, Any]) -> None:
-        """
-        Sets attributes from a dict previously produced by :func:`~pynamodb.models.Model.to_dict`.
-        Use :func:`~pynamodb.models.Model.deserialize` if the dict is a DynamoDB Record
-        (e.g. from a DynamoDB API response or DynamoDB Streams).
-        """
-        attribute_values = {
-            k: json_to_attribute_value(v) for k, v in d.items()}
-        self._update_attribute_types(attribute_values)
-        self.deserialize(attribute_values)
-
-    def from_json(self, s: str) -> None:
-        """
-        Sets attributes from a dict previously produced by :func:`~pynamodb.models.Model.to_json`.
-        """
-        self.from_dict(json.loads(s))
 
 
 class _ModelFuture(Generic[_T]):

@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 install_requires = [
     'botocore>=1.12.54',
-    'typing-extensions>=3.7; python_version<"3.8"'
+    'typing-extensions>=4; python_version<"3.11"',
 ]
 
 setup(
@@ -18,6 +18,7 @@ setup(
     author_email='jlafon@eyesopen.com',
     description='A Pythonic Interface to DynamoDB',
     long_description=open('README.rst').read(),
+    long_description_content_type='text/x-rst',
     zip_safe=False,
     license='MIT',
     keywords='python dynamodb amazon',

@@ -8,6 +8,8 @@ from base64 import b64encode
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
+from typing import List
+from typing import Set
 
 from unittest.mock import patch, call
 import pytest
@@ -15,12 +17,17 @@ import pytest
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, DynamicMapAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute, NullAttribute,
-    ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute)
+    ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute, Attribute)
 from pynamodb.constants import (
-    DATETIME_FORMAT, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
+    NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, BOOLEAN,
 )
 from pynamodb.models import Model
+
+
+class AttributeTestMapAttribute(MapAttribute):
+    string = UnicodeAttribute()
+    binary = BinaryAttribute(legacy_encoding=False)
 
 
 class AttributeTestModel(Model):
@@ -29,8 +36,8 @@ class AttributeTestModel(Model):
         host = 'http://localhost:8000'
         table_name = 'test'
 
-    binary_attr = BinaryAttribute(hash_key=True)
-    binary_set_attr = BinarySetAttribute()
+    binary_attr = BinaryAttribute(hash_key=True, legacy_encoding=False)
+    binary_set_attr = BinarySetAttribute(legacy_encoding=False)
     number_attr = NumberAttribute()
     number_set_attr = NumberSetAttribute()
     unicode_attr = UnicodeAttribute()
@@ -38,7 +45,8 @@ class AttributeTestModel(Model):
     datetime_attr = UTCDateTimeAttribute()
     bool_attr = BooleanAttribute()
     json_attr = JSONAttribute()
-    map_attr = MapAttribute()
+    map_attr = AttributeTestMapAttribute()
+    raw_map_attr = MapAttribute()
     ttl_attr = TTLAttribute()
     null_attr = NullAttribute(null=True)
 
@@ -49,7 +57,7 @@ class CustomAttrMap(MapAttribute):
 
 
 class DefaultsMap(MapAttribute):
-    map_field = MapAttribute(default={})
+    map_field = MapAttribute(default=dict)
     string_set_field = UnicodeSetAttribute(null=True)
 
 
@@ -57,7 +65,7 @@ class TestAttributeDescriptor:
     """
     Test Attribute Descriptors
     """
-    def setup(self):
+    def setup_method(self):
         self.instance = AttributeTestModel()
 
     def test_binary_attr(self):
@@ -125,12 +133,34 @@ class TestAttributeDescriptor:
         assert self.instance.json_attr == {'foo': 'bar', 'bar': 42}
 
 
+class TestDefault:
+    def test_default(self):
+        Attribute(default='test')
+        Attribute(default_for_new='test')
+
+        with pytest.raises(ValueError, match="'default' must be immutable (.*) or a callable"):
+            Attribute(default=[])
+
+        with pytest.raises(ValueError, match="'default_for_new' must be immutable (.*) or a callable"):
+            Attribute(default_for_new=[])
+
+        Attribute(default=list)
+        Attribute(default_for_new=list)
+
+        with pytest.raises(ValueError, match="An attribute cannot have both default and default_for_new parameters"):
+            Attribute(default='test', default_for_new='test')
+
+        with pytest.raises(ValueError, match="An attribute cannot have both default and default_for_new parameters"):
+            Attribute(default=False, default_for_new='test')
+
+
+
 class TestUTCDateTimeAttribute:
     """
     Tests UTCDateTime attributes
     """
 
-    def setup(self):
+    def setup_method(self):
         self.attr = UTCDateTimeAttribute()
         self.dt = datetime(2047, 1, 6, 8, 21, 30, 2000, tzinfo=timezone.utc)
 
@@ -181,7 +211,7 @@ class TestUTCDateTimeAttribute:
         ]
     )
     def test_utc_date_time_invalid(self, invalid_string):
-        with pytest.raises(ValueError, match="does not match format"):
+        with pytest.raises(ValueError, match=r"does not match format '%Y-%m-%dT%H:%M:%S.%f\+0000'"):
             self.attr.deserialize(invalid_string)
 
 
@@ -189,79 +219,95 @@ class TestBinaryAttribute:
     """
     Tests binary attributes
     """
-    def test_binary_attribute(self):
-        """
-        BinaryAttribute.default
-        """
-        attr = BinaryAttribute()
-        assert attr is not None
+    @pytest.mark.parametrize('legacy_encoding', [False, True])
+    def test_binary_attribute(self, legacy_encoding: bool) -> None:
+        attr = BinaryAttribute(legacy_encoding=legacy_encoding)
         assert attr.attr_type == BINARY
+        assert attr.legacy_encoding == legacy_encoding
 
-        attr = BinaryAttribute(default=b'foo')
+        attr = BinaryAttribute(default=b'foo', legacy_encoding=legacy_encoding)
         assert attr.default == b'foo'
 
-    def test_binary_round_trip(self):
+    @pytest.mark.parametrize('legacy_encoding', [False, True])
+    def test_binary_round_trip(self, legacy_encoding: bool) -> None:
         """
         BinaryAttribute round trip
         """
-        attr = BinaryAttribute()
+        attr = BinaryAttribute(legacy_encoding=legacy_encoding)
         value = b'foo'
         serial = attr.serialize(value)
         assert attr.deserialize(serial) == value
 
-    def test_binary_serialize(self):
+    @pytest.mark.parametrize(['legacy_encoding', 'expected'], [
+        (False, b'foo'),
+        (True, b'Zm9v'),
+    ])
+    def test_binary_serialize(self, legacy_encoding: bool, expected: bytes) -> None:
         """
         BinaryAttribute.serialize
         """
-        attr = BinaryAttribute()
-        serial = b64encode(b'foo').decode(DEFAULT_ENCODING)
-        assert attr.serialize(b'foo') == serial
+        attr = BinaryAttribute(legacy_encoding=legacy_encoding)
+        assert attr.serialize(b'foo') == expected
 
-    def test_binary_deserialize(self):
+    @pytest.mark.parametrize(['legacy_encoding', 'serialized'], [
+        pytest.param(False, b'foo',id='encoded from API, decoded in _covert_binary'),
+        pytest.param(True, b'Zm9v', id='double-encoded from API, once decoded in _convert_binary'),
+    ])
+    def test_binary_deserialize(self, legacy_encoding: bool, serialized: bytes) -> None:
         """
         BinaryAttribute.deserialize
         """
-        attr = BinaryAttribute()
-        serial = b64encode(b'foo').decode(DEFAULT_ENCODING)
-        assert attr.deserialize(serial) == b'foo'
+        attr = BinaryAttribute(legacy_encoding=legacy_encoding)
+        assert attr.deserialize(serialized) == b'foo'
 
-    def test_binary_set_serialize(self):
+
+class TestBinarySetAttribute:
+    @pytest.mark.parametrize(['legacy_encoding', 'expected'], [
+        pytest.param(False, {b'foo', b'bar'},id='encoded from API, decoded in _covert_binary'),
+        pytest.param(True, [b'Zm9v', b'YmFy'], id='double-encoded from API, once decoded in _convert_binary'),
+    ])
+    def test_binary_set_attribute(self, legacy_encoding: bool, expected: Set[bytes]) -> None:
+        attr = BinarySetAttribute(legacy_encoding=legacy_encoding)
+        assert attr.attr_type == BINARY_SET
+        assert attr.legacy_encoding == legacy_encoding
+
+    @pytest.mark.parametrize(['legacy_encoding', 'expected'], [
+        (False, [b'foo', b'bar']),
+        (True, [b'Zm9v', b'YmFy']),
+    ])
+    def test_binary_set_serialize(self, legacy_encoding: bool, expected: List[bytes]) -> None:
         """
         BinarySetAttribute.serialize
         """
-        attr = BinarySetAttribute()
+        attr = BinarySetAttribute(legacy_encoding=legacy_encoding)
         assert attr.attr_type == BINARY_SET
-        assert sorted(attr.serialize({b'foo', b'bar'})) == ['YmFy', 'Zm9v']
+
+        actual = attr.serialize({b'foo', b'bar'})
+        assert isinstance(actual, list)
+        assert sorted(actual) == sorted(expected)
+
         assert attr.serialize({}) is None
 
-    def test_binary_set_round_trip(self):
+    @pytest.mark.parametrize('legacy_encoding', [False, True])
+    def test_binary_set_round_trip(self, legacy_encoding: bool) -> None:
         """
         BinarySetAttribute round trip
         """
-        attr = BinarySetAttribute()
+        attr = BinarySetAttribute(legacy_encoding=legacy_encoding)
         value = {b'foo', b'bar'}
         serial = attr.serialize(value)
         assert attr.deserialize(serial) == value
 
-    def test_binary_set_deserialize(self):
+    @pytest.mark.parametrize(['legacy_encoding', 'serialized'], [
+        pytest.param(False, [b'foo', b'bar'],id='encoded from API, decoded in _covert_binary'),
+        pytest.param(True, [b'Zm9v', b'YmFy'], id='double-encoded from API, once decoded in _convert_binary'),
+    ])
+    def test_binary_set_deserialize(self, legacy_encoding: bool, serialized: List[bytes]) -> None:
         """
         BinarySetAttribute.deserialize
         """
-        attr = BinarySetAttribute()
-        value = {b'foo', b'bar'}
-        assert attr.deserialize(
-            [b64encode(val).decode(DEFAULT_ENCODING) for val in sorted(value)]
-        ) == value
-
-    def test_binary_set_attribute(self):
-        """
-        BinarySetAttribute.serialize
-        """
-        attr = BinarySetAttribute()
-        assert attr is not None
-
-        attr = BinarySetAttribute(default={b'foo', b'bar'})
-        assert attr.default == {b'foo', b'bar'}
+        attr = BinarySetAttribute(legacy_encoding=legacy_encoding)
+        assert attr.deserialize(serialized) == {b'foo', b'bar'}
 
 
 class TestNumberAttribute:
@@ -273,7 +319,6 @@ class TestNumberAttribute:
         NumberAttribute.default
         """
         attr = NumberAttribute()
-        assert attr is not None
         assert attr.attr_type == NUMBER
 
         attr = NumberAttribute(default=1)
@@ -317,11 +362,8 @@ class TestNumberAttribute:
         """
         NumberSetAttribute.default
         """
-        attr = NumberSetAttribute()
-        assert attr is not None
-
-        attr = NumberSetAttribute(default={1, 2})
-        assert attr.default == {1, 2}
+        attr = NumberSetAttribute(default=lambda: {1, 2})
+        assert attr.default() == {1, 2}
 
 
 class TestUnicodeAttribute:
@@ -333,7 +375,6 @@ class TestUnicodeAttribute:
         UnicodeAttribute.default
         """
         attr = UnicodeAttribute()
-        assert attr is not None
         assert attr.attr_type == STRING
 
         attr = UnicodeAttribute(default='foo')
@@ -414,10 +455,9 @@ class TestUnicodeAttribute:
         UnicodeSetAttribute.default
         """
         attr = UnicodeSetAttribute()
-        assert attr is not None
         assert attr.attr_type == STRING_SET
-        attr = UnicodeSetAttribute(default={'foo', 'bar'})
-        assert attr.default == {'foo', 'bar'}
+        attr = UnicodeSetAttribute(default=lambda: {'foo', 'bar'})
+        assert attr.default() == {'foo', 'bar'}
 
 
 class TestBooleanAttribute:
@@ -428,11 +468,8 @@ class TestBooleanAttribute:
         """
         BooleanAttribute.default
         """
-        attr = BooleanAttribute()
-        assert attr is not None
-
-        assert attr.attr_type == BOOLEAN
         attr = BooleanAttribute(default=True)
+        assert attr.attr_type == BOOLEAN
         assert attr.default is True
 
     def test_boolean_serialize(self):
@@ -522,12 +559,9 @@ class TestJSONAttribute:
         """
         JSONAttribute.default
         """
-        attr = JSONAttribute()
-        assert attr is not None
-
+        attr = JSONAttribute(default=lambda: {})
         assert attr.attr_type == STRING
-        attr = JSONAttribute(default={})
-        assert attr.default == {}
+        assert attr.default() == {}
 
     def test_json_serialize(self):
         """
@@ -566,11 +600,25 @@ class TestMapAttribute:
         person_attribute = {
             'name': 'Justin',
             'age': 12345678909876543211234234324234,
-            'height': 187.96
+            'height': 187.96,
+            'lucky_numbers': {42, 1337},
+            'picture': b'\xde\xad\xbe\xef',
+            'lunch': {b'\xca\xfe', b'\xf0\x0d'},
         }
         attr = MapAttribute()
         serialized = attr.serialize(person_attribute)
         assert attr.deserialize(serialized) == person_attribute
+
+    def test_serialize_invalid_set(self):
+        attr = MapAttribute()
+
+        with pytest.raises(ValueError, match="Cannot serialize empty set"):
+            attr.serialize({'test': set()})
+        with pytest.raises(ValueError, match="Cannot serialize set consisting of types: <class 'int'>, <class 'str'>"):
+            attr.serialize({'test': {42, "foo"}})
+        with pytest.raises(ValueError, match="Cannot serialize set consisting of types: "
+                                             "<class 'bytes'>, <class 'int'>"):
+            attr.serialize({'test': {42, b"foo"}})
 
     # Special case for raw map attributes
     def test_null_attribute_raw_map(self):
@@ -656,29 +704,29 @@ class TestMapAttribute:
 
     def test_raw_set_attr(self):
         item = AttributeTestModel()
-        item.map_attr = {}
-        item.map_attr.foo = 'bar'
-        item.map_attr.num = 3
-        item.map_attr.nested = {'nestedfoo': 'nestedbar'}
+        item.raw_map_attr = {}
+        item.raw_map_attr.foo = 'bar'
+        item.raw_map_attr.num = 3
+        item.raw_map_attr.nested = {'nestedfoo': 'nestedbar'}
 
-        assert item.map_attr['foo'] == 'bar'
-        assert item.map_attr['num'] == 3
-        assert item.map_attr['nested']['nestedfoo'] == 'nestedbar'
+        assert item.raw_map_attr['foo'] == 'bar'
+        assert item.raw_map_attr['num'] == 3
+        assert item.raw_map_attr['nested']['nestedfoo'] == 'nestedbar'
 
     def test_raw_set_item(self):
         item = AttributeTestModel()
-        item.map_attr = {}
-        item.map_attr['foo'] = 'bar'
-        item.map_attr['num'] = 3
-        item.map_attr['nested'] = {'nestedfoo': 'nestedbar'}
+        item.raw_map_attr = {}
+        item.raw_map_attr['foo'] = 'bar'
+        item.raw_map_attr['num'] = 3
+        item.raw_map_attr['nested'] = {'nestedfoo': 'nestedbar'}
 
-        assert item.map_attr['foo'] == 'bar'
-        assert item.map_attr['num'] == 3
-        assert item.map_attr['nested']['nestedfoo'] == 'nestedbar'
+        assert item.raw_map_attr['foo'] == 'bar'
+        assert item.raw_map_attr['num'] == 3
+        assert item.raw_map_attr['nested']['nestedfoo'] == 'nestedbar'
 
     def test_raw_map_from_dict(self):
         item = AttributeTestModel(
-            map_attr={
+            raw_map_attr={
                 "foo": "bar",
                 "num": 3,
                 "nested": {
@@ -687,8 +735,8 @@ class TestMapAttribute:
             }
         )
 
-        assert item.map_attr['foo'] == 'bar'
-        assert item.map_attr['num'] == 3
+        assert item.raw_map_attr['foo'] == 'bar'
+        assert item.raw_map_attr['num'] == 3
 
     def test_raw_map_access(self):
         raw = {
@@ -726,10 +774,10 @@ class TestMapAttribute:
 
         serialized_raw = json.dumps(raw, sort_keys=True)
         serialized_attr_from_raw = json.dumps(
-            AttributeTestModel(map_attr=raw).map_attr.as_dict(),
+            AttributeTestModel(raw_map_attr=raw).raw_map_attr.as_dict(),
             sort_keys=True)
         serialized_attr_from_map = json.dumps(
-            AttributeTestModel(map_attr=MapAttribute(**raw)).map_attr.as_dict(),
+            AttributeTestModel(raw_map_attr=MapAttribute(**raw)).raw_map_attr.as_dict(),
             sort_keys=True)
 
         assert serialized_attr_from_raw == serialized_raw
@@ -917,26 +965,49 @@ class TestDynamicMapAttribute:
 
 class TestListAttribute:
 
-    def test_untyped_list(self):
-        untyped_list = [{'Hello': 'World'}, ['!'], {'foo', 'bar'}, None, "", 0, False]
-        serialized = ListAttribute().serialize(untyped_list)
-        # set attributes are serialized as lists
-        untyped_list[2] = list(untyped_list[2])
-        assert ListAttribute().deserialize(serialized) == untyped_list
+    def test_roundtrip_untyped(self) -> None:
+        string_list_attribute = ListAttribute()
+        values = [
+            None,  # NULL
+            'foo',  # S
+            '',  # S
+            42,  # NUMBER
+            True,  # BOOL
+            b'foo',  # B
+            {42, 43},  # NS of ints
+            {42.5, 43.5},  # NS of floats
+            {42, 43.5},  # NS of ints and floats
+            {'foo', 'bar'},  # SS
+            {b'foo', b'bar'},  # BS
+            {'foo': 'bar'},  # M with one S
+            ['foo', 'bar'],  # L of S
+        ]
+        serialized = string_list_attribute.serialize(values)
+        assert string_list_attribute.deserialize(serialized) == values
 
-    def test_list_of_strings(self):
-        string_list_attribute = ListAttribute(of=UnicodeAttribute)
-        string_list = ['foo', 'bar', 'baz']
-        serialized = string_list_attribute.serialize(string_list)
-        assert string_list_attribute.deserialize(serialized) == string_list
+    def test_serialize_invalid_set(self) -> None:
+        string_list_attribute = ListAttribute()
+        with pytest.raises(ValueError, match="Cannot serialize empty set"):
+            string_list_attribute.serialize([set()])
+        with pytest.raises(ValueError, match="Cannot serialize set consisting of types: <class 'int'>, <class 'str'>"):
+            string_list_attribute.serialize([{42, "foo"}])
+        with pytest.raises(ValueError, match="Cannot serialize set consisting of types: "
+                                             "<class 'bytes'>, <class 'int'>"):
+            string_list_attribute.serialize([{42, b"foo"}])
+
+    def test_list_of_binary_set(self) -> None:
+        string_list_attribute = ListAttribute(of=BinarySetAttribute)
+        values = [{b'bar', b'baz'}]
+        serialized = string_list_attribute.serialize(values)
+        assert string_list_attribute.deserialize(serialized) == values
 
     def test_list_type_error(self):
         string_list_attribute = ListAttribute(of=UnicodeAttribute)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='List elements must be of type: UnicodeAttribute'):
             string_list_attribute.serialize([MapAttribute(foo='bar')])
 
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match=r"Cannot deserialize '\[0\]' attribute from type: S"):
             string_list_attribute.deserialize([{'M': {'foo': {'S': 'bar'}}}])
 
     def test_serialize_null(self):
@@ -1018,7 +1089,7 @@ class TestMapAndListAttribute:
 
         inp = [person1, person2]
 
-        list_attribute = ListAttribute(default=[], of=Person)
+        list_attribute = ListAttribute(default=list, of=Person)
         serialized = list_attribute.serialize(inp)
         deserialized = list_attribute.deserialize(serialized)
         assert sorted(deserialized) == sorted(inp)
@@ -1042,7 +1113,7 @@ class TestMapAndListAttribute:
 
         inp = [attribute1, attribute2]
 
-        list_attribute = ListAttribute(default=[], of=CustomMapAttribute)
+        list_attribute = ListAttribute(default=list, of=CustomMapAttribute)
         serialized = list_attribute.serialize(inp)
         deserialized = list_attribute.deserialize(serialized)
 
@@ -1066,117 +1137,351 @@ class TestVersionAttribute:
         assert attr.deserialize('12345678909876543211234234324234') == 12345678909876543211234234324234
 
 
-class TestAttributeContainer:
-    def test_to_json(self):
-        now = datetime.now(tz=timezone.utc)
-        now_formatted = now.strftime(DATETIME_FORMAT)
-        now_unix_ts = calendar.timegm(now.utctimetuple())
-        test_model = AttributeTestModel()
-        test_model.binary_attr = b'foo'
-        test_model.binary_set_attr = {b'bar'}
+class DictTestMapAttribute(MapAttribute):
+    string = UnicodeAttribute(null=True)
+    binary = BinaryAttribute(null=True, legacy_encoding=False)
+
+
+class DictTestModel(Model):
+    binary_attr = BinaryAttribute(null=True, legacy_encoding=False)
+    binary_set_attr = BinarySetAttribute(null=True, legacy_encoding=False)
+    number_attr = NumberAttribute(null=True)
+    number_set_attr = NumberSetAttribute(null=True)
+    unicode_attr = UnicodeAttribute(null=True)
+    unicode_set_attr = UnicodeSetAttribute(null=True)
+    datetime_attr = UTCDateTimeAttribute(null=True)
+    bool_attr = BooleanAttribute(null=True)
+    json_attr = JSONAttribute(null=True)
+    map_attr = DictTestMapAttribute(null=True)
+    raw_map_attr = MapAttribute(null=True)
+    ttl_attr = TTLAttribute(null=True)
+    null_attr = NullAttribute(null=True)
+    list_attr = ListAttribute(of=DictTestMapAttribute, null=True)
+
+
+class TestNormalDict:
+    def test_to_simple_dict(self):
+        dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+        test_model = DictTestModel()
         test_model.number_attr = 1
-        test_model.number_set_attr = {0, 0.5, 1}
         test_model.unicode_attr = 'foo'
-        test_model.unicode_set_attr = {'baz'}
-        test_model.datetime_attr = now
+        test_model.datetime_attr = dt
         test_model.bool_attr = True
         test_model.json_attr = {'foo': 'bar'}
-        test_model.map_attr = {'foo': 'bar'}
-        test_model.ttl_attr = now
+        test_model.raw_map_attr = {
+            'string': 'bar',
+        }
+        test_model.map_attr = DictTestMapAttribute(
+            string='bar',
+        )
+        test_model.ttl_attr = dt
         test_model.null_attr = True
-        assert test_model.to_json() == (
-            '{'
-            '"binary_attr": "Zm9v", '
-            '"binary_set_attr": ["YmFy"], '
-            '"bool_attr": true, '
-            '"datetime_attr": "' + now_formatted + '", '
-            '"json_attr": "{\\"foo\\": \\"bar\\"}", '
-            '"map_attr": {"foo": "bar"}, '
-            '"null_attr": null, '
-            '"number_attr": 1, '
-            '"number_set_attr": [0, 0.5, 1], '
-            '"ttl_attr": ' + str(now_unix_ts) + ', '
-            '"unicode_attr": "foo", '
-            '"unicode_set_attr": ["baz"]'
-            '}')
+        test_model.list_attr = [
+            DictTestMapAttribute(string='bar'),
+        ]
 
-    def test_from_json(self):
-        now = datetime.now(tz=timezone.utc)
-        now_formatted = now.strftime(DATETIME_FORMAT)
-        now_unix_ts = calendar.timegm(now.utctimetuple())
-        json_string = (
-            '{'
-            '"binary_attr": "Zm9v", '
-            '"binary_set_attr": ["YmFy"], '
-            '"bool_attr": true, '
-            '"datetime_attr": "' + now_formatted + '", '
-            '"json_attr": "{\\"foo\\": \\"bar\\"}", '
-            '"map_attr": {"foo": "bar"}, '
-            '"null_attr": null, '
-            '"number_attr": 1, '
-            '"number_set_attr": [0, 0.5, 1], '
-            '"ttl_attr": ' + str(now_unix_ts) + ', '
-            '"unicode_attr": "foo", '
-            '"unicode_set_attr": ["baz"]'
-            '}')
-        test_model = AttributeTestModel()
-        test_model.from_json(json_string)
+        actual = test_model.to_simple_dict()
+
+        assert actual == {
+            'bool_attr': True,
+            'datetime_attr': '2022-12-31T23:59:59.000000+0000',
+            'json_attr': '{"foo": "bar"}',
+            'list_attr': [
+                {
+                    'string': 'bar',
+                },
+            ],
+            'map_attr': {
+                'string': 'bar',
+            },
+            'null_attr': None,
+            'number_attr': 1,
+            'raw_map_attr': {
+                'string': 'bar',
+            },
+            'ttl_attr': 1672531199,
+            'unicode_attr': 'foo',
+        }
+
+        # ensure it JSON--serializable
+        _ = json.dumps(actual)
+
+    def test_to_simple_dict__not_force(self):
+        with pytest.raises(ValueError):
+            DictTestModel(binary_attr=b'foo').to_simple_dict(force=False)
+
+        with pytest.raises(ValueError):
+            DictTestModel(number_set_attr={1, 2, 3}).to_simple_dict(force=False)
+
+        with pytest.raises(ValueError):
+            DictTestModel(unicode_set_attr={'foo', 'bar'}).to_simple_dict(force=False)
+
+        with pytest.raises(ValueError):
+            DictTestModel(binary_set_attr={b'foo', b'bar'}).to_simple_dict(force=False)
+
+        with pytest.raises(ValueError):
+            DictTestModel(raw_map_attr={'string': 'bar','binary': b'baz'}).to_simple_dict(force=False)
+
+        with pytest.raises(ValueError):
+            DictTestModel(DictTestMapAttribute(string='bar', binary=b'foo')).to_simple_dict(force=False)
+
+    def test_to_simple_dict__force(self):
+        test_model = DictTestModel()
+        test_model.binary_attr = b'foo'
+        test_model.binary_set_attr = [b'foo', b'bar']
+        test_model.number_set_attr = [1, 2, 3]
+        test_model.unicode_set_attr = ['foo', 'bar']
+        test_model.raw_map_attr = {
+            'string': 'bar',
+            'binary': b'baz',  # this will not roundtrip :(
+        }
+        test_model.map_attr = DictTestMapAttribute(
+            string='bar',
+            binary=b'foo',
+        )
+
+        actual = test_model.to_simple_dict(force=True)
+
+        assert actual == {
+            'binary_attr': 'Zm9v',
+            'binary_set_attr': ['Zm9v', 'YmFy'],
+            'map_attr': {
+                'binary': 'Zm9v',
+                'string': 'bar',
+            },
+            'number_set_attr': [1, 2, 3],
+            'raw_map_attr': {
+                'binary': 'YmF6',
+                'string': 'bar',
+            },
+            'unicode_set_attr': ['foo', 'bar'],
+        }
+
+        # ensure it JSON--serializable
+        _ = json.dumps(actual)
+
+    def test_from_simple_dict(self):
+        simple_dict = {
+            'binary_attr': 'Zm9v',
+            'binary_set_attr': ['Zm9v', 'YmFy'],
+            'bool_attr': True,
+            'datetime_attr': '2022-12-31T23:59:59.000000+0000',
+            'json_attr': '{"foo": "bar"}',
+            'map_attr': {
+                'binary': 'YmF6',
+                'string': 'bar',
+            },
+            'raw_map_attr': {
+                'binary': 'YmF6',
+                'string': 'bar',
+            },
+            'null_attr': None,
+            'number_attr': 1,
+            'number_set_attr': [1, 2, 3],
+            'ttl_attr': 1672531199,
+            'unicode_attr': 'foo',
+            'unicode_set_attr': ['baz'],
+        }
+
+        test_model = DictTestModel()
+        test_model.from_simple_dict(simple_dict)
+
+        expected_dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
         assert test_model.binary_attr == b'foo'
-        assert test_model.binary_set_attr == {b'bar'}
+        assert test_model.binary_set_attr == {b'foo', b'bar'}
         assert test_model.number_attr == 1
-        assert test_model.number_set_attr == {0, 0.5, 1}
+        assert test_model.number_set_attr == {1, 2, 3}
         assert test_model.unicode_attr == 'foo'
         assert test_model.unicode_set_attr == {'baz'}
-        assert test_model.datetime_attr == now
+        assert test_model.datetime_attr == expected_dt
         assert test_model.bool_attr is True
         assert test_model.json_attr == {'foo': 'bar'}
-        assert test_model.map_attr.foo == 'bar'
-        assert test_model.ttl_attr == now.replace(microsecond=0)
+        assert test_model.map_attr.binary == b'baz'
+        assert test_model.map_attr.string == 'bar'
+        assert test_model.raw_map_attr.binary == 'YmF6'  # this did not round-trip :(
+        assert test_model.raw_map_attr.string == 'bar'
+        assert test_model.ttl_attr == expected_dt
         assert test_model.null_attr is None
 
-    def test_to_json_complex(self):
-        class MyMap(MapAttribute):
-            foo = UnicodeSetAttribute(attr_name='bar')
 
-        class ListTestModel(Model):
-            class Meta:
-                host = 'http://localhost:8000'
-                table_name = 'test'
-            unicode_attr = UnicodeAttribute(hash_key=True)
-            list_attr = ListAttribute(of=NumberSetAttribute)
-            list_map_attr = ListAttribute(of=MyMap)
+class TestDynamoDBDict:
+    def test_to_dynamodb_dict(self):
+        dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+        test_model = DictTestModel()
+        test_model.number_attr = 1
+        test_model.unicode_attr = 'foo'
+        test_model.datetime_attr = dt
+        test_model.bool_attr = True
+        test_model.json_attr = {'foo': 'bar'}
+        test_model.raw_map_attr = {
+            'binary': b'foo',
+            'string': 'bar',
+        }
+        test_model.map_attr = DictTestMapAttribute(
+            binary=b'foo',
+            string='bar',
+        )
+        test_model.list_attr = [
+            DictTestMapAttribute(
+                binary=b'foo',
+                string='bar',
+            )
+        ]
+        test_model.ttl_attr = dt
+        test_model.null_attr = True
+        test_model.binary_attr = b'foo'
+        test_model.binary_set_attr = [b'foo', b'bar']
+        test_model.number_set_attr = [1, 2, 3]
+        test_model.unicode_set_attr = ['foo', 'bar']
 
-        list_test_model = ListTestModel()
-        list_test_model.unicode_attr = 'foo'
-        list_test_model.list_attr = [{0, 1, 2}]
-        list_test_model.list_map_attr = [MyMap(foo={'baz'})]
-        assert list_test_model.to_json() == (
-            '{'
-            '"list_attr": [[0, 1, 2]], '
-            '"list_map_attr": [{"bar": ["baz"]}], '
-            '"unicode_attr": "foo"'
-            '}')
+        actual = test_model.to_dynamodb_dict()
 
-    def test_from_json_complex(self):
-        class MyMap(MapAttribute):
-            foo = UnicodeSetAttribute(attr_name='bar')
+        assert actual == {
+            'binary_attr': {
+                'B': 'Zm9v'
+            },
+            'binary_set_attr': {
+                'BS': ['Zm9v', 'YmFy']
+            },
+            'bool_attr': {
+                'BOOL': True
+            },
+            'datetime_attr': {
+                'S': '2022-12-31T23:59:59.000000+0000'
+            },
+            'json_attr': {
+                'S': '{"foo": "bar"}'
+            },
+            'list_attr': {
+                'L': [
+                    {
+                        'M': {
+                            'binary': {
+                                'B': 'Zm9v'
+                            },
+                            'string': {
+                                'S': 'bar'
+                            }
+                        }
+                    },
+                ],
+            },
+            'map_attr': {
+                'M': {
+                    'binary': {
+                        'B': 'Zm9v'
+                    },
+                    'string': {
+                        'S': 'bar'
+                    }
+                }
+            },
+            'null_attr': {
+                'NULL': True
+            },
+            'number_attr': {
+                'N': '1'
+            },
+            'number_set_attr': {
+                'NS': ['1', '2', '3']
+            },
+            'raw_map_attr': {
+                'M': {
+                    'binary': {
+                        'B': 'Zm9v'
+                    },
+                    'string': {
+                        'S': 'bar'
+                    }
+                }
+            },
+            'ttl_attr': {
+                'N': '1672531199'
+            },
+            'unicode_attr': {
+                'S': 'foo'
+            },
+            'unicode_set_attr': {
+                'SS': ['foo', 'bar']
+            }
+        }
 
-        class ListTestModel(Model):
-            class Meta:
-                host = 'http://localhost:8000'
-                table_name = 'test'
-            unicode_attr = UnicodeAttribute(hash_key=True)
-            list_attr = ListAttribute(of=NumberSetAttribute)
-            list_map_attr = ListAttribute(of=MyMap)
+        # ensure it JSON--serializable
+        _ = json.dumps(actual)
 
-        json_string = (
-            '{'
-            '"list_attr": [[0, 1, 2]], '
-            '"list_map_attr": [{"bar": ["baz"]}], '
-            '"unicode_attr": "foo"'
-            '}')
-        list_test_model = ListTestModel()
-        list_test_model.from_json(json_string)
-        assert list_test_model.unicode_attr == 'foo'
-        assert list_test_model.list_attr == [{0, 1, 2}]
-        assert list_test_model.list_map_attr[0].foo == {'baz'}
+    def test_from_dynamodb_dict(self):
+        dynamodb_dict = {
+            'binary_attr': {
+                'B': 'Zm9v'
+            },
+            'binary_set_attr': {
+                'BS': ['Zm9v', 'YmFy']
+            },
+            'bool_attr': {
+                'BOOL': True
+            },
+            'datetime_attr': {
+                'S': '2022-12-31T23:59:59.000000+0000'
+            },
+            'json_attr': {
+                'S': '{"foo": "bar"}'
+            },
+            'map_attr': {
+                'M': {
+                    'binary': {
+                        'B': 'Zm9v'
+                    },
+                    'string': {
+                        'S': 'bar'
+                    }
+                }
+            },
+            'null_attr': {
+                'NULL': True
+            },
+            'number_attr': {
+                'N': '1'
+            },
+            'number_set_attr': {
+                'NS': ['1', '2', '3']
+            },
+            'raw_map_attr': {
+                'M': {
+                    'binary': {
+                        'B': 'Zm9v'
+                    },
+                    'string': {
+                        'S': 'bar'
+                    }
+                }
+            },
+            'ttl_attr': {
+                'N': '1672531199'
+            },
+            'unicode_attr': {
+                'S': 'foo'
+            },
+            'unicode_set_attr': {
+                'SS': ['foo', 'bar']
+            }
+        }
+
+        test_model = DictTestModel()
+        test_model.from_dynamodb_dict(dynamodb_dict)
+
+        expected_dt = datetime(2022, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+        assert test_model.binary_attr == b'foo'
+        assert test_model.binary_set_attr == {b'foo', b'bar'}
+        assert test_model.number_attr == 1
+        assert test_model.number_set_attr == {1, 2, 3}
+        assert test_model.unicode_attr == 'foo'
+        assert test_model.unicode_set_attr == {'foo', 'bar'}
+        assert test_model.datetime_attr == expected_dt
+        assert test_model.bool_attr is True
+        assert test_model.json_attr == {'foo': 'bar'}
+        assert test_model.map_attr.binary == b'foo'
+        assert test_model.map_attr.string == 'bar'
+        assert test_model.raw_map_attr.binary == b'foo'
+        assert test_model.raw_map_attr.string == 'bar'
+        assert test_model.ttl_attr == expected_dt
+        assert test_model.null_attr is None

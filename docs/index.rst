@@ -17,7 +17,7 @@ Features
 * Support for Global and Local Secondary Indexes
 * Batch operations with automatic pagination
 * Iterators for working with Query and Scan operations
-* `Fully tested <https://coveralls.io/r/pynamodb/PynamoDB>`_
+* `Fully tested <https://coveralls.io/github/pynamodb/PynamoDB>`_
 
 Topics
 ======
@@ -46,6 +46,7 @@ Topics
    contributing
    release_notes
    versioning
+   upgrading_binary
    upgrading_unicodeset
 
 API docs
