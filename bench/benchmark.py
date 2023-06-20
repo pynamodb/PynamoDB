@@ -4,6 +4,7 @@ import logging
 import zlib
 from datetime import datetime
 
+import urllib3
 
 COUNT = 1000
 
@@ -17,7 +18,8 @@ def register_benchmark(testname):
         return func
     return _wrap
 
-def results_new_benchmark(name):
+
+def results_new_benchmark(name: str) -> None:
     benchmark_results.append((name, {}))
     print(name)
 
@@ -38,22 +40,14 @@ def results_record_result(callback, count):
     result = count / min(results)
     benchmark_results.append((bench_name, str(result)))
 
-    print(
-        "{}: {:,.02f} calls/sec".format(
-            bench_name, result
-        )
-    )
+    print(f"{bench_name}: {result:,.02f} calls/sec")
 
 
 # =============================================================================
 # Monkeypatching
 # =============================================================================
 
-import urllib3
-
 def mock_urlopen(self, method, url, body, headers, **kwargs):
-    #print("IN URLOPEN", method, url, headers, body)
-
     target = headers.get('X-Amz-Target')
     if target.endswith(b'DescribeTable'):
         body = """{
@@ -151,7 +145,7 @@ def patch_urllib3():
 
 import os
 from pynamodb.models import Model
-from pynamodb.attributes import UnicodeAttribute, BooleanAttribute, MapAttribute, NumberAttribute, UTCDateTimeAttribute
+from pynamodb.attributes import UnicodeAttribute, BooleanAttribute, MapAttribute, UTCDateTimeAttribute
 
 
 os.environ["AWS_ACCESS_KEY_ID"] = "1"
@@ -222,8 +216,6 @@ def main():
 
     print()
     print("Above metrics are in call/sec, larger is better.")
-
-
 
 
 if __name__ == "__main__":
