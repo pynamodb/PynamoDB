@@ -298,9 +298,14 @@ class Path(_NumericOperand, _ListAppendOperand, _ConditionOperand):
     def __or__(self, other):
         return _IfNotExists(self, self._to_operand(other))
 
-    def set(self, value: Any) -> SetAction:
-        # Returns an update action that sets this attribute to the given value
-        return SetAction(self, self._to_operand(value))
+    def set(self, value: Any) -> Union[SetAction, RemoveAction]:
+        # Returns an update action that sets this attribute to the given value.
+        # For attributes that may not be empty (e.g. sets), this may result
+        # in a remove action.
+        operand = self._to_operand(value)
+        if isinstance(operand, Value) and next(iter(operand.value.values())) is None:
+            return RemoveAction(self)
+        return SetAction(self, operand)
 
     def remove(self) -> RemoveAction:
         # Returns an update action that removes this attribute from the item

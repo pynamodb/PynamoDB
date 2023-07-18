@@ -102,6 +102,10 @@ def test_model_integration(ddb_url):
     for item in TestModel.view_index.query('foo', TestModel.view > 0):
         print("Item queried from index: {}".format(item.view))
 
+    query_obj.update([TestModel.scores.set([])])
+    query_obj.refresh()
+    assert query_obj.scores is None
+
     print(query_obj.update([TestModel.view.add(1)], condition=TestModel.forum.exists()))
     TestModel.delete_table()
 

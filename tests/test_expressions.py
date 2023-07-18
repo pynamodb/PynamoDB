@@ -479,6 +479,13 @@ class UpdateExpressionTestCase(TestCase):
         assert self.placeholder_names == {'foo': '#0'}
         assert self.expression_attribute_values == {':0': {'S': 'bar'}}
 
+    def test_set_action_as_remove(self):
+        action = self.set_attribute.set([])
+        expression = action.serialize(self.placeholder_names, self.expression_attribute_values)
+        assert expression == "#0"
+        assert self.placeholder_names == {'foo_set': '#0'}
+        assert self.expression_attribute_values == {}
+
     def test_set_action_attribute_container(self):
         # Simulate initialization from inside an AttributeContainer
         my_map_attribute = MapAttribute[str, str](attr_name='foo')
@@ -619,6 +626,15 @@ class UpdateExpressionTestCase(TestCase):
             ':1': {'NS': ['0']},
             ':2': {'NS': ['1']}
         }
+
+    def test_update_set_to_empty(self):
+        update = Update(
+            self.set_attribute.set([]),
+        )
+        expression = update.serialize(self.placeholder_names, self.expression_attribute_values)
+        assert expression == "REMOVE #0"
+        assert self.placeholder_names == {'foo_set': '#0'}
+        assert self.expression_attribute_values == {}
 
     def test_update_skips_empty_clauses(self):
         update = Update(self.attribute.remove())
