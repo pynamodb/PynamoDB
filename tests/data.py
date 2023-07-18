@@ -1305,3 +1305,4 @@ VERSIONED_TABLE_DATA = {
         "TableStatus": "ACTIVE"
     }
 }
+
