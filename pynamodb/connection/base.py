@@ -401,15 +401,7 @@ class Connection(object):
             is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
 
             http_response = None
-            prepared_request = None
             try:
-                if prepared_request is not None:
-                    # If there is a stream associated with the request, we need
-                    # to reset it before attempting to send the request again.
-                    # This will ensure that we resend the entire contents of the
-                    # body.
-                    prepared_request.reset_stream()
-
                 # Create a new request for each retry (including a new signature).
                 prepared_request = self._create_prepared_request(request_dict, settings)
 
