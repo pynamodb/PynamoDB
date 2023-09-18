@@ -416,7 +416,7 @@ class Connection(object):
                 # Implement the before-send event from botocore
                 event_name = 'before-send.dynamodb.{}'.format(operation_model.name)
                 event_responses = self.client._endpoint._event_emitter.emit(event_name, request=prepared_request)
-                event_response = first_non_none_response(event_responses)
+                event_response: Optional[botocore.awsrequest.AWSResponse] = first_non_none_response(event_responses)
 
                 if event_response is None:
                     http_response = self.client._endpoint.http_session.send(prepared_request)
