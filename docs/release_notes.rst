@@ -1,3 +1,5 @@
+.. _release_notes:
+
 Release Notes
 =============
 
@@ -102,8 +104,13 @@ v5.0.3
 
 :date: 2021-02-14
 
+This version has an unintentional breaking change:
+
 * Propagate ``Model.serialize``'s ``null_check`` parameter to nested MapAttributes (:pr:`908`)
 
+  Previously null errors (persisting ``None`` into an attribute defined as ``null=False``)
+  were ignored for attributes in map attributes that were nested in maps or lists. After upgrade,
+  these will resulted in an :py:class:`~pynamodb.exceptions.AttributeNullError` being raised.
 
 v5.0.2
 ----------
@@ -128,22 +135,32 @@ v5.0.0
 
 This is major release and contains breaking changes. Please read the notes below carefully.
 
+Breaking changes
+================
+
+* Python 2 is no longer supported. Python 3.6 or greater is now required.
+* :py:class:`~pynamodb.attributes.UnicodeAttribute` and :py:class:`~pynamodb.attributes.BinaryAttribute` now support empty values (:pr:`830`)
+
+  In previous versions, assigning an empty value to would be akin to assigning ``None``: if the attribute was defined with ``null=True`` then it would be omitted, otherwise an error would be raised.
+
+  As of May 2020, DynamoDB `supports <https://aws.amazon.com/about-aws/whats-new/2020/05/amazon-dynamodb-now-supports-empty-values-for-non-key-string-and-binary-attributes-in-dynamodb-tables/>`_ empty values for String and Binary attributes. This release of PynamoDB starts treating empty values like any other values. If existing code unintentionally assigns empty values to StringAttribute or BinaryAttribute, this may be a breaking change: for example, the code may rely on the fact that in previous versions empty strings would be "read back" as ``None`` values when reloaded from the database.
+* :py:class:`~pynamodb.attributes.UTCDateTimeAttribute` now strictly requires the date string format ``'%Y-%m-%dT%H:%M:%S.%f%z'`` to ensure proper ordering.
+  PynamoDB has always written values with this format but previously would accept reading other formats.
+  Items written using other formats must be rewritten before upgrading.
+* Table backup functionality (``Model.dump[s]`` and ``Model.load[s]``) has been removed.
+* ``Model.query`` no longer converts unsupported range key conditions into filter conditions.
+* Internal attribute type constants are replaced with their "short" DynamoDB version (:pr:`827`)
+* Remove ``ListAttribute.remove_indexes`` (added in v4.3.2) and document usage of remove for list elements (:pr:`838`)
+* Remove ``pynamodb.connection.util.pythonic`` (:pr:`753`) and (:pr:`865`)
+* Remove ``ModelContextManager`` class (:pr:`861`)
+
+Features
+========
+
 **Polymorphism**
 
 This release introduces :ref:`polymorphism` support via :py:class:`DiscriminatorAttribute <pynamodb.attributes.DiscriminatorAttribute>`.
 Discriminator values are written to DynamoDB and used during deserialization to instantiate the desired class.
-
-**UTCDateTimeAttribute**
-
-The UTCDateTimeAttribute now strictly requires the date string format '%Y-%m-%dT%H:%M:%S.%f%z' to ensure proper ordering.
-PynamoDB has always written values with this format but previously would accept reading other formats.
-Items written using other formats must be rewritten before upgrading.
-
-**UnicodeAttribute and BinaryAttribute**
-
-In previous versions, assigning an empty value to a :py:class:`UnicodeAttribute <pynamodb.attributes.UnicodeAttribute>` or :py:class:`BinaryAttribute <pynamodb.attributes.BinaryAttribute>` would be akin to assigning ``None``: if the attribute was defined with ``null=True`` then it would be omitted, otherwise an error would be raised.
-
-As of May 2020, DynamoDB `supports <https://aws.amazon.com/about-aws/whats-new/2020/05/amazon-dynamodb-now-supports-empty-values-for-non-key-string-and-binary-attributes-in-dynamodb-tables/>`_ empty values for String and Binary attributes. This release of PynamoDB starts treating empty values like any other values. If existing code unintentionally assigns empty values to StringAttribute or BinaryAttribute, this may be a breaking change: for example, the code may rely on the fact that in previous versions empty strings would be "read back" as ``None`` values when reloaded from the database.
 
 **Model Serialization**
 
@@ -152,22 +169,11 @@ THe ``Model`` class now includes public methods for serializing and deserializin
 
 Other changes in this release:
 
-* Python 2 is no longer supported. Python 3.6 or greater is now required.
-* Table backup functionality (``Model.dump[s]`` and ``Model.load[s]``) has been removed.
-* ``Model.query`` no longer demotes invalid range key conditions to be filter conditions to avoid surprising behaviors:
-  where what's intended to be a cheap and fast condition ends up being expensive and slow. Since filter conditions
-  cannot contain range keys, this had limited utility to begin with, and would sometimes cause confusing
-  "'filter_condition' cannot contain key attributes" errors.
-* Replace the internal attribute type constants with their "short" DynamoDB version (:pr:`827`)
 * Typed list attributes can now support any Attribute subclass (:pr:`833`)
-* Add support for empty values in Binary and String attributes (:pr:`830`)
 * Most API operation methods now accept a ``settings`` argument to customize settings of individual operations.
   This currently allow adding or overriding HTTP headers. (:pr:`887`)
-* Remove ``ListAttribute.remove_indexes`` (added in v4.3.2) and document usage of remove for list elements (:pr:`838`)
 * Add the attribute name to error messages when deserialization fails (:pr:`815`)
 * Add the table name to error messages for transactional operations (:pr:`835`)
-* Remove ``pynamodb.connection.util.pythonic`` (:pr:`753`) and (:pr:`865`)
-* Remove ``ModelContextManager`` class (:pr:`861`)
 
 Contributors to this release:
 
@@ -322,20 +328,34 @@ of all attributes including the key attributes.
 Support for `Legacy Conditional Parameters <https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.html>`_ has been
 removed. See a complete list of affected ``Model`` methods below:
 
-* ``update_item``: removed in favor of ``update``.
-* ``rate_limited_scan``: removed in favor of ``scan`` and ``ResultIterator``.
+.. list-table::
+   :widths: 10 90
+   :header-rows: 1
 
-  + Relatedly, the ``allow_rate_limited_scan_without_consumed_capacity`` option has been removed.
-* ``delete``: ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``condition`` instead.
-* ``update``: ``attributes``, ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``actions`` and ``condition`` instead.
-* ``save``: ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``condition`` instead.
-* ``count``: ``**filters`` kwargs removed. Use ``range_key_condition``/``filter_condition`` instead.
-* ``query``: ``conditional_operator`` and ``**filters`` kwargs removed. Use ``range_key_condition``/``filter_condition`` instead.
-* ``scan``: ``conditional_operator`` and ``**filters`` kwargs removed. Use ``filter_condition`` instead.
+   * - Method
+     - Changes
+   * - ``update_item``
+     - removed in favor of ``update``
+   * - ``rate_limited_scan``
+     - removed in favor of ``scan`` and ``ResultIterator``
+   * - ``delete``
+     - ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``condition`` instead.
+   * - ``update``
+     - ``attributes``, ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``actions`` and ``condition`` instead.
+   * - ``save``
+     - ``conditional_operator`` and ``**expected_values`` kwargs removed. Use ``condition`` instead.
+   * - ``count``
+     - ``**filters`` kwargs removed. Use ``range_key_condition``/``filter_condition`` instead.
+   * - ``query``
+     - ``conditional_operator`` and ``**filters`` kwargs removed. Use ``range_key_condition``/``filter_condition`` instead.
+   * - ``scan``
+     -
+       - ``conditional_operator`` and ``**filters`` kwargs removed. Use ``filter_condition`` instead.
+       - ``allow_rate_limited_scan_without_consumed_capacity`` was removed
+
 
 When upgrading, pay special attention to use of ``**filters`` and ``**expected_values``, as you'll need to check for arbitrary names that correspond to
-attribute names. Also keep an eye out for kwargs like ``user_id__eq=5`` or ``email__null=True``, which are no longer supported. If you're not already using
-``mypy`` to type check your code, it can help you catch cases like these.
+attribute names. Also keep an eye out for kwargs like ``user_id__eq=5`` or ``email__null=True``, which are no longer supported. A type check can help you catch cases like these.
 
 New features in this release:
 
