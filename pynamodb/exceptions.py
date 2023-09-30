@@ -1,13 +1,17 @@
 """
 PynamoDB exceptions
 """
+import sys
 from dataclasses import dataclass
 from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Optional
-from typing_extensions import Literal
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 import botocore.exceptions
 
