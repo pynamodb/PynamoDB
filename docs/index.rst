@@ -46,8 +46,7 @@ Topics
    contributing
    release_notes
    versioning
-   upgrading_binary
-   upgrading_unicodeset
+   upgrading
 
 API docs
 ========

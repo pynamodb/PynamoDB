@@ -1,3 +1,7 @@
+:orphan:
+
+.. _upgrading_binary:
+
 Upgrading Binary(Set)Attribute
 ==============================
 

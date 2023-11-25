@@ -268,7 +268,7 @@ class Attribute(Generic[_T]):
     def set(
         self,
         value: Union[_T, 'Attribute[_T]', '_Increment', '_Decrement', '_IfNotExists', '_ListAppend']
-    ) -> 'SetAction':
+    ) -> Union['SetAction', 'RemoveAction']:
         return Path(self).set(value)
 
     def remove(self) -> 'RemoveAction':
