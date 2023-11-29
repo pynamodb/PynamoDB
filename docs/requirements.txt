@@ -1,1 +1,4 @@
-sphinx-rtd-theme==0.4.3
+.[signals]
+sphinx>=5
+sphinx-rtd-theme==1.1.1
+sphinx-issues
