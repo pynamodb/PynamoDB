@@ -3,6 +3,10 @@
 Release Notes
 =============
 
+v5.5.1
+----------
+* Fix compatibility with botocore 1.33.2 (#1205)
+
 v5.5.0
 ----------
 * :meth:`~pynamodb.models.Model.save`, :meth:`~pynamodb.models.Model.update`, :meth:`~pynamodb.models.Model.delete_item`,
