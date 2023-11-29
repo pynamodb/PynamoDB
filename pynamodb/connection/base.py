@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 import botocore.client
 import botocore.exceptions
-from botocore.awsrequest import AWSPreparedRequest, create_request_object
+from botocore.awsrequest import AWSPreparedRequest, create_request_object, AWSResponse
 from botocore.client import ClientError
 from botocore.hooks import first_non_none_response
 from botocore.exceptions import BotoCoreError
@@ -402,7 +402,6 @@ class Connection(object):
             attempt_number = i + 1
             is_last_attempt_for_exceptions = i == self._max_retry_attempts_exception
 
-            http_response = None
             prepared_request = None
             try:
                 if prepared_request is not None:
@@ -434,8 +433,6 @@ class Connection(object):
             except (ValueError, botocore.exceptions.HTTPClientError, botocore.exceptions.ConnectionError) as e:
                 if is_last_attempt_for_exceptions:
                     log.debug('Reached the maximum number of retry attempts: %s', attempt_number)
-                    if http_response:
-                        e.args += (http_response.text,)
                     raise
                 else:
                     # No backoff for fast-fail exceptions that likely failed at the frontend
