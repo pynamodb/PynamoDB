@@ -125,15 +125,14 @@ class TableDoesNotExist(PynamoDBException):
 class CancellationReason:
     """
     A reason for a transaction cancellation.
+    
+    For a list of possible cancellation reasons and their semantics,
+    see `TransactGetItems`_ and `TransactWriteItems`_ in the AWS documentation.
+
+    .. _TransactGetItems: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactGetItems.html
+    .. _TransactWriteItems: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html
     """
-    code: Literal[
-        'ConditionalCheckFailed',
-        'ItemCollectionSizeLimitExceeded',
-        'TransactionConflict',
-        'ProvisionedThroughputExceeded',
-        'ThrottlingError',
-        'ValidationError',
-    ]
+    code: str
     message: Optional[str] = None
 
 

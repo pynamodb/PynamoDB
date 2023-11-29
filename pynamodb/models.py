@@ -43,7 +43,7 @@ from pynamodb.expressions.condition import Condition
 from pynamodb.types import HASH, RANGE
 from pynamodb.indexes import Index
 from pynamodb.pagination import ResultIterator
-from pynamodb.settings import get_settings_value, OperationSettings
+from pynamodb.settings import get_settings_value
 from pynamodb import constants
 from pynamodb.constants import (
     ATTR_NAME, ATTR_TYPE,
@@ -70,13 +70,12 @@ class BatchWrite(Generic[_T]):
     """
     A class for batch writes
     """
-    def __init__(self, model: Type[_T], auto_commit: bool = True, settings: OperationSettings = OperationSettings.default):
+    def __init__(self, model: Type[_T], auto_commit: bool = True):
         self.model = model
         self.auto_commit = auto_commit
         self.max_operations = BATCH_WRITE_PAGE_LIMIT
         self.pending_operations: List[Dict[str, Any]] = []
         self.failed_operations: List[Any] = []
-        self.settings = settings
 
     def save(self, put_item: _T) -> None:
         """
@@ -146,15 +145,15 @@ class BatchWrite(Generic[_T]):
         data = self.model._get_connection().batch_write_item(
             put_items=put_items,
             delete_items=delete_items,
-            settings=self.settings,
         )
         if data is None:
             return
         retries = 0
         unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
         while unprocessed_items:
-            sleep_time = random.randint(0, self.model.Meta.base_backoff_ms * (2 ** retries)) / 1000
-            time.sleep(sleep_time)
+            # TODO: we should consider using exponential backoff here
+            # TODO: it is somewhat unintuitive that we retry unprocessed items max_retry_attempts times,
+            # since each `batch_write_item` operation is also subject to max_retry_attempts
             retries += 1
             if retries >= self.model.Meta.max_retry_attempts:
                 self.failed_operations = unprocessed_items
@@ -166,12 +165,10 @@ class BatchWrite(Generic[_T]):
                     put_items.append(item.get(PUT_REQUEST).get(ITEM))  # type: ignore
                 elif DELETE_REQUEST in item:
                     delete_items.append(item.get(DELETE_REQUEST).get(KEY))  # type: ignore
-            log.info("Resending %d unprocessed keys for batch operation after %d seconds sleep",
-                     len(unprocessed_items), sleep_time)
+            log.info("Resending %d unprocessed keys for batch operation (retry %d)", len(unprocessed_items), retries)
             data = self.model._get_connection().batch_write_item(
                 put_items=put_items,
                 delete_items=delete_items,
-                settings=self.settings,
             )
             unprocessed_items = data.get(UNPROCESSED_ITEMS, {}).get(self.model.Meta.table_name)
 
@@ -184,7 +181,6 @@ class MetaProtocol(Protocol):
     host: Optional[str]
     connect_timeout_seconds: int
     read_timeout_seconds: int
-    base_backoff_ms: int
     max_retry_attempts: int
     max_pool_connections: int
     extra_headers: Mapping[str, str]
@@ -243,8 +239,6 @@ class MetaModel(AttributeContainerMeta):
                         setattr(attr_obj, 'connect_timeout_seconds', get_settings_value('connect_timeout_seconds'))
                     if not hasattr(attr_obj, 'read_timeout_seconds'):
                         setattr(attr_obj, 'read_timeout_seconds', get_settings_value('read_timeout_seconds'))
-                    if not hasattr(attr_obj, 'base_backoff_ms'):
-                        setattr(attr_obj, 'base_backoff_ms', get_settings_value('base_backoff_ms'))
                     if not hasattr(attr_obj, 'max_retry_attempts'):
                         setattr(attr_obj, 'max_retry_attempts', get_settings_value('max_retry_attempts'))
                     if not hasattr(attr_obj, 'max_pool_connections'):
@@ -328,7 +322,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
         items: Iterable[Union[_KeyType, Iterable[_KeyType]]],
         consistent_read: Optional[bool] = None,
         attributes_to_get: Optional[Sequence[str]] = None,
-        settings: OperationSettings = OperationSettings.default
     ) -> Iterator[_T]:
         """
         BatchGetItem for this model
@@ -347,7 +340,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                         keys_to_get,
                         consistent_read=consistent_read,
                         attributes_to_get=attributes_to_get,
-                        settings=settings,
                     )
                     for batch_item in page:
                         yield cls.from_raw_data(batch_item)
@@ -381,7 +373,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 keys_to_get,
                 consistent_read=consistent_read,
                 attributes_to_get=attributes_to_get,
-                settings=settings,
             )
             for batch_item in page:
                 yield cls.from_raw_data(batch_item)
@@ -391,7 +382,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                 keys_to_get = []
 
     @classmethod
-    def batch_write(cls: Type[_T], auto_commit: bool = True, settings: OperationSettings = OperationSettings.default) -> BatchWrite[_T]:
+    def batch_write(cls: Type[_T], auto_commit: bool = True) -> BatchWrite[_T]:
         """
         Returns a BatchWrite context manager for a batch operation.
 
@@ -401,10 +392,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
                             passed here, changes automatically commit on context exit
                             (whether successful or not).
         """
-        return BatchWrite(cls, auto_commit=auto_commit, settings=settings)
+        return BatchWrite(cls, auto_commit=auto_commit)
 
-    def delete(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default,
-               *, add_version_condition: bool = True) -> Any:
+    def delete(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Any:
         """
         Deletes this object from DynamoDB.
 
@@ -419,9 +409,9 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if add_version_condition and version_condition is not None:
             condition &= version_condition
 
-        return self._get_connection().delete_item(hk_value, range_key=rk_value, condition=condition, settings=settings)
+        return self._get_connection().delete_item(hk_value, range_key=rk_value, condition=condition)
 
-    def update(self, actions: List[Action], condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default, *, add_version_condition: bool = True) -> Any:
+    def update(self, actions: List[Action], condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Any:
         """
         Updates an item using the UpdateItem operation.
 
@@ -443,7 +433,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if add_version_condition and version_condition is not None:
             condition &= version_condition
 
-        data = self._get_connection().update_item(hk_value, range_key=rk_value, return_values=ALL_NEW, condition=condition, actions=actions, settings=settings)
+        data = self._get_connection().update_item(hk_value, range_key=rk_value, return_values=ALL_NEW, condition=condition, actions=actions)
         item_data = data[ATTRIBUTES]
         stored_cls = self._get_discriminator_class(item_data)
         if stored_cls and stored_cls != type(self):
@@ -451,17 +441,16 @@ class Model(AttributeContainer, metaclass=MetaModel):
         self.deserialize(item_data)
         return data
 
-    def save(self, condition: Optional[Condition] = None, settings: OperationSettings = OperationSettings.default, *, add_version_condition: bool = True) -> Dict[str, Any]:
+    def save(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Dict[str, Any]:
         """
         Save this object to dynamodb
         """
         args, kwargs = self._get_save_args(condition=condition, add_version_condition=add_version_condition)
-        kwargs['settings'] = settings
         data = self._get_connection().put_item(*args, **kwargs)
         self.update_local_version_attribute()
         return data
 
-    def refresh(self, consistent_read: bool = False, settings: OperationSettings = OperationSettings.default) -> None:
+    def refresh(self, consistent_read: bool = False) -> None:
         """
         Retrieves this object's data from dynamodb and syncs this local object
 
@@ -470,7 +459,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         """
         hk_value, rk_value = self._get_hash_range_key_serialized_values()
-        attrs = self._get_connection().get_item(hk_value, range_key=rk_value, consistent_read=consistent_read, settings=settings)
+        attrs = self._get_connection().get_item(hk_value, range_key=rk_value, consistent_read=consistent_read)
         item_data = attrs.get(ITEM, None)
         if item_data is None:
             raise self.DoesNotExist("This item does not exist in the table.")
@@ -541,7 +530,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
         range_key: Optional[_KeyType] = None,
         consistent_read: bool = False,
         attributes_to_get: Optional[Sequence[Text]] = None,
-        settings: OperationSettings = OperationSettings.default
     ) -> _T:
         """
         Returns a single object using the provided keys
@@ -559,7 +547,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
             range_key=range_key,
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get,
-            settings=settings,
         )
         if data:
             item_data = data.get(ITEM)
@@ -590,7 +577,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
         index_name: Optional[str] = None,
         limit: Optional[int] = None,
         rate_limit: Optional[float] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> int:
         """
         Provides a filtered count
@@ -633,7 +619,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
             query_kwargs,
             limit=limit,
             rate_limit=rate_limit,
-            settings=settings,
         )
 
         # iterate through results
@@ -655,7 +640,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
         attributes_to_get: Optional[Iterable[str]] = None,
         page_size: Optional[int] = None,
         rate_limit: Optional[float] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> ResultIterator[_T]:
         """
         Provides a high level query API
@@ -705,7 +689,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
             map_fn=cls.from_raw_data,
             limit=limit,
             rate_limit=rate_limit,
-            settings=settings,
         )
 
     @classmethod
@@ -721,7 +704,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
         index_name: Optional[str] = None,
         rate_limit: Optional[float] = None,
         attributes_to_get: Optional[Sequence[str]] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> ResultIterator[_T]:
         """
         Iterates through all items in the table
@@ -764,7 +746,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
             map_fn=cls.from_raw_data,
             limit=limit,
             rate_limit=rate_limit,
-            settings=settings,
         )
 
     @classmethod
@@ -1028,7 +1009,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return self._serialize_keys(hash_key, range_key)
 
     @classmethod
-    def _batch_get_page(cls, keys_to_get, consistent_read, attributes_to_get, settings: OperationSettings):
+    def _batch_get_page(cls, keys_to_get, consistent_read, attributes_to_get):
         """
         Returns a single page from BatchGetItem
         Also returns any unprocessed items
@@ -1039,7 +1020,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         log.debug("Fetching a BatchGetItem page")
         data = cls._get_connection().batch_get_item(
-            keys_to_get, consistent_read=consistent_read, attributes_to_get=attributes_to_get, settings=settings,
+            keys_to_get, consistent_read=consistent_read, attributes_to_get=attributes_to_get,
         )
         item_data = data.get(RESPONSES).get(cls.Meta.table_name)  # type: ignore
         unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.Meta.table_name, {}).get(KEYS, None)  # type: ignore
@@ -1096,7 +1077,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
                                               connect_timeout_seconds=cls.Meta.connect_timeout_seconds,
                                               read_timeout_seconds=cls.Meta.read_timeout_seconds,
                                               max_retry_attempts=cls.Meta.max_retry_attempts,
-                                              base_backoff_ms=cls.Meta.base_backoff_ms,
                                               max_pool_connections=cls.Meta.max_pool_connections,
                                               extra_headers=cls.Meta.extra_headers,
                                               aws_access_key_id=cls.Meta.aws_access_key_id,
