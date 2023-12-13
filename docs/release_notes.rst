@@ -20,12 +20,18 @@ This is a major release and contains breaking changes. Please read the notes bel
 * Python 3.6 is no longer supported.
 * :meth:`Index.count <pynamodb.indexes.Index.count>`, :meth:`Index.query <pynamodb.indexes.Index.query>`,
   and :meth:`Indexn.scan <pynamodb.indexes.Index.scan>` are now instance methods.
+* Switched back to botocore _make_api_call  under the hood to enable tracing with opentelemetry
+  * :py:class:`~pynamodb.settings.OperationSettings` has been removed
 
 Other changes in this release:
 
 * :meth:`~pynamodb.models.Model.save`, :meth:`~pynamodb.models.Model.update`, :meth:`~pynamodb.models.Model.delete_item`,
   and :meth:`~pynamodb.models.Model.delete` now accept a ``add_version_condition`` parameter.
   See :ref:`optimistic_locking_version_condition` for more details.
+* :meth:`~pynamodb.models.Model.batch_get`, has guard rails defending against items without a hash_key and range_key.
+* :meth:`~pynamodb.attributes.Attribute.set`, can remove attribute by assigning an empty value in the update expression.
+* `typing_extensions` is only used for python versions below 3.8.
+
 
 
 v5.3.2
