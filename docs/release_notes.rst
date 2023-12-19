@@ -3,14 +3,16 @@
 Release Notes
 =============
 
-Unreleased
-----------
+6.0
+---
 
 This is a major release and contains breaking changes. Please read the notes below carefully.
 
+Breaking changes:
+
 * :py:class:`~pynamodb.attributes.BinaryAttribute` and :py:class:`~pynamodb.attributes.BinarySetAttribute` have undergone breaking changes:
 
-  * The attributes' internal encoding has changed. To prevent this change going unnoticed, :code:`legacy_encoding` have been made required: see :doc:`upgrading_binary` for details.
+  * The attributes' internal encoding has changed. To prevent this change going unnoticed, a new required :code:`legacy_encoding` parameter was added: see :doc:`upgrading_binary` for details.
     If your codebase uses :py:class:`~pynamodb.attributes.BinaryAttribute` or :py:class:`~pynamodb.attributes.BinarySetAttribute`,
     go over the attribute declarations and mark them accordingly.
   * When using binary attributes, the return value of :meth:`~pynamodb.models.Model.serialize` will no longer be JSON-serializable
@@ -20,8 +22,14 @@ This is a major release and contains breaking changes. Please read the notes bel
 * Python 3.6 is no longer supported.
 * :meth:`Index.count <pynamodb.indexes.Index.count>`, :meth:`Index.query <pynamodb.indexes.Index.query>`,
   and :meth:`Indexn.scan <pynamodb.indexes.Index.scan>` are now instance methods.
-* Switched back to botocore _make_api_call  under the hood to enable tracing with opentelemetry
-  * :py:class:`~pynamodb.settings.OperationSettings` has been removed
+* :py:class:`~pynamodb.settings.OperationSettings` has been removed
+
+Other major changes:
+
+* We are now compatible with `opentelemetry botocore instrumentation <https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-botocore>`_.
+* We've reduced our usage of botocore private APIs (:pr:`1079`). On multiple occasions, new versions
+  of botocore broke PynamoDB, and this change lessens the likelihood of that happening in the future
+  by reducing (albeit not eliminating) our reliance on private botocore APIs.
 
 Other changes in this release:
 
@@ -30,8 +38,6 @@ Other changes in this release:
   See :ref:`optimistic_locking_version_condition` for more details.
 * :meth:`~pynamodb.models.Model.batch_get`, has guard rails defending against items without a hash_key and range_key.
 * :meth:`~pynamodb.attributes.Attribute.set`, can remove attribute by assigning an empty value in the update expression.
-* `typing_extensions` is only used for python versions below 3.8.
-
 
 
 v5.3.2
