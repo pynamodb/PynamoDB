@@ -3,8 +3,8 @@
 Release Notes
 =============
 
-6.0
----
+v6.0.0
+------
 
 This is a major release and contains breaking changes. Please read the notes below carefully.
 
