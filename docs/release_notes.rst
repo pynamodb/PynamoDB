@@ -24,14 +24,14 @@ Breaking changes:
   and :meth:`Indexn.scan <pynamodb.indexes.Index.scan>` are now instance methods.
 * :py:class:`~pynamodb.settings.OperationSettings` has been removed
 
-Other major changes:
+Major changes:
 
 * We are now compatible with `opentelemetry botocore instrumentation <https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-botocore>`_.
 * We've reduced our usage of botocore private APIs (:pr:`1079`). On multiple occasions, new versions
   of botocore broke PynamoDB, and this change lessens the likelihood of that happening in the future
   by reducing (albeit not eliminating) our reliance on private botocore APIs.
 
-Other changes in this release:
+Minor changes:
 
 * :meth:`~pynamodb.models.Model.save`, :meth:`~pynamodb.models.Model.update`, :meth:`~pynamodb.models.Model.delete_item`,
   and :meth:`~pynamodb.models.Model.delete` now accept a ``add_version_condition`` parameter.
@@ -147,8 +147,7 @@ v5.0.0
 
 This is major release and contains breaking changes. Please read the notes below carefully.
 
-Breaking changes
-================
+Breaking changes:
 
 * Python 2 is no longer supported. Python 3.6 or greater is now required.
 * :py:class:`~pynamodb.attributes.UnicodeAttribute` and :py:class:`~pynamodb.attributes.BinaryAttribute` now support empty values (:pr:`830`)
@@ -166,18 +165,17 @@ Breaking changes
 * Remove ``pynamodb.connection.util.pythonic`` (:pr:`753`) and (:pr:`865`)
 * Remove ``ModelContextManager`` class (:pr:`861`)
 
-Features
-========
+Features:
 
-**Polymorphism**
+* **Polymorphism**
 
-This release introduces :ref:`polymorphism` support via :py:class:`DiscriminatorAttribute <pynamodb.attributes.DiscriminatorAttribute>`.
-Discriminator values are written to DynamoDB and used during deserialization to instantiate the desired class.
+  This release introduces :ref:`polymorphism` support via :py:class:`DiscriminatorAttribute <pynamodb.attributes.DiscriminatorAttribute>`.
+  Discriminator values are written to DynamoDB and used during deserialization to instantiate the desired class.
 
-**Model Serialization**
+* **Model Serialization**
 
-THe ``Model`` class now includes public methods for serializing and deserializing its attributes.
-``Model.serialize`` and ``Model.deserialize`` convert the model to/from a dictionary of DynamoDB attribute values.
+  The ``Model`` class now includes public methods for serializing and deserializing its attributes.
+  ``Model.serialize`` and ``Model.deserialize`` convert the model to/from a dictionary of DynamoDB attribute values.
 
 Other changes in this release:
 
