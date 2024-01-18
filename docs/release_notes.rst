@@ -20,9 +20,18 @@ Breaking changes:
     for a safe JSON-serializable representation.
 
 * Python 3.6 is no longer supported.
-* :meth:`Index.count <pynamodb.indexes.Index.count>`, :meth:`Index.query <pynamodb.indexes.Index.query>`,
-  and :meth:`Indexn.scan <pynamodb.indexes.Index.scan>` are now instance methods.
-* :py:class:`~pynamodb.settings.OperationSettings` has been removed
+* :py:class:`~pynamodb.models.Model`'s JSON serialization helpers were changed:
+  * :code:`to_json` was renamed to :meth:`~pynamodb.models.Model.to_simple_json` (:pr:`1126`). Additionally, :meth:`~pynamodb.models.Model.to_dynamodb_dict`
+    and :meth:`~pynamodb.models.Model.from_dynamodb_dict` were added for safe round-trip serializable to JSON and back.
+  * `pynamodb.util.attribute_value_to_json` was removed (:pr:`1126`)
+  * :py:class:`~pynamodb.attributes.Attribute`'s :code:`default` parameter must be either an immutable value (of one of the built-in
+    immutable types) or a callable. This prevents a common class of errors caused by unintentionally mutating
+    the default value. A simple workaround is to pass an initializer (e.g. change :code:`default={}` to
+    :code:`default=dict`) or wrap in a lambda (e.g. change :code:`default={'foo': 'bar'}` to
+    :code:`default=lambda: {'foo': 'bar'}`).
+* :meth:`~pynamodb.indexes.Index.count`, :meth:`~pynamodb.indexes.Index.query`,
+  and :meth:`~pynamodb.indexes.Index.scan` are now instance methods.
+* :py:class:`~pynamodb.settings.OperationSettings` has been removed.
 
 Major changes:
 
