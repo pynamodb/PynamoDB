@@ -21,6 +21,7 @@ Breaking changes:
 
 * Python 3.6 is no longer supported.
 * :py:class:`~pynamodb.models.Model`'s JSON serialization helpers were changed:
+
   * :code:`to_json` was renamed to :meth:`~pynamodb.models.Model.to_simple_json` (:pr:`1126`). Additionally, :meth:`~pynamodb.models.Model.to_dynamodb_dict`
     and :meth:`~pynamodb.models.Model.from_dynamodb_dict` were added for safe round-trip serializable to JSON and back.
   * `pynamodb.util.attribute_value_to_json` was removed (:pr:`1126`)
@@ -29,6 +30,7 @@ Breaking changes:
     the default value. A simple workaround is to pass an initializer (e.g. change :code:`default={}` to
     :code:`default=dict`) or wrap in a lambda (e.g. change :code:`default={'foo': 'bar'}` to
     :code:`default=lambda: {'foo': 'bar'}`).
+
 * :meth:`~pynamodb.indexes.Index.count`, :meth:`~pynamodb.indexes.Index.query`,
   and :meth:`~pynamodb.indexes.Index.scan` are now instance methods.
 * :py:class:`~pynamodb.settings.OperationSettings` has been removed.
