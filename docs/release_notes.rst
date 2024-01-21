@@ -27,7 +27,8 @@ Breaking changes:
   * :code:`to_json` was renamed to :meth:`~pynamodb.models.Model.to_simple_json` (:pr:`1126`). Additionally, :meth:`~pynamodb.models.Model.to_dynamodb_dict`
     and :meth:`~pynamodb.models.Model.from_dynamodb_dict` were added for safe round-trip serializable to JSON and back.
   * `pynamodb.util.attribute_value_to_json` was removed (:pr:`1126`)
-  * :py:class:`~pynamodb.attributes.Attribute`'s :code:`default` parameter must be either an immutable value (of one of the built-in
+
+* :py:class:`~pynamodb.attributes.Attribute`'s :code:`default` parameter must be either an immutable value (of one of the built-in
     immutable types) or a callable. This prevents a common class of errors caused by unintentionally mutating
     the default value. A simple workaround is to pass an initializer (e.g. change :code:`default={}` to
     :code:`default=dict`) or wrap in a lambda (e.g. change :code:`default={'foo': 'bar'}` to
