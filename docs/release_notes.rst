@@ -20,6 +20,8 @@ Breaking changes:
     for a safe JSON-serializable representation.
 
 * Python 3.6 is no longer supported.
+* PynamoDB no longer has a default AWS region (used to be us-east-1) (:pr:`1003`).
+  If needed, update your models' `Meta` or set the `AWS_DEFAULT_REGION` environment variable.
 * :py:class:`~pynamodb.models.Model`'s JSON serialization helpers were changed:
 
   * :code:`to_json` was renamed to :meth:`~pynamodb.models.Model.to_simple_json` (:pr:`1126`). Additionally, :meth:`~pynamodb.models.Model.to_dynamodb_dict`
