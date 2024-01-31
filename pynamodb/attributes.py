@@ -929,7 +929,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer, metaclass=M
     For example, below we define "MyModel" which contains a MapAttribute "my_map":
 
     class MyModel(Model):
-       my_map = MapAttribute(attr_name="dynamo_name", default={})
+       my_map = MapAttribute(attr_name="dynamo_name", default=dict)
 
     When instantiated in this manner (as a class attribute of an AttributeContainer class), the MapAttribute
     class acts as an instance of the Attribute class. The instance stores data about the attribute (in this

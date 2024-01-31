@@ -16,7 +16,7 @@ Breaking changes:
     If your codebase uses :py:class:`~pynamodb.attributes.BinaryAttribute` or :py:class:`~pynamodb.attributes.BinarySetAttribute`,
     go over the attribute declarations and mark them accordingly.
   * When using binary attributes, the return value of :meth:`~pynamodb.models.Model.serialize` will no longer be JSON-serializable
-    since it will contain :code:`bytes` objects. Use :meth:`~pynamodb.models.Model.to_dynamodb_dict`
+    since it will contain :code:`bytes` objects. Use :meth:`~pynamodb.attributes.AttributeContainer.to_dynamodb_dict` and :meth:`~pynamodb.attributes.AttributeContainer.to_simple_dict` for JSON-serializable mappings.
     for a safe JSON-serializable representation.
 
 * Python 3.6 is no longer supported.
