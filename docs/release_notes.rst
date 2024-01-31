@@ -24,8 +24,8 @@ Breaking changes:
   If needed, update your models' `Meta` or set the `AWS_DEFAULT_REGION` environment variable.
 * :py:class:`~pynamodb.models.Model`'s JSON serialization helpers were changed:
 
-  * :code:`to_json` was renamed to :meth:`~pynamodb.models.Model.to_simple_json` (:pr:`1126`). Additionally, :meth:`~pynamodb.models.Model.to_dynamodb_dict`
-    and :meth:`~pynamodb.models.Model.from_dynamodb_dict` were added for safe round-trip serializable to JSON and back.
+  * :code:`to_json` was renamed to :meth:`~pynamodb.attributes.AttributeContainer.to_simple_json` (:pr:`1126`). Additionally, :meth:`~pynamodb.attributes.AttributeContainer.to_dynamodb_dict`
+    and :meth:`~pynamodb.attributes.AttributeContainer.from_dynamodb_dict` were added for round-trip JSON serialization.
   * `pynamodb.util.attribute_value_to_json` was removed (:pr:`1126`)
 
 * :py:class:`~pynamodb.attributes.Attribute`'s :code:`default` parameter must be either an immutable value (of one of the built-in
