@@ -29,10 +29,10 @@ Breaking changes:
   * `pynamodb.util.attribute_value_to_json` was removed (:pr:`1126`)
 
 * :py:class:`~pynamodb.attributes.Attribute`'s :code:`default` parameter must be either an immutable value (of one of the built-in
-    immutable types) or a callable. This prevents a common class of errors caused by unintentionally mutating
-    the default value. A simple workaround is to pass an initializer (e.g. change :code:`default={}` to
-    :code:`default=dict`) or wrap in a lambda (e.g. change :code:`default={'foo': 'bar'}` to
-    :code:`default=lambda: {'foo': 'bar'}`).
+  immutable types) or a callable. This prevents a common class of errors caused by unintentionally mutating
+  the default value. A simple workaround is to pass an initializer (e.g. change :code:`default={}` to
+  :code:`default=dict`) or wrap in a lambda (e.g. change :code:`default={'foo': 'bar'}` to
+  :code:`default=lambda: {'foo': 'bar'}`).
 
 * :meth:`~pynamodb.indexes.Index.count`, :meth:`~pynamodb.indexes.Index.query`,
   and :meth:`~pynamodb.indexes.Index.scan` are now instance methods.
