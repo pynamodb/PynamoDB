@@ -26,14 +26,14 @@ Breaking changes:
 
   * :code:`to_json` was renamed to :meth:`~pynamodb.attributes.AttributeContainer.to_simple_dict` (:pr:`1126`). Additionally, :meth:`~pynamodb.attributes.AttributeContainer.to_dynamodb_dict`
     and :meth:`~pynamodb.attributes.AttributeContainer.from_dynamodb_dict` were added for round-trip JSON serialization.
-  * `pynamodb.util.attribute_value_to_json` was removed (:pr:`1126`)
+  * :code:`pynamodb.util.attribute_value_to_json` was removed (:pr:`1126`)
 
-* :py:class:`~pynamodb.attributes.Attribute`'s :code:`default` parameter must be either an immutable value (of one of the built-in
-  immutable types) or a callable. This prevents a common class of errors caused by unintentionally mutating
-  the default value. A simple workaround is to pass an initializer (e.g. change :code:`default={}` to
+* :py:class:`~pynamodb.attributes.Attribute`'s :code:`default` parameter must be either an immutable value
+  (of one of the built-in immutable types) or a callable.
+  This prevents a common class of errors caused by unintentionally mutating the default value.
+  A simple workaround is to pass an initializer (e.g. change :code:`default={}` to
   :code:`default=dict`) or wrap in a lambda (e.g. change :code:`default={'foo': 'bar'}` to
   :code:`default=lambda: {'foo': 'bar'}`).
-
 * :meth:`~pynamodb.indexes.Index.count`, :meth:`~pynamodb.indexes.Index.query`,
   and :meth:`~pynamodb.indexes.Index.scan` are now instance methods.
 * :py:class:`~pynamodb.settings.OperationSettings` has been removed.
