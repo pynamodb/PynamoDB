@@ -134,6 +134,7 @@ class CancellationReason:
     """
     code: str
     message: Optional[str] = None
+    item: Optional[Dict[str, Any]] = None
 
 
 class TransactWriteError(PynamoDBException):
