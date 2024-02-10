@@ -181,7 +181,7 @@ def test_transact_write__error__transaction_cancelled__condition_check_failure__
     assert exc_info.value.cause_response_code == TRANSACTION_CANCELLED
     assert 'ConditionalCheckFailed' in exc_info.value.cause_response_message
     assert exc_info.value.cancellation_reasons == [
-        CancellationReason(code='ConditionalCheckFailed', message='The conditional request failed', item=User(1).to_dynamodb_dict()),
+        CancellationReason(code='ConditionalCheckFailed', message='The conditional request failed', raw_item=User(1).to_dynamodb_dict()),
     ]
     assert isinstance(exc_info.value.cause, botocore.exceptions.ClientError)
     assert User.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
