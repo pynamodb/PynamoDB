@@ -5,6 +5,7 @@ import botocore.exceptions
 import pytest
 
 from pynamodb.connection import Connection
+from pynamodb.constants import ALL_OLD
 from pynamodb.exceptions import CancellationReason
 from pynamodb.exceptions import DoesNotExist, TransactWriteError, InvalidStateError
 
@@ -166,6 +167,22 @@ def test_transact_write__error__transaction_cancelled__condition_check_failure(c
     assert isinstance(exc_info.value.cause, botocore.exceptions.ClientError)
     assert User.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
     assert BankStatement.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
+
+
+@pytest.mark.ddblocal
+def test_transact_write__error__transaction_cancelled__condition_check_failure__return_all_old(connection):
+    # create a users and a bank statements for them
+    User(1).save()
+
+    # attempt to do this as a transaction with the condition that they don't already exist
+    with pytest.raises(TransactWriteError) as exc_info:
+        with TransactWrite(connection=connection) as transaction:
+            transaction.save(User(1), condition=(User.user_id.does_not_exist()), return_values=ALL_OLD)
+    assert exc_info.value.cause_response_code == TRANSACTION_CANCELLED
+    assert 'ConditionalCheckFailed' in exc_info.value.cause_response_message
+    assert exc_info.value.cancellation_reasons == [
+        CancellationReason(code='ConditionalCheckFailed', message='The conditional request failed', raw_item=User(1).to_dynamodb_dict()),
+    ]
 
 
 @pytest.mark.ddblocal

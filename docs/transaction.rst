@@ -94,7 +94,8 @@ Now, say you make another attempt to debit one of the accounts when they don't h
                 condition=(
                     (BankStatement.account_balance >= transfer_amount) &
                     (BankStatement.is_active == True)
-                )
+                ),
+                return_values=ALL_OLD
             )
             transaction.update(
                 BankStatement(user_id='user2'),
@@ -107,6 +108,8 @@ Now, say you make another attempt to debit one of the accounts when they don't h
         assert e.cause_response_code == 'TransactionCanceledException'
         # the first 'update' was a reason for the cancellation
         assert e.cancellation_reasons[0].code == 'ConditionalCheckFailed'
+        # when return_values=ALL_OLD, the old values can be accessed from the raw_item property
+        assert BankStatement.from_dynamodb_dict(e.cancellation_reasons[0].raw_item) == user1_statement
         # the second 'update' wasn't a reason, but was cancelled too
         assert e.cancellation_reasons[1] is None
 
