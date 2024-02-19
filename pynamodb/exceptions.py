@@ -84,11 +84,25 @@ class PutError(PynamoDBConnectionError):
     msg = "Error putting item"
 
 
+class ConditionFailedPut(PutError):
+    """
+    Raised when an item fails to be created due to condition
+    """
+    msg = "Condition failed while putting item"
+
+
 class UpdateError(PynamoDBConnectionError):
     """
     Raised when an item fails to be updated
     """
     msg = "Error updating item"
+
+
+class ConditionFailedUpdate(UpdateError):
+    """
+    Raised when an item fails to be updated due to condition
+    """
+    msg = "Condition failed while updating item"
 
 
 class GetError(PynamoDBConnectionError):
