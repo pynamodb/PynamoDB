@@ -375,9 +375,11 @@ class Connection(object):
                 'has_streaming_input': operation_model.has_streaming_input,
                 'auth_type': operation_model.auth_type,
             }
-            endpoint_url, additional_headers = self.client._resolve_endpoint_ruleset(
+            endpoint_url, additional_headers, *rest = self.client._resolve_endpoint_ruleset(
                 operation_model, operation_kwargs, request_context
             )
+            if rest and rest[0]:
+                request_context['endpoint_properties'] = rest[0]
             request_dict = self.client._convert_to_request_dict(
                 api_params=operation_kwargs,
                 operation_model=operation_model,
