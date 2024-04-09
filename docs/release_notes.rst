@@ -53,6 +53,33 @@ Minor changes:
 * :meth:`~pynamodb.models.Model.batch_get`, has guard rails defending against items without a hash_key and range_key.
 * :meth:`~pynamodb.attributes.Attribute.set`, can remove attribute by assigning an empty value in the update expression.
 
+v5.5.1
+----------
+* Fix compatibility with botocore 1.33.2 (#1205)
+
+v5.5.0
+----------
+* :meth:`~pynamodb.models.Model.save`, :meth:`~pynamodb.models.Model.update`, :meth:`~pynamodb.models.Model.delete_item`,
+  and :meth:`~pynamodb.models.Model.delete` now accept a ``add_version_condition`` parameter.
+  See :ref:`optimistic_locking_version_condition` for more details.
+
+v5.4.1
+----------
+* Use model's AWS credentials in threads (#1164)
+
+  A model can specify custom AWS credentials in the ``Meta`` class (in lieu of "global"
+  AWS credentials from the environment). Previously those model-specific credentials
+  were not used from within new threads.
+
+Contributors to this release:
+
+* @atsuoishimoto
+
+v5.4.0
+----------
+* Expose transaction cancellation reasons in
+  :meth:`~pynamodb.exceptions.TransactWriteError.cancellation_reasons` and
+  :meth:`~pynamodb.exceptions.TransactGetError.cancellation_reasons` (#1144).
 
 v5.3.2
 ----------
@@ -206,6 +233,11 @@ Contributors to this release:
 * :user:`rchilaka`-amzn
 * :user:`jonathantan`
 
+v4.4.0
+----------
+* Update for botocore 1.28 private API change (#1130) which caused the following exception::
+
+    TypeError: _convert_to_request_dict() missing 1 required positional argument: 'endpoint_url'
 
 v4.3.3
 ----------
