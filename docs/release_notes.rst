@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+v4.4.1
+----------
+* Fix compatibility with botocore 1.33.2 (#1235)
+
+
 v4.4.0
 ----------
 * Update for botocore 1.28 private API change (#1130) which caused the following exception::
