@@ -424,7 +424,6 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         """
         Sets attributes sent back from DynamoDB on this object
         """
-        self.attribute_values = {}
         self._set_discriminator()
         self._set_defaults(_user_instantiated=False)
         for name, attr in self.get_attributes().items():
