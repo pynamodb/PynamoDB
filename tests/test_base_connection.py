@@ -3,6 +3,8 @@ Tests for the base connection class
 """
 import base64
 import json
+from uuid import UUID
+
 import urllib3
 from unittest import mock
 from unittest.mock import patch
@@ -1516,10 +1518,13 @@ def test_connection__botocore_config():
 
 
 @mock.patch('botocore.httpsession.URLLib3Session.send')
-def test_connection_make_api_call___extra_headers(send_mock):
+def test_connection_make_api_call___extra_headers(send_mock, mocker):
     good_response = mock.Mock(spec=AWSResponse, status_code=200, headers={}, text='{}', content=b'{}')
 
     send_mock.return_value = good_response
+
+    # return constant UUID
+    mocker.patch('uuid.uuid4', return_value=UUID('01FC4BDB-B223-4B86-88F4-DEE79B77F275'))
 
     c = Connection(extra_headers={'foo': 'bar'}, max_retry_attempts=0)
     c._make_api_call(
@@ -1529,7 +1534,18 @@ def test_connection_make_api_call___extra_headers(send_mock):
 
     assert send_mock.call_count == 1
     request = send_mock.call_args[0][0]
-    assert request.headers.get('foo').decode() == 'bar'
+    assert request.headers['foo'] == 'bar'
+
+    c = Connection(extra_headers={'foo': 'baz'}, max_retry_attempts=0)
+    c._make_api_call(
+        'DescribeTable',
+        {'TableName': 'MyTable'},
+    )
+
+    assert send_mock.call_count == 2
+    request2 = send_mock.call_args[0][0]
+    # all headers, including signatures, and except 'foo', should match
+    assert {**request.headers, 'foo': ''} == {**request2.headers, 'foo': ''}
 
 
 @mock.patch('botocore.httpsession.URLLib3Session.send')

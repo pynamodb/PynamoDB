@@ -331,10 +331,9 @@ class Connection(object):
         except Exception:
             log.exception("pre_boto callback threw an exception.")
 
-    def _before_sign(self, request, **_) -> None:
+    def _before_send(self, request, **_) -> None:
         if self._extra_headers is not None:
-            for k, v in self._extra_headers.items():
-                request.headers.add_header(k, v)
+            request.headers.update(self._extra_headers)
 
     def _make_api_call(self, operation_name: str, operation_kwargs: Dict) -> Dict:
         try:
@@ -412,7 +411,7 @@ class Connection(object):
             )
             self._client = cast(BotocoreBaseClientPrivate, self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config))
 
-            self._client.meta.events.register_first('before-sign.*.*', self._before_sign)
+            self._client.meta.events.register_first('before-send.*.*', self._before_send)
         return self._client
 
     def add_meta_table(self, meta_table: MetaTable) -> None:
