@@ -357,6 +357,7 @@ class Connection(object):
                         CancellationReason(
                             code=d['Code'],
                             message=d.get('Message'),
+                            raw_item=cast(Optional[Dict[str, Dict[str, Any]]], d.get('Item')),
                         ) if d['Code'] != 'None' else None
                     )
                     for d in cancellation_reasons

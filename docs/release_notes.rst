@@ -3,30 +3,83 @@
 Release Notes
 =============
 
-Unreleased
-----------
+v6.0.0
+------
 
 This is a major release and contains breaking changes. Please read the notes below carefully.
 
+Breaking changes:
+
 * :py:class:`~pynamodb.attributes.BinaryAttribute` and :py:class:`~pynamodb.attributes.BinarySetAttribute` have undergone breaking changes:
 
-  * The attributes' internal encoding has changed. To prevent this change going unnoticed, :code:`legacy_encoding` have been made required: see :doc:`upgrading_binary` for details.
+  * The attributes' internal encoding has changed. To prevent this change going unnoticed, a new required :code:`legacy_encoding` parameter was added: see :doc:`upgrading_binary` for details.
     If your codebase uses :py:class:`~pynamodb.attributes.BinaryAttribute` or :py:class:`~pynamodb.attributes.BinarySetAttribute`,
     go over the attribute declarations and mark them accordingly.
   * When using binary attributes, the return value of :meth:`~pynamodb.models.Model.serialize` will no longer be JSON-serializable
-    since it will contain :code:`bytes` objects. Use :meth:`~pynamodb.models.Model.to_dynamodb_dict`
+    since it will contain :code:`bytes` objects. Use :meth:`~pynamodb.attributes.AttributeContainer.to_dynamodb_dict` and :meth:`~pynamodb.attributes.AttributeContainer.to_simple_dict` for JSON-serializable mappings.
     for a safe JSON-serializable representation.
 
 * Python 3.6 is no longer supported.
-* :meth:`Index.count <pynamodb.indexes.Index.count>`, :meth:`Index.query <pynamodb.indexes.Index.query>`,
-  and :meth:`Indexn.scan <pynamodb.indexes.Index.scan>` are now instance methods.
+* PynamoDB no longer has a default AWS region (used to be us-east-1) (:pr:`1003`).
+  If needed, update your models' `Meta` or set the `AWS_DEFAULT_REGION` environment variable.
+* :py:class:`~pynamodb.models.Model`'s JSON serialization helpers were changed:
 
-Other changes in this release:
+  * :code:`to_json` was renamed to :meth:`~pynamodb.attributes.AttributeContainer.to_simple_dict` (:pr:`1126`). Additionally, :meth:`~pynamodb.attributes.AttributeContainer.to_dynamodb_dict`
+    and :meth:`~pynamodb.attributes.AttributeContainer.from_dynamodb_dict` were added for round-trip JSON serialization.
+  * :code:`pynamodb.util.attribute_value_to_json` was removed (:pr:`1126`)
+
+* :py:class:`~pynamodb.attributes.Attribute`'s :code:`default` parameter must be either an immutable value
+  (of one of the built-in immutable types) or a callable.
+  This prevents a common class of errors caused by unintentionally mutating the default value.
+  A simple workaround is to pass an initializer (e.g. change :code:`default={}` to
+  :code:`default=dict`) or wrap in a lambda (e.g. change :code:`default={'foo': 'bar'}` to
+  :code:`default=lambda: {'foo': 'bar'}`).
+* :meth:`~pynamodb.indexes.Index.count`, :meth:`~pynamodb.indexes.Index.query`,
+  and :meth:`~pynamodb.indexes.Index.scan` are now instance methods.
+* :py:class:`~pynamodb.settings.OperationSettings` has been removed.
+
+Major changes:
+
+* We are now compatible with `opentelemetry botocore instrumentation <https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-botocore>`_.
+* We've reduced our usage of botocore private APIs (:pr:`1079`). On multiple occasions, new versions
+  of botocore broke PynamoDB, and this change lessens the likelihood of that happening in the future
+  by reducing (albeit not eliminating) our reliance on private botocore APIs.
+
+Minor changes:
 
 * :meth:`~pynamodb.models.Model.save`, :meth:`~pynamodb.models.Model.update`, :meth:`~pynamodb.models.Model.delete_item`,
   and :meth:`~pynamodb.models.Model.delete` now accept a ``add_version_condition`` parameter.
   See :ref:`optimistic_locking_version_condition` for more details.
+* :meth:`~pynamodb.models.Model.batch_get`, has guard rails defending against items without a hash_key and range_key.
+* :meth:`~pynamodb.attributes.Attribute.set`, can remove attribute by assigning an empty value in the update expression.
 
+v5.5.1
+----------
+* Fix compatibility with botocore 1.33.2 (#1205)
+
+v5.5.0
+----------
+* :meth:`~pynamodb.models.Model.save`, :meth:`~pynamodb.models.Model.update`, :meth:`~pynamodb.models.Model.delete_item`,
+  and :meth:`~pynamodb.models.Model.delete` now accept a ``add_version_condition`` parameter.
+  See :ref:`optimistic_locking_version_condition` for more details.
+
+v5.4.1
+----------
+* Use model's AWS credentials in threads (#1164)
+
+  A model can specify custom AWS credentials in the ``Meta`` class (in lieu of "global"
+  AWS credentials from the environment). Previously those model-specific credentials
+  were not used from within new threads.
+
+Contributors to this release:
+
+* @atsuoishimoto
+
+v5.4.0
+----------
+* Expose transaction cancellation reasons in
+  :meth:`~pynamodb.exceptions.TransactWriteError.cancellation_reasons` and
+  :meth:`~pynamodb.exceptions.TransactGetError.cancellation_reasons` (#1144).
 
 v5.3.2
 ----------
@@ -135,8 +188,7 @@ v5.0.0
 
 This is major release and contains breaking changes. Please read the notes below carefully.
 
-Breaking changes
-================
+Breaking changes:
 
 * Python 2 is no longer supported. Python 3.6 or greater is now required.
 * :py:class:`~pynamodb.attributes.UnicodeAttribute` and :py:class:`~pynamodb.attributes.BinaryAttribute` now support empty values (:pr:`830`)
@@ -154,18 +206,17 @@ Breaking changes
 * Remove ``pynamodb.connection.util.pythonic`` (:pr:`753`) and (:pr:`865`)
 * Remove ``ModelContextManager`` class (:pr:`861`)
 
-Features
-========
+Features:
 
-**Polymorphism**
+* **Polymorphism**
 
-This release introduces :ref:`polymorphism` support via :py:class:`DiscriminatorAttribute <pynamodb.attributes.DiscriminatorAttribute>`.
-Discriminator values are written to DynamoDB and used during deserialization to instantiate the desired class.
+  This release introduces :ref:`polymorphism` support via :py:class:`DiscriminatorAttribute <pynamodb.attributes.DiscriminatorAttribute>`.
+  Discriminator values are written to DynamoDB and used during deserialization to instantiate the desired class.
 
-**Model Serialization**
+* **Model Serialization**
 
-THe ``Model`` class now includes public methods for serializing and deserializing its attributes.
-``Model.serialize`` and ``Model.deserialize`` convert the model to/from a dictionary of DynamoDB attribute values.
+  The ``Model`` class now includes public methods for serializing and deserializing its attributes.
+  ``Model.serialize`` and ``Model.deserialize`` convert the model to/from a dictionary of DynamoDB attribute values.
 
 Other changes in this release:
 
@@ -182,6 +233,11 @@ Contributors to this release:
 * :user:`rchilaka`-amzn
 * :user:`jonathantan`
 
+v4.4.0
+----------
+* Update for botocore 1.28 private API change (#1130) which caused the following exception::
+
+    TypeError: _convert_to_request_dict() missing 1 required positional argument: 'endpoint_url'
 
 v4.3.3
 ----------
