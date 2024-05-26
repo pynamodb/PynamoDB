@@ -3,6 +3,7 @@ Tests for the base connection class
 """
 import base64
 import json
+from datetime import datetime
 from uuid import UUID
 
 import urllib3
@@ -15,6 +16,7 @@ from botocore.client import ClientError
 from botocore.exceptions import BotoCoreError
 
 import pytest
+from freezegun import freeze_time
 
 from pynamodb.connection import Connection
 from pynamodb.connection.base import MetaTable
@@ -1517,11 +1519,10 @@ def test_connection__botocore_config():
     assert c.client._client_config.max_pool_connections == 20
 
 
-@mock.patch('botocore.httpsession.URLLib3Session.send')
-def test_connection_make_api_call___extra_headers(send_mock, mocker):
+@freeze_time()
+def test_connection_make_api_call___extra_headers(mocker):
     good_response = mock.Mock(spec=AWSResponse, status_code=200, headers={}, text='{}', content=b'{}')
-
-    send_mock.return_value = good_response
+    send_mock = mocker.patch('botocore.httpsession.URLLib3Session.send', return_value=good_response)
 
     # return constant UUID
     mocker.patch('uuid.uuid4', return_value=UUID('01FC4BDB-B223-4B86-88F4-DEE79B77F275'))
