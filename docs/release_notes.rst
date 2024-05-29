@@ -6,6 +6,13 @@ Release Notes
 v6.0.1
 ------
 
+Features:
+
+* For failed transaction, return the underlying item in :code:`cancellation_reasons[...].raw_item` (:pr:`1226`).
+  This only applies when passing :code:`return_values=ALL_OLD`.
+
+Fixes:
+
 * Fixing (:pr:`1242`) regression to the :code:`extra_headers` feature. These headers are intended for proxies that strip them,
   so they should be excluded from the AWS signature.
 
