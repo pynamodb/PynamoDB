@@ -1,6 +1,7 @@
 pytest>=6
 pytest-env
 pytest-mock
+freezegun
 
 # only used in CI
 coveralls
