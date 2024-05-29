@@ -3,6 +3,12 @@
 Release Notes
 =============
 
+v6.0.1
+------
+
+* Fixing (:pr:`1242`) regression to the :code:`extra_headers` feature. These headers are intended for proxies that strip them,
+  so they should be excluded from the AWS signature.
+
 v6.0.0
 ------
 
@@ -232,6 +238,10 @@ Contributors to this release:
 * :user:`ikonst`
 * :user:`rchilaka`-amzn
 * :user:`jonathantan`
+
+v4.4.1
+----------
+* Fix compatibility with botocore 1.33.2 (#1235)
 
 v4.4.0
 ----------
