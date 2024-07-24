@@ -2,16 +2,12 @@
 Runs tests against dynamodb
 """
 import time
-from pynamodb.attributes import UnicodeAttribute
 
 from pynamodb.connection import Connection
-from pynamodb.connection.table import TableConnection
-from pynamodb.constants import MAP, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
+from pynamodb.constants import PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
 from pynamodb.expressions.condition import BeginsWith, NotExists
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.exceptions import TableDoesNotExist
-from pynamodb.expressions.update import Action, SetAction
-from pynamodb.models import Model
 from pynamodb.types import STRING, HASH, RANGE, NUMBER
 
 import pytest
