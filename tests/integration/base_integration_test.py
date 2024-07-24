@@ -2,12 +2,16 @@
 Runs tests against dynamodb
 """
 import time
+from pynamodb.attributes import UnicodeAttribute
 
 from pynamodb.connection import Connection
-from pynamodb.constants import PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
+from pynamodb.connection.table import TableConnection
+from pynamodb.constants import MAP, PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
 from pynamodb.expressions.condition import BeginsWith, NotExists
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.exceptions import TableDoesNotExist
+from pynamodb.expressions.update import Action, SetAction
+from pynamodb.models import Model
 from pynamodb.types import STRING, HASH, RANGE, NUMBER
 
 import pytest
@@ -167,3 +171,83 @@ def test_connection_integration(ddb_url):
     )
     print("conn.delete_table...")
     conn.delete_table(table_name)
+
+
+def test_conn_without_describe_table_called(ddb_url, table: str):
+    conn = Connection(host=ddb_url)
+    # conn.describe_table(table)  # bug: operations don't work without calling describe_table first
+
+    conn.put_item(
+        table,
+        'item1-hash',
+        attributes={'foo': {'S': 'bar'}},
+    )
+    get_response = conn.get_item(
+        table,
+        'item1-hash',
+    )
+    assert get_response.get('Item') == {'id': {'S': 'item1-hash'}, 'foo': {'S': 'bar'}}
+
+    conn.update_item(
+        table,
+        'item1-hash',
+        actions=[Path('foo').set("rab")]
+    )
+
+    get_response_after_update = conn.get_item(
+        table,
+        'item1-hash',
+    )
+    assert get_response_after_update.get('Item') == {'id': {'S': 'item1-hash'}, 'foo': {'S': 'rab'}}
+
+    conn.delete_item(
+        table,
+        'item1-hash',
+    )
+    get_response_after_delete = conn.get_item(
+        table,
+        'item1-hash',
+    )
+    assert get_response_after_delete.get('Item') == None
+
+
+@pytest.fixture
+def table(ddb_url):
+    table_name = 'pynamodb-ci-connection'
+
+    conn = Connection(host=ddb_url)
+    params = {
+        'read_capacity_units': 1,
+        'write_capacity_units': 1,
+        'attribute_definitions': [
+            {
+                'attribute_type': STRING,
+                'attribute_name': 'id'
+            },
+        ],
+        'key_schema': [
+            {
+                'key_type': HASH,
+                'attribute_name': 'id'
+            }
+        ],
+    }
+    conn.create_table(table_name, **params)
+    for i in range(0,10):
+        time.sleep(1)
+        if conn.describe_table(table_name) is not None:
+            break
+        if i == 9:
+            raise TimeoutError
+
+    for i in range(0,10):
+        time.sleep(1)
+        if conn.describe_table(table_name)['TableStatus'] == 'ACTIVE':
+            break
+        if i == 9:
+            raise TimeoutError
+
+    yield table_name
+
+    conn.delete_table(table_name)
+
