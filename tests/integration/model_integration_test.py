@@ -142,3 +142,62 @@ def test_can_inherit_version_attribute(ddb_url) -> None:
 
             version_invalid = VersionAttribute()
     assert str(e.value) == 'The model has more than one Version attribute: version, version_invalid'
+
+
+@pytest.mark.ddblocal
+def test_update_model_with_version_attribute_without_get(ddb_url):
+    class TestModel(Model):
+        """
+        A model for testing
+        """
+        class Meta:
+            region = 'us-east-1'
+            table_name = 'pynamodb-ci'
+            host = ddb_url
+        forum = UnicodeAttribute(hash_key=True)
+        scores = NumberSetAttribute()
+        version = VersionAttribute()
+
+    if TestModel.exists():
+        TestModel.delete_table()
+    TestModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+
+    obj = TestModel('1')
+    obj.save()
+    assert TestModel.get('1').version == 1
+    obj.scores = 1 
+    obj.save()
+    assert TestModel.get('1').version == 2
+
+    obj_by_key = TestModel('1')  # try to update item without getting it first
+    obj_by_key.update(
+        actions=[
+            TestModel.scores.set(2),  # no version increment
+        ],
+        add_version_condition=False
+    )
+    updated_obj = TestModel.get('1')
+    assert updated_obj.scores == 2
+    assert updated_obj.version == 2
+
+
+    obj_2 = TestModel('2')
+    obj_2.save()
+    assert TestModel.get('2').version == 1
+    obj_2.scores = 1 
+    obj_2.save()
+    assert TestModel.get('2').version == 2
+
+    obj_2_by_key = TestModel('2')  # try to update item without getting it first
+    obj_2_by_key.update(
+        actions=[
+            TestModel.scores.set(2),
+            TestModel.version.set(TestModel.version + 1)  # increment version manually
+        ],
+        add_version_condition=False
+    )
+    updated_obj_2 = TestModel.get('2')
+    assert updated_obj_2.scores == 2
+    assert updated_obj_2.version == 2
+
+    TestModel.delete_table()
