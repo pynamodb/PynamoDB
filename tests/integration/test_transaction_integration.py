@@ -428,3 +428,51 @@ def test_transaction_write_with_version_attribute_condition_failure(connection):
     assert len(exc_info.value.cancellation_reasons) == 1
     assert exc_info.value.cancellation_reasons[0].code == 'ConditionalCheckFailed'
     assert Foo.Meta.table_name in exc_info.value.cause.MSG_TEMPLATE
+
+
+@pytest.mark.ddblocal
+def test_transaction_write_without_version_attribute_condition(connection):
+    foo = Foo(22)
+    foo.save()
+    assert Foo.get(22).version == 1
+    foo.star = 'initial_update'
+    foo.save()
+    assert Foo.get(22).version == 2
+
+    foo2 = Foo(22)  # try to update a field without getting the item first
+
+    with TransactWrite(connection=connection) as transaction:
+        transaction.update(
+            foo2,
+            actions=[
+                Foo.star.set('birdistheword'),
+            ],
+            add_version_condition=False,
+        )
+
+    foo_updated =  Foo.get(22)
+    assert foo_updated.version == 2  # should not modify the version
+    assert foo_updated.star == 'birdistheword'
+
+
+@pytest.mark.ddblocal
+def test_transaction_write_increment_version_without_version_attribute_condition(connection):
+    foo = Foo(23)
+    foo.save()
+    assert Foo.get(23).version == 1
+
+    foo2 = Foo(23)
+
+    with TransactWrite(connection=connection) as transaction:
+        transaction.update(
+            foo2,
+            actions=[
+                Foo.star.set('birdistheword'),
+                Foo.version.set(Foo.version + 1),
+            ],
+            add_version_condition=False,
+        )
+
+    foo_updated =  Foo.get(23)
+    assert foo_updated.version == 2
+    assert foo_updated.star == 'birdistheword'
