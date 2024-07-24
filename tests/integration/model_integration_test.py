@@ -155,7 +155,7 @@ def test_update_model_with_version_attribute_without_get(ddb_url):
             table_name = 'pynamodb-ci'
             host = ddb_url
         forum = UnicodeAttribute(hash_key=True)
-        scores = NumberSetAttribute()
+        score = NumberAttribute(null=True)
         version = VersionAttribute()
 
     if TestModel.exists():
@@ -165,39 +165,38 @@ def test_update_model_with_version_attribute_without_get(ddb_url):
     obj = TestModel('1')
     obj.save()
     assert TestModel.get('1').version == 1
-    obj.scores = 1 
+    obj.score = 1 
     obj.save()
     assert TestModel.get('1').version == 2
 
     obj_by_key = TestModel('1')  # try to update item without getting it first
     obj_by_key.update(
         actions=[
-            TestModel.scores.set(2),  # no version increment
+            TestModel.score.set(2),  # no version increment
         ],
         add_version_condition=False
     )
     updated_obj = TestModel.get('1')
-    assert updated_obj.scores == 2
+    assert updated_obj.score == 2
     assert updated_obj.version == 2
-
 
     obj_2 = TestModel('2')
     obj_2.save()
     assert TestModel.get('2').version == 1
-    obj_2.scores = 1 
+    obj_2.score = 1 
     obj_2.save()
     assert TestModel.get('2').version == 2
 
     obj_2_by_key = TestModel('2')  # try to update item without getting it first
     obj_2_by_key.update(
         actions=[
-            TestModel.scores.set(2),
+            TestModel.score.set(2),
             TestModel.version.set(TestModel.version + 1)  # increment version manually
         ],
         add_version_condition=False
     )
     updated_obj_2 = TestModel.get('2')
-    assert updated_obj_2.scores == 2
-    assert updated_obj_2.version == 2
+    assert updated_obj_2.score == 2
+    assert updated_obj_2.version == 3
 
     TestModel.delete_table()

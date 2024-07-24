@@ -474,5 +474,5 @@ def test_transaction_write_increment_version_without_version_attribute_condition
         )
 
     foo_updated =  Foo.get(23)
-    assert foo_updated.version == 2
     assert foo_updated.star == 'birdistheword'
+    assert foo_updated.version == 3
