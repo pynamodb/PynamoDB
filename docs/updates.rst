@@ -56,7 +56,7 @@ The following expressions and functions can only be used in the context of the a
     "if_not_exists( `attr`, `value` )", `attr` | `value`, Any, :code:`Thread.forum_name | 'Default Forum Name'`
 
 ``set`` action
-""""""""""""""
+^^^^^^^^^^^^^^
 
 The ``set`` action is the simplest action as it overwrites any previously stored value:
 
