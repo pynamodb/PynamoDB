@@ -825,7 +825,7 @@ class TTLAttribute(Attribute[datetime]):
             value = calendar.timegm(value.utctimetuple())
         else:
             raise ValueError("TTLAttribute value must be a timedelta or datetime")
-        return datetime.utcfromtimestamp(value).replace(tzinfo=timezone.utc)
+        return datetime.fromtimestamp(value, tz=timezone.utc)
 
     def __set__(self, instance, value):
         """
@@ -846,7 +846,7 @@ class TTLAttribute(Attribute[datetime]):
         Deserializes a timestamp (Unix time) as a UTC datetime.
         """
         timestamp = json.loads(value)
-        return datetime.utcfromtimestamp(timestamp).replace(tzinfo=timezone.utc)
+        return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
 class UTCDateTimeAttribute(Attribute[datetime]):
