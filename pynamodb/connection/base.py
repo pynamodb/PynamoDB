@@ -877,7 +877,10 @@ class Connection(object):
         try:
             return self.dispatch(UPDATE_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise UpdateError("Failed to update item: {}".format(e), e)
+            exc = UpdateError("Failed to update item: {}".format(e), e)
+            if exc.cause_response_code == "ConditionalCheckFailedException":
+                exc.__class__ = ConditionFailedUpdate
+            raise exc
 
     def put_item(
         self,
@@ -907,7 +910,10 @@ class Connection(object):
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
-            raise PutError("Failed to put item: {}".format(e), e)
+            exc = PutError("Failed to put item: {}".format(e), e)
+            if exc.cause_response_code == "ConditionalCheckFailedException":
+                exc.__class__ = ConditionFailedPut
+            raise exc
 
     def _get_transact_operation_kwargs(
         self,
