@@ -3,6 +3,13 @@
 Release Notes
 =============
 
+v6.0.2
+------
+
+Fixes:
+
+* Fix a warning about `datetime.utcfromtimestamp` deprecation (:pr:`1261`)
+
 v6.0.1
 ------
 
