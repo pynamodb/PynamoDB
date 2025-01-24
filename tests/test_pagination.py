@@ -1,5 +1,5 @@
 import pytest
-from pynamodb.pagination import RateLimiter
+from pynamodb.pagination import RateLimiter, PageIterator
 
 
 class MockTime():
@@ -77,3 +77,25 @@ def test_basic_rate_limiting_large_increment():
 
     # The operation takes longer than the minimum wait, so rate limiting should have no effect
     assert mock_time.time() == 1100.0
+
+
+def test_page_iterator_with_rate_limit():
+    def mock_operation():
+        pass
+
+    args = None
+    kwargs = {'exclusive_start_key': None}
+    rate_limit = 0.1
+    page_iter = PageIterator(mock_operation, args, kwargs, rate_limit)
+    assert page_iter._rate_limiter.rate_limit == rate_limit
+
+
+def test_page_iterator_page_size_getter():
+    page_iter = PageIterator(None, None, {'limit': 10})
+    assert page_iter.page_size == 10
+
+
+def test_page_iterator_page_size_setter():
+    page_iter = PageIterator(None, None, {})
+    page_iter.page_size = 20
+    assert page_iter._kwargs['limit'] == 20
