@@ -26,7 +26,7 @@ from pynamodb.indexes import (
     IncludeProjection, KeysOnlyProjection, Index
 )
 from pynamodb.attributes import (
-    DiscriminatorAttribute, UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
+    CamelCaseAttributeTransform, DiscriminatorAttribute, PascalCaseAttributeTransform, UnicodeAttribute, NumberAttribute, BinaryAttribute, UTCDateTimeAttribute,
     UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute, MapAttribute,
     BooleanAttribute, ListAttribute, TTLAttribute, VersionAttribute)
 from .data import (
@@ -209,6 +209,34 @@ class CustomAttrNameModel(Model):
     overidden_user_id = UnicodeAttribute(range_key=True, attr_name='user_id')
     overidden_attr = UnicodeAttribute(attr_name='foo_attr', null=True)
     uid_index = CustomAttrIndex()
+
+
+class CamelCaseTransformAttrNameModel(Model, attribute_transform=CamelCaseAttributeTransform):
+    """
+    Attribute names transformed in to Camel Case
+    """
+
+    class Meta:
+        table_name = 'CustomAttrModel'
+
+    user_name = UnicodeAttribute(hash_key=True)
+    user_id = UnicodeAttribute(range_key=True)
+    enabled = UnicodeAttribute(null=True)
+    overidden_attr = UnicodeAttribute(attr_name='foo_attr', null=True)
+
+
+class PascalCaseTransformAttrNameModel(Model, attribute_transform=PascalCaseAttributeTransform):
+    """
+    Attribute names transformed in to Camel Case
+    """
+
+    class Meta:
+        table_name = 'CustomAttrModel'
+
+    user_name = UnicodeAttribute(hash_key=True)
+    user_id = UnicodeAttribute(range_key=True)
+    enabled = UnicodeAttribute(null=True)
+    overidden_attr = UnicodeAttribute(attr_name='foo_attr', null=True)
 
 
 class UserModel(Model):
@@ -685,12 +713,86 @@ class ModelTestCase(TestCase):
             ]
         )
 
+        schema = CamelCaseTransformAttrNameModel._get_schema()
+        self.assertListEqual(
+            schema['key_schema'],
+            [
+                {
+                    'KeyType': 'RANGE',
+                    'AttributeName': 'userId'
+                },
+                {
+                    'KeyType': 'HASH',
+                    'AttributeName': 'userName'
+                },
+            ],
+        )
+        self.assertListEqual(
+            schema['attribute_definitions'],
+            [
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'userId'
+                },
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'userName'
+                },
+            ]
+        )
+
+        schema = PascalCaseTransformAttrNameModel._get_schema()
+        self.assertListEqual(
+            schema['key_schema'],
+            [
+                {
+                    'KeyType': 'RANGE',
+                    'AttributeName': 'UserId'
+                },
+                {
+                    'KeyType': 'HASH',
+                    'AttributeName': 'UserName'
+                },
+            ],
+        )
+        self.assertListEqual(
+            schema['attribute_definitions'],
+            [
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'UserId'
+                },
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'UserName'
+                },
+            ]
+        )
+
     def test_overridden_attr_name(self):
         user = UserModel(custom_user_name="bob")
         self.assertEqual(user.custom_user_name, "bob")
         self.assertRaises(AttributeError, getattr, user, "user_name")
 
         self.assertRaises(ValueError, UserModel, user_name="bob")
+
+    def test_transformed_attr_name(self):
+        """
+        Test transformed attributes names
+        """
+        item = CamelCaseTransformAttrNameModel('foo', 'bar', overidden_attr='test', enabled="test")
+        self.assertEqual(item.overidden_attr, 'test')
+        attrs = item.get_attributes()
+        self.assertEqual(attrs["user_name"].attr_name, "userName")
+        self.assertEqual(attrs["user_id"].attr_name, "userId")
+        self.assertEqual(attrs["enabled"].attr_name, "enabled")
+
+        item = PascalCaseTransformAttrNameModel('foo', 'bar', overidden_attr='test', enabled="test")
+        self.assertEqual(item.overidden_attr, 'test')
+        attrs = item.get_attributes()
+        self.assertEqual(attrs["user_name"].attr_name, "UserName")
+        self.assertEqual(attrs["user_id"].attr_name, "UserId")
+        self.assertEqual(attrs["enabled"].attr_name, "Enabled")
 
     def test_refresh(self):
         """

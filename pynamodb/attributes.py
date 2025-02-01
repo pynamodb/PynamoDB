@@ -1,6 +1,7 @@
 """
 PynamoDB attributes
 """
+import abc
 import base64
 import calendar
 import collections.abc
@@ -288,21 +289,29 @@ class AttributeContainerMeta(type):
         # Defined so that the discriminator can be set in the class definition.
         return super().__new__(cls, name, bases, namespace)
 
-    def __init__(self, name, bases, namespace, discriminator=None):
+    def __init__(self, name, bases, namespace, discriminator=None, attribute_transform: Optional["AttributeTransform"] = None):
         super().__init__(name, bases, namespace)
-        AttributeContainerMeta._initialize_attributes(self, discriminator)
+        AttributeContainerMeta._initialize_attributes(self, discriminator, attribute_transform)
 
     @staticmethod
-    def _initialize_attributes(cls, discriminator_value):
+    def _initialize_attributes(cls, discriminator_value, attribute_transform: Optional[Type["AttributeTransform"]] = None):
         """
         Initialize attributes on the class.
         """
         cls._attributes = {}
         cls._dynamo_to_python_attrs = {}
 
+        if attribute_transform is None or issubclass(attribute_transform, AttributeTransform):
+            cls._attribute_transform = attribute_transform
+        else:
+            raise ValueError(f"Attribute Transform {type(attribute_transform)} is not a subclass of AttributeTransform")
+
         for name, attribute in getmembers(cls, lambda o: isinstance(o, Attribute)):
             cls._attributes[name] = attribute
             if attribute.attr_name != name:
+                cls._dynamo_to_python_attrs[attribute.attr_name] = name
+            elif cls._attribute_transform is not None:
+                attribute.attr_name = cls._attribute_transform.transform(name)
                 cls._dynamo_to_python_attrs[attribute.attr_name] = name
 
         # Register the class with the discriminator if necessary.
@@ -599,6 +608,42 @@ class DiscriminatorAttribute(Attribute[type]):
         if value not in self._discriminator_map:
             raise ValueError("Unknown discriminator value: {}".format(value))
         return self._discriminator_map[value]
+
+
+class AttributeTransform(abc.ABC):
+    """Base case for converting python attributes in to various cases"""
+
+    @classmethod
+    @abc.abstractmethod
+    def transform(cls, python_attr: str) -> str:
+        """Transform python attribute string to desired case"""
+        ...
+
+
+class CamelCaseAttributeTransform(AttributeTransform):
+    """Convert python attributes to camelCase"""
+
+    @classmethod
+    def transform(cls, python_attr: str) -> str:
+        if isinstance(python_attr, str):
+            parts = python_attr.split("_")
+            return parts[0] + "".join([part.title() for part in parts[1:]])
+
+        else:
+            raise ValueError("Provided value is not a string")
+
+
+class PascalCaseAttributeTransform(AttributeTransform):
+    """Convert python attributes to PascalCase"""
+
+    @classmethod
+    def transform(cls, python_attr: str) -> str:
+        if isinstance(python_attr, str):
+            parts = python_attr.split("_")
+            return "".join([part.title() for part in parts])
+
+        else:
+            raise ValueError("Provided value is not a string")
 
 
 class BinaryAttribute(Attribute[bytes]):
