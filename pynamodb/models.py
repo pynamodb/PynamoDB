@@ -441,11 +441,22 @@ class Model(AttributeContainer, metaclass=MetaModel):
         self.deserialize(item_data)
         return data
 
-    def save(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Dict[str, Any]:
+    def save(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True, return_values_on_condition_failure: Optional[str] = None) -> Dict[str, Any]:
         """
         Save this object to dynamodb
+
+        :param condition: an optional Condition on which to save
+        :param add_version_condition: For models which have a :class:`~pynamodb.attributes.VersionAttribute`,
+          specifies whether only to save if the version matches the model that is currently loaded.
+          Set to `False` for a 'last write wins' strategy.
+          Regardless, the version will always be incremented to prevent "rollbacks" by concurrent :meth:`update` calls.
+        :param return_values_on_condition_failure: If set, then this value will be returned in error if the condition is not met.
         """
-        args, kwargs = self._get_save_args(condition=condition, add_version_condition=add_version_condition)
+        args, kwargs = self._get_save_args(
+            condition=condition,
+            add_version_condition=add_version_condition,
+            return_values_on_condition_failure=return_values_on_condition_failure
+        )
         data = self._get_connection().put_item(*args, **kwargs)
         self.update_local_version_attribute()
         return data
@@ -888,7 +899,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         return schema
 
-    def _get_save_args(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Tuple[Iterable[Any], Dict[str, Any]]:
+    def _get_save_args(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True, return_values_on_condition_failure: Optional[str] = None) -> Tuple[Iterable[Any], Dict[str, Any]]:
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
 
@@ -898,6 +909,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param add_version_condition: For models which have a :class:`~pynamodb.attributes.VersionAttribute`,
           specifies whether the item should only be saved if its current version matches the expected one.
           Set to `False` for a 'last-write-wins' strategy.
+        :param return_values_on_condition_failure: If set, then this will return the values on condition failure
         """
         attribute_values = self.serialize(null_check=True)
         hash_key_attribute = self._hash_key_attribute()
@@ -915,6 +927,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
             condition &= version_condition
         kwargs['attributes'] = attribute_values
         kwargs['condition'] = condition
+        if return_values_on_condition_failure and return_values_on_condition_failure is not None:
+            kwargs['return_values_on_condition_failure'] = return_values_on_condition_failure
         return args, kwargs
 
     def _get_hash_range_key_serialized_values(self) -> Tuple[Any, Optional[Any]]:
