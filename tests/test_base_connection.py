@@ -1614,7 +1614,7 @@ def test_connection_make_api_call__binary_attributes(send_mock):
 
     send_mock.return_value = resp
 
-    resp = Connection()._make_api_call('BatchWriteItem', {})
+    resp = Connection()._make_api_call('BatchWriteItem', {"RequestItems": {}})
 
     assert resp['UnprocessedItems']['someTable'] == [{
         'PutRequest': {
