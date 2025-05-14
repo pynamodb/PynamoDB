@@ -26,7 +26,10 @@ Let's create a simple model to describe users.
 
 Models are backed by DynamoDB tables. In this example, the model has a hash key attribute
 that stores the user's email address. Any attribute can be set as a hash key by including the argument
-`hash_key=True`. The `region` attribute is not required, and will default to `us-east-1` if not provided.
+`hash_key=True`. The `region` attribute is not required and, if omitted, the default
+`boto configuration search behavior
+<https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html>`_
+will be used to determine the region.
 
 PynamoDB allows you to create the table:
 
