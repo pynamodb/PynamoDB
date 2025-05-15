@@ -4,11 +4,12 @@ Integration tests for the model API
 
 from datetime import datetime
 
+from pynamodb.exceptions import PutError
 from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
 from pynamodb.attributes import (
     UnicodeAttribute, BinaryAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute,
-    VersionAttribute)
+    VersionAttribute, JSONAttribute)
 
 import pytest
 
@@ -108,6 +109,41 @@ def test_model_integration(ddb_url):
 
     print(query_obj.update([TestModel.view.add(1)], condition=TestModel.forum.exists()))
     TestModel.delete_table()
+
+
+@pytest.mark.ddblocal
+def test_model_integration_save_return_values_on_condition_failure(ddb_url):
+
+    class TestModel(Model):
+        """
+        A model for testing
+        """
+        class Meta:
+            region = 'us-east-1'
+            table_name = 'pynamodb-ci'
+            host = ddb_url
+        user_id = UnicodeAttribute(hash_key=True)
+        created_at = UnicodeAttribute(range_key=True)
+        data = JSONAttribute(null=True)
+        version = VersionAttribute()
+
+    if TestModel.exists():
+        TestModel.delete_table()
+    TestModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+
+    origin_obj = TestModel('1', '2')
+    origin_obj.save()
+    parallel_obj = TestModel.get('1', '2')
+    parallel_obj.data = {'foo': 'bar'}
+    parallel_obj.save()
+    # original object 1 version behind
+    origin_obj.data = {'foo': 'second_bar'}
+    with pytest.raises(PutError) as excinfo:
+        origin_obj.save(return_values_on_condition_failure='ALL_OLD')
+
+    old_parallel_obj = TestModel.from_raw_data(excinfo.value.raw_values_on_condition_failure)
+    assert old_parallel_obj.data == {'foo': 'bar'}
+    assert old_parallel_obj.version == 2
 
 
 def test_can_inherit_version_attribute(ddb_url) -> None:
