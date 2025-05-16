@@ -139,11 +139,18 @@ Now, suppose that you want to search the table for users with a last name
     for user in UserModel.query('Smith', UserModel.first_name.startswith('J')):
         print(user.first_name)
 
-You can combine query terms:
+You can combine query terms in filter conditions using OR:
 
 ::
 
-    for user in UserModel.query('Smith', UserModel.first_name.startswith('J') | UserModel.email.contains('domain.com')):
+    for user in UserModel.query('Smith', filter_condition=UserModel.email.contains('domain_a.com') | UserModel.email.contains('domain_b.com')):
+        print(user)
+
+or using AND:
+
+::
+
+    for user in UserModel.query('Smith', filter_condition=UserModel.email.startswith('smith') & UserModel.email.contains('domain.com')):
         print(user)
 
 
