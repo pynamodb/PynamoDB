@@ -3438,3 +3438,21 @@ def test_delete(add_version_condition: bool) -> None:
         }
         args = req.call_args[0][1]
         assert args == expected
+
+def test_delete_with_wait(mocker):
+    """Test that the wait argument works as expected on the delete."""
+    mock_exists = mocker.patch.object(target=Model, attribute="exists", autospec=True)
+    mock__get_connection = mocker.patch.object(
+        target=Model, attribute="_get_connection", autospec=True
+    )
+
+    # Make the first two exists calls show the table as still existing, then have the
+    # last call show it has been deleted.
+    mock_exists.side_effect = (True, True, False)
+
+    result = Model.delete_table(wait=True)
+
+    # Should have returned the delete value.
+    assert result == mock__get_connection.return_value.delete_table.return_value
+    # Should have called exists 3 times.
+    assert mock_exists.call_count == 3

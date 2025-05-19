@@ -3,6 +3,13 @@
 Release Notes
 =============
 
+v6.1.0
+------
+
+Features:
+
+* Add a `wait` argument to `Model.delete_table` (:pr:`1270`)
+
 v6.0.2
 ------
 
