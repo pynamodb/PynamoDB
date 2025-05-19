@@ -760,11 +760,18 @@ class Model(AttributeContainer, metaclass=MetaModel):
             return False
 
     @classmethod
-    def delete_table(cls) -> Any:
+    def delete_table(cls, *, wait: bool = False) -> Any:
         """
         Delete the table for this model
+
+        :param wait: If set, then this call will block until the table is deleted
         """
-        return cls._get_connection().delete_table()
+        result = cls._get_connection().delete_table()
+
+        while wait and cls.exists():
+            time.sleep(2)
+
+        return result
 
     @classmethod
     def describe_table(cls) -> Any:
