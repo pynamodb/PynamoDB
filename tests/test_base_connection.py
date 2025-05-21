@@ -1632,3 +1632,69 @@ def test_connection_update_time_to_live__fail():
         req.side_effect = BotoCoreError
         with pytest.raises(TableError):
             conn.update_time_to_live('test table', 'my_ttl')
+
+@pytest.mark.parametrize(
+    "retry_configuration, expected_retries",
+    (
+        (None, None),
+        (
+            "LEGACY",
+            {
+                'total_max_attempts': 4,
+                'mode': 'standard',
+            },
+        ),
+        (
+            {"max_attempts": 10, "mode": "adaptive"},
+            {"max_attempts": 10, "mode": "adaptive"},
+        )
+    )
+)
+def test_connection_client_retry_configuration(
+    retry_configuration, expected_retries, mocker
+):
+    """Test that the client respects the retry configuration setting."""
+    mock_client_config = mocker.patch(target="botocore.client.Config", autospec=True)
+    mock_session_property = mocker.patch.object(
+        target=Connection, attribute="session", autospec=True
+    )
+
+    unit_under_test = Connection()
+    unit_under_test._retry_configuration = retry_configuration
+    unit_under_test.client
+
+    # Ensure the configuration was called correctly, and used the appropriate retry
+    # configuration.
+    mock_client_config.assert_called_once_with(
+        parameter_validation=False,
+        connect_timeout=unit_under_test._connect_timeout_seconds,
+        read_timeout=unit_under_test._read_timeout_seconds,
+        max_pool_connections=unit_under_test._max_pool_connections,
+        retries=expected_retries
+    )
+    # Ensure the session was created correctly.
+    mock_session_property.create_client.assert_called_once_with(
+        "dynamodb",
+        unit_under_test.region,
+        endpoint_url=unit_under_test.host,
+        config=mock_client_config.return_value,
+    )
+
+@pytest.mark.parametrize(
+    "retry_configuration, expected_retry_configuration",
+    (
+        (None, "LEGACY"),
+        ("LEGACY","LEGACY"),
+        ("UNSET", None),
+        (
+            {"max_attempts": 10, "mode": "adaptive"},
+            {"max_attempts": 10, "mode": "adaptive"},
+        )
+    )
+)
+def test_connection_client_retry_configuration__init__(
+    retry_configuration, expected_retry_configuration
+):
+    """Test that the __init__ properly sets the `_retry_configuration` attribute."""
+    unit_under_test = Connection(retry_configuration=retry_configuration)
+    assert unit_under_test._retry_configuration == expected_retry_configuration
