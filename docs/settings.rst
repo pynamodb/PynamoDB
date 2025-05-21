@@ -69,6 +69,21 @@ Default: automatically constructed by boto to account for region
 The URL endpoint for DynamoDB. This can be used to use a local implementation of DynamoDB such as DynamoDB Local or dynalite.
 
 
+retry_configuration
+-------------------
+
+Default: ``"LEGACY"``
+
+This controls the PynamoDB retry behavior. The default of ``"LEGACY"`` keeps the
+existing PynamoDB retry behavior. If set to ``None``, this will use botocore's default
+retry configuration discovery mechanism as documented
+`in boto3 <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/retries.html#retries>`_
+and
+`in the AWS SDK docs <https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html>`_.
+If set to a retry configuration dictionary as described
+`here <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/retries.html#defining-a-retry-configuration-in-a-config-object-for-your-boto3-client>`_
+it will be used directly in the botocore client configuration.
+
 Overriding settings
 ~~~~~~~~~~~~~~~~~~~
 
