@@ -1,11 +1,17 @@
 """
 Lowest level connection
 """
+import sys
 import logging
 import uuid
 from threading import local
-from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Union, cast
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
+import botocore.config
 import botocore.client
 import botocore.exceptions
 from botocore.client import ClientError
@@ -247,6 +253,13 @@ class Connection(object):
                  read_timeout_seconds: Optional[float] = None,
                  connect_timeout_seconds: Optional[float] = None,
                  max_retry_attempts: Optional[int] = None,
+                 retry_configuration: Optional[
+                     Union[
+                         Literal["LEGACY"],
+                         Literal["UNSET"],
+                         "botocore.config._RetryDict",
+                     ]
+                 ] = None,
                  max_pool_connections: Optional[int] = None,
                  extra_headers: Optional[Mapping[str, str]] = None,
                  aws_access_key_id: Optional[str] = None,
@@ -276,6 +289,18 @@ class Connection(object):
             self._max_retry_attempts_exception = max_retry_attempts
         else:
             self._max_retry_attempts_exception = get_settings_value('max_retry_attempts')
+
+        # Since we have the pattern of using `None` to indicate "read from the
+        # settings", we use a literal of "UNSET" to indicate we want the
+        # `_retry_configuration` attribute set to `None` so botocore will use its own
+        # retry configuration discovery logic. This was required so direct users of the
+        # `Connection` class can still leave the retry configuration unset.
+        if retry_configuration == "UNSET":
+            self._retry_configuration = None
+        elif retry_configuration is not None:
+            self._retry_configuration = retry_configuration
+        else:
+            self._retry_configuration = get_settings_value('retry_configuration')
 
         if max_pool_connections is not None:
             self._max_pool_connections = max_pool_connections
@@ -399,15 +424,22 @@ class Connection(object):
         # if the client does not have credentials, we create a new client
         # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
         if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
+            # Check if we are using the "LEGACY" retry mode to keep previous PynamoDB
+            # retry behavior, or if we are using the new retry configuration settings.
+            if self._retry_configuration != "LEGACY":
+                retries = self._retry_configuration
+            else:
+                retries = {
+                    'total_max_attempts': 1 + self._max_retry_attempts_exception,
+                    'mode': 'standard',
+                }
+
             config = botocore.client.Config(
                 parameter_validation=False,  # Disable unnecessary validation for performance
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
                 max_pool_connections=self._max_pool_connections,
-                retries={
-                    'total_max_attempts': 1 + self._max_retry_attempts_exception,
-                    'mode': 'standard',
-                }
+                retries=retries,
             )
             self._client = cast(BotocoreBaseClientPrivate, self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config))
 

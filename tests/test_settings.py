@@ -1,4 +1,3 @@
-import sys
 from unittest.mock import patch
 
 import pytest
@@ -20,3 +19,18 @@ def test_override_old_attributes(settings_str, tmpdir):
             reload(pynamodb.settings)
     assert len(warns) == 1
     assert 'options are no longer supported' in str(warns[0].message)
+
+
+def test_default_settings():
+    """Ensure that the default settings are what we expect. This is mainly done to catch
+    any potentially breaking changes to default settings.
+    """
+    assert pynamodb.settings.default_settings_dict == {
+        'connect_timeout_seconds': 15,
+        'read_timeout_seconds': 30,
+        'max_retry_attempts': 3,
+        'region': None,
+        'max_pool_connections': 10,
+        'extra_headers': None,
+        'retry_configuration': 'LEGACY'
+    }
