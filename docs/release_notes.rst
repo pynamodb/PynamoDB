@@ -9,6 +9,14 @@ v6.1.0
 Features:
 
 * Add a `wait` argument to `Model.delete_table` (:pr:`1270`)
+* Add the ability to set or unset the boto retry configuration (:pr:`1271`)
+
+    * This adds the ability to directly set the boto retry configuration dictionary, or
+      to leave it unset and allow botocore to automatically discover the configuration
+      from the environment or `~/.aws/config` files.
+    * A new setting `retry_configuration` was added to configure this behavior.
+    * The default behavior of PynamoDB in regards to configuring retries remains the
+      same as before.
 
 v6.0.2
 ------
