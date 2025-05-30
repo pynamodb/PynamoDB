@@ -82,6 +82,11 @@ class PutError(PynamoDBConnectionError):
     Raised when an item fails to be created
     """
     msg = "Error putting item"
+    raw_values_on_condition_failure: Optional[Dict[str, Any]] = None
+
+    def __init__(self, msg: Optional[str] = None, cause: Optional[Exception] = None, raw_item: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(msg, cause)
+        self.raw_values_on_condition_failure = raw_item
 
 
 class UpdateError(PynamoDBConnectionError):
