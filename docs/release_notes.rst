@@ -8,6 +8,7 @@ v6.1.0
 
 Features:
 
+* Add a `wait` argument to `Model.delete_table` (:pr:`1270`)
 * Add the ability to set or unset the boto retry configuration (:pr:`1271`)
 
     * This adds the ability to directly set the boto retry configuration dictionary, or
