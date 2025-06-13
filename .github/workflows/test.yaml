@@ -56,6 +56,9 @@ jobs:
     - name: Install dev dependencies
       run: |
         python -m pip install -e .[signals] -r requirements-dev.txt
+    - name: Install mypy
+      run: |
+        python -m pip install mypy
     - name: Run mypy
       run: |
         mypy .
