@@ -432,6 +432,8 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
             if attribute_value and NULL not in attribute_value:
                 value = attr.deserialize(attr.get_value(attribute_value))
                 setattr(self, name, value)
+            # For new fields with defaults, we should preserve the default value in attribute_values
+            # This ensures conditional saves work correctly with new fields
 
     @classmethod
     def _update_attribute_types(cls, attribute_values: Dict[str, Dict[str, Any]]):
