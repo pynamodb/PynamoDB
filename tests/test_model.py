@@ -727,12 +727,12 @@ class ModelTestCase(TestCase):
         """
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
-            CarModel('foo').delete()
+            CarModel(1234).delete()
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
             with CarModel.batch_write() as batch:
-                car = CarModel('foo')
+                car = CarModel(1234)
                 batch.delete(car)
 
     @patch('time.time')
@@ -1046,7 +1046,7 @@ class ModelTestCase(TestCase):
 
     def test_count_no_hash_key(self):
         with pytest.raises(ValueError):
-            UserModel.count(filter_condition=(UserModel.zip_code <= '94117'))
+            UserModel.count(filter_condition=(UserModel.zip_code <= 94117))
 
     def test_index_count(self):
         """
