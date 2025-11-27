@@ -228,6 +228,13 @@ class ConditionExpressionTestCase(TestCase):
         assert self.placeholder_names == {'foo': '#0'}
         assert self.expression_attribute_values == {':0': {'S': 'S'}}
 
+    def test_is_type_with_null(self):
+        condition = self.attribute.is_type('NULL')
+        expression = condition.serialize(self.placeholder_names, self.expression_attribute_values)
+        assert expression == "attribute_type (#0, :0)"
+        assert self.placeholder_names == {'foo': '#0'}
+        assert self.expression_attribute_values == {':0': {'S': 'NULL'}}
+
     def test_begins_with(self):
         condition = self.attribute.startswith('bar')
         expression = condition.serialize(self.placeholder_names, self.expression_attribute_values)

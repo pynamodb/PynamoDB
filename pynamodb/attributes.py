@@ -233,9 +233,8 @@ class Attribute(Generic[_T]):
     def does_not_exist(self) -> 'NotExists':
         return Path(self).does_not_exist()
 
-    def is_type(self):
-        # What makes sense here? Are we using this to check if deserialization will be successful?
-        return Path(self).is_type(self.attr_type)
+    def is_type(self, attr_type: str = None):
+        return Path(self).is_type(attr_type or self.attr_type)
 
     def startswith(self, prefix: str) -> 'BeginsWith':
         return Path(self).startswith(prefix)
