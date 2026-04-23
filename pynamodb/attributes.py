@@ -7,6 +7,7 @@ import collections.abc
 import json
 import time
 import warnings
+from enum import Enum
 from base64 import b64encode, b64decode
 from copy import deepcopy
 from datetime import datetime
@@ -57,7 +58,7 @@ _ACT = TypeVar('_ACT', bound = 'AttributeContainer')
 
 _A = TypeVar('_A', bound='Attribute')
 
-_IMMUTABLE_TYPES = (str, int, float, datetime, timedelta, bytes, bool, tuple, frozenset, type(None))
+_IMMUTABLE_TYPES = (str, int, float, datetime, timedelta, bytes, bool, tuple, frozenset, type(None), Enum)
 _IMMUTABLE_TYPE_NAMES = ', '.join(map(lambda x: x.__name__, _IMMUTABLE_TYPES))
 
 
