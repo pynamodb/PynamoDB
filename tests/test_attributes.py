@@ -153,6 +153,16 @@ class TestDefault:
         with pytest.raises(ValueError, match="An attribute cannot have both default and default_for_new parameters"):
             Attribute(default=False, default_for_new='test')
 
+    def test_default_enum(self):
+        from enum import Enum, unique
+
+        @unique
+        class Color(Enum):
+            RED = 'red'
+            BLUE = 'blue'
+
+        Attribute(default=Color.RED)
+        Attribute(default_for_new=Color.BLUE)
 
 
 class TestUTCDateTimeAttribute:

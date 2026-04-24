@@ -3,6 +3,13 @@
 Release Notes
 =============
 
+v6.1.1
+------
+
+Fixes:
+
+* Allow :py:class:`~enum.Enum` instances as attribute defaults (:pr:`1302`)
+
 v6.1.0
 ------
 
