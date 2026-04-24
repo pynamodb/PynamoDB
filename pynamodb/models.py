@@ -547,10 +547,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get,
         )
-        if data:
-            item_data = data.get(ITEM)
-            if item_data:
-                return cls.from_raw_data(item_data)
+        if data and ITEM in data:
+            return cls.from_raw_data(data.get(ITEM))
         raise cls.DoesNotExist()
 
     @classmethod

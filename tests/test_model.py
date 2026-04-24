@@ -1752,6 +1752,38 @@ class ModelTestCase(TestCase):
             self.assertEqual(item.overidden_user_name, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_name']['S'])
             self.assertEqual(item.overidden_user_id, CUSTOM_ATTR_NAME_ITEM_DATA['Item']['user_id']['S'])
 
+    def test_get_with_empty_item_from_attributes_to_get(self):
+        """
+        Test that get method doesn't raise DoesNotExist when attributes_to_get 
+        returns an empty Item dictionary but the item exists in DynamoDB.
+        """
+        
+        def fake_dynamodb(*args):
+            kwargs = args[1]
+            if kwargs == {'TableName': UserModel.Meta.table_name}:
+                return MODEL_TABLE_DATA
+            elif 'Key' in kwargs and 'ProjectionExpression' in kwargs:
+                # This simulates DynamoDB returning an empty Item when the requested
+                # attributes don't exist or are empty, but the item itself exists
+                return {
+                    'Item': {}
+                }
+            return MODEL_TABLE_DATA
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            item = UserModel.get(
+                'foo',
+                'bar',
+                attributes_to_get=['nonexistent_attribute']
+            )
+            # The item should be returned with empty attributes
+            self.assertIsNotNone(item)
+            self.assertTrue(isinstance(item, UserModel))
+            self.assertIsNone(item.get_attributes().get('nonexistent_attribute'))
+
     def test_batch_get(self):
         """
         Model.batch_get
