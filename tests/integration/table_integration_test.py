@@ -2,6 +2,7 @@
 Run tests against dynamodb using the table abstraction
 """
 import time
+from pynamodb.connection.base import Connection
 from pynamodb.constants import PROVISIONED_THROUGHPUT, READ_CAPACITY_UNITS
 from pynamodb.connection import TableConnection
 from pynamodb.expressions.condition import BeginsWith, NotExists
@@ -154,3 +155,65 @@ def test_table_integration(ddb_url):
     conn.scan()
     print("conn.delete_table...")
     conn.delete_table()
+
+
+def test_table_conn_without_describe_table_called(ddb_url, table: str):
+    conn = TableConnection(table_name=table, host=ddb_url)
+    # conn.describe_table()  # bug: operations don't work without calling describe_table first
+    conn.put_item(
+        'item1-hash',
+        attributes={'foo': {'S': 'bar'}},
+    )
+    assert conn.get_item('item1-hash').get('Item') == {'id': {'S': 'item1-hash'}, 'foo': {'S': 'bar'}}
+
+    conn.update_item(
+        'item1-hash',
+        actions=[Path('foo').set("rab")]
+    )
+
+    assert conn.get_item('item1-hash').get('Item') == {'id': {'S': 'item1-hash'}, 'foo': {'S': 'rab'}}
+
+    conn.delete_item('item1-hash')
+    assert conn.get_item('item1-hash').get('Item') == None
+
+
+@pytest.fixture
+def table(ddb_url):
+    table_name = 'pynamodb-ci-connection'
+
+    conn = Connection(host=ddb_url)
+    params = {
+        'read_capacity_units': 1,
+        'write_capacity_units': 1,
+        'attribute_definitions': [
+            {
+                'attribute_type': STRING,
+                'attribute_name': 'id'
+            },
+        ],
+        'key_schema': [
+            {
+                'key_type': HASH,
+                'attribute_name': 'id'
+            }
+        ],
+    }
+    conn.create_table(table_name, **params)
+    for i in range(0,10):
+        time.sleep(1)
+        if conn.describe_table(table_name) is not None:
+            break
+        if i == 9:
+            raise TimeoutError
+
+    for i in range(0,10):
+        time.sleep(1)
+        if conn.describe_table(table_name)['TableStatus'] == 'ACTIVE':
+            break
+        if i == 9:
+            raise TimeoutError
+
+    yield table_name
+
+    conn.delete_table(table_name)
+
