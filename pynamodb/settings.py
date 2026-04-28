@@ -15,7 +15,8 @@ default_settings_dict = {
     'region': None,
     'max_pool_connections': 10,
     'extra_headers': None,
-    'retry_configuration': 'LEGACY'
+    'retry_configuration': 'LEGACY',
+    'tcp_keepalive': False
 }
 
 OVERRIDE_SETTINGS_PATH = getenv('PYNAMODB_CONFIG', '/etc/pynamodb/global_default_settings.py')

@@ -29,6 +29,7 @@ class TableConnection:
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
         aws_session_token: Optional[str] = None,
+        tcp_keepalive: Optional[bool] = None,
         *,
         meta_table: Optional[MetaTable] = None,
     ) -> None:
@@ -42,7 +43,8 @@ class TableConnection:
                                      extra_headers=extra_headers,
                                      aws_access_key_id=aws_access_key_id,
                                      aws_secret_access_key=aws_secret_access_key,
-                                     aws_session_token=aws_session_token)
+                                     aws_session_token=aws_session_token,
+                                     tcp_keepalive=tcp_keepalive)
 
         if meta_table is not None:
             self.connection.add_meta_table(meta_table)

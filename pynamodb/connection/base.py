@@ -264,7 +264,8 @@ class Connection(object):
                  extra_headers: Optional[Mapping[str, str]] = None,
                  aws_access_key_id: Optional[str] = None,
                  aws_secret_access_key: Optional[str] = None,
-                 aws_session_token: Optional[str] = None):
+                 aws_session_token: Optional[str] = None,
+                 tcp_keepalive: Optional[bool] = None):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
@@ -311,6 +312,12 @@ class Connection(object):
             self._extra_headers = extra_headers
         else:
             self._extra_headers = get_settings_value('extra_headers')
+
+        if tcp_keepalive is not None:
+            self._tcp_keepalive = tcp_keepalive
+        else:
+            self._tcp_keepalive = get_settings_value('tcp_keepalive')
+
 
         self._aws_access_key_id = aws_access_key_id
         self._aws_secret_access_key = aws_secret_access_key
@@ -439,6 +446,7 @@ class Connection(object):
                 connect_timeout=self._connect_timeout_seconds,
                 read_timeout=self._read_timeout_seconds,
                 max_pool_connections=self._max_pool_connections,
+                tcp_keepalive=self._tcp_keepalive,
                 retries=retries,
             )
             self._client = cast(BotocoreBaseClientPrivate, self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config))

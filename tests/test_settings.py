@@ -31,6 +31,7 @@ def test_default_settings():
         'max_retry_attempts': 3,
         'region': None,
         'max_pool_connections': 10,
+        'tcp_keepalive': False,
         'extra_headers': None,
         'retry_configuration': 'LEGACY'
     }

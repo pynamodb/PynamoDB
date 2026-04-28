@@ -519,11 +519,13 @@ class ModelTestCase(TestCase):
         assert UserModel.Meta.read_timeout_seconds == 30
         assert UserModel.Meta.max_retry_attempts == 3
         assert UserModel.Meta.max_pool_connections == 10
+        assert UserModel.Meta.tcp_keepalive == False
 
         assert UserModel._connection.connection._connect_timeout_seconds == 15
         assert UserModel._connection.connection._read_timeout_seconds == 30
         assert UserModel._connection.connection._max_retry_attempts_exception == 3
         assert UserModel._connection.connection._max_pool_connections == 10
+        assert UserModel._connection.connection._tcp_keepalive == False
 
         with patch(PATCH_METHOD) as req:
             req.return_value = MODEL_TABLE_DATA

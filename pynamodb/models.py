@@ -183,6 +183,7 @@ class MetaProtocol(Protocol):
     read_timeout_seconds: int
     max_retry_attempts: int
     max_pool_connections: int
+    tcp_keepalive: bool
     extra_headers: Mapping[str, str]
     aws_access_key_id: Optional[str]
     aws_secret_access_key: Optional[str]
@@ -237,6 +238,8 @@ class MetaModel(AttributeContainerMeta):
                         warnings.warn("The `session_cls` and `request_timeout_second` options are no longer supported")
                     if not hasattr(attr_obj, 'connect_timeout_seconds'):
                         setattr(attr_obj, 'connect_timeout_seconds', get_settings_value('connect_timeout_seconds'))
+                    if not hasattr(attr_obj, 'tcp_keepalive'):
+                        setattr(attr_obj, 'tcp_keepalive', get_settings_value('tcp_keepalive'))
                     if not hasattr(attr_obj, 'read_timeout_seconds'):
                         setattr(attr_obj, 'read_timeout_seconds', get_settings_value('read_timeout_seconds'))
                     if not hasattr(attr_obj, 'max_retry_attempts'):
@@ -1084,6 +1087,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                                               read_timeout_seconds=cls.Meta.read_timeout_seconds,
                                               max_retry_attempts=cls.Meta.max_retry_attempts,
                                               max_pool_connections=cls.Meta.max_pool_connections,
+                                              tcp_keepalive=cls.Meta.tcp_keepalive,
                                               extra_headers=cls.Meta.extra_headers,
                                               aws_access_key_id=cls.Meta.aws_access_key_id,
                                               aws_secret_access_key=cls.Meta.aws_secret_access_key,
