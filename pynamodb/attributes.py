@@ -6,6 +6,7 @@ import calendar
 import collections.abc
 import json
 import time
+import typing
 import warnings
 from enum import Enum
 from base64 import b64encode, b64decode
@@ -13,6 +14,7 @@ from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
+from decimal import Decimal
 from inspect import getfullargspec
 from inspect import getmembers
 from typing import Any, Callable, Dict, Generic, List, Mapping, Optional, TypeVar, Type, Union, Set, overload, Iterable
@@ -179,7 +181,12 @@ class Attribute(Generic[_T]):
         see `DynamoDB.Client.get_item API reference
         <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/dynamodb.html#DynamoDB.Client.get_item>`_.
         """
-        return value
+        if value is None or isinstance(value, str):
+            return value
+        raise TypeError(
+            f"UnicodeAttribute expected str for '{self.attr_name}', "
+            f"got {type(value).__name__}"
+        )
 
     def deserialize(self, value: Any) -> Any:
         """
@@ -742,6 +749,13 @@ class NumberAttribute(Attribute[float]):
         """
         Encode numbers as JSON
         """
+        if isinstance(value, bool):
+            raise TypeError("Boolean values are not allowed for NumberAttribute")
+
+        if not isinstance(value, (int, float, Decimal)):
+            raise TypeError(
+                f"Expected int, float, or Decimal for NumberAttribute, got {type(value).__name__}"
+            )
         return json.dumps(value)
 
     def deserialize(self, value):

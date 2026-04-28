@@ -352,6 +352,24 @@ class TestNumberAttribute:
         assert attr.deserialize('3.141') == 3.141
         assert attr.deserialize('12345678909876543211234234324234') == 12345678909876543211234234324234
 
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "42",  # string
+            True,  # bool
+            None,  # None
+            [1, 2, 3],  # list
+            {"a": 1},  # dict
+            {1, 2, 3},  # set
+            object(),  # arbitrary object
+        ],
+    )
+    def test_serialize_invalid_types(self, value):
+        attr = NumberAttribute()
+        with pytest.raises(TypeError) as exc_info:
+            attr.serialize(value)
+            assert "Expected int, float, or Decimal" in str(exc_info.value)
+
     def test_number_set_deserialize(self):
         """
         NumberSetAttribute.deserialize
@@ -408,6 +426,12 @@ class TestUnicodeAttribute:
         assert attr.deserialize(u'foo') == 'foo'
         assert attr.deserialize('') == ''
         assert attr.deserialize(None) is None
+
+    @pytest.mark.parametrize("value", [123, 1.23, True, False, [], {}, object()])
+    def test_unicode_serialize_invalid(self, value):
+        attr = UnicodeAttribute()
+        with pytest.raises(TypeError):
+            attr.serialize(value)
 
     def test_unicode_set_serialize(self):
         """
