@@ -36,7 +36,7 @@ from pynamodb.expressions.update import Action
 from pynamodb.exceptions import DoesNotExist, TableDoesNotExist, TableError, InvalidStateError, PutError, \
     AttributeNullError
 from pynamodb.attributes import (
-    AttributeContainer, AttributeContainerMeta, TTLAttribute, VersionAttribute
+    AttributeContainer, AttributeContainerMeta, AttributeTransform, TTLAttribute, VersionAttribute
 )
 from pynamodb.connection.table import TableConnection
 from pynamodb.expressions.condition import Condition
@@ -196,12 +196,12 @@ class MetaModel(AttributeContainerMeta):
     """
     Model meta class
     """
-    def __new__(cls, name, bases, namespace, discriminator=None):
+    def __new__(cls, name, bases, namespace, discriminator=None, attribute_transform: Optional[AttributeTransform] = None):
         # Defined so that the discriminator can be set in the class definition.
         return super().__new__(cls, name, bases, namespace)
 
-    def __init__(self, name, bases, namespace, discriminator=None) -> None:
-        super().__init__(name, bases, namespace, discriminator)
+    def __init__(self, name, bases, namespace, discriminator=None, attribute_transform: Optional[AttributeTransform] = None) -> None:
+        super().__init__(name, bases, namespace, discriminator, attribute_transform)
         MetaModel._initialize_indexes(self)
         cls = cast(Type['Model'], self)
         for attr_name, attribute in cls.get_attributes().items():

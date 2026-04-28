@@ -201,6 +201,36 @@ Here is an example of customizing an attribute name:
         # This attribute will be called 'tn' in DynamoDB
         thread_name = UnicodeAttribute(null=True, attr_name='tn')
 
+PynamoDB can also transform all the attribute names from Python's "Snake Case"
+(for example "forum_name") to another naming convention, such as Camel Case ("forumName"),
+or Pascal Case ("ForumName").
+Custom attribute names can still be applied to individual attributes, and take precedence
+over the attribute transform.
+The attribute transformation can be assigned to the model class as part of the definition.
+
+PynamoDB comes with these built in attribute transformations:
+
+* :py:class:`CamelCaseAttributeTransform <pynamodb.attributes.CamelCaseAttributeTransform>`
+* :py:class:`PascalCaseAttributeTransform <pynamodb.attributes.PascalCaseAttributeTransform>`
+
+Here is example usage of both the attribute transformation, and custom attribute names:
+
+.. code-block:: python
+
+    from pynamodb.models import Model
+    from pynamodb.attributes import UnicodeAttribute, CamelCaseAttributeTransform
+
+    class Thread(Model, attribute_transform=CamelCaseAttributeTransform):
+        class Meta:
+            table_name = 'Thread'
+        # This attribute will be called 'forumName' in DynamoDB
+        forum_name = UnicodeAttribute(hash_key=True)
+
+        # This attribute will be called 'threadName' in DynamoDB
+        thread_name = UnicodeAttribute(null=True)
+
+        # This attribute will be called 'author' in DynamoDB
+        post_author = UnicodeAttribute(null=True, attr_name='author')
 
 PynamoDB comes with several built in attribute types for convenience, which include the following:
 
