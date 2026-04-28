@@ -3265,6 +3265,36 @@ def test_model_version_attribute_save(add_version_condition: bool) -> None:
 
         assert args == params
 
+@pytest.mark.parametrize('return_values_on_condition_failure', [None, 'ALL_OLD', 'all_old'])
+def test_model_return_values_on_condition_failure(return_values_on_condition_failure: str | None) -> None:
+    item = VersionedModel('test_user_name', email='test_user@email.com')
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {}
+        item.save(return_values_on_condition_failure=return_values_on_condition_failure)
+        args = req.call_args[0][1]
+        params = {
+            'Item': {
+                'name': {
+                    'S': 'test_user_name'
+                },
+                'email': {
+                    'S': 'test_user@email.com'
+                },
+                'version': {
+                    'N': '1'
+                },
+            },
+            'ReturnConsumedCapacity': 'TOTAL',
+            'TableName': 'VersionedModel',
+            'ConditionExpression': 'attribute_not_exists (#0)',
+            'ExpressionAttributeNames': {'#0': 'version'}
+        }
+        if return_values_on_condition_failure is not None:
+            params.update({
+                'ReturnValuesOnConditionCheckFailure': return_values_on_condition_failure.upper(),
+            })
+
+        assert args == params
 
 @pytest.mark.parametrize('add_version_condition', [True, False])
 def test_version_attribute_increments_on_update(add_version_condition: bool) -> None:

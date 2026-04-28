@@ -139,6 +139,7 @@ class TableConnection:
         return_values: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
+        return_values_on_condition_failure: Optional[str] = None,
     ) -> Dict:
         """
         Performs the PutItem operation and returns the result
@@ -152,6 +153,7 @@ class TableConnection:
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
+            return_values_on_condition_failure=return_values_on_condition_failure
         )
 
     def batch_write_item(
