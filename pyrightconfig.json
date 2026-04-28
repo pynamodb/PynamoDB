@@ -1,0 +1,9 @@
+{
+  "exclude": [
+    "docs/conf.py",
+    "tests",
+    "bench"
+  ],
+  "reportMissingImports": "error",
+  "reportMissingTypeStubs": false,
+}
