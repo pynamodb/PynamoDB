@@ -118,12 +118,12 @@ class MetaTable(object):
         if self.range_keyname:
             key_names.append(self.range_keyname)
         if index_name is not None:
-            index_hash_keyname = self.get_index_hash_keyname(index_name)
-            if index_hash_keyname not in key_names:
-                key_names.append(index_hash_keyname)
-            index_range_keyname = self.get_index_range_keyname(index_name)
-            if index_range_keyname is not None and index_range_keyname not in key_names:
-                key_names.append(index_range_keyname)
+            for index_hash_keyname in self.get_index_hash_keynames(index_name):
+                if index_hash_keyname not in key_names:
+                    key_names.append(index_hash_keyname)
+            for index_range_keyname in self.get_index_range_keynames(index_name):
+                if index_range_keyname not in key_names:
+                    key_names.append(index_range_keyname)
         return key_names
 
     def has_index_name(self, index_name):
@@ -139,6 +139,15 @@ class MetaTable(object):
         """
         Returns the name of the hash key for a given index
         """
+        hash_keynames = self.get_index_hash_keynames(index_name)
+        if hash_keynames:
+            return hash_keynames[0]
+        raise ValueError("No hash key attribute for index: {}".format(index_name))
+
+    def get_index_hash_keynames(self, index_name: str) -> List[str]:
+        """
+        Returns the names of the hash keys for a given index
+        """
         global_indexes = self.data.get(GLOBAL_SECONDARY_INDEXES)
         local_indexes = self.data.get(LOCAL_SECONDARY_INDEXES)
         indexes = []
@@ -148,14 +157,26 @@ class MetaTable(object):
             indexes += global_indexes
         for index in indexes:
             if index.get(INDEX_NAME) == index_name:
+                hash_keynames = []
                 for schema_key in index.get(KEY_SCHEMA):
                     if schema_key.get(KEY_TYPE) == HASH:
-                        return schema_key.get(ATTR_NAME)
+                        hash_keynames.append(schema_key.get(ATTR_NAME))
+                if hash_keynames:
+                    return hash_keynames
         raise ValueError("No hash key attribute for index: {}".format(index_name))
 
     def get_index_range_keyname(self, index_name):
         """
-        Returns the name of the hash key for a given index
+        Returns the name of the range key for a given index
+        """
+        range_keynames = self.get_index_range_keynames(index_name)
+        if range_keynames:
+            return range_keynames[0]
+        return None
+
+    def get_index_range_keynames(self, index_name) -> List[str]:
+        """
+        Returns the names of the range keys for a given index
         """
         global_indexes = self.data.get(GLOBAL_SECONDARY_INDEXES)
         local_indexes = self.data.get(LOCAL_SECONDARY_INDEXES)
@@ -166,10 +187,12 @@ class MetaTable(object):
             indexes += global_indexes
         for index in indexes:
             if index.get(INDEX_NAME) == index_name:
+                range_keynames = []
                 for schema_key in index.get(KEY_SCHEMA):
                     if schema_key.get(KEY_TYPE) == RANGE:
-                        return schema_key.get(ATTR_NAME)
-        return None
+                        range_keynames.append(schema_key.get(ATTR_NAME))
+                return range_keynames
+        return []
 
     def get_item_attribute_map(self, attributes: Dict, item_key=ITEM, pythonic_key: bool = True):
         """
@@ -1173,7 +1196,7 @@ class Connection(object):
     def query(
         self,
         table_name: str,
-        hash_key: str,
+        hash_key: Union[object, Sequence[object], Mapping[str, object]],
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Any] = None,
         attributes_to_get: Optional[Any] = None,
@@ -1201,12 +1224,22 @@ class Connection(object):
         if index_name:
             if not tbl.has_index_name(index_name):
                 raise ValueError("Table {} has no index: {}".format(table_name, index_name))
-            hash_keyname = tbl.get_index_hash_keyname(index_name)
+            hash_keynames = tbl.get_index_hash_keynames(index_name)
         else:
-            hash_keyname = tbl.hash_keyname
+            hash_keynames = [tbl.hash_keyname]
 
-        hash_condition_value = {self.get_attribute_type(table_name, hash_keyname, hash_key): self.parse_attribute(hash_key)}
-        key_condition = Path([hash_keyname]) == hash_condition_value
+        hash_key_values = self._get_query_hash_key_values(
+            hash_key,
+            hash_keynames,
+            index_name=index_name,
+        )
+        key_condition = None
+        for hash_keyname, hash_keyvalue in zip(hash_keynames, hash_key_values):
+            hash_condition_value = {
+                self.get_attribute_type(table_name, hash_keyname, hash_keyvalue): self.parse_attribute(hash_keyvalue)
+            }
+            hash_condition = Path([hash_keyname]) == hash_condition_value
+            key_condition = hash_condition if key_condition is None else key_condition & hash_condition
         if range_key_condition is not None:
             key_condition &= range_key_condition
 
@@ -1252,3 +1285,33 @@ class Connection(object):
     @staticmethod
     def _reverse_dict(d):
         return {v: k for k, v in d.items()}
+
+    @staticmethod
+    def _get_query_hash_key_values(
+        hash_key: Union[object, Sequence[object], Mapping[str, object]],
+        hash_keynames: Sequence[str],
+        index_name: Optional[str] = None,
+    ) -> List[object]:
+        if len(hash_keynames) == 1:
+            return [hash_key]
+        if isinstance(hash_key, (tuple, list)):
+            if len(hash_key) != len(hash_keynames):
+                raise ValueError(
+                    f"Index {index_name} expects {len(hash_keynames)} hash key values, got {len(hash_key)}"
+                )
+            return list(hash_key)
+        if isinstance(hash_key, Mapping):
+            missing_keys = [keyname for keyname in hash_keynames if keyname not in hash_key]
+            if missing_keys:
+                raise ValueError(
+                    f"Index {index_name} requires values for hash keys: {', '.join(missing_keys)}"
+                )
+            extra_keys = [keyname for keyname in hash_key if keyname not in hash_keynames]
+            if extra_keys:
+                raise ValueError(
+                    f"Index {index_name} received unknown hash keys: {', '.join(extra_keys)}"
+                )
+            return [hash_key[keyname] for keyname in hash_keynames]
+        raise ValueError(
+            f"Index {index_name} expects {len(hash_keynames)} hash key values as tuple/list"
+        )

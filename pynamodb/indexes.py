@@ -1,8 +1,7 @@
 """
 PynamoDB Indexes
 """
-from inspect import getmembers
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 from typing import TYPE_CHECKING
 
 from pynamodb._schema import IndexSchema, GlobalSecondaryIndexSchema
@@ -19,7 +18,9 @@ from pynamodb.types import HASH, RANGE
 if TYPE_CHECKING:
     from pynamodb.models import Model
 
-_KeyType = Any
+_KeyType = object
+_HashKeyInputType = Union[_KeyType, Tuple[_KeyType, ...], List[_KeyType]]
+_SerializedHashKeyType = Union[_KeyType, Tuple[_KeyType, ...]]
 _M = TypeVar('_M', bound='Model')
 
 
@@ -30,13 +31,26 @@ class Index(Generic[_M]):
     Meta: Any = None
     _model: _M
 
+    @staticmethod
+    def _get_attributes_in_declaration_order(index_cls: Type['Index']) -> Dict[str, Attribute]:
+        """
+        Returns attributes in declaration order, respecting overrides.
+        """
+        attributes: Dict[str, Attribute] = {}
+        for base in reversed(index_cls.__mro__):
+            for name, attribute in getattr(base, "__dict__", {}).items():
+                if isinstance(attribute, Attribute):
+                    # If a subclass overrides an attribute, preserve the subclass declaration order.
+                    if name in attributes:
+                        del attributes[name]
+                    attributes[name] = attribute
+        return attributes
+
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         if cls.Meta is not None:
-            cls.Meta.attributes = {}
-            for name, attribute in getmembers(cls, lambda o: isinstance(o, Attribute)):
-                cls.Meta.attributes[name] = attribute
+            cls.Meta.attributes = cls._get_attributes_in_declaration_order(cls)
 
     def __init__(self) -> None:
         if self.Meta is None:
@@ -50,7 +64,7 @@ class Index(Generic[_M]):
 
     def count(
         self,
-        hash_key: _KeyType,
+        hash_key: _HashKeyInputType,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
         consistent_read: bool = False,
@@ -72,7 +86,7 @@ class Index(Generic[_M]):
 
     def query(
         self,
-        hash_key: _KeyType,
+        hash_key: _HashKeyInputType,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
         consistent_read: bool = False,
@@ -133,9 +147,45 @@ class Index(Generic[_M]):
         """
         Returns the attribute class for the hash key
         """
-        for attr_cls in cls.Meta.attributes.values():
-            if attr_cls.is_hash_key:
-                return attr_cls
+        hash_key_attributes = cls._hash_key_attributes()
+        if hash_key_attributes:
+            return hash_key_attributes[0]
+
+    @classmethod
+    def _hash_key_attributes(cls) -> List[Attribute]:
+        return [attr for attr in cls.Meta.attributes.values() if attr.is_hash_key]
+
+    @classmethod
+    def _range_key_attributes(cls) -> List[Attribute]:
+        return [attr for attr in cls.Meta.attributes.values() if attr.is_range_key]
+
+    @classmethod
+    def _serialize_hash_key_values(cls, hash_key: _HashKeyInputType) -> _SerializedHashKeyType:
+        hash_key_attributes = cls._hash_key_attributes()
+        if len(hash_key_attributes) <= 1:
+            if len(hash_key_attributes) == 0:
+                raise ValueError(f"{cls.__name__} has no hash key attributes")
+            return hash_key_attributes[0].serialize(hash_key)
+
+        if not isinstance(hash_key, (tuple, list)):
+            raise ValueError(
+                f"{cls.__name__} expects {len(hash_key_attributes)} hash key values as a tuple/list"
+            )
+        if len(hash_key) != len(hash_key_attributes):
+            raise ValueError(
+                f"{cls.__name__} expects {len(hash_key_attributes)} hash key values, got {len(hash_key)}"
+            )
+        return tuple(
+            attr.serialize(value)
+            for attr, value in zip(hash_key_attributes, hash_key)
+        )
+
+    @classmethod
+    def _validate_key_attributes(cls) -> None:
+        """
+        Hook for subclasses to validate key constraints.
+        """
+        return None
 
     def _update_model_schema(self, schema: ModelSchema) -> None:
         raise NotImplementedError
@@ -154,16 +204,29 @@ class Index(Generic[_M]):
             'attribute_definitions': [],
         }
 
-        for attr_cls in cls.Meta.attributes.values():
-            if attr_cls.is_hash_key or attr_cls.is_range_key:
-                schema['attribute_definitions'].append({
-                    ATTR_NAME: attr_cls.attr_name,
-                    ATTR_TYPE: attr_cls.attr_type,
-                })
-                schema['key_schema'].append({
-                    ATTR_NAME: attr_cls.attr_name,
-                    KEY_TYPE: HASH if attr_cls.is_hash_key else RANGE,
-                })
+        cls._validate_key_attributes()
+
+        hash_key_attributes = cls._hash_key_attributes()
+        range_key_attributes = cls._range_key_attributes()
+
+        for attr_cls in hash_key_attributes:
+            schema['attribute_definitions'].append({
+                ATTR_NAME: attr_cls.attr_name,
+                ATTR_TYPE: attr_cls.attr_type,
+            })
+            schema['key_schema'].append({
+                ATTR_NAME: attr_cls.attr_name,
+                KEY_TYPE: HASH,
+            })
+        for attr_cls in range_key_attributes:
+            schema['attribute_definitions'].append({
+                ATTR_NAME: attr_cls.attr_name,
+                ATTR_TYPE: attr_cls.attr_type,
+            })
+            schema['key_schema'].append({
+                ATTR_NAME: attr_cls.attr_name,
+                KEY_TYPE: RANGE,
+            })
         if cls.Meta.projection.non_key_attributes:
             schema['projection'][NON_KEY_ATTRIBUTES] = cls.Meta.projection.non_key_attributes
         return schema
@@ -173,6 +236,17 @@ class GlobalSecondaryIndex(Index[_M]):
     """
     A global secondary index
     """
+    @classmethod
+    def _validate_key_attributes(cls) -> None:
+        hash_keys = cls._hash_key_attributes()
+        range_keys = cls._range_key_attributes()
+        if len(hash_keys) == 0:
+            raise ValueError(f"{cls.__name__} must have at least one hash key attribute")
+        if len(hash_keys) > 4:
+            raise ValueError(f"{cls.__name__} supports at most 4 hash key attributes")
+        if len(range_keys) > 4:
+            raise ValueError(f"{cls.__name__} supports at most 4 range key attributes")
+
     @classmethod
     def _update_model_schema(cls, schema: ModelSchema) -> None:
         index_schema: GlobalSecondaryIndexSchema = {
@@ -197,6 +271,14 @@ class LocalSecondaryIndex(Index[_M]):
     """
     A local secondary index
     """
+    @classmethod
+    def _validate_key_attributes(cls) -> None:
+        hash_keys = cls._hash_key_attributes()
+        range_keys = cls._range_key_attributes()
+        if len(hash_keys) > 1:
+            raise ValueError(f"{cls.__name__} supports at most one hash key attribute")
+        if len(range_keys) > 1:
+            raise ValueError(f"{cls.__name__} supports at most one range key attribute")
 
     @classmethod
     def _update_model_schema(cls, schema: ModelSchema) -> None:

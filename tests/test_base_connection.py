@@ -49,6 +49,50 @@ def test_meta_table_get_key_names__index(meta_table):
     assert key_names == ["ForumName", "Subject", "LastPostDateTime"]
 
 
+def test_meta_table_get_key_names__composite_index():
+    composite_table_data = {
+        "TableName": "Thread",
+        "AttributeDefinitions": [
+            {"AttributeName": "ForumName", "AttributeType": "S"},
+            {"AttributeName": "Subject", "AttributeType": "S"},
+            {"AttributeName": "a_partition", "AttributeType": "S"},
+            {"AttributeName": "z_partition", "AttributeType": "S"},
+            {"AttributeName": "b_sort", "AttributeType": "S"},
+            {"AttributeName": "c_sort", "AttributeType": "S"},
+        ],
+        "KeySchema": [
+            {"AttributeName": "ForumName", "KeyType": "HASH"},
+            {"AttributeName": "Subject", "KeyType": "RANGE"},
+        ],
+        "GlobalSecondaryIndexes": [
+            {
+                "IndexName": "CompositeIndex",
+                "KeySchema": [
+                    {"AttributeName": "z_partition", "KeyType": "HASH"},
+                    {"AttributeName": "a_partition", "KeyType": "HASH"},
+                    {"AttributeName": "c_sort", "KeyType": "RANGE"},
+                    {"AttributeName": "b_sort", "KeyType": "RANGE"},
+                ],
+                "Projection": {"ProjectionType": "KEYS_ONLY"},
+            }
+        ],
+    }
+    meta_table = MetaTable(composite_table_data)
+
+    assert meta_table.get_index_hash_keynames("CompositeIndex") == ["z_partition", "a_partition"]
+    assert meta_table.get_index_hash_keyname("CompositeIndex") == "z_partition"
+    assert meta_table.get_index_range_keynames("CompositeIndex") == ["c_sort", "b_sort"]
+    assert meta_table.get_index_range_keyname("CompositeIndex") == "c_sort"
+    assert meta_table.get_key_names("CompositeIndex") == [
+        "ForumName",
+        "Subject",
+        "z_partition",
+        "a_partition",
+        "c_sort",
+        "b_sort",
+    ]
+
+
 def test_meta_table_get_attribute_type(meta_table):
     assert meta_table.get_attribute_type('ForumName') == 'S'
     with pytest.raises(ValueError):
@@ -219,6 +263,35 @@ def test_connection_create_table():
         # Ensure that the hash key is first when creating indexes
         assert req.call_args[0][1]['GlobalSecondaryIndexes'][0]['KeySchema'][0]['KeyType'] == 'HASH'
         assert req.call_args[0][1] == params
+
+    kwargs['global_secondary_indexes'] = [
+        {
+            'index_name': 'composite-index',
+            'key_schema': [
+                {'AttributeName': 'z_partition', 'KeyType': 'HASH'},
+                {'AttributeName': 'a_partition', 'KeyType': 'HASH'},
+                {'AttributeName': 'c_sort', 'KeyType': 'RANGE'},
+                {'AttributeName': 'b_sort', 'KeyType': 'RANGE'},
+            ],
+            'projection': {
+                'ProjectionType': 'KEYS_ONLY'
+            },
+            'provisioned_throughput': {
+                'ReadCapacityUnits': 1,
+                'WriteCapacityUnits': 1,
+            },
+        }
+    ]
+    with patch(PATCH_METHOD) as req:
+        req.return_value = None
+        conn.create_table(TEST_TABLE_NAME, **kwargs)
+        assert req.call_args[0][1]['GlobalSecondaryIndexes'][0]['KeySchema'] == [
+            {'AttributeName': 'z_partition', 'KeyType': 'HASH'},
+            {'AttributeName': 'a_partition', 'KeyType': 'HASH'},
+            {'AttributeName': 'c_sort', 'KeyType': 'RANGE'},
+            {'AttributeName': 'b_sort', 'KeyType': 'RANGE'},
+        ]
+
     del(kwargs['global_secondary_indexes'])
     del(params['GlobalSecondaryIndexes'])
 
@@ -1141,6 +1214,99 @@ def test_connection_query():
             'TableName': 'Thread'
         }
         assert req.call_args[0][1] == params
+
+    composite_table_name = "ThreadComposite"
+    composite_table_data = {
+        "TableName": composite_table_name,
+        "AttributeDefinitions": [
+            {"AttributeName": "ForumName", "AttributeType": "S"},
+            {"AttributeName": "Subject", "AttributeType": "S"},
+            {"AttributeName": "z_partition", "AttributeType": "S"},
+            {"AttributeName": "a_partition", "AttributeType": "S"},
+            {"AttributeName": "c_sort", "AttributeType": "S"},
+            {"AttributeName": "b_sort", "AttributeType": "S"},
+        ],
+        "KeySchema": [
+            {"AttributeName": "ForumName", "KeyType": "HASH"},
+            {"AttributeName": "Subject", "KeyType": "RANGE"},
+        ],
+        "GlobalSecondaryIndexes": [
+            {
+                "IndexName": "CompositeIndex",
+                "KeySchema": [
+                    {"AttributeName": "z_partition", "KeyType": "HASH"},
+                    {"AttributeName": "a_partition", "KeyType": "HASH"},
+                    {"AttributeName": "c_sort", "KeyType": "RANGE"},
+                    {"AttributeName": "b_sort", "KeyType": "RANGE"},
+                ],
+                "Projection": {"ProjectionType": "KEYS_ONLY"},
+            }
+        ],
+    }
+    conn.add_meta_table(MetaTable(composite_table_data))
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {}
+        conn.query(
+            composite_table_name,
+            ("z1", "a1"),
+            index_name='CompositeIndex'
+        )
+        params = {
+            'ReturnConsumedCapacity': 'TOTAL',
+            'IndexName': 'CompositeIndex',
+            'KeyConditionExpression': '(#0 = :0 AND #1 = :1)',
+            'ExpressionAttributeNames': {
+                '#0': 'z_partition',
+                '#1': 'a_partition'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {'S': 'z1'},
+                ':1': {'S': 'a1'}
+            },
+            'TableName': composite_table_name
+        }
+        assert req.call_args[0][1] == params
+
+    with pytest.raises(ValueError, match="expects 2 hash key values"):
+        conn.query(composite_table_name, "z1", index_name='CompositeIndex')
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {}
+        conn.query(
+            composite_table_name,
+            {'a_partition': 'a1', 'z_partition': 'z1'},
+            index_name='CompositeIndex'
+        )
+        params = {
+            'ReturnConsumedCapacity': 'TOTAL',
+            'IndexName': 'CompositeIndex',
+            'KeyConditionExpression': '(#0 = :0 AND #1 = :1)',
+            'ExpressionAttributeNames': {
+                '#0': 'z_partition',
+                '#1': 'a_partition'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {'S': 'z1'},
+                ':1': {'S': 'a1'}
+            },
+            'TableName': composite_table_name
+        }
+        assert req.call_args[0][1] == params
+
+    with pytest.raises(ValueError, match="requires values for hash keys: a_partition"):
+        conn.query(
+            composite_table_name,
+            {'z_partition': 'z1'},
+            index_name='CompositeIndex'
+        )
+
+    with pytest.raises(ValueError, match="received unknown hash keys: unknown"):
+        conn.query(
+            composite_table_name,
+            {'z_partition': 'z1', 'a_partition': 'a1', 'unknown': 'u1'},
+            index_name='CompositeIndex'
+        )
 
     with patch(PATCH_METHOD) as req:
         req.return_value = {}

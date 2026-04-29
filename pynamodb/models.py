@@ -59,7 +59,8 @@ from pynamodb.constants import (
 )
 
 _T = TypeVar('_T', bound='Model')
-_KeyType = Any
+_KeyType = object
+_HashKeyQueryType = Union[_KeyType, Tuple[_KeyType, ...], List[_KeyType]]
 
 
 log = logging.getLogger(__name__)
@@ -569,7 +570,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
     @classmethod
     def count(
         cls: Type[_T],
-        hash_key: Optional[_KeyType] = None,
+        hash_key: Optional[_HashKeyQueryType] = None,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
         consistent_read: bool = False,
@@ -593,7 +594,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             return cls.describe_table().get(ITEM_COUNT)
 
         if index_name:
-            hash_key = cls._indexes[index_name]._hash_key_attribute().serialize(hash_key)
+            hash_key = cls._indexes[index_name]._serialize_hash_key_values(hash_key)
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
 
@@ -628,7 +629,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
     @classmethod
     def query(
         cls: Type[_T],
-        hash_key: _KeyType,
+        hash_key: _HashKeyQueryType,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
         consistent_read: bool = False,
@@ -657,7 +658,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param rate_limit: If set then consumed capacity will be limited to this amount per second
         """
         if index_name:
-            hash_key = cls._indexes[index_name]._hash_key_attribute().serialize(hash_key)
+            hash_key = cls._indexes[index_name]._serialize_hash_key_values(hash_key)
         else:
             hash_key = cls._serialize_keys(hash_key)[0]
 

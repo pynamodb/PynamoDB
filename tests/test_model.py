@@ -169,6 +169,31 @@ class LocalIndexedModel(Model):
     icons = BinarySetAttribute(legacy_encoding=False)
 
 
+class CompositeOrderIndex(GlobalSecondaryIndex):
+    class Meta:
+        index_name = 'composite_order_idx'
+        read_capacity_units = 2
+        write_capacity_units = 1
+        projection = AllProjection()
+
+    z_partition = UnicodeAttribute(hash_key=True)
+    a_partition = UnicodeAttribute(hash_key=True)
+    c_sort = UnicodeAttribute(range_key=True)
+    b_sort = UnicodeAttribute(range_key=True)
+
+
+class CompositeIndexedModel(Model):
+    class Meta:
+        table_name = 'CompositeIndexedModel'
+
+    item_id = UnicodeAttribute(hash_key=True)
+    z_partition = UnicodeAttribute()
+    a_partition = UnicodeAttribute()
+    c_sort = UnicodeAttribute()
+    b_sort = UnicodeAttribute()
+    composite_index = CompositeOrderIndex()
+
+
 class SimpleUserModel(Model):
     """
     A hash key only model
@@ -1082,6 +1107,22 @@ class ModelTestCase(TestCase):
                 'Select': 'COUNT'
             }
             deep_eq(args, params, _assert=True)
+
+    def test_index_count_composite_hash_key(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {'Count': 1, 'ScannedCount': 1}
+            res = CompositeIndexedModel.composite_index.count(('p1', 'p2'))
+            self.assertEqual(res, 1)
+            params = req.call_args[0][1]
+            self.assertEqual(params['KeyConditionExpression'], '(#0 = :0 AND #1 = :1)')
+            self.assertEqual(params['ExpressionAttributeNames'], {
+                '#0': 'z_partition',
+                '#1': 'a_partition',
+            })
+            self.assertEqual(params['ExpressionAttributeValues'], {
+                ':0': {'S': 'p1'},
+                ':1': {'S': 'p2'},
+            })
 
     def test_index_multipage_count(self):
         with patch(PATCH_METHOD) as req:
@@ -2301,6 +2342,111 @@ class ModelTestCase(TestCase):
                 }
             )
 
+    def test_global_index_composite_keys(self):
+        scope_args = {'count': 0}
+
+        def fake_dynamodb(*args, **kwargs):
+            if scope_args['count'] == 0:
+                scope_args['count'] += 1
+                raise ClientError({'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Not Found'}},
+                                  "DescribeTable")
+            return {}
+
+        fake_db = MagicMock()
+        fake_db.side_effect = fake_dynamodb
+
+        with patch(PATCH_METHOD, new=fake_db) as req:
+            CompositeIndexedModel.create_table(read_capacity_units=2, write_capacity_units=2)
+            args = req.call_args[0][1]
+            self.assertEqual(
+                args['GlobalSecondaryIndexes'][0]['KeySchema'],
+                [
+                    {'AttributeName': 'z_partition', 'KeyType': 'HASH'},
+                    {'AttributeName': 'a_partition', 'KeyType': 'HASH'},
+                    {'AttributeName': 'c_sort', 'KeyType': 'RANGE'},
+                    {'AttributeName': 'b_sort', 'KeyType': 'RANGE'},
+                ]
+            )
+
+    def test_global_index_composite_query(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {'Count': 0, 'ScannedCount': 0, 'Items': []}
+            list(CompositeIndexedModel.composite_index.query(('p1', 'p2'), CompositeIndexedModel.c_sort == 's1'))
+
+            params = req.call_args[0][1]
+            self.assertEqual(params['IndexName'], 'composite_order_idx')
+            self.assertEqual(params['TableName'], 'CompositeIndexedModel')
+            self.assertEqual(params['ExpressionAttributeValues'], {
+                ':0': {'S': 'p1'},
+                ':1': {'S': 'p2'},
+                ':2': {'S': 's1'},
+            })
+            self.assertEqual(params['ExpressionAttributeNames'], {
+                '#0': 'z_partition',
+                '#1': 'a_partition',
+                '#2': 'c_sort',
+            })
+            self.assertEqual(params['KeyConditionExpression'], '((#0 = :0 AND #1 = :1) AND #2 = :2)')
+
+    def test_global_index_composite_query_list_hash_key(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {'Count': 0, 'ScannedCount': 0, 'Items': []}
+            list(CompositeIndexedModel.composite_index.query(['p1', 'p2']))
+
+            params = req.call_args[0][1]
+            self.assertEqual(params['ExpressionAttributeValues'], {
+                ':0': {'S': 'p1'},
+                ':1': {'S': 'p2'},
+            })
+            self.assertEqual(params['KeyConditionExpression'], '(#0 = :0 AND #1 = :1)')
+
+    def test_global_index_composite_query_hash_key_validation(self):
+        with pytest.raises(ValueError, match='expects 2 hash key values'):
+            CompositeIndexedModel.composite_index.query('p1')
+
+        with pytest.raises(ValueError, match='expects 2 hash key values, got 1'):
+            CompositeIndexedModel.composite_index.query(('p1',))
+
+    def test_global_index_query_hash_only_does_not_error(self):
+        """
+        Non-composite GSI queries should work with hash key only.
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {'Count': 0, 'ScannedCount': 0, 'Items': []}
+            list(IndexedModel.email_index.query('foo'))
+
+            params = req.call_args[0][1]
+            self.assertEqual(params['IndexName'], 'custom_idx_name')
+            self.assertEqual(params['TableName'], 'IndexedModel')
+            self.assertEqual(params['KeyConditionExpression'], '#0 = :0')
+            self.assertEqual(params['ExpressionAttributeNames'], {'#0': 'email'})
+            self.assertEqual(params['ExpressionAttributeValues'], {':0': {'S': 'foo'}})
+
+    def test_global_index_composite_query_last_evaluated_key(self):
+        with patch(PATCH_METHOD) as req:
+            items = []
+            for idx in range(30):
+                items.append({
+                    'item_id': {STRING: f'id-{idx}'},
+                    'z_partition': {STRING: 'z1'},
+                    'a_partition': {STRING: 'a1'},
+                    'c_sort': {STRING: f'c-{idx}'},
+                    'b_sort': {STRING: f'b-{idx}'},
+                })
+
+            req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
+            results_iter = CompositeIndexedModel.composite_index.query(('z1', 'a1'), limit=25)
+            results = list(results_iter)
+
+            self.assertEqual(len(results), 25)
+            self.assertEqual(results_iter.last_evaluated_key, {
+                'item_id': items[24]['item_id'],
+                'z_partition': items[24]['z_partition'],
+                'a_partition': items[24]['a_partition'],
+                'c_sort': items[24]['c_sort'],
+                'b_sort': items[24]['b_sort'],
+            })
+
     def test_local_index(self):
         """
         Models.LocalSecondaryIndex
@@ -2315,12 +2461,12 @@ class ModelTestCase(TestCase):
                     'AttributeName': 'user_name'
                 },
                 {
-                    'AttributeType': 'NS',
-                    'AttributeName': 'numbers'
-                },
-                {
                     'AttributeType': 'S',
                     'AttributeName': 'email'
+                },
+                {
+                    'AttributeType': 'NS',
+                    'AttributeName': 'numbers'
                 },
             ]
         )
@@ -2356,6 +2502,29 @@ class ModelTestCase(TestCase):
                 ],
             )
             self.assertTrue('ProvisionedThroughput' not in args['LocalSecondaryIndexes'][0])
+
+    def test_local_index_reject_multiple_hash_or_range_keys(self):
+        class BadLocalHashIndex(LocalSecondaryIndex):
+            class Meta:
+                index_name = 'bad_local_hash_idx'
+                projection = AllProjection()
+
+            h1 = UnicodeAttribute(hash_key=True)
+            h2 = UnicodeAttribute(hash_key=True)
+
+        class BadLocalRangeIndex(LocalSecondaryIndex):
+            class Meta:
+                index_name = 'bad_local_range_idx'
+                projection = AllProjection()
+
+            h = UnicodeAttribute(hash_key=True)
+            r1 = UnicodeAttribute(range_key=True)
+            r2 = UnicodeAttribute(range_key=True)
+
+        with pytest.raises(ValueError, match='at most one hash key'):
+            BadLocalHashIndex._get_schema()
+        with pytest.raises(ValueError, match='at most one range key'):
+            BadLocalRangeIndex._get_schema()
 
     def test_projections(self):
         """
