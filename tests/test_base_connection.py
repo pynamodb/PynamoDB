@@ -1249,8 +1249,8 @@ def test_connection_query():
         req.return_value = {}
         conn.query(
             composite_table_name,
-            ("z1", "a1"),
-            index_name='CompositeIndex'
+            index_name='CompositeIndex',
+            hash_keys={'z_partition': 'z1', 'a_partition': 'a1'},
         )
         params = {
             'ReturnConsumedCapacity': 'TOTAL',
@@ -1268,15 +1268,15 @@ def test_connection_query():
         }
         assert req.call_args[0][1] == params
 
-    with pytest.raises(ValueError, match="expects 2 hash key values"):
+    with pytest.raises(ValueError, match="multiple hash key attributes; use hash_keys"):
         conn.query(composite_table_name, "z1", index_name='CompositeIndex')
 
     with patch(PATCH_METHOD) as req:
         req.return_value = {}
         conn.query(
             composite_table_name,
-            {'a_partition': 'a1', 'z_partition': 'z1'},
-            index_name='CompositeIndex'
+            index_name='CompositeIndex',
+            hash_keys={'a_partition': 'a1', 'z_partition': 'z1'},
         )
         params = {
             'ReturnConsumedCapacity': 'TOTAL',
@@ -1297,15 +1297,15 @@ def test_connection_query():
     with pytest.raises(ValueError, match="requires values for hash keys: a_partition"):
         conn.query(
             composite_table_name,
-            {'z_partition': 'z1'},
-            index_name='CompositeIndex'
+            index_name='CompositeIndex',
+            hash_keys={'z_partition': 'z1'},
         )
 
     with pytest.raises(ValueError, match="received unknown hash keys: unknown"):
         conn.query(
             composite_table_name,
-            {'z_partition': 'z1', 'a_partition': 'a1', 'unknown': 'u1'},
-            index_name='CompositeIndex'
+            index_name='CompositeIndex',
+            hash_keys={'z_partition': 'z1', 'a_partition': 'a1', 'unknown': 'u1'},
         )
 
     with patch(PATCH_METHOD) as req:

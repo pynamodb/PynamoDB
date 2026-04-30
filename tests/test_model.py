@@ -194,6 +194,47 @@ class CompositeIndexedModel(Model):
     composite_index = CompositeOrderIndex()
 
 
+class KeylessScanIndex(GlobalSecondaryIndex):
+    class Meta:
+        index_name = 'keyless_scan_idx'
+        read_capacity_units = 2
+        write_capacity_units = 1
+        projection = AllProjection()
+
+
+class KeylessScanIndexedModel(Model):
+    class Meta:
+        table_name = 'KeylessScanIndexedModel'
+
+    item_id = UnicodeAttribute(hash_key=True)
+    keyless_scan_index = KeylessScanIndex()
+
+
+class ThreeRangeKeyIndex(GlobalSecondaryIndex):
+    class Meta:
+        index_name = 'three_range_idx'
+        read_capacity_units = 2
+        write_capacity_units = 1
+        projection = AllProjection()
+
+    h = UnicodeAttribute(hash_key=True)
+    r1 = UnicodeAttribute(range_key=True)
+    r2 = UnicodeAttribute(range_key=True)
+    r3 = UnicodeAttribute(range_key=True)
+
+
+class ThreeRangeKeyModel(Model):
+    class Meta:
+        table_name = 'ThreeRangeKeyModel'
+
+    item_id = UnicodeAttribute(hash_key=True)
+    h = UnicodeAttribute()
+    r1 = UnicodeAttribute()
+    r2 = UnicodeAttribute()
+    r3 = UnicodeAttribute()
+    three_range_index = ThreeRangeKeyIndex()
+
+
 class SimpleUserModel(Model):
     """
     A hash key only model
@@ -1111,7 +1152,9 @@ class ModelTestCase(TestCase):
     def test_index_count_composite_hash_key(self):
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 1, 'ScannedCount': 1}
-            res = CompositeIndexedModel.composite_index.count(('p1', 'p2'))
+            res = CompositeIndexedModel.composite_index.count(
+                hash_keys={'z_partition': 'p1', 'a_partition': 'p2'}
+            )
             self.assertEqual(res, 1)
             params = req.call_args[0][1]
             self.assertEqual(params['KeyConditionExpression'], '(#0 = :0 AND #1 = :1)')
@@ -2371,7 +2414,10 @@ class ModelTestCase(TestCase):
     def test_global_index_composite_query(self):
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 0, 'ScannedCount': 0, 'Items': []}
-            list(CompositeIndexedModel.composite_index.query(('p1', 'p2'), CompositeIndexedModel.c_sort == 's1'))
+            list(CompositeIndexedModel.composite_index.query(
+                hash_keys={'z_partition': 'p1', 'a_partition': 'p2'},
+                range_key_condition=CompositeIndexedModel.c_sort == 's1',
+            ))
 
             params = req.call_args[0][1]
             self.assertEqual(params['IndexName'], 'composite_order_idx')
@@ -2388,10 +2434,12 @@ class ModelTestCase(TestCase):
             })
             self.assertEqual(params['KeyConditionExpression'], '((#0 = :0 AND #1 = :1) AND #2 = :2)')
 
-    def test_global_index_composite_query_list_hash_key(self):
+    def test_global_index_composite_query_unordered_hash_keys(self):
         with patch(PATCH_METHOD) as req:
             req.return_value = {'Count': 0, 'ScannedCount': 0, 'Items': []}
-            list(CompositeIndexedModel.composite_index.query(['p1', 'p2']))
+            list(CompositeIndexedModel.composite_index.query(
+                hash_keys={'a_partition': 'p2', 'z_partition': 'p1'}
+            ))
 
             params = req.call_args[0][1]
             self.assertEqual(params['ExpressionAttributeValues'], {
@@ -2401,11 +2449,110 @@ class ModelTestCase(TestCase):
             self.assertEqual(params['KeyConditionExpression'], '(#0 = :0 AND #1 = :1)')
 
     def test_global_index_composite_query_hash_key_validation(self):
-        with pytest.raises(ValueError, match='expects 2 hash key values'):
+        with pytest.raises(ValueError, match='multiple hash key attributes; use hash_keys'):
             CompositeIndexedModel.composite_index.query('p1')
 
-        with pytest.raises(ValueError, match='expects 2 hash key values, got 1'):
+        with pytest.raises(ValueError, match='multiple hash key attributes; use hash_keys'):
             CompositeIndexedModel.composite_index.query(('p1',))
+
+        with pytest.raises(ValueError, match='requires values for hash keys: a_partition'):
+            CompositeIndexedModel.composite_index.query(hash_keys={'z_partition': 'p1'})
+
+        with pytest.raises(ValueError, match='received unknown hash keys: unknown'):
+            CompositeIndexedModel.composite_index.query(hash_keys={
+                'z_partition': 'p1',
+                'a_partition': 'p2',
+                'unknown': 'p3',
+            })
+
+    def test_global_index_public_key_validation_helpers(self):
+        CompositeIndexedModel.composite_index.validate_range_key_condition(
+            CompositeIndexedModel.c_sort == 's1'
+        )
+        with pytest.raises(ValueError, match='preceding range keys: c_sort'):
+            CompositeIndexedModel.composite_index.validate_range_key_condition(
+                CompositeIndexedModel.b_sort == 's2'
+            )
+
+        self.assertEqual(
+            CompositeIndexedModel.composite_index.serialize_hash_key_values(
+                hash_keys={'z_partition': 'p1', 'a_partition': 'p2'}
+            ),
+            {'z_partition': 'p1', 'a_partition': 'p2'},
+        )
+
+    def test_global_index_scan_allows_keyless_index_definition(self):
+        """
+        Index scans do not need key schema metadata, so scan-only index definitions
+        should remain backwards-compatible.
+        """
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                'Count': 1,
+                'ScannedCount': 1,
+                'Items': [{'item_id': {STRING: 'item-1'}}],
+            }
+
+            items = list(KeylessScanIndexedModel.keyless_scan_index.scan())
+
+            self.assertEqual([item.item_id for item in items], ['item-1'])
+            self.assertEqual(req.call_args[0][1]['IndexName'], 'keyless_scan_idx')
+
+    def test_global_index_query_rejects_keyless_index_definition(self):
+        with pytest.raises(ValueError, match='has no hash key attributes'):
+            KeylessScanIndexedModel.keyless_scan_index.query('item-1')
+
+    def test_global_index_composite_query_range_key_validation(self):
+        with pytest.raises(ValueError, match='preceding range keys: c_sort'):
+            CompositeIndexedModel.composite_index.query(
+                hash_keys={'z_partition': 'p1', 'a_partition': 'p2'},
+                range_key_condition=CompositeIndexedModel.b_sort == 's1',
+            )
+
+        with pytest.raises(ValueError, match='use equality for preceding range keys: c_sort'):
+            CompositeIndexedModel.composite_index.query(
+                hash_keys={'z_partition': 'p1', 'a_partition': 'p2'},
+                range_key_condition=(
+                    (CompositeIndexedModel.c_sort > 's1') &
+                    (CompositeIndexedModel.b_sort == 's2')
+                ),
+            )
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {'Count': 0, 'ScannedCount': 0, 'Items': []}
+            list(CompositeIndexedModel.composite_index.query(
+                hash_keys={'z_partition': 'p1', 'a_partition': 'p2'},
+                range_key_condition=(
+                    (CompositeIndexedModel.c_sort == 's1') &
+                    CompositeIndexedModel.b_sort.startswith('s2')
+                ),
+            ))
+            self.assertEqual(
+                req.call_args[0][1]['KeyConditionExpression'],
+                '((#0 = :0 AND #1 = :1) AND (#2 = :2 AND begins_with (#3, :3)))'
+            )
+
+    def test_global_index_three_range_key_validation(self):
+        with pytest.raises(ValueError, match='preceding range keys: r1, r2'):
+            ThreeRangeKeyModel.three_range_index.query(
+                'h1',
+                range_key_condition=ThreeRangeKeyModel.r3 == 'r3',
+            )
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {'Count': 0, 'ScannedCount': 0, 'Items': []}
+            list(ThreeRangeKeyModel.three_range_index.query(
+                'h1',
+                range_key_condition=(
+                    (ThreeRangeKeyModel.r1 == 'r1') &
+                    (ThreeRangeKeyModel.r2 == 'r2') &
+                    (ThreeRangeKeyModel.r3 >= 'r3')
+                ),
+            ))
+            self.assertEqual(
+                req.call_args[0][1]['KeyConditionExpression'],
+                '(#0 = :0 AND ((#1 = :1 AND #2 = :2) AND #3 >= :3))'
+            )
 
     def test_global_index_query_hash_only_does_not_error(self):
         """
@@ -2435,7 +2582,10 @@ class ModelTestCase(TestCase):
                 })
 
             req.return_value = {'Count': len(items), 'ScannedCount': len(items), 'Items': items}
-            results_iter = CompositeIndexedModel.composite_index.query(('z1', 'a1'), limit=25)
+            results_iter = CompositeIndexedModel.composite_index.query(
+                hash_keys={'z_partition': 'z1', 'a_partition': 'a1'},
+                limit=25,
+            )
             results = list(results_iter)
 
             self.assertEqual(len(results), 25)
@@ -2461,12 +2611,12 @@ class ModelTestCase(TestCase):
                     'AttributeName': 'user_name'
                 },
                 {
-                    'AttributeType': 'S',
-                    'AttributeName': 'email'
-                },
-                {
                     'AttributeType': 'NS',
                     'AttributeName': 'numbers'
+                },
+                {
+                    'AttributeType': 'S',
+                    'AttributeName': 'email'
                 },
             ]
         )

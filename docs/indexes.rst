@@ -145,16 +145,23 @@ them used.
         round = UnicodeAttribute(range_key=True)
         bracket = UnicodeAttribute(range_key=True)
 
-When querying a composite GSI, pass all partition-key values as a tuple (or list)
-in the same declaration order:
+When querying a composite GSI, pass all partition-key values with ``hash_keys``.
+PynamoDB validates the supplied names and sends them in the index declaration
+order:
 
 .. code-block:: python
 
-    for item in MatchModel.tournament_region_index.query(('WINTER2024', 'NA-EAST')):
+    for item in MatchModel.tournament_region_index.query(
+        hash_keys={
+            'tournament_id': 'WINTER2024',
+            'region': 'NA-EAST',
+        }
+    ):
         print(item)
 
 For sort-key conditions, DynamoDB enforces left-to-right semantics across declared
-sort-key attributes. See the DynamoDB documentation for details:
+sort-key attributes. If a later sort-key attribute is used, all preceding sort-key
+attributes must have equality conditions. See the DynamoDB documentation for details:
 https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.DesignPattern.MultiAttributeKeys.html
 
 

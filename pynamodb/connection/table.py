@@ -3,7 +3,7 @@ PynamoDB Connection classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
-from typing import Any, Dict, Mapping, Optional, Sequence, Union
+from typing import Any, Dict, Mapping, Optional, Sequence
 
 from pynamodb.connection.base import Connection, MetaTable
 from pynamodb.constants import DEFAULT_BILLING_MODE, KEY
@@ -238,7 +238,8 @@ class TableConnection:
 
     def query(
         self,
-        hash_key: Union[object, Sequence[object], Mapping[str, object]],
+        hash_key: Optional[Any] = None,
+        hash_keys: Optional[Mapping[str, Any]] = None,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Any] = None,
         attributes_to_get: Optional[Any] = None,
@@ -266,6 +267,7 @@ class TableConnection:
             return_consumed_capacity=return_consumed_capacity,
             scan_index_forward=scan_index_forward,
             select=select,
+            hash_keys=hash_keys,
         )
 
     def describe_table(self) -> Dict:
@@ -299,7 +301,8 @@ class TableConnection:
             self.table_name,
             read_capacity_units=read_capacity_units,
             write_capacity_units=write_capacity_units,
-            global_secondary_index_updates=global_secondary_index_updates)
+            global_secondary_index_updates=global_secondary_index_updates,
+        )
 
     def create_table(
         self,
@@ -326,5 +329,5 @@ class TableConnection:
             local_secondary_indexes=local_secondary_indexes,
             stream_specification=stream_specification,
             billing_mode=billing_mode,
-            tags=tags
+            tags=tags,
         )
