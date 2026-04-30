@@ -619,13 +619,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
     def count(
             cls: Type[_T],
             hash_key: Optional[_KeyType] = None,
-            hash_keys: Optional[Mapping[str, _KeyType]] = None,
             range_key_condition: Optional[Condition] = None,
             filter_condition: Optional[Condition] = None,
             consistent_read: bool = False,
             index_name: Optional[str] = None,
             limit: Optional[int] = None,
             rate_limit: Optional[float] = None,
+            hash_keys: Optional[Mapping[str, _KeyType]] = None,
     ) -> int:
         """
         Provides a filtered count
@@ -699,7 +699,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
     def query(
             cls: Type[_T],
             hash_key: Optional[_KeyType] = None,
-            hash_keys: Optional[Mapping[str, _KeyType]] = None,
             range_key_condition: Optional[Condition] = None,
             filter_condition: Optional[Condition] = None,
             consistent_read: bool = False,
@@ -710,6 +709,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             attributes_to_get: Optional[Iterable[str]] = None,
             page_size: Optional[int] = None,
             rate_limit: Optional[float] = None,
+            hash_keys: Optional[Mapping[str, _KeyType]] = None,
     ) -> ResultIterator[_T]:
         """
         Provides a high level query API

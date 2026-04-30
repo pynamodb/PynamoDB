@@ -239,7 +239,6 @@ class TableConnection:
     def query(
         self,
         hash_key: Optional[Any] = None,
-        hash_keys: Optional[Mapping[str, Any]] = None,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Any] = None,
         attributes_to_get: Optional[Any] = None,
@@ -250,6 +249,7 @@ class TableConnection:
         return_consumed_capacity: Optional[str] = None,
         scan_index_forward: Optional[bool] = None,
         select: Optional[str] = None,
+        hash_keys: Optional[Mapping[str, Any]] = None,
     ) -> Dict:
         """
         Performs the Query operation and returns the result
