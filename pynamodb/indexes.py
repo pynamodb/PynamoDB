@@ -43,10 +43,10 @@ class Index(Generic[_M]):
         attributes: Dict[str, Attribute] = {}
         for base in reversed(index_cls.__mro__):
             for name, attribute in getattr(base, '__dict__', {}).items():
+                if name in attributes:
+                    del attributes[name]
                 if isinstance(attribute, Attribute):
                     # If a subclass overrides an attribute, preserve the subclass declaration order.
-                    if name in attributes:
-                        del attributes[name]
                     attributes[name] = attribute
         return attributes
 

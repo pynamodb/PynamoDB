@@ -2703,6 +2703,34 @@ class ModelTestCase(TestCase):
         with pytest.raises(ValueError, match='at most one range key'):
             BadLocalRangeIndex._get_schema()
 
+    def test_index_attribute_shadowing_removes_inherited_key(self):
+        class BaseShadowIndex(GlobalSecondaryIndex):
+            class Meta:
+                index_name = 'base_shadow_idx'
+                projection = AllProjection()
+
+            h = UnicodeAttribute(hash_key=True)
+            r = UnicodeAttribute(range_key=True)
+
+        class ChildShadowIndex(BaseShadowIndex):
+            class Meta(BaseShadowIndex.Meta):
+                index_name = 'child_shadow_idx'
+
+            h = None
+            h2 = UnicodeAttribute(hash_key=True)
+
+        self.assertEqual(
+            [attr.attr_name for attr in ChildShadowIndex._hash_key_attributes()],
+            ['h2'],
+        )
+        self.assertEqual(
+            ChildShadowIndex._get_schema()['key_schema'],
+            [
+                {'AttributeName': 'h2', 'KeyType': 'HASH'},
+                {'AttributeName': 'r', 'KeyType': 'RANGE'},
+            ],
+        )
+
     def test_projections(self):
         """
         Models.Projection
