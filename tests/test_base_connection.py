@@ -1215,6 +1215,32 @@ def test_connection_query():
         }
         assert req.call_args[0][1] == params
 
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {}
+        conn.query(
+            table_name,
+            {'S': 'FooForum'},
+            Path('Subject').startswith('thread'),
+        )
+        params = {
+            'ReturnConsumedCapacity': 'TOTAL',
+            'KeyConditionExpression': '(#0 = :0 AND begins_with (#1, :1))',
+            'ExpressionAttributeNames': {
+                '#0': 'ForumName',
+                '#1': 'Subject'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {
+                    'S': 'FooForum'
+                },
+                ':1': {
+                    'S': 'thread'
+                }
+            },
+            'TableName': 'Thread'
+        }
+        assert req.call_args[0][1] == params
+
     composite_table_name = "ThreadComposite"
     composite_table_data = {
         "TableName": composite_table_name,

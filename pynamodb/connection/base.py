@@ -1426,7 +1426,10 @@ class Connection(object):
             if hash_keys is None:
                 if hash_key is None:
                     raise ValueError(f"Index {index_name} requires a hash_key")
-                if isinstance(hash_key, (tuple, list, Mapping)):
+                if isinstance(hash_key, (tuple, list)) or (
+                    isinstance(hash_key, Mapping)
+                    and not any(key in ATTRIBUTE_TYPES for key in hash_key)
+                ):
                     raise ValueError(
                         f"Index {index_name} expects a single hash_key value"
                     )
