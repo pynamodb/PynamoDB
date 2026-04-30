@@ -1358,6 +1358,7 @@ class Connection(object):
         if range_key_condition is not None:
             key_condition &= range_key_condition
 
+        assert key_condition is not None
         operation_kwargs[KEY_CONDITION_EXPRESSION] = key_condition.serialize(
             name_placeholders, expression_attribute_values
         )
@@ -1499,7 +1500,7 @@ class Connection(object):
                     f"{context} range_key_condition uses unsupported range key operator: {condition.operator}"
                 )
             key_name = Connection._condition_key_name(condition)
-            if key_name not in range_keynames:
+            if key_name is None or key_name not in range_keynames:
                 raise ValueError(
                     f"{context} range_key_condition must only use range keys: {', '.join(range_keynames)}"
                 )
@@ -1507,6 +1508,7 @@ class Connection(object):
                 raise ValueError(
                     f"{context} range_key_condition has multiple conditions for range key: {key_name}"
                 )
+            assert key_name is not None
             conditions_by_key[key_name] = condition
 
         if not conditions_by_key:

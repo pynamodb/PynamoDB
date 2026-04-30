@@ -351,7 +351,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                         'expected non-str iterable with exactly 2 elements (hash key, range key)'
                     )
                 try:
-                    hash_key, range_key = item
+                    hash_key, range_key = cast(Tuple[_KeyType, _KeyType], item)
                 except (TypeError, ValueError):
                     raise ValueError(
                         f'Invalid key value {item!r}: '
@@ -562,13 +562,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
     @classmethod
     def get_operation_kwargs_from_class(
             cls,
-            hash_key: str,
+            hash_key: _KeyType,
             range_key: Optional[_KeyType] = None,
             condition: Optional[Condition] = None,
     ) -> Dict[str, Any]:
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
         return cls._get_connection().get_operation_kwargs(
-            hash_key=hash_key, range_key=range_key, condition=condition
+            hash_key=cast(str, hash_key), range_key=cast(Optional[str], range_key), condition=condition
         )
 
     @classmethod
@@ -591,8 +591,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
 
         data = cls._get_connection().get_item(
-            hash_key,
-            range_key=range_key,
+            cast(str, hash_key),
+            range_key=cast(Optional[str], range_key),
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get,
         )
@@ -619,14 +619,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
     def count(
             cls: Type[_T],
             hash_key: Optional[_KeyType] = None,
+            hash_keys: Optional[Mapping[str, _KeyType]] = None,
             range_key_condition: Optional[Condition] = None,
             filter_condition: Optional[Condition] = None,
             consistent_read: bool = False,
             index_name: Optional[str] = None,
             limit: Optional[int] = None,
             rate_limit: Optional[float] = None,
-            *,
-            hash_keys: Optional[_HashKeyQueryType] = None,
     ) -> int:
         """
         Provides a filtered count
@@ -700,6 +699,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
     def query(
             cls: Type[_T],
             hash_key: Optional[_KeyType] = None,
+            hash_keys: Optional[Mapping[str, _KeyType]] = None,
             range_key_condition: Optional[Condition] = None,
             filter_condition: Optional[Condition] = None,
             consistent_read: bool = False,
@@ -710,8 +710,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
             attributes_to_get: Optional[Iterable[str]] = None,
             page_size: Optional[int] = None,
             rate_limit: Optional[float] = None,
-            *,
-            hash_keys: Optional[_HashKeyQueryType] = None,
     ) -> ResultIterator[_T]:
         """
         Provides a high level query API
@@ -1143,10 +1141,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get,
         )
-        item_data = data.get(RESPONSES).get(cls.Meta.table_name)  # type: ignore
-        unprocessed_items = (
-            data.get(UNPROCESSED_KEYS).get(cls.Meta.table_name, {}).get(KEYS, None)
-        )  # type: ignore
+        responses = cast(Dict[str, Any], data.get(RESPONSES, {}))
+        item_data = responses.get(cls.Meta.table_name)
+        unprocessed_keys = cast(Dict[str, Any], data.get(UNPROCESSED_KEYS, {}))
+        unprocessed_items = unprocessed_keys.get(cls.Meta.table_name, {}).get(KEYS, None)
         return item_data, unprocessed_items
 
     @classmethod
@@ -1231,7 +1229,11 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return {attr.attr_type: serialized}
 
     @classmethod
-    def _serialize_keys(cls, hash_key, range_key=None) -> Tuple[_KeyType, _KeyType]:
+    def _serialize_keys(
+        cls,
+        hash_key: _KeyType,
+        range_key: Optional[_KeyType] = None,
+    ) -> Tuple[Any, Any]:
         """
         Serializes the hash and range keys
 
