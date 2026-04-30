@@ -202,11 +202,18 @@ class Index(Generic[_M]):
         return path[0]
 
     @staticmethod
-    def _validate_multi_key_condition(
+    def _combine_conditions(conditions: List[Condition]) -> Condition:
+        combined_condition = conditions[0]
+        for condition in conditions[1:]:
+            combined_condition &= condition
+        return combined_condition
+
+    @staticmethod
+    def _normalize_multi_key_condition(
         range_key_condition: Condition,
         range_keynames: List[str],
         context: str,
-    ) -> None:
+    ) -> Condition:
         valid_operators = {'=', '<', '<=', '>', '>=', 'BETWEEN', 'begins_with'}
         conditions_by_key: Dict[str, Condition] = {}
         for condition in Index._flatten_and_conditions(range_key_condition):
@@ -215,7 +222,7 @@ class Index(Generic[_M]):
                     f'{context} range_key_condition uses unsupported range key operator: {condition.operator}'
                 )
             key_name = Index._condition_key_name(condition)
-            if key_name not in range_keynames:
+            if key_name is None or key_name not in range_keynames:
                 raise ValueError(
                     f'{context} range_key_condition must only use range keys: ' + ', '.join(range_keynames)
                 )
@@ -226,7 +233,7 @@ class Index(Generic[_M]):
             conditions_by_key[key_name] = condition
 
         if not conditions_by_key:
-            return
+            return range_key_condition
 
         highest_position = max(
             range_keynames.index(key_name) for key_name in conditions_by_key
@@ -252,6 +259,13 @@ class Index(Generic[_M]):
                 f'{context} range_key_condition must use equality for preceding range keys: '
                 + ', '.join(non_equal_prefix_keys)
             )
+
+        ordered_conditions = [
+            conditions_by_key[key_name]
+            for key_name in range_keynames
+            if key_name in conditions_by_key
+        ]
+        return Index._combine_conditions(ordered_conditions)
 
     @classmethod
     def _serialize_hash_key_values(
@@ -349,17 +363,23 @@ class Index(Generic[_M]):
         return [values_by_attr_name[attr.attr_name] for attr in hash_key_attributes]
 
     @classmethod
-    def _validate_range_key_condition(
+    def _normalize_range_key_condition(
         cls, range_key_condition: Optional[Condition]
-    ) -> None:
+    ) -> Optional[Condition]:
         range_key_attributes = cls._range_key_attributes()
         if range_key_condition is None or len(range_key_attributes) <= 1:
-            return
-        cls._validate_multi_key_condition(
+            return range_key_condition
+        return cls._normalize_multi_key_condition(
             range_key_condition,
             [attr.attr_name for attr in range_key_attributes],
             cls.__name__,
         )
+
+    @classmethod
+    def _validate_range_key_condition(
+        cls, range_key_condition: Optional[Condition]
+    ) -> None:
+        cls._normalize_range_key_condition(range_key_condition)
 
     @classmethod
     def validate_range_key_condition(

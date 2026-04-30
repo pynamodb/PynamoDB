@@ -650,7 +650,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         serialized_hash_keys = None
         if index_name:
             index = cls._indexes[index_name]
-            index._validate_range_key_condition(range_key_condition)
+            range_key_condition = index._normalize_range_key_condition(range_key_condition)
             serialized_hash_key = index._serialize_hash_key_values(
                 hash_key, hash_keys=hash_keys
             )
@@ -734,7 +734,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         serialized_hash_keys = None
         if index_name:
             index = cls._indexes[index_name]
-            index._validate_range_key_condition(range_key_condition)
+            range_key_condition = index._normalize_range_key_condition(range_key_condition)
             serialized_hash_key = index._serialize_hash_key_values(
                 hash_key, hash_keys=hash_keys
             )

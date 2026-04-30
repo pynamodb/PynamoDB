@@ -2532,6 +2532,33 @@ class ModelTestCase(TestCase):
                 '((#0 = :0 AND #1 = :1) AND (#2 = :2 AND begins_with (#3, :3)))'
             )
 
+    def test_global_index_composite_query_normalizes_out_of_order_range_keys(self):
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {'Count': 0, 'ScannedCount': 0, 'Items': []}
+            list(CompositeIndexedModel.composite_index.query(
+                hash_keys={'z_partition': 'p1', 'a_partition': 'p2'},
+                range_key_condition=(
+                    (CompositeIndexedModel.b_sort == 's2') &
+                    (CompositeIndexedModel.c_sort == 's1')
+                ),
+            ))
+            self.assertEqual(
+                req.call_args[0][1]['KeyConditionExpression'],
+                '((#0 = :0 AND #1 = :1) AND (#2 = :2 AND #3 = :3))'
+            )
+            self.assertEqual(req.call_args[0][1]['ExpressionAttributeNames'], {
+                '#0': 'z_partition',
+                '#1': 'a_partition',
+                '#2': 'c_sort',
+                '#3': 'b_sort',
+            })
+            self.assertEqual(req.call_args[0][1]['ExpressionAttributeValues'], {
+                ':0': {'S': 'p1'},
+                ':1': {'S': 'p2'},
+                ':2': {'S': 's1'},
+                ':3': {'S': 's2'},
+            })
+
     def test_global_index_three_range_key_validation(self):
         with pytest.raises(ValueError, match='preceding range keys: r1, r2'):
             ThreeRangeKeyModel.three_range_index.query(

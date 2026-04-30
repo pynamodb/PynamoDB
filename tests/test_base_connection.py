@@ -1337,6 +1337,37 @@ def test_connection_query():
     with patch(PATCH_METHOD) as req:
         req.return_value = {}
         conn.query(
+            composite_table_name,
+            index_name='CompositeIndex',
+            hash_keys={'z_partition': 'z1', 'a_partition': 'a1'},
+            range_key_condition=(
+                (Path('b_sort') == 'b1') &
+                (Path('c_sort') == 'c1')
+            ),
+        )
+        params = {
+            'ReturnConsumedCapacity': 'TOTAL',
+            'IndexName': 'CompositeIndex',
+            'KeyConditionExpression': '((#0 = :0 AND #1 = :1) AND (#2 = :2 AND #3 = :3))',
+            'ExpressionAttributeNames': {
+                '#0': 'z_partition',
+                '#1': 'a_partition',
+                '#2': 'c_sort',
+                '#3': 'b_sort'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {'S': 'z1'},
+                ':1': {'S': 'a1'},
+                ':2': {'S': 'c1'},
+                ':3': {'S': 'b1'}
+            },
+            'TableName': composite_table_name
+        }
+        assert req.call_args[0][1] == params
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {}
+        conn.query(
             table_name,
             "FooForum",
             Path('Subject').startswith('thread')

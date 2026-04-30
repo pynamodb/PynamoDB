@@ -6,7 +6,6 @@ import logging
 import uuid
 from threading import local
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Union, cast
-
 if sys.version_info >= (3, 8):
     from typing import Literal
 else:
@@ -194,27 +193,27 @@ class MetaTable(object):
                 return range_keynames
         return []
 
-    def get_item_attribute_map(
-        self, attributes: Dict, item_key=ITEM, pythonic_key: bool = True
-    ):
+    def get_item_attribute_map(self, attributes: Dict, item_key=ITEM, pythonic_key: bool = True):
         """
         Builds up a dynamodb compatible AttributeValue map
         """
         if pythonic_key:
             item_key = item_key
-        attr_map: Dict[str, Dict] = {item_key: {}}
+        attr_map: Dict[str, Dict] = {
+            item_key: {}
+        }
         for key, value in attributes.items():
             # In this case, the user provided a mapping
             # {'key': {'S': 'value'}}
             if isinstance(value, dict):
                 attr_map[item_key][key] = value
             else:
-                attr_map[item_key][key] = {self.get_attribute_type(key): value}
+                attr_map[item_key][key] = {
+                    self.get_attribute_type(key): value
+                }
         return attr_map
 
-    def get_attribute_type(
-        self, attribute_name: str, value: Optional[Any] = None
-    ) -> str:
+    def get_attribute_type(self, attribute_name: str, value: Optional[Any] = None) -> str:
         """
         Returns the proper attribute type for a given attribute name
         """
@@ -225,14 +224,10 @@ class MetaTable(object):
             for key in ATTRIBUTE_TYPES:
                 if key in value:
                     return key
-        attr_names = [
-            attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS, [])
-        ]
+        attr_names = [attr.get(ATTR_NAME) for attr in self.data.get(ATTR_DEFINITIONS, [])]
         raise ValueError("No attribute {} in {}".format(attribute_name, attr_names))
 
-    def get_identifier_map(
-        self, hash_key: str, range_key: Optional[str] = None, key: str = KEY
-    ):
+    def get_identifier_map(self, hash_key: str, range_key: Optional[str] = None, key: str = KEY):
         """
         Builds the identifier map that is common to several operations
         """
@@ -253,13 +248,12 @@ class MetaTable(object):
         """
         Builds the exclusive start key attribute map
         """
-        if (
-            isinstance(exclusive_start_key, dict)
-            and self.hash_keyname in exclusive_start_key
-        ):
+        if isinstance(exclusive_start_key, dict) and self.hash_keyname in exclusive_start_key:
             # This is useful when paginating results, as the LastEvaluatedKey returned is already
             # structured properly
-            return {EXCLUSIVE_START_KEY: exclusive_start_key}
+            return {
+                EXCLUSIVE_START_KEY: exclusive_start_key
+            }
         else:
             return {
                 EXCLUSIVE_START_KEY: {
@@ -275,26 +269,24 @@ class Connection(object):
     A higher level abstraction over botocore
     """
 
-    def __init__(
-        self,
-        region: Optional[str] = None,
-        host: Optional[str] = None,
-        read_timeout_seconds: Optional[float] = None,
-        connect_timeout_seconds: Optional[float] = None,
-        max_retry_attempts: Optional[int] = None,
-        retry_configuration: Optional[
-            Union[
-                Literal["LEGACY"],
-                Literal["UNSET"],
-                "botocore.config._RetryDict",
-            ]
-        ] = None,
-        max_pool_connections: Optional[int] = None,
-        extra_headers: Optional[Mapping[str, str]] = None,
-        aws_access_key_id: Optional[str] = None,
-        aws_secret_access_key: Optional[str] = None,
-        aws_session_token: Optional[str] = None,
-    ):
+    def __init__(self,
+                 region: Optional[str] = None,
+                 host: Optional[str] = None,
+                 read_timeout_seconds: Optional[float] = None,
+                 connect_timeout_seconds: Optional[float] = None,
+                 max_retry_attempts: Optional[int] = None,
+                 retry_configuration: Optional[
+                     Union[
+                         Literal["LEGACY"],
+                         Literal["UNSET"],
+                         "botocore.config._RetryDict",
+                     ]
+                 ] = None,
+                 max_pool_connections: Optional[int] = None,
+                 extra_headers: Optional[Mapping[str, str]] = None,
+                 aws_access_key_id: Optional[str] = None,
+                 aws_secret_access_key: Optional[str] = None,
+                 aws_session_token: Optional[str] = None):
         self._tables: Dict[str, MetaTable] = {}
         self.host = host
         self._local = local()
@@ -303,26 +295,22 @@ class Connection(object):
         if region:
             self.region = region
         else:
-            self.region = get_settings_value("region")
+            self.region = get_settings_value('region')
 
         if connect_timeout_seconds is not None:
             self._connect_timeout_seconds = connect_timeout_seconds
         else:
-            self._connect_timeout_seconds = get_settings_value(
-                "connect_timeout_seconds"
-            )
+            self._connect_timeout_seconds = get_settings_value('connect_timeout_seconds')
 
         if read_timeout_seconds is not None:
             self._read_timeout_seconds = read_timeout_seconds
         else:
-            self._read_timeout_seconds = get_settings_value("read_timeout_seconds")
+            self._read_timeout_seconds = get_settings_value('read_timeout_seconds')
 
         if max_retry_attempts is not None:
             self._max_retry_attempts_exception = max_retry_attempts
         else:
-            self._max_retry_attempts_exception = get_settings_value(
-                "max_retry_attempts"
-            )
+            self._max_retry_attempts_exception = get_settings_value('max_retry_attempts')
 
         # Since we have the pattern of using `None` to indicate "read from the
         # settings", we use a literal of "UNSET" to indicate we want the
@@ -334,17 +322,17 @@ class Connection(object):
         elif retry_configuration is not None:
             self._retry_configuration = retry_configuration
         else:
-            self._retry_configuration = get_settings_value("retry_configuration")
+            self._retry_configuration = get_settings_value('retry_configuration')
 
         if max_pool_connections is not None:
             self._max_pool_connections = max_pool_connections
         else:
-            self._max_pool_connections = get_settings_value("max_pool_connections")
+            self._max_pool_connections = get_settings_value('max_pool_connections')
 
         if extra_headers is not None:
             self._extra_headers = extra_headers
         else:
-            self._extra_headers = get_settings_value("extra_headers")
+            self._extra_headers = get_settings_value('extra_headers')
 
         self._aws_access_key_id = aws_access_key_id
         self._aws_secret_access_key = aws_secret_access_key
@@ -359,14 +347,7 @@ class Connection(object):
 
         Raises TableDoesNotExist if the specified table does not exist
         """
-        if operation_name not in [
-            DESCRIBE_TABLE,
-            LIST_TABLES,
-            UPDATE_TABLE,
-            UPDATE_TIME_TO_LIVE,
-            DELETE_TABLE,
-            CREATE_TABLE,
-        ]:
+        if operation_name not in [DESCRIBE_TABLE, LIST_TABLES, UPDATE_TABLE, UPDATE_TIME_TO_LIVE, DELETE_TABLE, CREATE_TABLE]:
             if RETURN_CONSUMED_CAPACITY not in operation_kwargs:
                 operation_kwargs.update(self.get_consumed_capacity_map(TOTAL))
         log.debug("Calling %s with arguments %s", operation_name, operation_kwargs)
@@ -382,33 +363,18 @@ class Connection(object):
             capacity = data.get(CONSUMED_CAPACITY)
             if isinstance(capacity, dict) and CAPACITY_UNITS in capacity:
                 capacity = capacity.get(CAPACITY_UNITS)
-            log.debug(
-                "%s %s consumed %s units",
-                data.get(TABLE_NAME, ""),
-                operation_name,
-                capacity,
-            )
+            log.debug("%s %s consumed %s units",  data.get(TABLE_NAME, ''), operation_name, capacity)
         return data
 
     def send_post_boto_callback(self, operation_name, req_uuid, table_name):
         try:
-            post_dynamodb_send.send(
-                self,
-                operation_name=operation_name,
-                table_name=table_name,
-                req_uuid=req_uuid,
-            )
+            post_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
         except Exception:
             log.exception("post_boto callback threw an exception.")
 
     def send_pre_boto_callback(self, operation_name, req_uuid, table_name):
         try:
-            pre_dynamodb_send.send(
-                self,
-                operation_name=operation_name,
-                table_name=table_name,
-                req_uuid=req_uuid,
-            )
+            pre_dynamodb_send.send(self, operation_name=operation_name, table_name=table_name, req_uuid=req_uuid)
         except Exception:
             log.exception("pre_boto callback threw an exception.")
 
@@ -420,15 +386,13 @@ class Connection(object):
         try:
             return self.client._make_api_call(operation_name, operation_kwargs)
         except ClientError as e:
-            resp_metadata = e.response.get("ResponseMetadata", {}).get(
-                "HTTPHeaders", {}
-            )
-            cancellation_reasons = e.response.get("CancellationReasons", [])
+            resp_metadata = e.response.get('ResponseMetadata', {}).get('HTTPHeaders', {})
+            cancellation_reasons = e.response.get('CancellationReasons', [])
 
-            botocore_props = {"Error": e.response.get("Error", {})}
+            botocore_props = {'Error': e.response.get('Error', {})}
             verbose_props = {
-                "request_id": resp_metadata.get("x-amzn-requestid", ""),
-                "table_name": self._get_table_name_for_error_context(operation_kwargs),
+                'request_id': resp_metadata.get('x-amzn-requestid', ''),
+                'table_name': self._get_table_name_for_error_context(operation_kwargs),
             }
             raise VerboseClientError(
                 botocore_props,
@@ -437,14 +401,10 @@ class Connection(object):
                 cancellation_reasons=(
                     (
                         CancellationReason(
-                            code=d["Code"],
-                            message=d.get("Message"),
-                            raw_item=cast(
-                                Optional[Dict[str, Dict[str, Any]]], d.get("Item")
-                            ),
-                        )
-                        if d["Code"] != "None"
-                        else None
+                            code=d['Code'],
+                            message=d.get('Message'),
+                            raw_item=cast(Optional[Dict[str, Dict[str, Any]]], d.get('Item')),
+                        ) if d['Code'] != 'None' else None
                     )
                     for d in cancellation_reasons
                 ),
@@ -453,7 +413,7 @@ class Connection(object):
     def _get_table_name_for_error_context(self, operation_kwargs) -> str:
         # First handle the two multi-table cases: batch and transaction operations
         if REQUEST_ITEMS in operation_kwargs:
-            return ",".join(operation_kwargs[REQUEST_ITEMS])
+            return ','.join(operation_kwargs[REQUEST_ITEMS])
         elif TRANSACT_ITEMS in operation_kwargs:
             table_names = []
             for item in operation_kwargs[TRANSACT_ITEMS]:
@@ -468,14 +428,12 @@ class Connection(object):
         Returns a valid botocore session
         """
         # botocore client creation is not thread safe as of v1.2.5+ (see issue #153)
-        if getattr(self._local, "session", None) is None:
+        if getattr(self._local, 'session', None) is None:
             self._local.session = get_session()
             if self._aws_access_key_id and self._aws_secret_access_key:
-                self._local.session.set_credentials(
-                    self._aws_access_key_id,
-                    self._aws_secret_access_key,
-                    self._aws_session_token,
-                )
+                self._local.session.set_credentials(self._aws_access_key_id,
+                                                        self._aws_secret_access_key,
+                                                        self._aws_session_token)
         return self._local.session
 
     @property
@@ -487,18 +445,15 @@ class Connection(object):
         # https://github.com/boto/botocore/blob/4d55c9b4142/botocore/credentials.py#L1016-L1021
         # if the client does not have credentials, we create a new client
         # otherwise the client is permanently poisoned in the case of metadata service flakiness when using IAM roles
-        if not self._client or (
-            self._client._request_signer
-            and not self._client._request_signer._credentials
-        ):
+        if not self._client or (self._client._request_signer and not self._client._request_signer._credentials):
             # Check if we are using the "LEGACY" retry mode to keep previous PynamoDB
             # retry behavior, or if we are using the new retry configuration settings.
             if self._retry_configuration != "LEGACY":
                 retries = self._retry_configuration
             else:
                 retries = {
-                    "total_max_attempts": 1 + self._max_retry_attempts_exception,
-                    "mode": "standard",
+                    'total_max_attempts': 1 + self._max_retry_attempts_exception,
+                    'mode': 'standard',
                 }
 
             config = botocore.client.Config(
@@ -508,16 +463,9 @@ class Connection(object):
                 max_pool_connections=self._max_pool_connections,
                 retries=retries,
             )
-            self._client = cast(
-                BotocoreBaseClientPrivate,
-                self.session.create_client(
-                    SERVICE_NAME, self.region, endpoint_url=self.host, config=config
-                ),
-            )
+            self._client = cast(BotocoreBaseClientPrivate, self.session.create_client(SERVICE_NAME, self.region, endpoint_url=self.host, config=config))
 
-            self._client.meta.events.register_first(
-                "before-send.*.*", self._before_send
-            )
+            self._client.meta.events.register_first('before-send.*.*', self._before_send)
         return self._client
 
     def add_meta_table(self, meta_table: MetaTable) -> None:
@@ -559,26 +507,20 @@ class Connection(object):
             PROVISIONED_THROUGHPUT: {
                 READ_CAPACITY_UNITS: read_capacity_units,
                 WRITE_CAPACITY_UNITS: write_capacity_units,
-            },
+            }
         }
         attrs_list = []
         if attribute_definitions is None:
             raise ValueError("attribute_definitions argument is required")
         for attr in attribute_definitions:
-            attrs_list.append(
-                {
-                    ATTR_NAME: attr.get(ATTR_NAME) or attr["attribute_name"],
-                    ATTR_TYPE: attr.get(ATTR_TYPE) or attr["attribute_type"],
-                }
-            )
+            attrs_list.append({
+                ATTR_NAME: attr.get(ATTR_NAME) or attr['attribute_name'],
+                ATTR_TYPE: attr.get(ATTR_TYPE) or attr['attribute_type']
+            })
         operation_kwargs[ATTR_DEFINITIONS] = attrs_list
 
         if billing_mode not in AVAILABLE_BILLING_MODES:
-            raise ValueError(
-                "incorrect value for billing_mode, available modes: {}".format(
-                    AVAILABLE_BILLING_MODES
-                )
-            )
+            raise ValueError("incorrect value for billing_mode, available modes: {}".format(AVAILABLE_BILLING_MODES))
         if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
             del operation_kwargs[PROVISIONED_THROUGHPUT]
         elif billing_mode == PROVISIONED_BILLING_MODE:
@@ -588,12 +530,10 @@ class Connection(object):
             global_secondary_indexes_list = []
             for index in global_secondary_indexes:
                 index_kwargs = {
-                    INDEX_NAME: index.get("index_name"),
-                    KEY_SCHEMA: sorted(
-                        index.get("key_schema"), key=lambda x: x.get(KEY_TYPE)
-                    ),
-                    PROJECTION: index.get("projection"),
-                    PROVISIONED_THROUGHPUT: index.get("provisioned_throughput"),
+                    INDEX_NAME: index.get('index_name'),
+                    KEY_SCHEMA: sorted(index.get('key_schema'), key=lambda x: x.get(KEY_TYPE)),
+                    PROJECTION: index.get('projection'),
+                    PROVISIONED_THROUGHPUT: index.get('provisioned_throughput')
                 }
                 if billing_mode == PAY_PER_REQUEST_BILLING_MODE:
                     del index_kwargs[PROVISIONED_THROUGHPUT]
@@ -604,38 +544,35 @@ class Connection(object):
             raise ValueError("key_schema is required")
         key_schema_list = []
         for item in key_schema:
-            key_schema_list.append(
-                {
-                    ATTR_NAME: item.get(ATTR_NAME) or item["attribute_name"],
-                    KEY_TYPE: str(item.get(KEY_TYPE) or item["key_type"]).upper(),
-                }
-            )
-        operation_kwargs[KEY_SCHEMA] = sorted(
-            key_schema_list, key=lambda x: x.get(KEY_TYPE)
-        )
+            key_schema_list.append({
+                ATTR_NAME: item.get(ATTR_NAME) or item['attribute_name'],
+                KEY_TYPE: str(item.get(KEY_TYPE) or item['key_type']).upper()
+            })
+        operation_kwargs[KEY_SCHEMA] = sorted(key_schema_list, key=lambda x: x.get(KEY_TYPE))
 
         local_secondary_indexes_list = []
         if local_secondary_indexes:
             for index in local_secondary_indexes:
-                local_secondary_indexes_list.append(
-                    {
-                        INDEX_NAME: index.get("index_name"),
-                        KEY_SCHEMA: sorted(
-                            index.get("key_schema"), key=lambda x: x.get(KEY_TYPE)
-                        ),
-                        PROJECTION: index.get("projection"),
-                    }
-                )
+                local_secondary_indexes_list.append({
+                    INDEX_NAME: index.get('index_name'),
+                    KEY_SCHEMA: sorted(index.get('key_schema'), key=lambda x: x.get(KEY_TYPE)),
+                    PROJECTION: index.get('projection'),
+                })
             operation_kwargs[LOCAL_SECONDARY_INDEXES] = local_secondary_indexes_list
 
         if stream_specification:
             operation_kwargs[STREAM_SPECIFICATION] = {
-                STREAM_ENABLED: stream_specification["stream_enabled"],
-                STREAM_VIEW_TYPE: stream_specification["stream_view_type"],
+                STREAM_ENABLED: stream_specification['stream_enabled'],
+                STREAM_VIEW_TYPE: stream_specification['stream_view_type']
             }
 
         if tags:
-            operation_kwargs[TAGS] = [{KEY: k, VALUE: v} for k, v in tags.items()]
+            operation_kwargs[TAGS] = [
+                {
+                    KEY: k,
+                    VALUE: v
+                } for k, v in tags.items()
+            ]
 
         try:
             data = self.dispatch(CREATE_TABLE, operation_kwargs)
@@ -652,7 +589,7 @@ class Connection(object):
             TIME_TO_LIVE_SPECIFICATION: {
                 ATTR_NAME: ttl_attribute_name,
                 ENABLED: True,
-            },
+            }
         }
         try:
             return self.dispatch(UPDATE_TIME_TO_LIVE, operation_kwargs)
@@ -663,7 +600,9 @@ class Connection(object):
         """
         Performs the DeleteTable operation
         """
-        operation_kwargs = {TABLE_NAME: table_name}
+        operation_kwargs = {
+            TABLE_NAME: table_name
+        }
         try:
             data = self.dispatch(DELETE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -680,38 +619,29 @@ class Connection(object):
         """
         Performs the UpdateTable operation
         """
-        operation_kwargs: Dict[str, Any] = {TABLE_NAME: table_name}
-        if (
-            read_capacity_units
-            and not write_capacity_units
-            or write_capacity_units
-            and not read_capacity_units
-        ):
-            raise ValueError(
-                "read_capacity_units and write_capacity_units are required together"
-            )
+        operation_kwargs: Dict[str, Any] = {
+            TABLE_NAME: table_name
+        }
+        if read_capacity_units and not write_capacity_units or write_capacity_units and not read_capacity_units:
+            raise ValueError("read_capacity_units and write_capacity_units are required together")
         if read_capacity_units and write_capacity_units:
             operation_kwargs[PROVISIONED_THROUGHPUT] = {
                 READ_CAPACITY_UNITS: read_capacity_units,
-                WRITE_CAPACITY_UNITS: write_capacity_units,
+                WRITE_CAPACITY_UNITS: write_capacity_units
             }
         if global_secondary_index_updates:
             global_secondary_indexes_list = []
             for index in global_secondary_index_updates:
-                global_secondary_indexes_list.append(
-                    {
-                        UPDATE: {
-                            INDEX_NAME: index.get("index_name"),
-                            PROVISIONED_THROUGHPUT: {
-                                READ_CAPACITY_UNITS: index.get("read_capacity_units"),
-                                WRITE_CAPACITY_UNITS: index.get("write_capacity_units"),
-                            },
+                global_secondary_indexes_list.append({
+                    UPDATE: {
+                        INDEX_NAME: index.get('index_name'),
+                        PROVISIONED_THROUGHPUT: {
+                            READ_CAPACITY_UNITS: index.get('read_capacity_units'),
+                            WRITE_CAPACITY_UNITS: index.get('write_capacity_units')
                         }
                     }
-                )
-            operation_kwargs[GLOBAL_SECONDARY_INDEX_UPDATES] = (
-                global_secondary_indexes_list
-            )
+                })
+            operation_kwargs[GLOBAL_SECONDARY_INDEX_UPDATES] = global_secondary_indexes_list
         try:
             return self.dispatch(UPDATE_TABLE, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -727,11 +657,13 @@ class Connection(object):
         """
         operation_kwargs: Dict[str, Any] = {}
         if exclusive_start_table_name:
-            operation_kwargs.update(
-                {EXCLUSIVE_START_TABLE_NAME: exclusive_start_table_name}
-            )
+            operation_kwargs.update({
+                EXCLUSIVE_START_TABLE_NAME: exclusive_start_table_name
+            })
         if limit is not None:
-            operation_kwargs.update({LIMIT: limit})
+            operation_kwargs.update({
+                LIMIT: limit
+            })
         try:
             return self.dispatch(LIST_TABLES, operation_kwargs)
         except BOTOCORE_EXCEPTIONS as e:
@@ -741,7 +673,9 @@ class Connection(object):
         """
         Performs the DescribeTable operation
         """
-        operation_kwargs = {TABLE_NAME: table_name}
+        operation_kwargs = {
+            TABLE_NAME: table_name
+        }
         try:
             data = self.dispatch(DESCRIBE_TABLE, operation_kwargs)
             table_data = data.get(TABLE_KEY)
@@ -755,8 +689,8 @@ class Connection(object):
         except BotoCoreError as e:
             raise TableError("Unable to describe table: {}".format(e), e)
         except ClientError as e:
-            if "ResourceNotFound" in e.response["Error"]["Code"]:
-                raise TableDoesNotExist(e.response["Error"]["Message"])
+            if 'ResourceNotFound' in e.response['Error']['Code']:
+                raise TableDoesNotExist(e.response['Error']['Message'])
             else:
                 raise
 
@@ -774,10 +708,15 @@ class Connection(object):
         if tbl is None:
             raise TableError("No such table {}".format(table_name))
         return tbl.get_item_attribute_map(
-            attributes, item_key=item_key, pythonic_key=pythonic_key
-        )
+            attributes,
+            item_key=item_key,
+            pythonic_key=pythonic_key)
 
-    def parse_attribute(self, attribute: Any, return_type: bool = False) -> Any:
+    def parse_attribute(
+        self,
+        attribute: Any,
+        return_type: bool = False
+    ) -> Any:
         """
         Returns the attribute value, where the attribute can be
         a raw attribute value, or a dictionary containing the type:
@@ -796,7 +735,10 @@ class Connection(object):
             return attribute
 
     def get_attribute_type(
-        self, table_name: str, attribute_name: str, value: Optional[Any] = None
+        self,
+        table_name: str,
+        attribute_name: str,
+        value: Optional[Any] = None
     ) -> str:
         """
         Returns the proper attribute type for a given attribute name
@@ -812,7 +754,7 @@ class Connection(object):
         table_name: str,
         hash_key: str,
         range_key: Optional[str] = None,
-        key: str = KEY,
+        key: str = KEY
     ) -> Dict:
         """
         Builds the identifier map that is common to several operations
@@ -827,60 +769,48 @@ class Connection(object):
         Builds the consumed capacity map that is common to several operations
         """
         if return_consumed_capacity.upper() not in RETURN_CONSUMED_CAPACITY_VALUES:
-            raise ValueError(
-                "{} must be one of {}".format(
-                    RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY_VALUES
-                )
-            )
-        return {RETURN_CONSUMED_CAPACITY: str(return_consumed_capacity).upper()}
+            raise ValueError("{} must be one of {}".format(RETURN_ITEM_COLL_METRICS, RETURN_CONSUMED_CAPACITY_VALUES))
+        return {
+            RETURN_CONSUMED_CAPACITY: str(return_consumed_capacity).upper()
+        }
 
     def get_return_values_map(self, return_values: str) -> Dict:
         """
         Builds the return values map that is common to several operations
         """
         if return_values.upper() not in RETURN_VALUES_VALUES:
-            raise ValueError(
-                "{} must be one of {}".format(RETURN_VALUES, RETURN_VALUES_VALUES)
-            )
-        return {RETURN_VALUES: str(return_values).upper()}
+            raise ValueError("{} must be one of {}".format(RETURN_VALUES, RETURN_VALUES_VALUES))
+        return {
+            RETURN_VALUES: str(return_values).upper()
+        }
 
     def get_return_values_on_condition_failure_map(
-        self, return_values_on_condition_failure: str
+        self,
+        return_values_on_condition_failure: str
     ) -> Dict:
         """
         Builds the return values map that is common to several operations
         """
         if return_values_on_condition_failure.upper() not in RETURN_VALUES_VALUES:
-            raise ValueError(
-                "{} must be one of {}".format(
-                    RETURN_VALUES_ON_CONDITION_FAILURE,
-                    RETURN_VALUES_ON_CONDITION_FAILURE_VALUES,
-                )
-            )
+            raise ValueError("{} must be one of {}".format(
+                RETURN_VALUES_ON_CONDITION_FAILURE,
+                RETURN_VALUES_ON_CONDITION_FAILURE_VALUES
+            ))
         return {
-            RETURN_VALUES_ON_CONDITION_FAILURE: str(
-                return_values_on_condition_failure
-            ).upper()
+            RETURN_VALUES_ON_CONDITION_FAILURE: str(return_values_on_condition_failure).upper()
         }
 
     def get_item_collection_map(self, return_item_collection_metrics: str) -> Dict:
         """
         Builds the item collection map
         """
-        if (
-            return_item_collection_metrics.upper()
-            not in RETURN_ITEM_COLL_METRICS_VALUES
-        ):
-            raise ValueError(
-                "{} must be one of {}".format(
-                    RETURN_ITEM_COLL_METRICS, RETURN_ITEM_COLL_METRICS_VALUES
-                )
-            )
-        return {RETURN_ITEM_COLL_METRICS: str(return_item_collection_metrics).upper()}
+        if return_item_collection_metrics.upper() not in RETURN_ITEM_COLL_METRICS_VALUES:
+            raise ValueError("{} must be one of {}".format(RETURN_ITEM_COLL_METRICS, RETURN_ITEM_COLL_METRICS_VALUES))
+        return {
+            RETURN_ITEM_COLL_METRICS: str(return_item_collection_metrics).upper()
+        }
 
-    def get_exclusive_start_key_map(
-        self, table_name: str, exclusive_start_key: str
-    ) -> Dict:
+    def get_exclusive_start_key_map(self, table_name: str, exclusive_start_key: str) -> Dict:
         """
         Builds the exclusive start key attribute map
         """
@@ -903,58 +833,43 @@ class Connection(object):
         return_values: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
-        return_values_on_condition_failure: Optional[str] = None,
+        return_values_on_condition_failure: Optional[str] = None
     ) -> Dict:
-        self._check_condition("condition", condition)
+        self._check_condition('condition', condition)
 
         operation_kwargs: Dict[str, Any] = {}
-        name_placeholders: Dict[str, str] = {}
+        name_placeholders: Dict[str, str]  = {}
         expression_attribute_values: Dict[str, Any] = {}
 
         operation_kwargs[TABLE_NAME] = table_name
-        operation_kwargs.update(
-            self.get_identifier_map(table_name, hash_key, range_key, key=key)
-        )
+        operation_kwargs.update(self.get_identifier_map(table_name, hash_key, range_key, key=key))
         if attributes and operation_kwargs.get(ITEM) is not None:
             attrs = self.get_item_attribute_map(table_name, attributes)
             operation_kwargs[ITEM].update(attrs[ITEM])
         if attributes_to_get is not None:
-            projection_expression = create_projection_expression(
-                attributes_to_get, name_placeholders
-            )
+            projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
         if condition is not None:
-            condition_expression = condition.serialize(
-                name_placeholders, expression_attribute_values
-            )
+            condition_expression = condition.serialize(name_placeholders, expression_attribute_values)
             operation_kwargs[CONDITION_EXPRESSION] = condition_expression
         if consistent_read is not None:
             operation_kwargs[CONSISTENT_READ] = consistent_read
         if return_values is not None:
             operation_kwargs.update(self.get_return_values_map(return_values))
         if return_values_on_condition_failure is not None:
-            operation_kwargs.update(
-                self.get_return_values_on_condition_failure_map(
-                    return_values_on_condition_failure
-                )
-            )
+            operation_kwargs.update(self.get_return_values_on_condition_failure_map(return_values_on_condition_failure))
         if return_consumed_capacity is not None:
-            operation_kwargs.update(
-                self.get_consumed_capacity_map(return_consumed_capacity)
-            )
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics is not None:
-            operation_kwargs.update(
-                self.get_item_collection_map(return_item_collection_metrics)
-            )
+            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
         if actions is not None:
             update_expression = Update(*actions)
             operation_kwargs[UPDATE_EXPRESSION] = update_expression.serialize(
-                name_placeholders, expression_attribute_values
+                name_placeholders,
+                expression_attribute_values
             )
         if name_placeholders:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(
-                name_placeholders
-            )
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
         if expression_attribute_values:
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
         return operation_kwargs
@@ -979,7 +894,7 @@ class Connection(object):
             condition=condition,
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
-            return_item_collection_metrics=return_item_collection_metrics,
+            return_item_collection_metrics=return_item_collection_metrics
         )
         try:
             return self.dispatch(DELETE_ITEM, operation_kwargs)
@@ -1041,7 +956,7 @@ class Connection(object):
             condition=condition,
             return_values=return_values,
             return_consumed_capacity=return_consumed_capacity,
-            return_item_collection_metrics=return_item_collection_metrics,
+            return_item_collection_metrics=return_item_collection_metrics
         )
         try:
             return self.dispatch(PUT_ITEM, operation_kwargs)
@@ -1052,19 +967,15 @@ class Connection(object):
         self,
         client_request_token: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
-        return_item_collection_metrics: Optional[str] = None,
+        return_item_collection_metrics: Optional[str] = None
     ) -> Dict:
         operation_kwargs = {}
         if client_request_token is not None:
             operation_kwargs[CLIENT_REQUEST_TOKEN] = client_request_token
         if return_consumed_capacity is not None:
-            operation_kwargs.update(
-                self.get_consumed_capacity_map(return_consumed_capacity)
-            )
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics is not None:
-            operation_kwargs.update(
-                self.get_item_collection_map(return_item_collection_metrics)
-            )
+            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
 
         return operation_kwargs
 
@@ -1085,14 +996,20 @@ class Connection(object):
         transact_items.extend(
             {TRANSACT_CONDITION_CHECK: item} for item in condition_check_items
         )
-        transact_items.extend({TRANSACT_DELETE: item} for item in delete_items)
-        transact_items.extend({TRANSACT_PUT: item} for item in put_items)
-        transact_items.extend({TRANSACT_UPDATE: item} for item in update_items)
+        transact_items.extend(
+            {TRANSACT_DELETE: item} for item in delete_items
+        )
+        transact_items.extend(
+            {TRANSACT_PUT: item} for item in put_items
+        )
+        transact_items.extend(
+            {TRANSACT_UPDATE: item} for item in update_items
+        )
 
         operation_kwargs = self._get_transact_operation_kwargs(
             client_request_token=client_request_token,
             return_consumed_capacity=return_consumed_capacity,
-            return_item_collection_metrics=return_item_collection_metrics,
+            return_item_collection_metrics=return_item_collection_metrics
         )
         operation_kwargs[TRANSACT_ITEMS] = transact_items
 
@@ -1109,10 +1026,10 @@ class Connection(object):
         """
         Performs the TransactGet operation and returns the result
         """
-        operation_kwargs = self._get_transact_operation_kwargs(
-            return_consumed_capacity=return_consumed_capacity
-        )
-        operation_kwargs[TRANSACT_ITEMS] = [{TRANSACT_GET: item} for item in get_items]
+        operation_kwargs = self._get_transact_operation_kwargs(return_consumed_capacity=return_consumed_capacity)
+        operation_kwargs[TRANSACT_ITEMS] = [
+            {TRANSACT_GET: item} for item in get_items
+        ]
 
         try:
             return self.dispatch(TRANSACT_GET_ITEMS, operation_kwargs)
@@ -1132,35 +1049,27 @@ class Connection(object):
         """
         if put_items is None and delete_items is None:
             raise ValueError("Either put_items or delete_items must be specified")
-        operation_kwargs: Dict[str, Any] = {REQUEST_ITEMS: {table_name: []}}
+        operation_kwargs: Dict[str, Any] = {
+            REQUEST_ITEMS: {
+                table_name: []
+            }
+        }
         if return_consumed_capacity:
-            operation_kwargs.update(
-                self.get_consumed_capacity_map(return_consumed_capacity)
-            )
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if return_item_collection_metrics:
-            operation_kwargs.update(
-                self.get_item_collection_map(return_item_collection_metrics)
-            )
+            operation_kwargs.update(self.get_item_collection_map(return_item_collection_metrics))
         put_items_list = []
         if put_items:
             for item in put_items:
-                put_items_list.append(
-                    {
-                        PUT_REQUEST: self.get_item_attribute_map(
-                            table_name, item, pythonic_key=False
-                        )
-                    }
-                )
+                put_items_list.append({
+                    PUT_REQUEST: self.get_item_attribute_map(table_name, item, pythonic_key=False)
+                })
         delete_items_list = []
         if delete_items:
             for item in delete_items:
-                delete_items_list.append(
-                    {
-                        DELETE_REQUEST: self.get_item_attribute_map(
-                            table_name, item, item_key=KEY, pythonic_key=False
-                        )
-                    }
-                )
+                delete_items_list.append({
+                    DELETE_REQUEST: self.get_item_attribute_map(table_name, item, item_key=KEY, pythonic_key=False)
+                })
         operation_kwargs[REQUEST_ITEMS][table_name] = delete_items_list + put_items_list
         try:
             return self.dispatch(BATCH_WRITE_ITEM, operation_kwargs)
@@ -1178,20 +1087,20 @@ class Connection(object):
         """
         Performs the batch get item operation
         """
-        operation_kwargs: Dict[str, Any] = {REQUEST_ITEMS: {table_name: {}}}
+        operation_kwargs: Dict[str, Any] = {
+            REQUEST_ITEMS: {
+                table_name: {}
+            }
+        }
 
         args_map: Dict[str, Any] = {}
         name_placeholders: Dict[str, str] = {}
         if consistent_read:
             args_map[CONSISTENT_READ] = consistent_read
         if return_consumed_capacity:
-            operation_kwargs.update(
-                self.get_consumed_capacity_map(return_consumed_capacity)
-            )
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if attributes_to_get is not None:
-            projection_expression = create_projection_expression(
-                attributes_to_get, name_placeholders
-            )
+            projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             args_map[PROJECTION_EXPRESSION] = projection_expression
         if name_placeholders:
             args_map[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
@@ -1199,7 +1108,9 @@ class Connection(object):
 
         keys_map: Dict[str, List] = {KEYS: []}
         for key in keys:
-            keys_map[KEYS].append(self.get_item_attribute_map(table_name, key)[ITEM])
+            keys_map[KEYS].append(
+                self.get_item_attribute_map(table_name, key)[ITEM]
+            )
         operation_kwargs[REQUEST_ITEMS][table_name].update(keys_map)
         try:
             return self.dispatch(BATCH_GET_ITEM, operation_kwargs)
@@ -1222,7 +1133,7 @@ class Connection(object):
             hash_key=hash_key,
             range_key=range_key,
             consistent_read=consistent_read,
-            attributes_to_get=attributes_to_get,
+            attributes_to_get=attributes_to_get
         )
         try:
             return self.dispatch(GET_ITEM, operation_kwargs)
@@ -1245,34 +1156,26 @@ class Connection(object):
         """
         Performs the scan operation
         """
-        self._check_condition("filter_condition", filter_condition)
+        self._check_condition('filter_condition', filter_condition)
 
         operation_kwargs: Dict[str, Any] = {TABLE_NAME: table_name}
         name_placeholders: Dict[str, str] = {}
         expression_attribute_values: Dict[str, Any] = {}
 
         if filter_condition is not None:
-            filter_expression = filter_condition.serialize(
-                name_placeholders, expression_attribute_values
-            )
+            filter_expression = filter_condition.serialize(name_placeholders, expression_attribute_values)
             operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if attributes_to_get is not None:
-            projection_expression = create_projection_expression(
-                attributes_to_get, name_placeholders
-            )
+            projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
         if index_name:
             operation_kwargs[INDEX_NAME] = index_name
         if limit is not None:
             operation_kwargs[LIMIT] = limit
         if return_consumed_capacity:
-            operation_kwargs.update(
-                self.get_consumed_capacity_map(return_consumed_capacity)
-            )
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if exclusive_start_key:
-            operation_kwargs.update(
-                self.get_exclusive_start_key_map(table_name, exclusive_start_key)
-            )
+            operation_kwargs.update(self.get_exclusive_start_key_map(table_name, exclusive_start_key))
         if segment is not None:
             operation_kwargs[SEGMENT] = segment
         if total_segments:
@@ -1280,9 +1183,7 @@ class Connection(object):
         if consistent_read:
             operation_kwargs[CONSISTENT_READ] = consistent_read
         if name_placeholders:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(
-                name_placeholders
-            )
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
         if expression_attribute_values:
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
 
@@ -1310,8 +1211,8 @@ class Connection(object):
         """
         Performs the Query operation and returns the result
         """
-        self._check_condition("range_key_condition", range_key_condition)
-        self._check_condition("filter_condition", filter_condition)
+        self._check_condition('range_key_condition', range_key_condition)
+        self._check_condition('filter_condition', filter_condition)
 
         operation_kwargs: Dict[str, Any] = {TABLE_NAME: table_name}
         name_placeholders: Dict[str, str] = {}
@@ -1322,9 +1223,7 @@ class Connection(object):
             raise TableError("No such table: {}".format(table_name))
         if index_name:
             if not tbl.has_index_name(index_name):
-                raise ValueError(
-                    "Table {} has no index: {}".format(table_name, index_name)
-                )
+                raise ValueError("Table {} has no index: {}".format(table_name, index_name))
             hash_keynames = tbl.get_index_hash_keynames(index_name)
             range_keynames = tbl.get_index_range_keynames(index_name)
         else:
@@ -1337,55 +1236,38 @@ class Connection(object):
             hash_keynames,
             index_name=index_name,
         )
-        self._validate_multi_range_key_condition(
+        range_key_condition = self._normalize_multi_range_key_condition(
             range_key_condition,
             range_keynames,
             index_name=index_name,
         )
         key_condition = None
         for hash_keyname, hash_keyvalue in zip(hash_keynames, hash_key_values):
-            hash_condition_value = {
-                self.get_attribute_type(
-                    table_name, hash_keyname, hash_keyvalue
-                ): self.parse_attribute(hash_keyvalue)
-            }
+            hash_condition_value = {self.get_attribute_type(table_name, hash_keyname, hash_keyvalue): self.parse_attribute(hash_keyvalue)}
             hash_condition = Path([hash_keyname]) == hash_condition_value
-            key_condition = (
-                hash_condition
-                if key_condition is None
-                else key_condition & hash_condition
-            )
+            key_condition = hash_condition if key_condition is None else key_condition & hash_condition
         if range_key_condition is not None:
             key_condition &= range_key_condition
 
         assert key_condition is not None
         operation_kwargs[KEY_CONDITION_EXPRESSION] = key_condition.serialize(
-            name_placeholders, expression_attribute_values
-        )
+            name_placeholders, expression_attribute_values)
         if filter_condition is not None:
-            filter_expression = filter_condition.serialize(
-                name_placeholders, expression_attribute_values
-            )
+            filter_expression = filter_condition.serialize(name_placeholders, expression_attribute_values)
             operation_kwargs[FILTER_EXPRESSION] = filter_expression
         if attributes_to_get:
-            projection_expression = create_projection_expression(
-                attributes_to_get, name_placeholders
-            )
+            projection_expression = create_projection_expression(attributes_to_get, name_placeholders)
             operation_kwargs[PROJECTION_EXPRESSION] = projection_expression
         if consistent_read:
             operation_kwargs[CONSISTENT_READ] = True
         if exclusive_start_key:
-            operation_kwargs.update(
-                self.get_exclusive_start_key_map(table_name, exclusive_start_key)
-            )
+            operation_kwargs.update(self.get_exclusive_start_key_map(table_name, exclusive_start_key))
         if index_name:
             operation_kwargs[INDEX_NAME] = index_name
         if limit is not None:
             operation_kwargs[LIMIT] = limit
         if return_consumed_capacity:
-            operation_kwargs.update(
-                self.get_consumed_capacity_map(return_consumed_capacity)
-            )
+            operation_kwargs.update(self.get_consumed_capacity_map(return_consumed_capacity))
         if select:
             if select.upper() not in SELECT_VALUES:
                 raise ValueError("{} must be one of {}".format(SELECT, SELECT_VALUES))
@@ -1393,9 +1275,7 @@ class Connection(object):
         if scan_index_forward is not None:
             operation_kwargs[SCAN_INDEX_FORWARD] = scan_index_forward
         if name_placeholders:
-            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(
-                name_placeholders
-            )
+            operation_kwargs[EXPRESSION_ATTRIBUTE_NAMES] = self._reverse_dict(name_placeholders)
         if expression_attribute_values:
             operation_kwargs[EXPRESSION_ATTRIBUTE_VALUES] = expression_attribute_values
 
@@ -1486,13 +1366,20 @@ class Connection(object):
         return path[0]
 
     @staticmethod
-    def _validate_multi_range_key_condition(
+    def _combine_conditions(conditions: List[Condition]) -> Condition:
+        combined_condition = conditions[0]
+        for condition in conditions[1:]:
+            combined_condition &= condition
+        return combined_condition
+
+    @staticmethod
+    def _normalize_multi_range_key_condition(
         range_key_condition: Optional[Condition],
         range_keynames: Sequence[str],
         index_name: Optional[str] = None,
-    ) -> None:
+    ) -> Optional[Condition]:
         if range_key_condition is None or len(range_keynames) <= 1:
-            return
+            return range_key_condition
 
         valid_operators = {"=", "<", "<=", ">", ">=", "BETWEEN", "begins_with"}
         conditions_by_key: Dict[str, Condition] = {}
@@ -1511,11 +1398,10 @@ class Connection(object):
                 raise ValueError(
                     f"{context} range_key_condition has multiple conditions for range key: {key_name}"
                 )
-            assert key_name is not None
             conditions_by_key[key_name] = condition
 
         if not conditions_by_key:
-            return
+            return range_key_condition
 
         highest_position = max(
             range_keynames.index(key_name) for key_name in conditions_by_key
@@ -1541,3 +1427,10 @@ class Connection(object):
                 f"{context} range_key_condition must use equality for preceding range keys: "
                 f"{', '.join(non_equal_prefix_keys)}"
             )
+
+        ordered_conditions = [
+            conditions_by_key[key_name]
+            for key_name in range_keynames
+            if key_name in conditions_by_key
+        ]
+        return Connection._combine_conditions(ordered_conditions)
