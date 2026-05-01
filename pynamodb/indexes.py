@@ -2,20 +2,20 @@
 PynamoDB Indexes
 """
 from inspect import getmembers
-from typing import TYPE_CHECKING, Any, Dict, Generic, List, Mapping, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Mapping, Optional, Type, TypeVar, Union
+from typing import TYPE_CHECKING
 
 from pynamodb._schema import IndexSchema, GlobalSecondaryIndexSchema
 from pynamodb._schema import ModelSchema
-from pynamodb.attributes import Attribute
 from pynamodb.constants import (
     INCLUDE, ALL, KEYS_ONLY, ATTR_NAME, ATTR_TYPE, KEY_TYPE,
     PROJECTION_TYPE, NON_KEY_ATTRIBUTES,
     READ_CAPACITY_UNITS, WRITE_CAPACITY_UNITS,
 )
+from pynamodb.attributes import Attribute
 from pynamodb.expressions.condition import Condition
 from pynamodb.pagination import ResultIterator
 from pynamodb.types import HASH, RANGE
-
 if TYPE_CHECKING:
     from pynamodb.models import Model
 
@@ -29,7 +29,6 @@ class Index(Generic[_M]):
     """
     Base class for secondary indexes
     """
-
     Meta: Any = None
     _model: _M
 
@@ -58,12 +57,12 @@ class Index(Generic[_M]):
 
     def __init__(self) -> None:
         if self.Meta is None:
-            raise ValueError('Indexes require a Meta class for settings')
-        if not hasattr(self.Meta, 'projection'):
-            raise ValueError('No projection defined, define a projection for this class')
+            raise ValueError("Indexes require a Meta class for settings")
+        if not hasattr(self.Meta, "projection"):
+            raise ValueError("No projection defined, define a projection for this class")
 
     def __set_name__(self, owner: Type[_M], name: str):
-        if not hasattr(self.Meta, 'index_name'):
+        if not hasattr(self.Meta, "index_name"):
             self.Meta.index_name = name
 
     def count(
@@ -78,9 +77,6 @@ class Index(Generic[_M]):
     ) -> int:
         """
         Count on an index
-
-        :param hash_key: The hash key to query. Can be None when ``hash_keys`` is provided.
-        :param hash_keys: Named hash key values for indexes with multiple hash key attributes.
         """
         return self._model.count(
             hash_key,
@@ -109,9 +105,6 @@ class Index(Generic[_M]):
     ) -> ResultIterator[_M]:
         """
         Queries an index
-
-        :param hash_key: The hash key to query. Can be None when ``hash_keys`` is provided.
-        :param hash_keys: Named hash key values for indexes with multiple hash key attributes.
         """
         return self._model.query(
             hash_key,
@@ -187,7 +180,7 @@ class Index(Generic[_M]):
 
     @staticmethod
     def _flatten_and_conditions(condition: Condition) -> List[Condition]:
-        if condition.operator == 'AND':
+        if condition.operator == "AND":
             conditions: List[Condition] = []
             for value in condition.values:
                 conditions.extend(Index._flatten_and_conditions(value))
@@ -196,7 +189,7 @@ class Index(Generic[_M]):
 
     @staticmethod
     def _condition_key_name(condition: Condition) -> Optional[str]:
-        path = getattr(condition.values[0], 'path', None) if condition.values else None
+        path = getattr(condition.values[0], "path", None) if condition.values else None
         if not isinstance(path, list) or len(path) != 1:
             return None
         return path[0]
@@ -214,22 +207,18 @@ class Index(Generic[_M]):
         range_keynames: List[str],
         context: str,
     ) -> Condition:
-        valid_operators = {'=', '<', '<=', '>', '>=', 'BETWEEN', 'begins_with'}
+        valid_operators = {"=", "<", "<=", ">", ">=", "BETWEEN", "begins_with"}
         conditions_by_key: Dict[str, Condition] = {}
         for condition in Index._flatten_and_conditions(range_key_condition):
             if condition.operator not in valid_operators:
                 raise ValueError(
-                    f'{context} range_key_condition uses unsupported range key operator: {condition.operator}'
+                    f"{context} range_key_condition uses unsupported range key operator: {condition.operator}"
                 )
             key_name = Index._condition_key_name(condition)
             if key_name is None or key_name not in range_keynames:
-                raise ValueError(
-                    f'{context} range_key_condition must only use range keys: ' + ', '.join(range_keynames)
-                )
+                raise ValueError(f"{context} range_key_condition must only use range keys: " + ", ".join(range_keynames))
             if key_name in conditions_by_key:
-                raise ValueError(
-                    f'{context} range_key_condition has multiple conditions for range key: {key_name}'
-                )
+                raise ValueError(f"{context} range_key_condition has multiple conditions for range key: {key_name}")
             conditions_by_key[key_name] = condition
 
         if not conditions_by_key:
@@ -245,19 +234,19 @@ class Index(Generic[_M]):
         ]
         if missing_prefix_keys:
             raise ValueError(
-                f'{context} range_key_condition must include equality conditions for preceding range keys: '
-                + ', '.join(missing_prefix_keys)
+                f"{context} range_key_condition must include equality conditions for preceding range keys: "
+                + ", ".join(missing_prefix_keys)
             )
 
         non_equal_prefix_keys = [
             key_name
             for key_name in range_keynames[:highest_position]
-            if conditions_by_key[key_name].operator != '='
+            if conditions_by_key[key_name].operator != "="
         ]
         if non_equal_prefix_keys:
             raise ValueError(
-                f'{context} range_key_condition must use equality for preceding range keys: '
-                + ', '.join(non_equal_prefix_keys)
+                f"{context} range_key_condition must use equality for preceding range keys: "
+                + ", ".join(non_equal_prefix_keys)
             )
 
         ordered_conditions = [
@@ -275,21 +264,19 @@ class Index(Generic[_M]):
     ) -> _SerializedHashKeyType:
         hash_key_attributes = cls._hash_key_attributes()
         if not hash_key_attributes:
-            raise ValueError(f'{cls.__name__} has no hash key attributes')
+            raise ValueError(f"{cls.__name__} has no hash key attributes")
 
         if hash_key is not None and hash_keys is not None:
-            raise ValueError(f'{cls.__name__} received both hash_key and hash_keys')
+            raise ValueError(f"{cls.__name__} received both hash_key and hash_keys")
 
         if len(hash_key_attributes) == 1:
             if hash_keys is None:
                 if hash_key is None:
-                    raise ValueError(f'{cls.__name__} requires a hash_key')
+                    raise ValueError(f"{cls.__name__} requires a hash_key")
                 if isinstance(hash_key, (tuple, list)):
-                    raise ValueError(f'{cls.__name__} expects a single hash_key value')
+                    raise ValueError(f"{cls.__name__} expects a single hash_key value")
                 if isinstance(hash_key, Mapping):
-                    raise ValueError(
-                        f'{cls.__name__} expects hash_keys=... for named hash key values'
-                    )
+                    raise ValueError(f"{cls.__name__} expects hash_keys=... for named hash key values")
                 return hash_key_attributes[0].serialize(hash_key)
 
             hash_key_values = cls._get_ordered_hash_key_values(
@@ -299,10 +286,8 @@ class Index(Generic[_M]):
 
         if hash_keys is None:
             if hash_key is None:
-                raise ValueError(f'{cls.__name__} requires hash_keys')
-            raise ValueError(
-                f'{cls.__name__} has multiple hash key attributes; use hash_keys=...'
-            )
+                raise ValueError(f"{cls.__name__} requires hash_keys")
+            raise ValueError(f"{cls.__name__} has multiple hash key attributes; use hash_keys=...")
 
         hash_key_values = cls._get_ordered_hash_key_values(
             hash_keys, hash_key_attributes
@@ -327,7 +312,7 @@ class Index(Generic[_M]):
         hash_key_attributes: List[Attribute],
     ) -> List[_KeyType]:
         if not isinstance(hash_keys, Mapping):
-            raise ValueError(f'{cls.__name__} expects hash_keys to be a mapping')
+            raise ValueError(f"{cls.__name__} expects hash_keys to be a mapping")
 
         expected_aliases = cls._hash_key_aliases(hash_key_attributes)
 
@@ -340,15 +325,11 @@ class Index(Generic[_M]):
                 unknown_keys.append(str(key_name))
                 continue
             if attr.attr_name in values_by_attr_name:
-                raise ValueError(
-                    f'{cls.__name__} received duplicate value for hash key: {attr.attr_name}'
-                )
+                raise ValueError(f"{cls.__name__} received duplicate value for hash key: {attr.attr_name}")
             values_by_attr_name[attr.attr_name] = value
 
         if unknown_keys:
-            raise ValueError(
-                f'{cls.__name__} received unknown hash keys: ' + ', '.join(unknown_keys)
-            )
+            raise ValueError(f"{cls.__name__} received unknown hash keys: " + ", ".join(unknown_keys))
 
         missing_keys = [
             attr.attr_name
@@ -356,9 +337,7 @@ class Index(Generic[_M]):
             if attr.attr_name not in values_by_attr_name
         ]
         if missing_keys:
-            raise ValueError(
-                f'{cls.__name__} requires values for hash keys: ' + ', '.join(missing_keys)
-            )
+            raise ValueError(f"{cls.__name__} requires values for hash keys: " + ", ".join(missing_keys))
 
         return [values_by_attr_name[attr.attr_name] for attr in hash_key_attributes]
 
@@ -417,37 +396,27 @@ class Index(Generic[_M]):
         range_key_attributes = cls._range_key_attributes()
 
         for attr_cls in range_key_attributes:
-            schema['attribute_definitions'].append(
-                {
-                    ATTR_NAME: attr_cls.attr_name,
-                    ATTR_TYPE: attr_cls.attr_type,
-                }
-            )
+            schema['attribute_definitions'].append({
+                ATTR_NAME: attr_cls.attr_name,
+                ATTR_TYPE: attr_cls.attr_type,
+            })
         for attr_cls in hash_key_attributes:
-            schema['attribute_definitions'].append(
-                {
-                    ATTR_NAME: attr_cls.attr_name,
-                    ATTR_TYPE: attr_cls.attr_type,
-                }
-            )
+            schema['attribute_definitions'].append({
+                ATTR_NAME: attr_cls.attr_name,
+                ATTR_TYPE: attr_cls.attr_type,
+            })
         for attr_cls in hash_key_attributes:
-            schema['key_schema'].append(
-                {
-                    ATTR_NAME: attr_cls.attr_name,
-                    KEY_TYPE: HASH,
-                }
-            )
+            schema['key_schema'].append({
+                ATTR_NAME: attr_cls.attr_name,
+                KEY_TYPE: HASH,
+            })
         for attr_cls in range_key_attributes:
-            schema['key_schema'].append(
-                {
-                    ATTR_NAME: attr_cls.attr_name,
-                    KEY_TYPE: RANGE,
-                }
-            )
+            schema['key_schema'].append({
+                ATTR_NAME: attr_cls.attr_name,
+                KEY_TYPE: RANGE,
+            })
         if cls.Meta.projection.non_key_attributes:
-            schema['projection'][NON_KEY_ATTRIBUTES] = (
-                cls.Meta.projection.non_key_attributes
-            )
+            schema['projection'][NON_KEY_ATTRIBUTES] = cls.Meta.projection.non_key_attributes
         return schema
 
 
@@ -455,15 +424,14 @@ class GlobalSecondaryIndex(Index[_M]):
     """
     A global secondary index
     """
-
     @classmethod
     def _validate_key_attributes(cls) -> None:
         hash_keys = cls._hash_key_attributes()
         range_keys = cls._range_key_attributes()
         if len(hash_keys) > 4:
-            raise ValueError(f'{cls.__name__} supports at most 4 hash key attributes')
+            raise ValueError(f"{cls.__name__} supports at most 4 hash key attributes")
         if len(range_keys) > 4:
-            raise ValueError(f'{cls.__name__} supports at most 4 range key attributes')
+            raise ValueError(f"{cls.__name__} supports at most 4 range key attributes")
 
     @classmethod
     def _update_model_schema(cls, schema: ModelSchema) -> None:
@@ -473,13 +441,9 @@ class GlobalSecondaryIndex(Index[_M]):
         }
 
         if hasattr(cls.Meta, 'read_capacity_units'):
-            index_schema['provisioned_throughput'][READ_CAPACITY_UNITS] = (
-                cls.Meta.read_capacity_units
-            )
+            index_schema['provisioned_throughput'][READ_CAPACITY_UNITS] = cls.Meta.read_capacity_units
         if hasattr(cls.Meta, 'write_capacity_units'):
-            index_schema['provisioned_throughput'][WRITE_CAPACITY_UNITS] = (
-                cls.Meta.write_capacity_units
-            )
+            index_schema['provisioned_throughput'][WRITE_CAPACITY_UNITS] = cls.Meta.write_capacity_units
 
         schema['global_secondary_indexes'].append(index_schema)
         # With polymorphism, indexes can use the same attribute, e.g. index1 on (thread_id, created_at)
@@ -499,9 +463,9 @@ class LocalSecondaryIndex(Index[_M]):
         hash_keys = cls._hash_key_attributes()
         range_keys = cls._range_key_attributes()
         if len(hash_keys) > 1:
-            raise ValueError(f'{cls.__name__} supports at most one hash key attribute')
+            raise ValueError(f"{cls.__name__} supports at most one hash key attribute")
         if len(range_keys) > 1:
-            raise ValueError(f'{cls.__name__} supports at most one range key attribute')
+            raise ValueError(f"{cls.__name__} supports at most one range key attribute")
 
     @classmethod
     def _update_model_schema(cls, schema: ModelSchema) -> None:
@@ -514,11 +478,11 @@ class LocalSecondaryIndex(Index[_M]):
                 schema['attribute_definitions'].append(attr_def)
 
 
+
 class Projection:
     """
     A class for presenting projections
     """
-
     projection_type: Any = None
     non_key_attributes: Any = None
 
@@ -527,7 +491,6 @@ class KeysOnlyProjection(Projection):
     """
     Keys only projection
     """
-
     projection_type = KEYS_ONLY
 
 
@@ -535,14 +498,11 @@ class IncludeProjection(Projection):
     """
     An INCLUDE projection
     """
-
     projection_type = INCLUDE
 
     def __init__(self, non_attr_keys: Optional[List[str]] = None) -> None:
         if not non_attr_keys:
-            raise ValueError(
-                'The INCLUDE type projection requires a list of string attribute names'
-            )
+            raise ValueError("The INCLUDE type projection requires a list of string attribute names")
         self.non_key_attributes = non_attr_keys
 
 
@@ -550,5 +510,4 @@ class AllProjection(Projection):
     """
     An ALL projection
     """
-
     projection_type = ALL
