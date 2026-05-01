@@ -1,7 +1,6 @@
 """
 DynamoDB Models for PynamoDB
 """
-import random
 import time
 import logging
 import warnings
@@ -59,8 +58,8 @@ from pynamodb.constants import (
 )
 
 _T = TypeVar('_T', bound='Model')
-_KeyType = Any
-
+_KeyType = object
+_HashKeyQueryType = Union[_KeyType, Tuple[_KeyType, ...], List[_KeyType]]
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -353,7 +352,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
                     raise ValueError(f'Invalid key value {item!r}: '
                                      'expected non-str iterable with exactly 2 elements (hash key, range key)')
                 try:
-                    hash_key, range_key = item
+                    hash_key, range_key = cast(Tuple[_KeyType, _KeyType], item)
                 except (TypeError, ValueError):
                     raise ValueError(f'Invalid key value {item!r}: '
                                      'expected iterable with exactly 2 elements (hash key, range key)')
@@ -511,14 +510,14 @@ class Model(AttributeContainer, metaclass=MetaModel):
     @classmethod
     def get_operation_kwargs_from_class(
         cls,
-        hash_key: str,
+        hash_key: _KeyType,
         range_key: Optional[_KeyType] = None,
         condition: Optional[Condition] = None,
     ) -> Dict[str, Any]:
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
         return cls._get_connection().get_operation_kwargs(
-            hash_key=hash_key,
-            range_key=range_key,
+            hash_key=cast(str, hash_key),
+            range_key=cast(Optional[str], range_key),
             condition=condition
         )
 
@@ -542,8 +541,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
         hash_key, range_key = cls._serialize_keys(hash_key, range_key)
 
         data = cls._get_connection().get_item(
-            hash_key,
-            range_key=range_key,
+            cast(str, hash_key),
+            range_key=cast(Optional[str], range_key),
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get,
         )
@@ -576,25 +575,39 @@ class Model(AttributeContainer, metaclass=MetaModel):
         index_name: Optional[str] = None,
         limit: Optional[int] = None,
         rate_limit: Optional[float] = None,
+        hash_keys: Optional[Mapping[str, _KeyType]] = None,
     ) -> int:
         """
         Provides a filtered count
 
         :param hash_key: The hash key to query. Can be None.
+        :param hash_keys: Named hash key values for indexes with multiple hash key attributes.
         :param range_key_condition: Condition for range key
         :param filter_condition: Condition used to restrict the query results
         :param consistent_read: If True, a consistent read is performed
         :param index_name: If set, then this index is used
         :param rate_limit: If set then consumed capacity will be limited to this amount per second
         """
-        if hash_key is None:
+        if hash_key is None and hash_keys is None:
+            if index_name:
+                raise ValueError('A hash_key or hash_keys must be given to query an index')
             if filter_condition is not None:
                 raise ValueError('A hash_key must be given to use filters')
             return cls.describe_table().get(ITEM_COUNT)
 
+        serialized_hash_keys = None
         if index_name:
-            hash_key = cls._indexes[index_name]._hash_key_attribute().serialize(hash_key)
+            index = cls._indexes[index_name]
+            range_key_condition = index._normalize_range_key_condition(range_key_condition)
+            serialized_hash_key = index._serialize_hash_key_values(hash_key, hash_keys=hash_keys)
+            if isinstance(serialized_hash_key, dict):
+                serialized_hash_keys = serialized_hash_key
+                hash_key = None
+            else:
+                hash_key = serialized_hash_key
         else:
+            if hash_keys is not None:
+                raise ValueError('hash_keys can only be used with an index')
             hash_key = cls._serialize_keys(hash_key)[0]
 
         # If this class has a discriminator attribute, filter the query to only return instances of this class.
@@ -609,7 +622,8 @@ class Model(AttributeContainer, metaclass=MetaModel):
             index_name=index_name,
             consistent_read=consistent_read,
             limit=limit,
-            select=COUNT
+            select=COUNT,
+            hash_keys=serialized_hash_keys,
         )
 
         result_iterator: ResultIterator[_T] = ResultIterator(
@@ -628,7 +642,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
     @classmethod
     def query(
         cls: Type[_T],
-        hash_key: _KeyType,
+        hash_key: Optional[_KeyType] = None,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Condition] = None,
         consistent_read: bool = False,
@@ -639,11 +653,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         attributes_to_get: Optional[Iterable[str]] = None,
         page_size: Optional[int] = None,
         rate_limit: Optional[float] = None,
+        hash_keys: Optional[Mapping[str, _KeyType]] = None,
     ) -> ResultIterator[_T]:
         """
         Provides a high level query API
 
-        :param hash_key: The hash key to query
+        :param hash_key: The hash key to query.
+        :param hash_keys: Named hash key values for indexes with multiple hash key attributes.
         :param range_key_condition: Condition for range key
         :param filter_condition: Condition used to restrict the query results
         :param consistent_read: If True, a consistent read is performed
@@ -656,9 +672,22 @@ class Model(AttributeContainer, metaclass=MetaModel):
         :param page_size: Page size of the query to DynamoDB
         :param rate_limit: If set then consumed capacity will be limited to this amount per second
         """
+        if hash_key is None and hash_keys is None:
+            raise ValueError('A hash_key or hash_keys must be given to query')
+
+        serialized_hash_keys = None
         if index_name:
-            hash_key = cls._indexes[index_name]._hash_key_attribute().serialize(hash_key)
+            index = cls._indexes[index_name]
+            range_key_condition = index._normalize_range_key_condition(range_key_condition)
+            serialized_hash_key = index._serialize_hash_key_values(hash_key, hash_keys=hash_keys)
+            if isinstance(serialized_hash_key, dict):
+                serialized_hash_keys = serialized_hash_key
+                hash_key = None
+            else:
+                hash_key = serialized_hash_key
         else:
+            if hash_keys is not None:
+                raise ValueError('hash_keys can only be used with an index')
             hash_key = cls._serialize_keys(hash_key)[0]
 
         # If this class has a discriminator attribute, filter the query to only return instances of this class.
@@ -679,6 +708,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             scan_index_forward=scan_index_forward,
             limit=page_size,
             attributes_to_get=attributes_to_get,
+            hash_keys=serialized_hash_keys,
         )
 
         return ResultIterator(
@@ -1028,8 +1058,10 @@ class Model(AttributeContainer, metaclass=MetaModel):
         data = cls._get_connection().batch_get_item(
             keys_to_get, consistent_read=consistent_read, attributes_to_get=attributes_to_get,
         )
-        item_data = data.get(RESPONSES).get(cls.Meta.table_name)  # type: ignore
-        unprocessed_items = data.get(UNPROCESSED_KEYS).get(cls.Meta.table_name, {}).get(KEYS, None)  # type: ignore
+        responses = cast(Dict[str, Any], data.get(RESPONSES, {}))
+        item_data = responses.get(cls.Meta.table_name)
+        unprocessed_keys = cast(Dict[str, Any], data.get(UNPROCESSED_KEYS, {}))
+        unprocessed_items = unprocessed_keys.get(cls.Meta.table_name, {}).get(KEYS, None)
         return item_data, unprocessed_items
 
     @classmethod
@@ -1108,7 +1140,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
         return {attr.attr_type: serialized}
 
     @classmethod
-    def _serialize_keys(cls, hash_key, range_key=None) -> Tuple[_KeyType, _KeyType]:
+    def _serialize_keys(cls, hash_key: _KeyType, range_key: Optional[_KeyType] = None) -> Tuple[Any, Any]:
         """
         Serializes the hash and range keys
 

@@ -238,7 +238,7 @@ class TableConnection:
 
     def query(
         self,
-        hash_key: str,
+        hash_key: Optional[Any] = None,
         range_key_condition: Optional[Condition] = None,
         filter_condition: Optional[Any] = None,
         attributes_to_get: Optional[Any] = None,
@@ -249,6 +249,7 @@ class TableConnection:
         return_consumed_capacity: Optional[str] = None,
         scan_index_forward: Optional[bool] = None,
         select: Optional[str] = None,
+        hash_keys: Optional[Mapping[str, Any]] = None,
     ) -> Dict:
         """
         Performs the Query operation and returns the result
@@ -266,6 +267,7 @@ class TableConnection:
             return_consumed_capacity=return_consumed_capacity,
             scan_index_forward=scan_index_forward,
             select=select,
+            hash_keys=hash_keys,
         )
 
     def describe_table(self) -> Dict:
@@ -299,7 +301,8 @@ class TableConnection:
             self.table_name,
             read_capacity_units=read_capacity_units,
             write_capacity_units=write_capacity_units,
-            global_secondary_index_updates=global_secondary_index_updates)
+            global_secondary_index_updates=global_secondary_index_updates,
+        )
 
     def create_table(
         self,
@@ -326,5 +329,5 @@ class TableConnection:
             local_secondary_indexes=local_secondary_indexes,
             stream_specification=stream_specification,
             billing_mode=billing_mode,
-            tags=tags
+            tags=tags,
         )

@@ -124,6 +124,47 @@ range key of the index. Here is an example that queries the index for values of 
         print("Item queried from index: {0}".format(item.view))
 
 
+Composite Global Secondary Keys
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+DynamoDB global secondary indexes support multi-attribute partition and sort keys.
+To define a composite key in PynamoDB, declare multiple ``hash_key=True`` and/or
+``range_key=True`` attributes on a ``GlobalSecondaryIndex`` in the order you want
+them used.
+
+.. code-block:: python
+
+    class TournamentRegionIndex(GlobalSecondaryIndex):
+        class Meta:
+            projection = AllProjection()
+            read_capacity_units = 2
+            write_capacity_units = 1
+
+        tournament_id = UnicodeAttribute(hash_key=True)
+        region = UnicodeAttribute(hash_key=True)
+        round = UnicodeAttribute(range_key=True)
+        bracket = UnicodeAttribute(range_key=True)
+
+When querying a composite GSI, pass all partition-key values with ``hash_keys``.
+PynamoDB validates the supplied names and sends them in the index declaration
+order:
+
+.. code-block:: python
+
+    for item in MatchModel.tournament_region_index.query(
+        hash_keys={
+            'tournament_id': 'WINTER2024',
+            'region': 'NA-EAST',
+        }
+    ):
+        print(item)
+
+For sort-key conditions, DynamoDB enforces left-to-right semantics across declared
+sort-key attributes. If a later sort-key attribute is used, all preceding sort-key
+attributes must have equality conditions. See the DynamoDB documentation for details:
+https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.DesignPattern.MultiAttributeKeys.html
+
+
 Pagination and last evaluated key
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
