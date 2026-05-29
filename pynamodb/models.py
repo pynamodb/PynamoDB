@@ -288,7 +288,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
     _hash_keyname: Optional[str] = None
     _range_keyname: Optional[str] = None
     _connection: Optional[TableConnection] = None
-    DoesNotExist: Type[DoesNotExist] = DoesNotExist
+    DoesNotExist: Type['DoesNotExist'] = DoesNotExist
     _version_attribute_name: Optional[str] = None
 
     Meta: MetaProtocol
