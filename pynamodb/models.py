@@ -422,7 +422,6 @@ class Model(AttributeContainer, metaclass=MetaModel):
           specifies whether only to update if the version matches the model that is currently loaded.
           Set to `False` for a 'last write wins' strategy.
           Regardless, the version will always be incremented to prevent "rollbacks" by concurrent :meth:`save` calls.
-        :raises ModelInstance.DoesNotExist: if the object to be updated does not exist
         :raises pynamodb.exceptions.UpdateError: if the `condition` is not met
         """
         if not isinstance(actions, list) or len(actions) == 0:
