@@ -158,5 +158,30 @@ You can check for conditional operation failures by inspecting the cause of the 
     try:
         thread_item.save(Thread.forum_name.exists())
     except PutError as e:
-        if e.cause_response_code = "ConditionalCheckFailedException":
+        if e.cause_response_code == "ConditionalCheckFailedException":
             raise ThreadDidNotExistError()
+
+DynamoDB can also return the old item when a conditional write fails. ``Model.save()``,
+``Model.update()``, and ``Model.delete()`` accept ``return_values_on_condition_failure``
+for this DynamoDB option:
+
+.. code-block:: python
+
+    from pynamodb.constants import ALL_OLD
+    from pynamodb.exceptions import PutError
+
+    try:
+        thread_item.save(
+            condition=Thread.forum_name.exists(),
+            return_values_on_condition_failure=ALL_OLD,
+        )
+    except PutError as e:
+        if e.cause_response_code == "ConditionalCheckFailedException":
+            old_item = e.cause.response.get('Item')
+
+``return_values_on_condition_failure=ALL_OLD`` can also be passed to ``update()`` and
+``delete()``. PynamoDB still raises the existing write error wrapper
+(:class:`~pynamodb.exceptions.PutError`, :class:`~pynamodb.exceptions.UpdateError`, or
+:class:`~pynamodb.exceptions.DeleteError`) when the condition fails. If DynamoDB includes
+the old item, it is available as a raw DynamoDB AttributeValue map through the wrapped
+botocore error response, for example ``e.cause.response.get('Item')``.
