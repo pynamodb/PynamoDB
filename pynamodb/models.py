@@ -394,7 +394,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
         """
         return BatchWrite(cls, auto_commit=auto_commit)
 
-    def delete(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Any:
+    def delete(
+        self,
+        condition: Optional[Condition] = None,
+        *,
+        add_version_condition: bool = True,
+        return_values_on_condition_failure: Optional[str] = None,
+    ) -> Any:
         """
         Deletes this object from DynamoDB.
 
@@ -409,9 +415,21 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if add_version_condition and version_condition is not None:
             condition &= version_condition
 
-        return self._get_connection().delete_item(hk_value, range_key=rk_value, condition=condition)
+        return self._get_connection().delete_item(
+            hk_value,
+            range_key=rk_value,
+            condition=condition,
+            return_values_on_condition_failure=return_values_on_condition_failure,
+        )
 
-    def update(self, actions: List[Action], condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Any:
+    def update(
+        self,
+        actions: List[Action],
+        condition: Optional[Condition] = None,
+        *,
+        add_version_condition: bool = True,
+        return_values_on_condition_failure: Optional[str] = None,
+    ) -> Any:
         """
         Updates an item using the UpdateItem operation.
 
@@ -432,7 +450,14 @@ class Model(AttributeContainer, metaclass=MetaModel):
         if add_version_condition and version_condition is not None:
             condition &= version_condition
 
-        data = self._get_connection().update_item(hk_value, range_key=rk_value, return_values=ALL_NEW, condition=condition, actions=actions)
+        data = self._get_connection().update_item(
+            hk_value,
+            range_key=rk_value,
+            return_values=ALL_NEW,
+            condition=condition,
+            actions=actions,
+            return_values_on_condition_failure=return_values_on_condition_failure,
+        )
         item_data = data[ATTRIBUTES]
         stored_cls = self._get_discriminator_class(item_data)
         if stored_cls and stored_cls != type(self):
@@ -440,11 +465,21 @@ class Model(AttributeContainer, metaclass=MetaModel):
         self.deserialize(item_data)
         return data
 
-    def save(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Dict[str, Any]:
+    def save(
+        self,
+        condition: Optional[Condition] = None,
+        *,
+        add_version_condition: bool = True,
+        return_values_on_condition_failure: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
         Save this object to dynamodb
         """
-        args, kwargs = self._get_save_args(condition=condition, add_version_condition=add_version_condition)
+        args, kwargs = self._get_save_args(
+            condition=condition,
+            add_version_condition=add_version_condition,
+            return_values_on_condition_failure=return_values_on_condition_failure,
+        )
         data = self._get_connection().put_item(*args, **kwargs)
         self.update_local_version_attribute()
         return data
@@ -894,7 +929,13 @@ class Model(AttributeContainer, metaclass=MetaModel):
 
         return schema
 
-    def _get_save_args(self, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> Tuple[Iterable[Any], Dict[str, Any]]:
+    def _get_save_args(
+        self,
+        condition: Optional[Condition] = None,
+        *,
+        add_version_condition: bool = True,
+        return_values_on_condition_failure: Optional[str] = None,
+    ) -> Tuple[Iterable[Any], Dict[str, Any]]:
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
 
@@ -921,6 +962,7 @@ class Model(AttributeContainer, metaclass=MetaModel):
             condition &= version_condition
         kwargs['attributes'] = attribute_values
         kwargs['condition'] = condition
+        kwargs['return_values_on_condition_failure'] = return_values_on_condition_failure
         return args, kwargs
 
     def _get_hash_range_key_serialized_values(self) -> Tuple[Any, Optional[Any]]:

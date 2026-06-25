@@ -364,10 +364,13 @@ class Connection(object):
         try:
             return self.client._make_api_call(operation_name, operation_kwargs)
         except ClientError as e:
-            resp_metadata = e.response.get('ResponseMetadata', {}).get('HTTPHeaders', {})
-            cancellation_reasons = e.response.get('CancellationReasons', [])
+            error_response = cast(Dict[str, Any], e.response)
+            resp_metadata = error_response.get('ResponseMetadata', {}).get('HTTPHeaders', {})
+            cancellation_reasons = error_response.get('CancellationReasons', [])
 
-            botocore_props = {'Error': e.response.get('Error', {})}
+            botocore_props = {'Error': error_response.get('Error', {})}
+            if ITEM in error_response:
+                botocore_props[ITEM] = error_response[ITEM]
             verbose_props = {
                 'request_id': resp_metadata.get('x-amzn-requestid', ''),
                 'table_name': self._get_table_name_for_error_context(operation_kwargs),
@@ -769,7 +772,7 @@ class Connection(object):
         """
         Builds the return values map that is common to several operations
         """
-        if return_values_on_condition_failure.upper() not in RETURN_VALUES_VALUES:
+        if return_values_on_condition_failure.upper() not in RETURN_VALUES_ON_CONDITION_FAILURE_VALUES:
             raise ValueError("{} must be one of {}".format(
                 RETURN_VALUES_ON_CONDITION_FAILURE,
                 RETURN_VALUES_ON_CONDITION_FAILURE_VALUES
@@ -859,6 +862,7 @@ class Connection(object):
         range_key: Optional[str] = None,
         condition: Optional[Condition] = None,
         return_values: Optional[str] = None,
+        return_values_on_condition_failure: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
     ) -> Dict:
@@ -871,6 +875,7 @@ class Connection(object):
             range_key=range_key,
             condition=condition,
             return_values=return_values,
+            return_values_on_condition_failure=return_values_on_condition_failure,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics
         )
@@ -889,6 +894,7 @@ class Connection(object):
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
         return_values: Optional[str] = None,
+        return_values_on_condition_failure: Optional[str] = None,
     ) -> Dict:
         """
         Performs the UpdateItem operation
@@ -903,6 +909,7 @@ class Connection(object):
             actions=actions,
             condition=condition,
             return_values=return_values,
+            return_values_on_condition_failure=return_values_on_condition_failure,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
         )
@@ -919,6 +926,7 @@ class Connection(object):
         attributes: Optional[Any] = None,
         condition: Optional[Condition] = None,
         return_values: Optional[str] = None,
+        return_values_on_condition_failure: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
     ) -> Dict:
@@ -933,6 +941,7 @@ class Connection(object):
             attributes=attributes,
             condition=condition,
             return_values=return_values,
+            return_values_on_condition_failure=return_values_on_condition_failure,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics
         )
