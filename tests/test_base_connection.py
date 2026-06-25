@@ -24,7 +24,7 @@ from pynamodb.exceptions import (
     TableError, DeleteError, PutError, ScanError, GetError, UpdateError, TableDoesNotExist, VerboseClientError)
 from pynamodb.constants import (
     UNPROCESSED_ITEMS, STRING, BINARY, DEFAULT_ENCODING, TABLE_KEY,
-    PAY_PER_REQUEST_BILLING_MODE)
+    PAY_PER_REQUEST_BILLING_MODE, ALL_NEW, ALL_OLD, NONE, UPDATED_OLD, UPDATED_NEW)
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
@@ -58,6 +58,21 @@ def test_meta_table_get_attribute_type(meta_table):
 def test_meta_table_has_index_name(meta_table):
     assert meta_table.has_index_name("LastPostIndex")
     assert not meta_table.has_index_name("NonExistentIndexName")
+
+
+@pytest.mark.parametrize('return_values', [NONE, ALL_OLD])
+def test_get_return_values_on_condition_failure_map__valid(return_values):
+    conn = Connection(REGION)
+    assert conn.get_return_values_on_condition_failure_map(return_values) == {
+        'ReturnValuesOnConditionCheckFailure': return_values,
+    }
+
+
+@pytest.mark.parametrize('return_values', [ALL_NEW, UPDATED_OLD, UPDATED_NEW, 'badvalue'])
+def test_get_return_values_on_condition_failure_map__invalid(return_values):
+    conn = Connection(REGION)
+    with pytest.raises(ValueError):
+        conn.get_return_values_on_condition_failure_map(return_values)
 
 
 def test_connection__create():
@@ -461,7 +476,7 @@ def test_connection_delete_item():
             TEST_TABLE_NAME,
             "Amazon DynamoDB",
             "How do I update multiple items?",
-            return_values='ALL_NEW'
+            return_values=ALL_NEW
         )
         params = {
             'ReturnConsumedCapacity': 'TOTAL',
@@ -486,6 +501,29 @@ def test_connection_delete_item():
 
     with pytest.raises(ValueError):
         conn.delete_item(TEST_TABLE_NAME, "foo", "bar", return_item_collection_metrics='badvalue')
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {}
+        conn.delete_item(
+            TEST_TABLE_NAME,
+            "Amazon DynamoDB",
+            "How do I update multiple items?",
+            return_values_on_condition_failure=ALL_OLD
+        )
+        params = {
+            'ReturnConsumedCapacity': 'TOTAL',
+            'Key': {
+                'ForumName': {
+                    'S': 'Amazon DynamoDB'
+                },
+                'Subject': {
+                    'S': 'How do I update multiple items?'
+                }
+            },
+            'TableName': TEST_TABLE_NAME,
+            'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'
+        }
+        assert req.call_args[0][1] == params
 
     with patch(PATCH_METHOD) as req:
         req.return_value = {}
@@ -529,6 +567,39 @@ def test_connection_delete_item():
             'TableName': TEST_TABLE_NAME,
             'ReturnItemCollectionMetrics': 'SIZE',
             'ReturnConsumedCapacity': 'TOTAL'
+        }
+        assert req.call_args[0][1] == params
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {}
+        conn.update_item(
+            TEST_TABLE_NAME,
+            'foo-key',
+            actions=[Path('Subject').set('foo-subject')],
+            range_key='foo-range-key',
+            return_values_on_condition_failure=ALL_OLD,
+        )
+        params = {
+            'ReturnConsumedCapacity': 'TOTAL',
+            'Key': {
+                'ForumName': {
+                    'S': 'foo-key'
+                },
+                'Subject': {
+                    'S': 'foo-range-key'
+                }
+            },
+            'UpdateExpression': 'SET #0 = :0',
+            'ExpressionAttributeNames': {
+                '#0': 'Subject'
+            },
+            'ExpressionAttributeValues': {
+                ':0': {
+                    'S': 'foo-subject'
+                }
+            },
+            'TableName': TEST_TABLE_NAME,
+            'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'
         }
         assert req.call_args[0][1] == params
 
@@ -627,8 +698,8 @@ def test_connection_update_item():
             TEST_TABLE_NAME,
             'foo-key',
             return_consumed_capacity='TOTAL',
-            return_item_collection_metrics='NONE',
-            return_values='ALL_NEW',
+            return_item_collection_metrics=NONE,
+            return_values=ALL_NEW,
             actions=[Path('Subject').set('foo-subject')],
             condition=Path('Forum').does_not_exist(),
             range_key='foo-range-key',
@@ -723,7 +794,7 @@ def test_connection_put_item():
     with patch(PATCH_METHOD) as req:
         req.side_effect = BotoCoreError
         with pytest.raises(TableError):
-            conn.put_item('foo-key', TEST_TABLE_NAME, return_values='ALL_NEW', attributes={'ForumName': 'foo-value'})
+            conn.put_item('foo-key', TEST_TABLE_NAME, return_values=ALL_NEW, attributes={'ForumName': 'foo-value'})
 
     with patch(PATCH_METHOD) as req:
         req.return_value = {}
@@ -733,7 +804,7 @@ def test_connection_put_item():
             range_key='foo-range-key',
             return_consumed_capacity='TOTAL',
             return_item_collection_metrics='SIZE',
-            return_values='ALL_NEW',
+            return_values=ALL_NEW,
             attributes={'ForumName': 'foo-value'}
         )
         params = {
@@ -789,6 +860,30 @@ def test_connection_put_item():
                 }
             },
             'TableName': TEST_TABLE_NAME
+        }
+        assert req.call_args[0][1] == params
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = {}
+        conn.put_item(
+            TEST_TABLE_NAME,
+            'foo-key',
+            range_key='foo-range-key',
+            attributes={'ForumName': 'foo-value'},
+            return_values_on_condition_failure=ALL_OLD
+        )
+        params = {
+            'ReturnConsumedCapacity': 'TOTAL',
+            'Item': {
+                'ForumName': {
+                    'S': 'foo-value'
+                },
+                'Subject': {
+                    'S': 'foo-range-key'
+                }
+            },
+            'TableName': TEST_TABLE_NAME,
+            'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'
         }
         assert req.call_args[0][1] == params
 
@@ -1370,6 +1465,33 @@ def test_connection__make_api_call__wraps_verbose_client_error_create(send_mock)
         'An error occurred (InternalServerError) on request (abcdef) on table (MyTable) when calling the CreateTable operation: There is a problem'
         in str(excinfo.value)
     )
+
+
+def test_connection__make_api_call__preserves_error_response_item():
+    c = Connection()
+    client = mock.Mock()
+    client._request_signer = None
+    client._make_api_call.side_effect = ClientError(
+        {
+            'Error': {
+                'Code': 'ConditionalCheckFailedException',
+                'Message': 'The conditional request failed',
+            },
+            'Item': {
+                'ForumName': {'S': 'Amazon DynamoDB'},
+            },
+        },
+        'PutItem',
+    )
+    c._client = client
+
+    with pytest.raises(VerboseClientError) as excinfo:
+        c._make_api_call('PutItem', {'TableName': TEST_TABLE_NAME})
+
+    assert excinfo.value.response['Item'] == {
+        'ForumName': {'S': 'Amazon DynamoDB'},
+    }
+
 
 @mock.patch('botocore.httpsession.URLLib3Session.send')
 def test_connection__make_api_call__wraps_verbose_client_error_batch(send_mock):

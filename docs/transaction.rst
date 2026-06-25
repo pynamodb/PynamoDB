@@ -145,6 +145,7 @@ The ``Delete`` operation functions similarly to ``Model.delete``.
 
 * ``model`` (required)
 * ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional_operations`)
+* ``return_values`` (optional) - the values that should be returned if the condition fails (see `Delete ReturnValuesOnConditionCheckFailure`_ in the DynamoDB API reference)
 
 .. code-block:: python
 
@@ -162,7 +163,7 @@ The ``Put`` operation functions similarly to ``Model.save``.
 
 * ``model`` (required)
 * ``condition`` (optional) - of type :py:class:`Condition <pynamodb.expressions.condition.Condition>` (see :ref:`conditional_operations`)
-* ``return_values`` (optional) - the values that should be returned if the condition fails ((see `Put ReturnValuesOnConditionCheckFailure`_ in the DynamoDB API reference)
+* ``return_values`` (optional) - the values that should be returned if the condition fails (see `Put ReturnValuesOnConditionCheckFailure`_ in the DynamoDB API reference)
 
 .. code-block:: python
 
@@ -228,5 +229,6 @@ You can expect some new error types with transactions, such as:
 
 .. _Update ReturnValuesOnConditionCheckFailure: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Update.html#DDB-Type-Update-ReturnValuesOnConditionCheckFailure>
 .. _Put ReturnValuesOnConditionCheckFailure: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Put.html#DDB-Type-Put-ReturnValuesOnConditionCheckFailure
+.. _Delete ReturnValuesOnConditionCheckFailure: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Delete.html#DDB-Type-Delete-ReturnValuesOnConditionCheckFailure
 .. _TransactWriteItems Errors: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#API_TransactWriteItems_Errors
 .. _TransactGetItems Errors: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactGetItems.html#API_TransactGetItems_Errors

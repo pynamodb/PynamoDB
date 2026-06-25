@@ -3,7 +3,7 @@ from pynamodb.attributes import NumberAttribute, UnicodeAttribute, VersionAttrib
 
 from pynamodb.connection import Connection
 from pynamodb.connection.base import MetaTable
-from pynamodb.constants import TABLE_KEY
+from pynamodb.constants import ALL_OLD, TABLE_KEY
 from pynamodb.transactions import Transaction, TransactGet, TransactWrite
 from pynamodb.models import Model
 from tests.test_base_connection import PATCH_METHOD
@@ -85,9 +85,9 @@ class TestTransactWrite:
         mock_connection_transact_write = mocker.patch.object(connection, 'transact_write_items')
         with TransactWrite(connection=connection) as t:
             t.condition_check(MockModel, 1, 3, condition=(MockModel.mock_hash.does_not_exist()))
-            t.delete(MockModel(2, 4))
+            t.delete(MockModel(2, 4), return_values=ALL_OLD)
             t.save(MockModel(3, 5))
-            t.update(MockModel(4, 6), actions=[MockModel.mock_toot.set('hello')], return_values='ALL_OLD')
+            t.update(MockModel(4, 6), actions=[MockModel.mock_toot.set('hello')], return_values=ALL_OLD)
 
         expected_condition_checks = [{
             'ConditionExpression': 'attribute_not_exists (#0)',
@@ -99,6 +99,7 @@ class TestTransactWrite:
             'ConditionExpression': 'attribute_not_exists (#0)',
             'ExpressionAttributeNames': {'#0': 'mock_version'},
             'Key': {'mock_hash': {'N': '2'}, 'mock_range': {'N': '4'}},
+            'ReturnValuesOnConditionCheckFailure': 'ALL_OLD',
             'TableName': 'mock'
         }]
         expected_puts = [{

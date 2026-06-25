@@ -90,6 +90,7 @@ class TableConnection:
         range_key: Optional[str] = None,
         condition: Optional[Condition] = None,
         return_values: Optional[str] = None,
+        return_values_on_condition_failure: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
     ) -> Dict:
@@ -102,6 +103,7 @@ class TableConnection:
             range_key=range_key,
             condition=condition,
             return_values=return_values,
+            return_values_on_condition_failure=return_values_on_condition_failure,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
         )
@@ -115,6 +117,7 @@ class TableConnection:
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
         return_values: Optional[str] = None,
+        return_values_on_condition_failure: Optional[str] = None,
     ) -> Dict:
         """
         Performs the UpdateItem operation
@@ -128,6 +131,7 @@ class TableConnection:
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
             return_values=return_values,
+            return_values_on_condition_failure=return_values_on_condition_failure,
         )
 
     def put_item(
@@ -137,6 +141,7 @@ class TableConnection:
         attributes: Optional[Any] = None,
         condition: Optional[Condition] = None,
         return_values: Optional[str] = None,
+        return_values_on_condition_failure: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
     ) -> Dict:
@@ -150,6 +155,7 @@ class TableConnection:
             attributes=attributes,
             condition=condition,
             return_values=return_values,
+            return_values_on_condition_failure=return_values_on_condition_failure,
             return_consumed_capacity=return_consumed_capacity,
             return_item_collection_metrics=return_item_collection_metrics,
         )

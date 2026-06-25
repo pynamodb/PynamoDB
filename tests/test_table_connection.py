@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from pynamodb.connection import TableConnection
 from pynamodb.connection.base import MetaTable
-from pynamodb.constants import TABLE_KEY
+from pynamodb.constants import ALL_OLD, TABLE_KEY
 from pynamodb.expressions.operand import Path
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
 from .response import HttpOK
@@ -331,6 +331,27 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.delete_item(
+                "Amazon DynamoDB",
+                "How do I update multiple items?",
+                return_values_on_condition_failure=ALL_OLD)
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'Key': {
+                    'ForumName': {
+                        'S': 'Amazon DynamoDB'
+                    },
+                    'Subject': {
+                        'S': 'How do I update multiple items?'
+                    }
+                },
+                'TableName': self.test_table_name,
+                'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
     def test_update_item(self):
         """
         TableConnection.update_item
@@ -367,6 +388,38 @@ class ConnectionTestCase(TestCase):
             }
             self.assertEqual(req.call_args[0][1], params)
 
+        with patch(PATCH_METHOD) as req:
+            req.return_value = HttpOK(), {}
+            conn.update_item(
+                'foo-key',
+                actions=[Path('Subject').set('foo-subject')],
+                range_key='foo-range-key',
+                return_values_on_condition_failure=ALL_OLD,
+            )
+            params = {
+                'Key': {
+                    'ForumName': {
+                        'S': 'foo-key'
+                    },
+                    'Subject': {
+                        'S': 'foo-range-key'
+                    }
+                },
+                'UpdateExpression': 'SET #0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'Subject'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'foo-subject'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'Thread',
+                'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
     def test_get_item(self):
         """
         TableConnection.get_item
@@ -395,6 +448,22 @@ class ConnectionTestCase(TestCase):
                 'ReturnConsumedCapacity': 'TOTAL',
                 'TableName': self.test_table_name,
                 'Item': {'ForumName': {'S': 'foo-value'}, 'Subject': {'S': 'foo-range-key'}}
+            }
+            self.assertEqual(req.call_args[0][1], params)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            conn.put_item(
+                'foo-key',
+                range_key='foo-range-key',
+                attributes={'ForumName': 'foo-value'},
+                return_values_on_condition_failure=ALL_OLD
+            )
+            params = {
+                'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': self.test_table_name,
+                'Item': {'ForumName': {'S': 'foo-value'}, 'Subject': {'S': 'foo-range-key'}},
+                'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'
             }
             self.assertEqual(req.call_args[0][1], params)
 
