@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from pynamodb.connection import TableConnection
 from pynamodb.connection.base import MetaTable
-from pynamodb.constants import TABLE_KEY
+from pynamodb.constants import ALL_OLD, TABLE_KEY
 from pynamodb.expressions.operand import Path
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA
 from .response import HttpOK
@@ -336,7 +336,7 @@ class ConnectionTestCase(TestCase):
             conn.delete_item(
                 "Amazon DynamoDB",
                 "How do I update multiple items?",
-                return_values_on_condition_failure='ALL_OLD')
+                return_values_on_condition_failure=ALL_OLD)
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',
                 'Key': {
@@ -394,7 +394,7 @@ class ConnectionTestCase(TestCase):
                 'foo-key',
                 actions=[Path('Subject').set('foo-subject')],
                 range_key='foo-range-key',
-                return_values_on_condition_failure='ALL_OLD',
+                return_values_on_condition_failure=ALL_OLD,
             )
             params = {
                 'Key': {
@@ -457,7 +457,7 @@ class ConnectionTestCase(TestCase):
                 'foo-key',
                 range_key='foo-range-key',
                 attributes={'ForumName': 'foo-value'},
-                return_values_on_condition_failure='ALL_OLD'
+                return_values_on_condition_failure=ALL_OLD
             )
             params = {
                 'ReturnConsumedCapacity': 'TOTAL',

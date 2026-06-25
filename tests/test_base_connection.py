@@ -24,7 +24,7 @@ from pynamodb.exceptions import (
     TableError, DeleteError, PutError, ScanError, GetError, UpdateError, TableDoesNotExist, VerboseClientError)
 from pynamodb.constants import (
     UNPROCESSED_ITEMS, STRING, BINARY, DEFAULT_ENCODING, TABLE_KEY,
-    PAY_PER_REQUEST_BILLING_MODE)
+    PAY_PER_REQUEST_BILLING_MODE, ALL_NEW, ALL_OLD, NONE, UPDATED_OLD, UPDATED_NEW)
 from pynamodb.expressions.operand import Path, Value
 from pynamodb.expressions.update import SetAction
 from .data import DESCRIBE_TABLE_DATA, GET_ITEM_DATA, LIST_TABLE_DATA
@@ -60,7 +60,7 @@ def test_meta_table_has_index_name(meta_table):
     assert not meta_table.has_index_name("NonExistentIndexName")
 
 
-@pytest.mark.parametrize('return_values', ['NONE', 'ALL_OLD'])
+@pytest.mark.parametrize('return_values', [NONE, ALL_OLD])
 def test_get_return_values_on_condition_failure_map__valid(return_values):
     conn = Connection(REGION)
     assert conn.get_return_values_on_condition_failure_map(return_values) == {
@@ -68,7 +68,7 @@ def test_get_return_values_on_condition_failure_map__valid(return_values):
     }
 
 
-@pytest.mark.parametrize('return_values', ['ALL_NEW', 'UPDATED_OLD', 'UPDATED_NEW', 'badvalue'])
+@pytest.mark.parametrize('return_values', [ALL_NEW, UPDATED_OLD, UPDATED_NEW, 'badvalue'])
 def test_get_return_values_on_condition_failure_map__invalid(return_values):
     conn = Connection(REGION)
     with pytest.raises(ValueError):
@@ -476,7 +476,7 @@ def test_connection_delete_item():
             TEST_TABLE_NAME,
             "Amazon DynamoDB",
             "How do I update multiple items?",
-            return_values='ALL_NEW'
+            return_values=ALL_NEW
         )
         params = {
             'ReturnConsumedCapacity': 'TOTAL',
@@ -508,7 +508,7 @@ def test_connection_delete_item():
             TEST_TABLE_NAME,
             "Amazon DynamoDB",
             "How do I update multiple items?",
-            return_values_on_condition_failure='ALL_OLD'
+            return_values_on_condition_failure=ALL_OLD
         )
         params = {
             'ReturnConsumedCapacity': 'TOTAL',
@@ -577,7 +577,7 @@ def test_connection_delete_item():
             'foo-key',
             actions=[Path('Subject').set('foo-subject')],
             range_key='foo-range-key',
-            return_values_on_condition_failure='ALL_OLD',
+            return_values_on_condition_failure=ALL_OLD,
         )
         params = {
             'ReturnConsumedCapacity': 'TOTAL',
@@ -698,8 +698,8 @@ def test_connection_update_item():
             TEST_TABLE_NAME,
             'foo-key',
             return_consumed_capacity='TOTAL',
-            return_item_collection_metrics='NONE',
-            return_values='ALL_NEW',
+            return_item_collection_metrics=NONE,
+            return_values=ALL_NEW,
             actions=[Path('Subject').set('foo-subject')],
             condition=Path('Forum').does_not_exist(),
             range_key='foo-range-key',
@@ -794,7 +794,7 @@ def test_connection_put_item():
     with patch(PATCH_METHOD) as req:
         req.side_effect = BotoCoreError
         with pytest.raises(TableError):
-            conn.put_item('foo-key', TEST_TABLE_NAME, return_values='ALL_NEW', attributes={'ForumName': 'foo-value'})
+            conn.put_item('foo-key', TEST_TABLE_NAME, return_values=ALL_NEW, attributes={'ForumName': 'foo-value'})
 
     with patch(PATCH_METHOD) as req:
         req.return_value = {}
@@ -804,7 +804,7 @@ def test_connection_put_item():
             range_key='foo-range-key',
             return_consumed_capacity='TOTAL',
             return_item_collection_metrics='SIZE',
-            return_values='ALL_NEW',
+            return_values=ALL_NEW,
             attributes={'ForumName': 'foo-value'}
         )
         params = {
@@ -870,7 +870,7 @@ def test_connection_put_item():
             'foo-key',
             range_key='foo-range-key',
             attributes={'ForumName': 'foo-value'},
-            return_values_on_condition_failure='ALL_OLD'
+            return_values_on_condition_failure=ALL_OLD
         )
         params = {
             'ReturnConsumedCapacity': 'TOTAL',

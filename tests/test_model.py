@@ -18,7 +18,7 @@ from pynamodb.exceptions import DoesNotExist, TableError, PutError, AttributeDes
 from pynamodb.constants import (
     ITEM, STRING, ALL, KEYS_ONLY, INCLUDE, REQUEST_ITEMS, UNPROCESSED_KEYS, CAMEL_COUNT,
     RESPONSES, KEYS, ITEMS, LAST_EVALUATED_KEY, EXCLUSIVE_START_KEY, ATTRIBUTES, BINARY,
-    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP, LIST, NUMBER, SCANNED_COUNT,
+    UNPROCESSED_ITEMS, DEFAULT_ENCODING, MAP, LIST, NUMBER, SCANNED_COUNT, ALL_NEW, ALL_OLD,
 )
 from pynamodb.models import Model
 from pynamodb.indexes import (
@@ -841,7 +841,7 @@ class ModelTestCase(TestCase):
             }
             item.update(
                 actions=[SimpleUserModel.email.set('bar@example.com')],
-                return_values_on_condition_failure='ALL_OLD',
+                return_values_on_condition_failure=ALL_OLD,
             )
 
             args = req.call_args[0][1]
@@ -943,7 +943,7 @@ class ModelTestCase(TestCase):
 
         with patch(PATCH_METHOD) as req:
             req.return_value = {}
-            item.save(return_values_on_condition_failure='ALL_OLD')
+            item.save(return_values_on_condition_failure=ALL_OLD)
             args = req.call_args[0][1]
             params = {
                 'Item': {
@@ -3456,7 +3456,7 @@ def test_delete(add_version_condition: bool) -> None:
         req.return_value = None
         item.delete(
             add_version_condition=add_version_condition,
-            return_values_on_condition_failure='ALL_OLD',
+            return_values_on_condition_failure=ALL_OLD,
         )
         expected = {
             'Key': {
