@@ -825,6 +825,48 @@ class ModelTestCase(TestCase):
             assert item.views is None
             self.assertEqual({'bob'}, item.custom_aliases)
 
+    def test_update_return_values_on_condition_failure(self):
+        item = SimpleUserModel(user_name='foo', email='foo@example.com')
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {
+                ATTRIBUTES: {
+                    'user_name': {
+                        'S': 'foo'
+                    },
+                    'email': {
+                        'S': 'bar@example.com'
+                    }
+                }
+            }
+            item.update(
+                actions=[SimpleUserModel.email.set('bar@example.com')],
+                return_values_on_condition_failure='ALL_OLD',
+            )
+
+            args = req.call_args[0][1]
+            params = {
+                'TableName': 'SimpleModel',
+                'ReturnValues': 'ALL_NEW',
+                'ReturnValuesOnConditionCheckFailure': 'ALL_OLD',
+                'Key': {
+                    'user_name': {
+                        'S': 'foo'
+                    }
+                },
+                'UpdateExpression': 'SET #0 = :0',
+                'ExpressionAttributeNames': {
+                    '#0': 'email'
+                },
+                'ExpressionAttributeValues': {
+                    ':0': {
+                        'S': 'bar@example.com'
+                    }
+                },
+                'ReturnConsumedCapacity': 'TOTAL'
+            }
+            deep_eq(args, params, _assert=True)
+
     def test_update_doesnt_do_validation_on_null_attributes(self):
         item = CarModel(12345)
         item.car_info = CarInfoMap(make='Foo', model='Bar')
@@ -895,6 +937,31 @@ class ModelTestCase(TestCase):
                     '#0': 'email'
                 },
                 'ReturnConsumedCapacity': 'TOTAL',
+                'TableName': 'UserModel'
+            }
+            deep_eq(args, params, _assert=True)
+
+        with patch(PATCH_METHOD) as req:
+            req.return_value = {}
+            item.save(return_values_on_condition_failure='ALL_OLD')
+            args = req.call_args[0][1]
+            params = {
+                'Item': {
+                    'callable_field': {
+                        'N': '42'
+                    },
+                    'email': {
+                        'S': u'needs_email'
+                    },
+                    'user_id': {
+                        'S': u'bar'
+                    },
+                    'user_name': {
+                        'S': u'foo'
+                    },
+                },
+                'ReturnConsumedCapacity': 'TOTAL',
+                'ReturnValuesOnConditionCheckFailure': 'ALL_OLD',
                 'TableName': 'UserModel'
             }
             deep_eq(args, params, _assert=True)
@@ -3380,6 +3447,28 @@ def test_delete(add_version_condition: bool) -> None:
                 }
             },
             'ReturnConsumedCapacity': 'TOTAL',
+            'TableName': 'UserModel'
+        }
+        args = req.call_args[0][1]
+        assert args == expected
+
+    with patch(PATCH_METHOD) as req:
+        req.return_value = None
+        item.delete(
+            add_version_condition=add_version_condition,
+            return_values_on_condition_failure='ALL_OLD',
+        )
+        expected = {
+            'Key': {
+                'user_id': {
+                    'S': 'bar'
+                },
+                'user_name': {
+                    'S': 'foo'
+                }
+            },
+            'ReturnConsumedCapacity': 'TOTAL',
+            'ReturnValuesOnConditionCheckFailure': 'ALL_OLD',
             'TableName': 'UserModel'
         }
         args = req.call_args[0][1]
