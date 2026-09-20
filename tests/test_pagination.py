@@ -1,5 +1,8 @@
 import pytest
-from pynamodb.pagination import RateLimiter
+from typing import Any, Dict, List
+from unittest.mock import Mock, call
+
+from pynamodb.pagination import PageIterator, RateLimiter, ResultIterator
 
 
 class MockTime():
@@ -14,6 +17,47 @@ class MockTime():
 
     def increment_time(self, amount):
         self.current_time += amount
+
+
+@pytest.mark.parametrize('end_marker', [{}, {'LastEvaluatedKey': {}}])
+@pytest.mark.parametrize('items', [[], [{'id': {'S': 'item'}}]])
+def test_page_iterator_stops_at_end(end_marker: Dict[str, Any], items: List[Dict[str, Any]]) -> None:
+    page = {'Count': len(items), 'ScannedCount': len(items), 'Items': items, **end_marker}
+    operation = Mock(return_value=page)
+    pages = PageIterator(operation, (), {})
+
+    assert next(pages) == page
+    with pytest.raises(StopIteration):
+        next(pages)
+    operation.assert_called_once_with(exclusive_start_key=None)
+
+
+def test_result_iterator_does_not_repeat_last_page() -> None:
+    item = {'id': {'S': 'item'}}
+    operation = Mock(return_value={
+        'Count': 1, 'ScannedCount': 1, 'Items': [item], 'LastEvaluatedKey': {},
+    })
+    results = ResultIterator(operation, (), {})
+
+    assert next(results) == item
+    with pytest.raises(StopIteration):
+        next(results)
+    assert operation.call_count == 1
+
+
+def test_result_iterator_continues_after_filtered_page() -> None:
+    key = {'id': {'S': 'filtered'}}
+    item = {'id': {'S': 'matching'}}
+    operation = Mock(side_effect=[
+        {'Count': 0, 'ScannedCount': 1, 'Items': [], 'LastEvaluatedKey': key},
+        {'Count': 1, 'ScannedCount': 1, 'Items': [item]},
+    ])
+    results = ResultIterator(operation, (), {})
+
+    assert list(results) == [item]
+    assert operation.call_args_list == [
+        call(exclusive_start_key=None), call(exclusive_start_key=key),
+    ]
 
 
 def test_rate_limiter_exceptions():
