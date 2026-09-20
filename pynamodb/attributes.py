@@ -425,7 +425,7 @@ class AttributeContainer(metaclass=AttributeContainerMeta):
         """
         Sets attributes sent back from DynamoDB on this object
         """
-        self.attribute_values = {}
+        object.__setattr__(self, 'attribute_values', {})
         self._set_discriminator()
         self._set_defaults(_user_instantiated=False)
         for name, attr in self.get_attributes().items():
@@ -1232,11 +1232,11 @@ class DynamicMapAttribute(MapAttribute):
         else:
             super().__setattr__(name, value)
 
-    def serialize(self, values, *, null_check: bool = True):
+    def serialize(self, values: Any, *, null_check: bool = True) -> Dict[str, Dict[str, Any]]:
         if not isinstance(values, type(self)):
             # Copy the values onto an instance of the class for serialization.
             instance = type(self)()
-            instance.attribute_values = {}  # clear any defaults
+            object.__setattr__(instance, 'attribute_values', {})  # clear any defaults
             instance._set_attributes(**values)
             values = instance
 
