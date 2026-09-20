@@ -949,6 +949,36 @@ class TestDynamicMapAttribute:
             created_at = UTCDateTimeAttribute()
         test_map = CreatedAtMap(default=dict)
 
+    def test_serialize_mapping_does_not_add_internal_storage(self) -> None:
+        attr = DynamicMapAttribute()
+        assert attr.serialize({'name': 'test'}) == {'name': {'S': 'test'}}
+
+    def test_deserialize_does_not_add_internal_storage(self) -> None:
+        attr = DynamicMapAttribute()
+        assert attr.deserialize({'name': {'S': 'test'}}).as_dict() == {'name': 'test'}
+
+    def test_internal_storage_name_is_valid_user_data(self) -> None:
+        attr = DynamicMapAttribute()
+        value = {'attribute_values': {'user': 'kept'}}
+        serialized = {'attribute_values': {'M': {'user': {'S': 'kept'}}}}
+        assert attr.serialize(value) == serialized
+        assert attr.deserialize(serialized).as_dict() == value
+
+    def test_deserialize_clears_old_fields(self) -> None:
+        class DynamicFields(DynamicMapAttribute):
+            name = UnicodeAttribute(null=True)
+            stale = UnicodeAttribute(null=True)
+
+        value = DynamicFields(name='before', stale='old', extra='old')
+        value.from_dynamodb_dict({'name': {'S': 'after'}})
+        assert value.as_dict() == {'name': 'after'}
+
+    def test_serialize_mapping_clears_defaults(self) -> None:
+        class DynamicDefaults(DynamicMapAttribute):
+            counter = NumberAttribute(null=True, default=1)
+
+        assert DynamicDefaults().serialize({'name': 'test'}) == {'name': {'S': 'test'}}
+
     def test_serialize(self):
         test_model = TestDynamicMapAttribute.CreatedAtTestModel()
         test_model.test_map.created_at = datetime(2017, 1, 1, tzinfo=timezone.utc)
