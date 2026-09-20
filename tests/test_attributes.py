@@ -606,6 +606,21 @@ class TestMapAttribute:
     """
     Tests map with str, int, float
     """
+    @pytest.mark.parametrize('name', ['map_attr', 'raw_map_attr'])
+    def test_descriptor_repr(self, name: str) -> None:
+        attributes = AttributeTestModel.get_attributes()
+        attr = attributes[name]
+        assert repr(attr) == object.__repr__(attr)
+        assert object.__repr__(attr) in repr(attributes)
+
+    @pytest.mark.parametrize('attr, expected', [
+        (MapAttribute(), 'MapAttribute()'),
+        (MapAttribute(value='test'), "MapAttribute(value='test')"),
+        (AttributeTestMapAttribute(string='test'), "AttributeTestMapAttribute(string='test')"),
+    ])
+    def test_container_repr(self, attr: MapAttribute, expected: str) -> None:
+        assert repr(attr) == expected
+
     def test_attribute_children(self):
         person_attribute = {
             'name': 'Justin',
