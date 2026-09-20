@@ -1001,6 +1001,11 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer, metaclass=M
         # by the `_make_attribute` call during initialization of the containing class.
         return 'attribute_values' in self.__dict__
 
+    def __repr__(self) -> str:
+        if self._is_attribute_container():
+            return AttributeContainer.__repr__(self)
+        return Attribute.__repr__(self)
+
     def _make_attribute(self):
         # WARNING! This function is only intended to be called from the __set_name__ function.
         if not self._is_attribute_container():
