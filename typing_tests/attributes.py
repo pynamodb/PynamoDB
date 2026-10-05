@@ -53,6 +53,20 @@ def test_map_attribute() -> None:
     assert_type(MySubMap().s, str)
 
 
+def test_map_attribute_init() -> None:
+    from pynamodb.attributes import MapAttribute, UnicodeAttribute
+    from pynamodb.models import Model
+
+    class MyMap(MapAttribute):
+        s = UnicodeAttribute()
+
+    class MyModel(Model):
+        m = MyMap(null=True, attr_name='dynamo_m')  # as an Attribute: Attribute options
+
+    assert_type(MyMap(s='foo'), MyMap)  # as a container: field values
+    assert_type(MyModel.m, MyMap)
+
+
 def test_list_attribute() -> None:
     from pynamodb.attributes import ListAttribute, MapAttribute, UnicodeAttribute
     from pynamodb.models import Model

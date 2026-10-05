@@ -976,7 +976,7 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer, metaclass=M
 
     attribute_args = getfullargspec(Attribute.__init__).args[1:]
 
-    def __init__(self, **attributes):
+    def __init__(self, **attributes: Any) -> None:
         # Store the kwargs used by Attribute.__init__ in case `_make_attribute` is called.
         self.attribute_kwargs = {arg: attributes.pop(arg) for arg in self.attribute_args if arg in attributes}
 
