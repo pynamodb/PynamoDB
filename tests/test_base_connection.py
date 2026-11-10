@@ -875,6 +875,25 @@ def test_connection_transact_write_items():
         }
 
 
+def test_connection_transact_write_items__preserves_transact_items_order():
+    conn = Connection()
+    transact_items = [
+        {'Update': {'TableName': 'a'}},
+        {'Put': {'TableName': 'b'}},
+        {'Delete': {'TableName': 'c'}},
+        {'ConditionCheck': {'TableName': 'd'}},
+    ]
+    with patch(PATCH_METHOD) as req:
+        conn.transact_write_items(transact_items=transact_items)
+        assert req.call_args[0][1]['TransactItems'] == transact_items
+
+
+def test_connection_transact_write_items__grouped_and_transact_items_are_exclusive():
+    conn = Connection()
+    with pytest.raises(ValueError):
+        conn.transact_write_items(put_items=[{'TableName': 'a'}], transact_items=[{'Put': {'TableName': 'b'}}])
+
+
 def test_connection_transact_get_items():
     conn = Connection()
     with patch(PATCH_METHOD) as req:

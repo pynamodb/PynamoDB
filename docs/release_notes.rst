@@ -9,6 +9,8 @@ v6.1.1
 Fixes:
 
 * Allow :py:class:`~enum.Enum` instances as attribute defaults (:pr:`1302`)
+* Preserve the order of operations in :py:class:`~pynamodb.transactions.TransactWrite` when sending them to DynamoDB,
+  so that the ``CancellationReasons`` of a failed transaction map to the operations in the order they were added (#1284)
 
 v6.1.0
 ------

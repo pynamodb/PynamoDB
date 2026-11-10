@@ -959,30 +959,41 @@ class Connection(object):
 
     def transact_write_items(
         self,
-        condition_check_items: Sequence[Dict],
-        delete_items: Sequence[Dict],
-        put_items: Sequence[Dict],
-        update_items: Sequence[Dict],
+        condition_check_items: Optional[Sequence[Dict]] = None,
+        delete_items: Optional[Sequence[Dict]] = None,
+        put_items: Optional[Sequence[Dict]] = None,
+        update_items: Optional[Sequence[Dict]] = None,
         client_request_token: Optional[str] = None,
         return_consumed_capacity: Optional[str] = None,
         return_item_collection_metrics: Optional[str] = None,
+        *,
+        transact_items: Optional[Sequence[Dict]] = None,
     ) -> Dict:
         """
         Performs the TransactWrite operation and returns the result
+
+        The items can be passed either grouped by operation type (in which case they are sent
+        in the order condition checks, deletes, puts, updates), or via ``transact_items``: a
+        sequence of ``{operation: kwargs}`` dicts, which is sent as is, preserving its order.
         """
-        transact_items: List[Dict] = []
-        transact_items.extend(
-            {TRANSACT_CONDITION_CHECK: item} for item in condition_check_items
-        )
-        transact_items.extend(
-            {TRANSACT_DELETE: item} for item in delete_items
-        )
-        transact_items.extend(
-            {TRANSACT_PUT: item} for item in put_items
-        )
-        transact_items.extend(
-            {TRANSACT_UPDATE: item} for item in update_items
-        )
+        if transact_items is not None:
+            if condition_check_items or delete_items or put_items or update_items:
+                raise ValueError("transact_items cannot be combined with condition_check_items, delete_items, put_items or update_items")
+            transact_items = list(transact_items)
+        else:
+            transact_items = []
+            transact_items.extend(
+                {TRANSACT_CONDITION_CHECK: item} for item in condition_check_items or []
+            )
+            transact_items.extend(
+                {TRANSACT_DELETE: item} for item in delete_items or []
+            )
+            transact_items.extend(
+                {TRANSACT_PUT: item} for item in put_items or []
+            )
+            transact_items.extend(
+                {TRANSACT_UPDATE: item} for item in update_items or []
+            )
 
         operation_kwargs = self._get_transact_operation_kwargs(
             client_request_token=client_request_token,

@@ -117,11 +117,35 @@ class TestTransactWrite:
             'ExpressionAttributeValues': {':0': {'S': 'hello'}, ':1': {'N': '1'}}
         }]
         mock_connection_transact_write.assert_called_once_with(
-            condition_check_items=expected_condition_checks,
-            delete_items=expected_deletes,
-            put_items=expected_puts,
-            update_items=expected_updates,
+            transact_items=[
+                {'ConditionCheck': expected_condition_checks[0]},
+                {'Delete': expected_deletes[0]},
+                {'Put': expected_puts[0]},
+                {'Update': expected_updates[0]},
+            ],
             client_request_token=None,
             return_consumed_capacity=None,
             return_item_collection_metrics=None
         )
+
+    def test_commit_preserves_insertion_order(self):
+        connection = Connection()
+        with patch(PATCH_METHOD) as req:
+            with TransactWrite(connection=connection) as t:
+                t.update(MockModel(4, 6), actions=[MockModel.mock_toot.set('hello')])
+                t.save(MockModel(3, 5))
+                t.delete(MockModel(2, 4))
+                t.condition_check(MockModel, 1, 3, condition=(MockModel.mock_hash.does_not_exist()))
+                t.save(MockModel(7, 8))
+                t.update(MockModel(9, 10), actions=[MockModel.mock_toot.set('bye')])
+
+        assert req.call_args[0][0] == 'TransactWriteItems'
+        transact_items = req.call_args[0][1]['TransactItems']
+        assert [next(iter(item)) for item in transact_items] == [
+            'Update', 'Put', 'Delete', 'ConditionCheck', 'Put', 'Update',
+        ]
+        keys = [
+            (item.get('Item') or item['Key'])['mock_hash']['N']
+            for item in (next(iter(i.values())) for i in transact_items)
+        ]
+        assert keys == ['4', '3', '2', '1', '7', '9']
