@@ -1,7 +1,9 @@
 from typing import Tuple, TypeVar, Type, Any, List, Optional, Dict, Union, Text, Generic
 
 from pynamodb.connection import Connection
-from pynamodb.constants import ITEM, RESPONSES
+from pynamodb.constants import (
+    ITEM, RESPONSES, TRANSACT_CONDITION_CHECK, TRANSACT_DELETE, TRANSACT_PUT, TRANSACT_UPDATE,
+)
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.update import Action
 from pynamodb.models import Model, _ModelFuture, _KeyType
@@ -84,10 +86,7 @@ class TransactWrite(Transaction):
         super(TransactWrite, self).__init__(**kwargs)
         self._client_request_token: Optional[str] = client_request_token
         self._return_item_collection_metrics = return_item_collection_metrics
-        self._condition_check_items: List[Dict] = []
-        self._delete_items: List[Dict] = []
-        self._put_items: List[Dict] = []
-        self._update_items: List[Dict] = []
+        self._transact_items: List[Dict] = []
         self._models_for_version_attribute_update: List[Any] = []
 
     def condition_check(self, model_cls: Type[_M], hash_key: _KeyType, range_key: Optional[_KeyType] = None, condition: Optional[Condition] = None):
@@ -98,21 +97,21 @@ class TransactWrite(Transaction):
             range_key=range_key,
             condition=condition
         )
-        self._condition_check_items.append(operation_kwargs)
+        self._transact_items.append({TRANSACT_CONDITION_CHECK: operation_kwargs})
 
     def delete(self, model: _M, condition: Optional[Condition] = None, *, add_version_condition: bool = True) -> None:
         operation_kwargs = model.get_delete_kwargs_from_instance(
             condition=condition,
             add_version_condition=add_version_condition,
         )
-        self._delete_items.append(operation_kwargs)
+        self._transact_items.append({TRANSACT_DELETE: operation_kwargs})
 
     def save(self, model: _M, condition: Optional[Condition] = None, return_values: Optional[str] = None) -> None:
         operation_kwargs = model.get_save_kwargs_from_instance(
             condition=condition,
             return_values_on_condition_failure=return_values
         )
-        self._put_items.append(operation_kwargs)
+        self._transact_items.append({TRANSACT_PUT: operation_kwargs})
         self._models_for_version_attribute_update.append(model)
 
     def update(self, model: _M, actions: List[Action], condition: Optional[Condition] = None,
@@ -125,15 +124,12 @@ class TransactWrite(Transaction):
             return_values_on_condition_failure=return_values,
             add_version_condition=add_version_condition,
         )
-        self._update_items.append(operation_kwargs)
+        self._transact_items.append({TRANSACT_UPDATE: operation_kwargs})
         self._models_for_version_attribute_update.append(model)
 
     def _commit(self) -> Any:
         response = self._connection.transact_write_items(
-            condition_check_items=self._condition_check_items,
-            delete_items=self._delete_items,
-            put_items=self._put_items,
-            update_items=self._update_items,
+            transact_items=self._transact_items,
             client_request_token=self._client_request_token,
             return_consumed_capacity=self._return_consumed_capacity,
             return_item_collection_metrics=self._return_item_collection_metrics,
