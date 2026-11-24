@@ -8,7 +8,7 @@ from pynamodb.models import Model
 from pynamodb.indexes import GlobalSecondaryIndex, AllProjection, LocalSecondaryIndex
 from pynamodb.attributes import (
     UnicodeAttribute, BinaryAttribute, UTCDateTimeAttribute, NumberSetAttribute, NumberAttribute,
-    VersionAttribute)
+    VersionAttribute, MapAttribute)
 
 import pytest
 
@@ -142,3 +142,30 @@ def test_can_inherit_version_attribute(ddb_url) -> None:
 
             version_invalid = VersionAttribute()
     assert str(e.value) == 'The model has more than one Version attribute: version, version_invalid'
+
+
+@pytest.mark.ddblocal
+def test_map_attribute_in_mixin_roundtrip(ddb_url):
+    class Details(MapAttribute):
+        value = UnicodeAttribute(attr_name='stored_value')
+
+    class AuditMixin:
+        details = Details(attr_name='stored_details')
+
+    class AuditModel(Model, AuditMixin):
+        class Meta:
+            table_name = 'pynamodb-ci-map-mixin'
+            host = ddb_url
+
+        key = UnicodeAttribute(hash_key=True)
+
+    AuditModel.create_table(read_capacity_units=1, write_capacity_units=1, wait=True)
+    try:
+        AuditModel(key='key', details=Details(value='before')).save()
+        item = AuditModel.get('key')
+        assert item.details.value == 'before'
+        item.update([AuditModel.details.value.set('after')])
+        assert AuditModel.get('key').details.value == 'after'
+        assert list(AuditModel.scan(AuditModel.details.value == 'after'))[0].key == 'key'
+    finally:
+        AuditModel.delete_table()
