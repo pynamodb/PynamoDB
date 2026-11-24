@@ -17,7 +17,7 @@ import pytest
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, DynamicMapAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute, MapAttribute, NullAttribute,
-    ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute, Attribute)
+    ListAttribute, JSONAttribute, TTLAttribute, VersionAttribute, Attribute, AttributeContainerMeta)
 from pynamodb.constants import (
     NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
     BINARY, BOOLEAN,
@@ -1495,3 +1495,64 @@ class TestDynamoDBDict:
         assert test_model.raw_map_attr.string == 'bar'
         assert test_model.ttl_attr == expected_dt
         assert test_model.null_attr is None
+
+
+@pytest.mark.parametrize('metaclass', [type, AttributeContainerMeta])
+@pytest.mark.parametrize('renamed', [False, True])
+def test_map_attribute_in_mixin(metaclass, renamed):
+    class Details(MapAttribute):
+        value = UnicodeAttribute(attr_name='stored_value')
+
+    class Audit(MapAttribute):
+        details = Details(attr_name='stored_details')
+
+    class AuditMixin(metaclass=metaclass):
+        audit = Audit(attr_name='stored_audit' if renamed else None, null=True)
+
+    class FirstModel(Model, AuditMixin):
+        key = UnicodeAttribute(hash_key=True)
+
+    class SecondModel(AuditMixin, Model):
+        key = UnicodeAttribute(hash_key=True)
+
+    stored_name = 'stored_audit' if renamed else 'audit'
+    expected = {
+        'key': {'S': 'key'},
+        stored_name: {'M': {'stored_details': {'M': {'stored_value': {'S': 'first'}}}}},
+    }
+    for model in (FirstModel, SecondModel):
+        item = model(key='key', audit=Audit(details=Details(value='first')))
+        assert item.serialize() == expected
+        assert model.from_raw_data(expected).audit.details.value == 'first'
+        assert model.audit.attr_path == [stored_name]
+        assert model.audit.details.attr_path == [stored_name, 'stored_details']
+        assert model.audit.details.value.attr_path == [stored_name, 'stored_details', 'stored_value']
+        assert model(key='key').serialize() == {'key': {'S': 'key'}}
+
+    # Using the nested map as an independent field must not retain the mixin's path.
+    class OtherModel(Model):
+        details = Details()
+
+    assert OtherModel.details.value.attr_path == ['details', 'stored_value']
+
+    class ChildModel(FirstModel):
+        pass
+
+    assert ChildModel(key='key', audit=Audit(details=Details(value='first'))).serialize() == expected
+    assert ChildModel.audit.details.value.attr_path == [stored_name, 'stored_details', 'stored_value']
+
+
+def test_raw_map_attribute_in_plain_mixin():
+    class MapMixin:
+        metadata = MapAttribute(null=True)
+
+    class MapModel(Model, MapMixin):
+        key = UnicodeAttribute(hash_key=True)
+
+    item = MapModel(key='key', metadata={'nested': {'value': 'data'}})
+    data = item.serialize()
+    assert data == {
+        'key': {'S': 'key'},
+        'metadata': {'M': {'nested': {'M': {'value': {'S': 'data'}}}}},
+    }
+    assert MapModel.from_raw_data(data).metadata.as_dict() == {'nested': {'value': 'data'}}
