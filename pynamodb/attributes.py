@@ -302,6 +302,10 @@ class AttributeContainerMeta(type):
         cls._dynamo_to_python_attrs = {}
 
         for name, attribute in getmembers(cls, lambda o: isinstance(o, Attribute)):
+            if isinstance(attribute, MapAttribute) and attribute._is_attribute_container():
+                # Inherited descriptors on plain mixins did not receive __set_name__
+                # with an AttributeContainer owner when their class was created.
+                attribute.__set_name__(cls, name)
             cls._attributes[name] = attribute
             if attribute.attr_name != name:
                 cls._dynamo_to_python_attrs[attribute.attr_name] = name
@@ -1117,8 +1121,8 @@ class MapAttribute(Attribute[Mapping[_KT, _VT]], AttributeContainer, metaclass=M
         return super().__set__(instance, value)  # type: ignore
 
     def __set_name__(self, owner: Type[Any], name: str) -> None:
-        if issubclass(owner, AttributeContainer):
-            # MapAttribute instances that are class attributes of an AttributeContainer class
+        if isinstance(owner, AttributeContainerMeta):
+            # MapAttribute instances on classes using AttributeContainerMeta
             # should behave like an Attribute instance and not an AttributeContainer instance.
             self._make_attribute()
 
@@ -1419,4 +1423,4 @@ SERIALIZE_CLASS_MAP: Mapping[type, Attribute] = {
     int: NumberAttribute(),
     str: UnicodeAttribute(),
     bytes: BinaryAttribute(legacy_encoding=False),
-}
+                            }
